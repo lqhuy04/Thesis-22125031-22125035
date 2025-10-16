@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNM Stock Chart</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #161b22;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #30363d;
+        }
+
+        .header h1 {
+            color: #58a6ff;
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .price-info {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .price-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .price-label {
+            color: #8b949e;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .price-value {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .price-up { color: #3fb950; }
+        .price-down { color: #f85149; }
+
+        .controls {
+            background: #161b22;
+            padding: 15px 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            border: 1px solid #30363d;
+        }
+
+        .timeframe-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .timeframe-group button {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .timeframe-group button:hover {
+            background: #30363d;
+            border-color: #58a6ff;
+        }
+
+        .timeframe-group button.active {
+            background: #58a6ff;
+            border-color: #58a6ff;
+            color: #ffffff;
+        }
+
+        .chart-wrapper {
+            background: #161b22;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+        }
+
+        #chart {
+            width: 100%;
+            height: 600px;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .price-info {
+                gap: 20px;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            #chart {
+                height: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 id="symbol">VNM - Vinamilk</h1>
+            <div class="price-info">
+                <div class="price-item">
+                    <div class="price-label">Giá hiện tại</div>
+                    <div class="price-value" id="current-price">--</div>
+                </div>
+                <div class="price-item">
+                    <div class="price-label">Thay đổi</div>
+                    <div class="price-value" id="price-change">--</div>
+                </div>
+                <div class="price-item">
+                    <div class="price-label">Khối lượng</div>
+                    <div class="price-value" id="volume">--</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="timeframe-group">
+                <button onclick="loadChart('1M')" id="btn-1M">1M</button>
+                <button onclick="loadChart('5M')" id="btn-5M">5M</button>
+                <button onclick="loadChart('15M')" id="btn-15M">15M</button>
+                <button onclick="loadChart('1H')" id="btn-1H">1H</button>
+                <button onclick="loadChart('4H')" id="btn-4H">4H</button>
+                <button onclick="loadChart('1D')" id="btn-1D" class="active">1D</button>
+            </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-wrapper">
+            <div id="chart"></div>
+        </div>
+    </div>
+
+    <script>
+        let chart;
+        let candlestickSeries;
+        let volumeSeries;
+        let allData = null;
+        let processedData = {
+            '1M': null,
+            '5M': null,
+            '15M': null,
+            '1H': null,
+            '4H': null,
+            '1D': null
+        };
+
+        // Load data from JSON
+        fetch('market-data-VNM-2025-10-16T01-51-41.json')
+            .then(res => res.json())
+            .then(data => {
+                allData = data;
+                preprocessData();
+                initChart();
+                loadChart('1D');
+            })
+            .catch(err => {
+                console.error('Error loading data:', err);
+                alert('Không thể tải dữ liệu. Vui lòng kiểm tra file JSON.');
+            });
+
+        // Aggregate intraday data to different timeframes
+        function aggregateData(data, minutes) {
+            if (!data || data.length === 0) return [];
+            
+            const groupedData = {};
+
+            data.forEach(item => {
+                const date = new Date(item.time * 1000);
+                
+                // Calculate the time bucket this candle belongs to
+                let bucketTime;
+                
+                if (minutes >= 60) {
+                    // For hourly intervals (1H = 60min, 4H = 240min)
+                    const hourInterval = minutes / 60;
+                    const totalHours = date.getHours();
+                    const bucketStartHour = Math.floor(totalHours / hourInterval) * hourInterval;
+                    
+                    // Create bucket end time (at :59 of the last minute)
+                    bucketTime = new Date(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        date.getDate(),
+                        bucketStartHour + hourInterval - 1,
+                        59,
+                        59,
+                        0
+                    );
+                } else {
+                    // For minute intervals (5M, 15M)
+                    const totalMinutes = date.getHours() * 60 + date.getMinutes();
+                    const bucketStartMinute = Math.floor(totalMinutes / minutes) * minutes;
+                    const bucketEndMinute = bucketStartMinute + minutes - 1;
+                    
+                    const endHour = Math.floor(bucketEndMinute / 60);
+                    const endMin = bucketEndMinute % 60;
+                    
+                    bucketTime = new Date(
+                        date.getFullYear(),
+                        date.getMonth(),
+                        date.getDate(),
+                        endHour,
+                        endMin,
+                        59,
+                        0
+                    );
+                }
+                
+                const key = bucketTime.getTime() / 1000;
+
+                if (!groupedData[key]) {
+                    groupedData[key] = {
+                        time: key,
+                        open: item.open,
+                        high: item.high,
+                        low: item.low,
+                        close: item.close,
+                        volume: item.volume,
+                        count: 1,
+                    };
+                } else {
+                    // Update OHLC - keep first open, update high/low, last close
+                    groupedData[key].high = Math.max(groupedData[key].high, item.high);
+                    groupedData[key].low = Math.min(groupedData[key].low, item.low);
+                    groupedData[key].close = item.close; // Last close in the period
+                    groupedData[key].volume += item.volume;
+                    groupedData[key].count++;
+                }
+            });
+
+            // Convert to array and sort
+            const result = Object.values(groupedData)
+                .map(g => ({
+                    time: g.time,
+                    open: g.open,
+                    high: g.high,
+                    low: g.low,
+                    close: g.close,
+                    volume: g.volume,
+                }))
+                .sort((a, b) => a.time - b.time);
+
+            console.log(`✅ Aggregated ${data.length} → ${result.length} candles (${minutes}min / ${minutes/60}H)`);
+            if (result.length > 0) {
+                const first = new Date(result[0].time * 1000);
+                const last = new Date(result[result.length - 1].time * 1000);
+                console.log(`   First: ${first.toLocaleString('vi-VN')} | Last: ${last.toLocaleString('vi-VN')}`);
+            }
+            
+            return result;
+        }
+
+        // Preprocess all timeframe data
+        function preprocessData() {
+            // Process 1M data
+            if (allData.timeframes['1M'].data && allData.timeframes['1M'].data.data) {
+                const raw1M = allData.timeframes['1M'].data.data;
+                processedData['1M'] = raw1M.map(item => {
+                    const [day, month, year] = item.TradingDate.split('/');
+                    const [hours, minutes, seconds] = item.Time.split(':');
+                    
+                    // Create date with seconds set to 59
+                    const date = new Date(year, month - 1, day, hours, minutes, 59, 0);
+                    const timestamp = date.getTime() / 1000;
+                    
+                    return {
+                        time: timestamp,
+                        open: parseFloat(item.Open),
+                        high: parseFloat(item.High),
+                        low: parseFloat(item.Low),
+                        close: parseFloat(item.Close),
+                        volume: parseFloat(item.Volume),
+                    };
+                }).filter(item => !isNaN(item.open));
+
+                console.log(`Loaded ${processedData['1M'].length} 1M candles`);
+
+                // Generate other intraday timeframes from 1M
+                if (processedData['1M'].length > 0) {
+                    processedData['5M'] = aggregateData(processedData['1M'], 5);
+                    processedData['15M'] = aggregateData(processedData['1M'], 15);
+                    processedData['1H'] = aggregateData(processedData['1M'], 60);
+                    processedData['4H'] = aggregateData(processedData['1M'], 240);
+                }
+            }
+
+            // Process 1D data
+            if (allData.timeframes['1D'].data && allData.timeframes['1D'].data.data) {
+                const raw1D = allData.timeframes['1D'].data.data;
+                processedData['1D'] = raw1D.map(item => {
+                    const [day, month, year] = item.TradingDate.split('/');
+                    return {
+                        time: `${year}-${month}-${day}`,
+                        open: parseFloat(item.Open),
+                        high: parseFloat(item.High),
+                        low: parseFloat(item.Low),
+                        close: parseFloat(item.Close),
+                        volume: parseFloat(item.Volume),
+                    };
+                }).filter(item => !isNaN(item.open));
+            }
+        }
+
+        function initChart() {
+            const chartElement = document.getElementById('chart');
+            
+            chart = LightweightCharts.createChart(chartElement, {
+                width: chartElement.clientWidth,
+                height: 600,
+                layout: {
+                    background: { type: 'solid', color: '#0d1117' },
+                    textColor: '#c9d1d9',
+                },
+                grid: {
+                    vertLines: { color: '#161b22' },
+                    horzLines: { color: '#161b22' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: '#30363d',
+                },
+                timeScale: {
+                    borderColor: '#30363d',
+                    timeVisible: true,
+                },
+            });
+
+            window.addEventListener('resize', () => {
+                chart.applyOptions({ width: chartElement.clientWidth });
+            });
+        }
+
+        function loadChart(timeframe) {
+            // Clear existing series
+            if (candlestickSeries) {
+                chart.removeSeries(candlestickSeries);
+            }
+            if (volumeSeries) {
+                chart.removeSeries(volumeSeries);
+            }
+
+            // Get preprocessed data
+            const chartData = processedData[timeframe];
+            
+            if (!chartData || chartData.length === 0) {
+                alert(`Không có dữ liệu cho khung thời gian ${timeframe}`);
+                return;
+            }
+
+            // Add candlestick series
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#3fb950',
+                downColor: '#f85149',
+                borderVisible: false,
+                wickUpColor: '#3fb950',
+                wickDownColor: '#f85149',
+            });
+            candlestickSeries.setData(chartData);
+
+            // Add volume series
+            volumeSeries = chart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: {
+                    type: 'volume',
+                },
+                priceScaleId: '',
+            });
+            
+            volumeSeries.priceScale().applyOptions({
+                scaleMargins: {
+                    top: 0.8,
+                    bottom: 0,
+                },
+            });
+
+            const volumeData = chartData.map(d => ({
+                time: d.time,
+                value: d.volume,
+                color: d.close >= d.open ? 'rgba(63, 185, 80, 0.5)' : 'rgba(248, 81, 73, 0.5)'
+            }));
+            
+            volumeSeries.setData(volumeData);
+
+            // Fit content
+            chart.timeScale().fitContent();
+
+            // Update info
+            updateInfo(chartData);
+
+            // Update active button
+            document.querySelectorAll('.timeframe-group button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`btn-${timeframe}`).classList.add('active');
+        }
+
+        function updateInfo(data) {
+            if (data.length === 0) return;
+
+            const latest = data[data.length - 1];
+            const previous = data.length > 1 ? data[data.length - 2] : latest;
+
+            // Current price
+            document.getElementById('current-price').textContent = 
+                latest.close.toLocaleString('vi-VN', { maximumFractionDigits: 0 });
+
+            // Price change
+            const change = latest.close - previous.close;
+            const changePercent = (change / previous.close) * 100;
+            const changeElement = document.getElementById('price-change');
+            
+            changeElement.textContent = 
+                `${change > 0 ? '+' : ''}${change.toFixed(0)} (${changePercent.toFixed(2)}%)`;
+            changeElement.className = `price-value ${change >= 0 ? 'price-up' : 'price-down'}`;
+
+            // Volume
+            document.getElementById('volume').textContent = 
+                (latest.volume / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 0 }) + 'K';
+        }
+    </script>
+</body>
+</html>
