@@ -3,9 +3,11 @@ import { View, TextInput, StyleSheet, TouchableOpacity } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { useTheme } from "@/hooks/ThemeContext";
 import { Text } from "@/components/ui/Text";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 const Authentication = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
+  const { t } = useLocalization();
 
   const { control, handleSubmit } = useForm();
   const [data, setData] = useState("");
@@ -24,7 +26,7 @@ const Authentication = () => {
       }}
     >
       <Text typography="headlineSmall" color={theme.text.primary}>
-        Sign in
+        {t("auth.signIn")}
       </Text>
 
       <Controller
@@ -37,7 +39,7 @@ const Authentication = () => {
               color={theme.text.primary}
               style={{ marginTop: 24 }}
             >
-              Email/ Phone Number
+              {t("auth.username")}
             </Text>
             <TextInput
               style={{
@@ -49,6 +51,7 @@ const Authentication = () => {
                 marginTop: 4,
               }}
               placeholder="username@gmail.com"
+              placeholderTextColor={theme.text.secondary}
               value={value}
               onChangeText={onChange}
             />
@@ -66,7 +69,7 @@ const Authentication = () => {
               color={theme.text.primary}
               style={{ marginTop: 24 }}
             >
-              Password
+              {t("auth.password")}
             </Text>
             <TextInput
               style={{
@@ -77,7 +80,8 @@ const Authentication = () => {
                 paddingHorizontal: 16,
                 marginTop: 4,
               }}
-              placeholder="Enter your password"
+              placeholder={t("auth.passwordPlaceholder")}
+              placeholderTextColor={theme.text.secondary}
               value={value}
               onChangeText={onChange}
             />
@@ -90,7 +94,7 @@ const Authentication = () => {
         color={theme.base.primary}
         style={{ marginTop: 4 }}
       >
-        Forgot Password?
+        {t("auth.forgotPassword")}
       </Text>
 
       <TouchableOpacity
@@ -104,21 +108,11 @@ const Authentication = () => {
         }}
       >
         <Text typography="titleLarge" color="#F2F4F7">
-          Sign In
+          {t("auth.signIn")}
         </Text>
       </TouchableOpacity>
 
       <Text style={styles.output}>{data}</Text>
-
-      <TouchableOpacity
-        onPress={toggleTheme}
-        style={{ marginTop: 24, alignItems: "center" }}
-      >
-        <Text typography="bodySmall" color={theme.text.primary}>
-          {" "}
-          Toggle Theme
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 };
