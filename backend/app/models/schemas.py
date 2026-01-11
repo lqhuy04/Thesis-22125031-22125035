@@ -56,14 +56,30 @@ class ResetPasswordRequest(BaseModel):
 
 
 class AuthResponse(BaseModel):
-    success: bool
-    message: str
+    data: dict = {}
+    errorCode: int = 0
+    errorDesc: str = ""
+    requestId: str
+    result: bool
+    userId: Optional[str] = None
+
+
+class AuthData(BaseModel):
     token: Optional[str] = None
     user_id: Optional[str] = None
     email: Optional[str] = None
+    provider: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+
+class SocialLoginRequest(BaseModel):
+    token: str
+    provider: str = Field(..., pattern='^(google|facebook)$')
 
 
 class UserResponse(BaseModel):
     user_id: str
     email: str
     phone_number: Optional[str] = None
+    provider: Optional[str] = None
+    avatar_url: Optional[str] = None

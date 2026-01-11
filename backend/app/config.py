@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     # Frontend URL (for password reset links)
     FRONTEND_URL: str = "http://localhost:3000"
     
+    # OAuth Settings
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    FACEBOOK_APP_ID: str = ""
+    FACEBOOK_APP_SECRET: str = ""
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

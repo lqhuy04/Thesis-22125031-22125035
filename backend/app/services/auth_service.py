@@ -3,6 +3,10 @@ from app.config import settings
 from app.utils.password import hash_password, verify_password
 from app.utils.token import create_access_token, create_reset_token
 from app.services.email_service import send_reset_email
+import httpx
+import google.auth.transport.requests
+import google.oauth2.id_token
+import facebook
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
@@ -93,3 +97,154 @@ class AuthService:
             raise ValueError("Failed to reset password")
         
         return {"message": "Password reset successfully"}
+    
+    @staticmethod
+    async def google_login(token: str):
+        """Authenticate user with Google OAuth token"""
+        try:
+            # Verify Google token
+            request = google.auth.transport.requests.Request()
+            id_info = google.oauth2.id_token.verify_oauth2_token(
+                token, request, settings.GOOGLE_CLIENT_ID
+            )
+            
+            # Extract user information
+            email = id_info.get('email')
+            name = id_info.get('name', '')
+            avatar_url = id_info.get('picture', '')
+            
+            if not email:
+                raise ValueError("Email not provided by Google")
+            
+            # Check if user exists
+            user_result = supabase.table("user").select("*").eq("email", email).execute()
+            
+            if user_result.data:
+                # User exists, update their info
+                user = user_result.data[0]
+                update_data = {
+                    "provider": "google",
+                    "avatar_url": avatar_url
+                }
+                supabase.table("user").update(update_data).eq("id", user["id"]).execute()
+            else:
+                # Create new user
+                new_user = supabase.table("user").insert({
+                    "email": email,
+                    "provider": "google",
+                    "avatar_url": avatar_url,
+                    "hash_password": ""  # No password for OAuth users
+                }).execute()
+                
+                if not new_user.data:
+                    raise ValueError("Failed to create user")
+                user = new_user.data[0]
+            
+            # Create access token
+            access_token = create_access_token(user["id"], user["email"])
+            
+            return {
+                "token": access_token,
+                "user_id": user["id"],
+                "email": user["email"],
+                "provider": "google",
+                "avatar_url": avatar_url
+            }
+            
+        except Exception as e:
+            raise ValueError(f"Google authentication failed: {str(e)}")
+    
+    @staticmethod
+    async def facebook_login(token: str):
+        """Authenticate user with Facebook access token"""
+        try:
+            # Create Facebook GraphAPI instance
+            graph = facebook.GraphAPI(access_token=token)
+            
+            # Get user profile information
+            profile = graph.get_object('me', fields='id,email,name,picture')
+            
+            # Debug: Print what Facebook returns
+            print(f"Facebook profile data: {profile}")
+            
+            email = profile.get('email')
+            facebook_id = profile.get('id')
+            name = profile.get('name', '')
+            avatar_url = profile.get('picture', {}).get('data', {}).get('url', '')
+            
+            # If no email, use Facebook ID as identifier
+            if not email:
+                email = f"facebook_{facebook_id}@facebook.local"  # Create a dummy email
+                print(f"No email provided by Facebook, using dummy email: {email}")
+            
+            # Check if user exists by email first, then by Facebook ID if not found
+            user_result = supabase.table("user").select("*").eq("email", email).execute()
+            
+            # If no user found by email, try to find by Facebook ID
+            if not user_result.data:
+                user_result = supabase.table("user").select("*").eq("facebook_id", facebook_id).execute()
+            
+            if user_result.data:
+                # User exists, update their info
+                user = user_result.data[0]
+                update_data = {
+                    "provider": "facebook",
+                    "avatar_url": avatar_url,
+                    "facebook_id": facebook_id
+                }
+                supabase.table("user").update(update_data).eq("id", user["id"]).execute()
+            else:
+                # Create new user
+                new_user = supabase.table("user").insert({
+                    "email": email,
+                    "provider": "facebook",
+                    "avatar_url": avatar_url,
+                    "facebook_id": facebook_id,
+                    "hash_password": ""  # No password for OAuth users
+                }).execute()
+                
+                if not new_user.data:
+                    raise ValueError("Failed to create user")
+                user = new_user.data[0]
+            
+            # Create access token
+            access_token = create_access_token(user["id"], user["email"])
+            
+            return {
+                "token": access_token,
+                "user_id": user["id"],
+                "email": user["email"],
+                "provider": "facebook",
+                "avatar_url": avatar_url
+            }
+            
+        except Exception as e:
+            raise ValueError(f"Facebook authentication failed: {str(e)}")
+    
+    @staticmethod
+    async def verify_google_token(token: str):
+        """Helper method to verify Google OAuth token and return user info"""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}"
+                )
+                if response.status_code != 200:
+                    raise ValueError("Invalid Google token")
+                return response.json()
+        except Exception as e:
+            raise ValueError(f"Token verification failed: {str(e)}")
+    
+    @staticmethod
+    async def verify_facebook_token(token: str):
+        """Helper method to verify Facebook access token"""
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://graph.facebook.com/me?access_token={token}&fields=id,email,name,picture"
+                )
+                if response.status_code != 200:
+                    raise ValueError("Invalid Facebook token")
+                return response.json()
+        except Exception as e:
+            raise ValueError(f"Token verification failed: {str(e)}")
