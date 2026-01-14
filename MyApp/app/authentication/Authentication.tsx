@@ -19,7 +19,7 @@ const Authentication = () => {
         padding: 12,
         backgroundColor: theme.background.bg,
         flex: 1,
-        paddingTop: 112,
+        paddingTop: 80,
       }}
     >
       <AuthenticationTab tab={tab} setTab={setTab} />

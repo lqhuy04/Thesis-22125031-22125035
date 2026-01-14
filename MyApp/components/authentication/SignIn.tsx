@@ -1,19 +1,30 @@
-import React, { useState } from "react";
-import { View, TextInput, TouchableOpacity } from "react-native";
-import { useForm, Controller } from "react-hook-form";
+import React from "react";
+import { View, TouchableOpacity, Alert } from "react-native";
+import { useForm } from "react-hook-form";
 import { useTheme } from "@/hooks/ThemeContext";
 import { Text } from "@/components/ui/Text";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import { signIn } from "@/helpers/AuthenticationHelper";
+import { router } from "expo-router";
+import { Input } from "../ui/Input";
 
 const SignInComponent = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
 
   const { control, handleSubmit } = useForm();
-  const [data, setData] = useState("");
 
   const onSubmit = (formData: any) => {
-    setData(JSON.stringify(formData, null, 2));
+    signIn({
+      username: formData?.username,
+      password: formData?.password,
+    }).then((response) => {
+      if (response.status) {
+        router.push("../home/Home");
+      } else {
+        Alert.alert("Sign In Failed", "Invalid username or password.");
+      }
+    });
   };
 
   return (
@@ -22,72 +33,21 @@ const SignInComponent = () => {
         {t("auth.signIn")}
       </Text>
 
-      <Controller
+      <Input
         control={control}
         name="username"
-        render={({ field: { onChange, value } }) => (
-          <View>
-            <Text
-              typography="bodySmall"
-              color={theme.text.primary}
-              style={{ marginTop: 24 }}
-            >
-              {t("auth.username")}
-              <Text typography="bodySmall" color={theme.base.error}>
-                *
-              </Text>
-            </Text>
-            <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: theme.border.default,
-                borderRadius: 5,
-                paddingVertical: 10,
-                paddingHorizontal: 16,
-                marginTop: 4,
-                color: theme.text.primary,
-              }}
-              placeholder="username@gmail.com"
-              placeholderTextColor={theme.text.secondary}
-              value={value}
-              onChangeText={onChange}
-            />
-          </View>
-        )}
+        label={t("auth.username")}
+        placeholder="username@gmail.com"
+        required={true}
       />
 
-      <Controller
+      <Input
         control={control}
         name="password"
-        render={({ field: { onChange, value } }) => (
-          <View>
-            <Text
-              typography="bodySmall"
-              color={theme.text.primary}
-              style={{ marginTop: 24 }}
-            >
-              {t("auth.password")}
-              <Text typography="bodySmall" color={theme.base.error}>
-                *
-              </Text>
-            </Text>
-            <TextInput
-              style={{
-                borderWidth: 1,
-                borderColor: theme.border.default,
-                borderRadius: 5,
-                paddingVertical: 10,
-                paddingHorizontal: 16,
-                marginTop: 4,
-                color: theme.text.primary,
-              }}
-              placeholder={t("auth.passwordPlaceholder")}
-              placeholderTextColor={theme.text.secondary}
-              value={value}
-              onChangeText={onChange}
-            />
-          </View>
-        )}
+        label={t("auth.password")}
+        placeholder={t("auth.passwordPlaceholder")}
+        required={true}
+        secure={true}
       />
 
       <Text
@@ -112,8 +72,6 @@ const SignInComponent = () => {
           {t("auth.signIn")}
         </Text>
       </TouchableOpacity>
-
-      <Text>{data}</Text>
     </View>
   );
 };

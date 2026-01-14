@@ -4,9 +4,6 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 
-export const unstable_settings = {
-  anchor: "(tabs)",
-};
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -20,7 +17,7 @@ export default function RootLayout() {
   return (
     <LocalizationProvider>
       <ThemeProvider>
-        <Stack>
+        <Stack >
           <Stack.Screen
             name="authentication/Authentication"
             options={{ headerShown: false }}
