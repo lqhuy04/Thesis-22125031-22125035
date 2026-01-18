@@ -12,5 +12,8 @@ export default {
     email: "Email",
     phoneNumber: "Số điện thoại",
     phoneNumberPlaceholder: "Nhập số điện thoại của bạn",
+    home: {
+      search: 'Tìm kiếm',
+    }
   },
 };

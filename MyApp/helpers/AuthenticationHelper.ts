@@ -11,7 +11,7 @@ export const signIn = async ({
   password: string;
 }): Promise<Response> => {
   try {
-    const response = await fetch("http://192.168.1.71:8000/api/auth/login", {
+    const response = await fetch("http://192.168.1.104:8000/api/auth/login", {
       method: "POST",
       headers: {
         Accept: "application/json",

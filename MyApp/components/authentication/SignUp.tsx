@@ -6,7 +6,7 @@ import { Text } from "@/components/ui/Text";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { signUp } from "@/helpers/AuthenticationHelper";
 import { Input } from "../ui/Input";
-import { router } from "@/.expo/types/router";
+import { router } from "expo-router";
 
 const SignUpComponent = () => {
   const { theme } = useTheme();
@@ -25,7 +25,7 @@ const SignUpComponent = () => {
       } else {
         Alert.alert(
           "Sign Up Failed",
-          "Invalid email, phone number, or password."
+          "Invalid email, phone number, or password.",
         );
       }
     });

@@ -13,4 +13,7 @@ export default {
     phoneNumber: "Phone Number",
     phoneNumberPlaceholder: "Enter your phone number",
   },
+  home: {
+    search: 'Search',
+  }
 };
