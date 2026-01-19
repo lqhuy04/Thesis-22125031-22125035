@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     FACEBOOK_APP_ID: str = ""
     FACEBOOK_APP_SECRET: str = ""
     
+    # SSI FC Data API Settings
+    SSI_CONSUMER_ID: str = ""
+    SSI_CONSUMER_SECRET: str = ""
+    SSI_AUTH_TYPE: str = "Bearer"
+    SSI_API_URL: str = "https://fc-data.ssi.com.vn/"
+    SSI_STREAM_URL: str = "https://fc-datahub.ssi.com.vn/"
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
@@ -43,3 +50,17 @@ def get_settings():
     return Settings()
 
 settings = get_settings()
+
+
+# SSI Config object for the ssi-fc-data library
+class SSIConfig:
+    """Configuration class compatible with ssi-fc-data library"""
+    def __init__(self):
+        self.auth_type = settings.SSI_AUTH_TYPE
+        self.consumerID = settings.SSI_CONSUMER_ID
+        self.consumerSecret = settings.SSI_CONSUMER_SECRET
+        self.url = settings.SSI_API_URL
+        self.stream_url = settings.SSI_STREAM_URL
+
+def get_ssi_config():
+    return SSIConfig()
