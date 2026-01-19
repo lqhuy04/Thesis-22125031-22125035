@@ -368,6 +368,338 @@ class SSIMarketDataService:
             logger.error(f"Error getting daily stock price: {str(e)}")
             return {"success": False, "error": str(e)}
 
+    def search_securities(
+        self,
+        query: str = "",
+        market: str = "",
+        page_index: int = 1,
+        page_size: int = 50
+    ) -> Dict[str, Any]:
+        """
+        Search securities by name/symbol and get current prices with 24h changes
+        
+        Args:
+            query: Search query (symbol or company name)
+            market: Filter by market (HOSE, HNX, UPCOM) - empty for all markets
+            page_index: Page number for pagination
+            page_size: Number of items per page
+        """
+        try:
+            if not self._ensure_token():
+                return {"success": False, "error": "Failed to get access token"}
+            
+            from datetime import datetime
+            
+            # Determine which markets to search
+            markets_to_search = []
+            if market and market.strip():
+                markets_to_search = [market.upper()]
+            else:
+                markets_to_search = ["HOSE", "HNX", "UPCOM"]
+            
+            all_securities = []
+            
+            for mkt in markets_to_search:
+                # Get securities list for the market
+                params = {
+                    "market": mkt,
+                    "pageIndex": 1,
+                    "pageSize": 1000  # Get all securities for search
+                }
+                response = self._make_get_request(SSIEndpoints.SECURITIES, params)
+                
+                if response.get("status") == "Success" and response.get("data"):
+                    securities = response.get("data", [])
+                    
+                    for sec in securities:
+                        symbol = sec.get("Symbol") or ""
+                        name = sec.get("StockName") or ""
+                        
+                        # Skip if no symbol
+                        if not symbol:
+                            continue
+                        
+                        # Filter by search query (case-insensitive)
+                        if query and query.strip():
+                            query_lower = query.lower().strip()
+                            symbol_lower = symbol.lower() if symbol else ""
+                            name_lower = name.lower() if name else ""
+                            if query_lower not in symbol_lower and query_lower not in name_lower:
+                                continue
+                        
+                        all_securities.append({
+                            "symbol": symbol,
+                            "name": name,
+                            "market": mkt,
+                        })
+            
+            # Sort by symbol
+            all_securities.sort(key=lambda x: x["symbol"])
+            
+            # Apply pagination
+            total = len(all_securities)
+            start_idx = (page_index - 1) * page_size
+            end_idx = start_idx + page_size
+            paginated_securities = all_securities[start_idx:end_idx]
+            
+            # Build result with prices using daily OHLC data
+            result_with_prices = []
+            today_str = datetime.now().strftime("%d/%m/%Y")
+            
+            for sec in paginated_securities:
+                symbol = sec["symbol"]
+                
+                # Get daily OHLC data for current price
+                price_data = self._get_daily_price(symbol, today_str)
+                
+                result_with_prices.append({
+                    "symbol": sec["symbol"],
+                    "name": sec["name"],
+                    "market": sec["market"],
+                    "current_price": price_data.get("current_price"),
+                    "price_change": price_data.get("price_change"),
+                    "price_change_percent": price_data.get("price_change_percent")
+                })
+            
+            return {
+                "success": True,
+                "data": result_with_prices,
+                "total": total,
+                "page_index": page_index,
+                "page_size": page_size
+            }
+            
+        except Exception as e:
+            logger.error(f"Error searching securities: {str(e)}")
+            return {"success": False, "error": str(e)}
+    
+    def _get_daily_price(self, symbol: str, date_str: str) -> Dict[str, Any]:
+        """
+        Get the daily OHLC price for a symbol with price change from previous day
+        
+        Args:
+            symbol: Stock symbol
+            date_str: Date in DD/MM/YYYY format
+        
+        Returns:
+            Dict with: current_price, price_change, price_change_percent
+        """
+        try:
+            from datetime import datetime, timedelta
+            
+            # Get last 7 days to ensure we have at least 2 trading days
+            today = datetime.strptime(date_str, "%d/%m/%Y")
+            from_date = today - timedelta(days=7)
+            from_date_str = from_date.strftime("%d/%m/%Y")
+            
+            params = {
+                "symbol": symbol,
+                "fromDate": from_date_str,
+                "toDate": date_str,
+                "pageIndex": 1,
+                "pageSize": 10,
+                "ascending": "false"  # Latest first
+            }
+            
+            response = self._make_get_request(SSIEndpoints.DAILY_OHLC, params)
+            
+            if response.get("status") == "Success":
+                data_list = response.get("data", [])
+                
+                if data_list and len(data_list) > 0:
+                    # Latest day (today or most recent trading day)
+                    latest = data_list[0]
+                    current_price = self._parse_number(latest.get("Close") or latest.get("close"))
+                    
+                    # Calculate change from previous day's close
+                    price_change = None
+                    price_change_percent = None
+                    
+                    if len(data_list) >= 2 and current_price:
+                        # Previous trading day
+                        previous = data_list[1]
+                        prev_close = self._parse_number(previous.get("Close") or previous.get("close"))
+                        
+                        if prev_close and prev_close > 0:
+                            # Formula: (Current Price - Previous Close) / Previous Close × 100
+                            price_change = round(current_price - prev_close, 2)
+                            price_change_percent = round((price_change / prev_close) * 100, 2)
+                    
+                    return {
+                        "current_price": current_price,
+                        "price_change": price_change,
+                        "price_change_percent": price_change_percent
+                    }
+            
+            return {}
+        except Exception as e:
+            logger.warning(f"Error getting daily price for {symbol}: {str(e)}")
+            return {}
+    
+    def _parse_number(self, value) -> Optional[float]:
+        """Parse a number from string or return None"""
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return None
+
+    def search_securities_fast(
+        self,
+        query: str = "",
+        market: str = "",
+        page_index: int = 1,
+        page_size: int = 50
+    ) -> Dict[str, Any]:
+        """
+        Fast search for securities WITHOUT prices (instant response)
+        Use get_stock_price() separately to load prices
+        
+        Args:
+            query: Search query (symbol or company name)
+            market: Filter by market (HOSE, HNX, UPCOM) - empty for all markets
+            page_index: Page number for pagination
+            page_size: Number of items per page
+        """
+        try:
+            if not self._ensure_token():
+                return {"success": False, "error": "Failed to get access token"}
+            
+            # Determine which markets to search
+            markets_to_search = []
+            if market and market.strip():
+                markets_to_search = [market.upper()]
+            else:
+                markets_to_search = ["HOSE", "HNX", "UPCOM"]
+            
+            all_securities = []
+            
+            for mkt in markets_to_search:
+                # Get securities list for the market
+                params = {
+                    "market": mkt,
+                    "pageIndex": 1,
+                    "pageSize": 1000
+                }
+                response = self._make_get_request(SSIEndpoints.SECURITIES, params)
+                
+                if response.get("status") == "Success" and response.get("data"):
+                    securities = response.get("data", [])
+                    
+                    for sec in securities:
+                        symbol = sec.get("Symbol") or ""
+                        name = sec.get("StockName") or ""
+                        
+                        if not symbol:
+                            continue
+                        
+                        # Filter by search query (case-insensitive)
+                        if query and query.strip():
+                            query_lower = query.lower().strip()
+                            symbol_lower = symbol.lower() if symbol else ""
+                            name_lower = name.lower() if name else ""
+                            if query_lower not in symbol_lower and query_lower not in name_lower:
+                                continue
+                        
+                        all_securities.append({
+                            "symbol": symbol,
+                            "name": name,
+                            "market": mkt,
+                        })
+            
+            # Sort by symbol
+            all_securities.sort(key=lambda x: x["symbol"])
+            
+            # Apply pagination
+            total = len(all_securities)
+            start_idx = (page_index - 1) * page_size
+            end_idx = start_idx + page_size
+            paginated_securities = all_securities[start_idx:end_idx]
+            
+            return {
+                "success": True,
+                "data": paginated_securities,
+                "total": total,
+                "page_index": page_index,
+                "page_size": page_size
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in fast search: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    def get_stock_price(self, symbol: str) -> Dict[str, Any]:
+        """
+        Get current price for a single stock using daily OHLC data
+        
+        Args:
+            symbol: Stock symbol (e.g., VNM, FPT)
+        
+        Returns:
+            Price data including current_price, price_change, price_change_percent, etc.
+        """
+        try:
+            if not self._ensure_token():
+                return {"success": False, "error": "Failed to get access token"}
+            
+            from datetime import datetime
+            today_str = datetime.now().strftime("%d/%m/%Y")
+            
+            price_data = self._get_daily_price(symbol.upper(), today_str)
+            
+            return {
+                "success": True,
+                "data": {
+                    "symbol": symbol.upper(),
+                    "current_price": price_data.get("current_price"),
+                    "price_change": price_data.get("price_change"),
+                    "price_change_percent": price_data.get("price_change_percent")
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting stock price for {symbol}: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    def get_top_stocks(self, symbols: list = None) -> Dict[str, Any]:
+        """
+        Get price data for top/featured stocks (for home page display)
+        
+        Args:
+            symbols: List of stock symbols. Default: ['VNM', 'FPT', 'VCB', 'VIC', 'VHM']
+        
+        Returns:
+            List of stocks with current_price, price_change, price_change_percent
+        """
+        try:
+            if not self._ensure_token():
+                return {"success": False, "error": "Failed to get access token"}
+            
+            from datetime import datetime
+            today_str = datetime.now().strftime("%d/%m/%Y")
+            
+            # Default popular Vietnamese stocks
+            if not symbols:
+                symbols = ['VNM', 'FPT', 'VCB', 'VIC', 'VHM']
+            
+            results = []
+            for symbol in symbols:
+                price_data = self._get_daily_price(symbol.upper(), today_str)
+                results.append({
+                    "symbol": symbol.upper(),
+                    "current_price": price_data.get("current_price"),
+                    "price_change": price_data.get("price_change"),
+                    "price_change_percent": price_data.get("price_change_percent")
+                })
+            
+            return {
+                "success": True,
+                "data": results
+            }
+        except Exception as e:
+            logger.error(f"Error getting top stocks: {str(e)}")
+            return {"success": False, "error": str(e)}
+
 
 # Singleton instance
 _ssi_service: Optional[SSIMarketDataService] = None

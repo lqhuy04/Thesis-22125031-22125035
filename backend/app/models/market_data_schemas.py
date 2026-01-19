@@ -115,3 +115,24 @@ class SSIApiStatus(BaseModel):
     connected: bool = Field(..., description="Whether the API connection is working")
     message: str = Field(..., description="Status message")
     consumer_id_configured: bool = Field(..., description="Whether consumer ID is configured")
+
+
+# Security Search Models
+class SecurityItem(BaseModel):
+    """Individual security item with price info"""
+    symbol: str = Field(..., description="Stock symbol (e.g., VNM, FPT)")
+    name: str = Field("", description="Company name")
+    market: str = Field("", description="Market exchange (HOSE, HNX, UPCOM)")
+    current_price: Optional[float] = Field(None, description="Current/latest closing price")
+    price_change: Optional[float] = Field(None, description="Price change from previous day close")
+    price_change_percent: Optional[float] = Field(None, description="Price change percentage")
+
+
+class SecuritySearchResponse(BaseModel):
+    """Response for security search endpoint"""
+    data: List[SecurityItem] = Field(default=[], description="List of matching securities")
+    total: int = Field(0, description="Total number of results")
+    errorCode: int = Field(0, description="Error code (0 for success)")
+    errorDesc: str = Field("", description="Error description")
+    requestId: str = Field(..., description="Unique request identifier")
+    result: bool = Field(..., description="Whether the request was successful")

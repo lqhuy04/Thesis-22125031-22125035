@@ -20,7 +20,9 @@ from app.models.market_data_schemas import (
     SSIApiStatus,
     MarketEnum,
     ExchangeEnum,
-    ResolutionEnum
+    ResolutionEnum,
+    SecurityItem,
+    SecuritySearchResponse
 )
 from app.config import settings
 
@@ -85,6 +87,81 @@ async def check_api_status():
             message=f"SSI API connection error: {str(e)}",
             consumer_id_configured=True
         )
+
+
+@router.get("/top-stocks", response_model=MarketDataResponse)
+async def get_top_stocks(
+    symbols: Optional[str] = Query(None, description="Comma-separated stock symbols (e.g., VNM,FPT,VCB). Default: VNM,FPT,VCB,VIC,VHM")
+):
+    """
+    🏠 Get top/featured stocks for home page display
+    
+    Returns 5 stocks with their current prices and price changes.
+    Perfect for displaying featured stocks on the home page.
+    
+    - **symbols**: Optional comma-separated list of stock symbols
+    - Default stocks: VNM, FPT, VCB, VIC, VHM
+    
+    Example: `/market-data/top-stocks` or `/market-data/top-stocks?symbols=SSI,VNM,FPT,TCB,MBB`
+    """
+    request_id = str(uuid.uuid4())
+    service = get_ssi_service()
+    
+    # Parse comma-separated symbols if provided
+    symbol_list = None
+    if symbols:
+        symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    
+    result = service.get_top_stocks(symbol_list)
+    return create_response(result, request_id)
+
+
+@router.get("/search", response_model=MarketDataResponse)
+async def search_securities(
+    query: str = Query("", description="Search by symbol or company name"),
+    market: Optional[str] = Query(None, description="Filter by market (HOSE, HNX, UPCOM)"),
+    page_index: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page (max 100)")
+):
+    """
+    🚀 Fast search for securities (without prices)
+    
+    Use this for quick search results, then call `/market-data/price/{symbol}` 
+    to load prices individually.
+    
+    - **query**: Search term (optional) - matches against symbol or company name
+    - **market**: Filter by specific market - HOSE, HNX, or UPCOM (optional)
+    - **page_index**: Page number for pagination (default: 1)
+    - **page_size**: Number of items per page (default: 20, max: 100)
+    """
+    request_id = str(uuid.uuid4())
+    service = get_ssi_service()
+    result = service.search_securities_fast(
+        query=query,
+        market=market or "",
+        page_index=page_index,
+        page_size=page_size
+    )
+    return create_response(result, request_id)
+
+
+@router.get("/price/{symbol}", response_model=MarketDataResponse)
+async def get_stock_price(symbol: str):
+    """
+    💰 Get current price for a single stock
+    
+    Returns:
+    - **symbol**: Stock symbol
+    - **current_price**: Latest closing price
+    - **price_change**: Change from previous day's close
+    - **price_change_percent**: Percentage change from previous day
+    
+    Formula: `(Current Price - Previous Close) / Previous Close × 100`
+    """
+    request_id = str(uuid.uuid4())
+    service = get_ssi_service()
+    result = service.get_stock_price(symbol)
+    return create_response(result, request_id)
 
 
 @router.get("/securities", response_model=MarketDataResponse)
