@@ -419,12 +419,15 @@ class SSIMarketDataService:
                         if not symbol:
                             continue
                         
-                        # Filter by search query (case-insensitive)
+                        # Filter out covered warrants (CQ securities)
+                        if "CQ " in name or name.startswith("CQ"):
+                            continue
+                        
+                        # Filter by search query - symbol only (case-insensitive)
                         if query and query.strip():
                             query_lower = query.lower().strip()
                             symbol_lower = symbol.lower() if symbol else ""
-                            name_lower = name.lower() if name else ""
-                            if query_lower not in symbol_lower and query_lower not in name_lower:
+                            if query_lower not in symbol_lower:
                                 continue
                         
                         all_securities.append({
@@ -553,8 +556,7 @@ class SSIMarketDataService:
         page_size: int = 50
     ) -> Dict[str, Any]:
         """
-        Fast search for securities WITHOUT prices (instant response)
-        Use get_stock_price() separately to load prices
+        Search for securities WITH current prices, price change, and price change percentage
         
         Args:
             query: Search query (symbol or company name)
@@ -565,6 +567,9 @@ class SSIMarketDataService:
         try:
             if not self._ensure_token():
                 return {"success": False, "error": "Failed to get access token"}
+            
+            from datetime import datetime
+            today_str = datetime.now().strftime("%d/%m/%Y")
             
             # Determine which markets to search
             markets_to_search = []
@@ -594,12 +599,15 @@ class SSIMarketDataService:
                         if not symbol:
                             continue
                         
-                        # Filter by search query (case-insensitive)
+                        # Filter out covered warrants (CQ securities)
+                        if "CQ " in name or name.startswith("CQ"):
+                            continue
+                        
+                        # Filter by search query - symbol only (case-insensitive)
                         if query and query.strip():
                             query_lower = query.lower().strip()
                             symbol_lower = symbol.lower() if symbol else ""
-                            name_lower = name.lower() if name else ""
-                            if query_lower not in symbol_lower and query_lower not in name_lower:
+                            if query_lower not in symbol_lower:
                                 continue
                         
                         all_securities.append({
@@ -611,11 +619,20 @@ class SSIMarketDataService:
             # Sort by symbol
             all_securities.sort(key=lambda x: x["symbol"])
             
-            # Apply pagination
+            # Apply pagination first
             total = len(all_securities)
             start_idx = (page_index - 1) * page_size
             end_idx = start_idx + page_size
             paginated_securities = all_securities[start_idx:end_idx]
+            
+            # Now add price data to paginated results
+            for security in paginated_securities:
+                price_data = self._get_daily_price(security["symbol"], today_str)
+                security.update({
+                    "current_price": price_data.get("current_price"),
+                    "price_change": price_data.get("price_change"),
+                    "price_change_percent": price_data.get("price_change_percent")
+                })
             
             return {
                 "success": True,
@@ -626,7 +643,7 @@ class SSIMarketDataService:
             }
             
         except Exception as e:
-            logger.error(f"Error in fast search: {str(e)}")
+            logger.error(f"Error in search with prices: {str(e)}")
             return {"success": False, "error": str(e)}
 
     def get_stock_price(self, symbol: str) -> Dict[str, Any]:
