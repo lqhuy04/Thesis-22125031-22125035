@@ -1,40 +1,23 @@
-import React from "react";
-import { FlatList, View } from "react-native";
+import React, { useState } from "react";
+import { FlatList, View, Text} from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { SearchBar } from "@/components/ui/SearchBar";
-import { SearchStockItem } from "@/models";
 import SearchResultItem from "@/components/ui/SearchResultItem";
+import { SearchStockItem, searchStocks } from "@/helpers/SearchHelper";
 
 const Home = () => {
   const { theme } = useTheme();
-
+  const [loading, setLoading] = useState(false);
   const [text, setText] = React.useState("");
+  const [searchResults, setSearchResults] = useState<SearchStockItem[]>([]);
 
-  const mockData: SearchStockItem[] = [
-    {
-      code: "AAPL",
-      name: "Apple Inc.",
-      difference: 1.25,
-      currentPrice: 150.75,
-      logoUrl: "",
-    },
-    {
-      code: "GOOGL",
-      name: "Alphabet Inc.",
-      difference: -0.85,
-      currentPrice: 2800.5,
-      logoUrl: "",
-    },
-    {
-      code: "AMZN",
-      name: "Amazon.com, Inc.",
-
-      difference: 0.45,
-      currentPrice: 3400.2,
-      logoUrl: "",
-    },
-  ];
-
+  const onSearch = () => {
+    setLoading(true);
+    searchStocks(text).then((results) => {
+      setSearchResults(results);
+      setLoading(false);
+    });
+  };
   return (
     <View
       style={{
@@ -44,13 +27,17 @@ const Home = () => {
         paddingTop: 12,
       }}
     >
-      <SearchBar value={text} onChange={setText} />
+      <SearchBar value={text} onChange={setText} onSearchPress={onSearch} />
 
-      <FlatList
-        data={mockData}
-        keyExtractor={(item) => item.code}
-        renderItem={({ item }) => <SearchResultItem item={item} />}
-      />
+      {loading ? (
+        <Text>Searching...</Text>
+      ) : (
+        <FlatList
+          data={searchResults}
+          keyExtractor={(item) => item.symbol}
+          renderItem={({ item }) => <SearchResultItem item={item} />}
+        />
+      )}
     </View>
   );
 };
