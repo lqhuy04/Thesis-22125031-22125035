@@ -35,6 +35,7 @@ export const SearchBar = ({
         autoCapitalize="none"
         returnKeyType="search"
         placeholder={t("home.search")}
+        onBlur={onSearchPress}
       />
 
       <TouchableOpacity

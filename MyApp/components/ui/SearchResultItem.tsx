@@ -1,8 +1,8 @@
 import { useTheme } from "@/hooks/ThemeContext";
-import { SearchStockItem } from "@/models";
 import React from "react";
 import { View } from "react-native";
 import { Text } from "./Text";
+import { SearchStockItem } from "@/helpers/SearchHelper";
 
 interface SearchResultItemProps {
   item: SearchStockItem;
@@ -35,7 +35,7 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
 
       <View style={{ flex: 1 }}>
         <Text typography="titleMedium" color={theme.text.primary}>
-          {item.code}
+          {item.symbol}
         </Text>
         <Text typography="bodyMedium" color={theme.text.primary}>
           {item.name}
@@ -43,16 +43,39 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
       </View>
 
       <View style={{ alignItems: "flex-end" }}>
-        <Text
-          typography="labelLarge"
-          color={item.difference >= 0 ? theme.base.success : theme.base.error}
-        >
-          {item.difference >= 0 ? "+" : "-"}
-          {item.difference.toFixed(2)}%
-        </Text>
-        <Text typography="titleSmall" color={theme.text.primary}>
-          {item.currentPrice.toFixed(1)}
-        </Text>
+        {item.current_price != null ? (
+          <Text
+            typography="labelLarge"
+            color={
+              item.price_change_percent != null &&
+              item.price_change_percent >= 0
+                ? theme.base.success
+                : theme.base.error
+            }
+          >
+            {item.price_change_percent != null && item.price_change_percent >= 0
+              ? "+"
+              : ""}
+            {item.price_change_percent}%
+          </Text>
+        ) : null}
+        {item.current_price != null ? (
+          <Text typography="titleSmall" color={theme.text.primary}>
+            {item.current_price}
+            <Text
+              typography="titleSmall"
+              color={
+                item.price_change_percent != null &&
+                item.price_change_percent >= 0
+                  ? theme.base.success
+                  : theme.base.error
+              }
+            >
+              {" "}
+              {`(${item.price_change != null && item.price_change >= 0 ? "+" : ""}${item.price_change})`}
+            </Text>
+          </Text>
+        ) : null}
       </View>
     </View>
   );
