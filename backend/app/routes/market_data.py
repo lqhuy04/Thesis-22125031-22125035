@@ -118,18 +118,23 @@ async def get_top_stocks(
 
 @router.get("/search", response_model=MarketDataResponse)
 async def search_securities(
-    query: str = Query("", description="Search by symbol or company name"),
+    query: str = Query("", description="Search by symbol only"),
     market: Optional[str] = Query(None, description="Filter by market (HOSE, HNX, UPCOM)"),
     page_index: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page (max 100)")
 ):
     """
-    🚀 Fast search for securities (without prices)
+    🚀 Search for securities with prices
     
-    Use this for quick search results, then call `/market-data/price/{symbol}` 
-    to load prices individually.
+    Returns securities matching the search query with current price information:
+    - **symbol**: Stock symbol
+    - **name**: Company name
+    - **market**: Market (HOSE, HNX, UPCOM)
+    - **current_price**: Latest closing price
+    - **price_change**: Change from previous day's close
+    - **price_change_percent**: Percentage change from previous day
     
-    - **query**: Search term (optional) - matches against symbol or company name
+    - **query**: Search term (symbol only) - matches against stock symbols containing this text
     - **market**: Filter by specific market - HOSE, HNX, or UPCOM (optional)
     - **page_index**: Page number for pagination (default: 1)
     - **page_size**: Number of items per page (default: 20, max: 100)
