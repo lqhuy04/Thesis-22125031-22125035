@@ -12,6 +12,7 @@ from app.config import get_ssi_config, settings
 import logging
 import requests
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
@@ -368,114 +369,6 @@ class SSIMarketDataService:
             logger.error(f"Error getting daily stock price: {str(e)}")
             return {"success": False, "error": str(e)}
 
-    def search_securities(
-        self,
-        query: str = "",
-        market: str = "",
-        page_index: int = 1,
-        page_size: int = 50
-    ) -> Dict[str, Any]:
-        """
-        Search securities by name/symbol and get current prices with 24h changes
-        
-        Args:
-            query: Search query (symbol or company name)
-            market: Filter by market (HOSE, HNX, UPCOM) - empty for all markets
-            page_index: Page number for pagination
-            page_size: Number of items per page
-        """
-        try:
-            if not self._ensure_token():
-                return {"success": False, "error": "Failed to get access token"}
-            
-            from datetime import datetime
-            
-            # Determine which markets to search
-            markets_to_search = []
-            if market and market.strip():
-                markets_to_search = [market.upper()]
-            else:
-                markets_to_search = ["HOSE", "HNX", "UPCOM"]
-            
-            all_securities = []
-            
-            for mkt in markets_to_search:
-                # Get securities list for the market
-                params = {
-                    "market": mkt,
-                    "pageIndex": 1,
-                    "pageSize": 1000  # Get all securities for search
-                }
-                response = self._make_get_request(SSIEndpoints.SECURITIES, params)
-                
-                if response.get("status") == "Success" and response.get("data"):
-                    securities = response.get("data", [])
-                    
-                    for sec in securities:
-                        symbol = sec.get("Symbol") or ""
-                        name = sec.get("StockName") or ""
-                        
-                        # Skip if no symbol
-                        if not symbol:
-                            continue
-                        
-                        # Filter out covered warrants (CQ securities) and ETFs (QUY securities)
-                        if "CQ " in name or name.startswith("CQ") or name.startswith("QUY"):
-                            continue
-                        
-                        # Filter by search query - symbol only (case-insensitive)
-                        if query and query.strip():
-                            query_lower = query.lower().strip()
-                            symbol_lower = symbol.lower() if symbol else ""
-                            if query_lower not in symbol_lower:
-                                continue
-                        
-                        all_securities.append({
-                            "symbol": symbol,
-                            "name": name,
-                            "market": mkt,
-                        })
-            
-            # Sort by symbol
-            all_securities.sort(key=lambda x: x["symbol"])
-            
-            # Apply pagination
-            total = len(all_securities)
-            start_idx = (page_index - 1) * page_size
-            end_idx = start_idx + page_size
-            paginated_securities = all_securities[start_idx:end_idx]
-            
-            # Build result with prices using daily OHLC data
-            result_with_prices = []
-            today_str = datetime.now().strftime("%d/%m/%Y")
-            
-            for sec in paginated_securities:
-                symbol = sec["symbol"]
-                
-                # Get daily OHLC data for current price
-                price_data = self._get_daily_price(symbol, today_str)
-                
-                result_with_prices.append({
-                    "symbol": sec["symbol"],
-                    "name": sec["name"],
-                    "market": sec["market"],
-                    "current_price": price_data.get("current_price"),
-                    "price_change": price_data.get("price_change"),
-                    "price_change_percent": price_data.get("price_change_percent")
-                })
-            
-            return {
-                "success": True,
-                "data": result_with_prices,
-                "total": total,
-                "page_index": page_index,
-                "page_size": page_size
-            }
-            
-        except Exception as e:
-            logger.error(f"Error searching securities: {str(e)}")
-            return {"success": False, "error": str(e)}
-    
     def _get_daily_price(self, symbol: str, date_str: str) -> Dict[str, Any]:
         """
         Get the daily OHLC price for a symbol with price change from previous day
@@ -547,8 +440,51 @@ class SSIMarketDataService:
             return float(value)
         except (ValueError, TypeError):
             return None
+    
+    def _fetch_prices_parallel(self, securities: list, date_str: str, max_workers: int = 10) -> None:
+        """
+        Fetch prices for multiple securities in parallel
+        
+        Args:
+            securities: List of security dicts to update with price data
+            date_str: Date string in DD/MM/YYYY format
+            max_workers: Maximum number of parallel requests (default: 10)
+        """
+        def fetch_single_price(security):
+            """Helper function to fetch price for a single security"""
+            try:
+                price_data = self._get_daily_price(security["symbol"], date_str)
+                return security["symbol"], price_data
+            except Exception as e:
+                logger.warning(f"Error fetching price for {security['symbol']}: {str(e)}")
+                return security["symbol"], {}
+        
+        # Create a mapping of symbol to security for quick lookup
+        symbol_to_security = {sec["symbol"]: sec for sec in securities}
+        
+        # Fetch all prices in parallel
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_symbol = {
+                executor.submit(fetch_single_price, sec): sec["symbol"] 
+                for sec in securities
+            }
+            
+            # Collect results as they complete
+            for future in as_completed(future_to_symbol):
+                try:
+                    symbol, price_data = future.result()
+                    security = symbol_to_security[symbol]
+                    security.update({
+                        "current_price": price_data.get("current_price"),
+                        "price_change": price_data.get("price_change"),
+                        "price_change_percent": price_data.get("price_change_percent")
+                    })
+                except Exception as e:
+                    symbol = future_to_symbol[future]
+                    logger.error(f"Failed to process price for {symbol}: {str(e)}")
 
-    def search_securities_fast(
+    def search_securities(
         self,
         query: str = "",
         market: str = "",
@@ -556,10 +492,10 @@ class SSIMarketDataService:
         page_size: int = 50
     ) -> Dict[str, Any]:
         """
-        Search for securities WITH current prices, price change, and price change percentage
+        Search for securities with current prices (uses parallel fetching for speed)
         
         Args:
-            query: Search query (symbol or company name)
+            query: Search query (symbol only)
             market: Filter by market (HOSE, HNX, UPCOM) - empty for all markets
             page_index: Page number for pagination
             page_size: Number of items per page
@@ -599,8 +535,8 @@ class SSIMarketDataService:
                         if not symbol:
                             continue
                         
-                        # Filter out covered warrants (CQ securities)
-                        if "CQ " in name or name.startswith("CQ"):
+                        # Filter out covered warrants (CQ securities) and ETFs (QUY securities)
+                        if "CQ " in name or name.startswith("CQ") or name.startswith("QUY"):
                             continue
                         
                         # Filter by search query - symbol only (case-insensitive)
@@ -625,14 +561,8 @@ class SSIMarketDataService:
             end_idx = start_idx + page_size
             paginated_securities = all_securities[start_idx:end_idx]
             
-            # Now add price data to paginated results
-            for security in paginated_securities:
-                price_data = self._get_daily_price(security["symbol"], today_str)
-                security.update({
-                    "current_price": price_data.get("current_price"),
-                    "price_change": price_data.get("price_change"),
-                    "price_change_percent": price_data.get("price_change_percent")
-                })
+            # Fetch prices in parallel for better performance
+            self._fetch_prices_parallel(paginated_securities, today_str)
             
             return {
                 "success": True,
@@ -643,7 +573,7 @@ class SSIMarketDataService:
             }
             
         except Exception as e:
-            logger.error(f"Error in search with prices: {str(e)}")
+            logger.error(f"Error searching securities: {str(e)}")
             return {"success": False, "error": str(e)}
 
     def get_stock_price(self, symbol: str) -> Dict[str, Any]:

@@ -2,6 +2,12 @@
 SSI iBoard Fundamental Analysis Crawler
 Crawl financial data from SSI iBoard and calculate key financial metrics
 URL: https://iboard.ssi.com.vn/analysis/fundamental-analysis
+
+Features:
+- Automatically extracts stock symbol from iframe URL (most reliable method)
+- Extracts company name from page elements
+- Exports data in database-ready CSV format for PostgreSQL
+- Supports Balance Sheet, Income Statement, and Cash Flow crawling
 """
 
 from selenium import webdriver
@@ -17,6 +23,7 @@ from typing import Dict, List, Optional
 import re
 import os
 from dotenv import load_dotenv
+from fetch_historical_prices import fetch_market_data_for_years
 
 class SSIiBoardCrawler:
     def __init__(self, headless: bool = False):
@@ -205,39 +212,92 @@ class SSIiBoardCrawler:
             traceback.print_exc()
             return False
     
+    def get_symbol_from_iframe(self) -> str:
+        """
+        Extract the stock symbol from the iframe URL (most reliable method)
+        Returns:
+            Current symbol from iframe code parameter or 'UNKNOWN' if not found
+        """
+        try:
+            # Switch back to main content to access iframe element
+            self.driver.switch_to.default_content()
+            
+            # Find the iframe element
+            iframe = self.driver.find_element(By.CSS_SELECTOR, "iframe[src*='fiin-app.ssi.com.vn']")
+            iframe_src = iframe.get_attribute('src')
+            
+            # Extract code parameter from URL
+            # Example: https://fiin-app.ssi.com.vn/screen/fundamental?code=VHM&group=1...
+            if 'code=' in iframe_src:
+                import re
+                match = re.search(r'code=([A-Z]+)', iframe_src)
+                if match:
+                    symbol = match.group(1)
+                    print(f"Extracted symbol from iframe URL: {symbol}")
+                    return symbol
+            
+            print("Could not extract symbol from iframe URL")
+            return "UNKNOWN"
+            
+        except Exception as e:
+            print(f"Error extracting symbol from iframe: {e}")
+            return "UNKNOWN"
+    
+    def get_company_name(self) -> str:
+        """
+        Extract the company name from the page
+        Returns:
+            Company name or empty string if not found
+        """
+        try:
+            # Make sure we're in main content
+            self.driver.switch_to.default_content()
+            
+            # Find company name element
+            # <div class="company-name / HOSE" title="VINAMILK">VINAMILK</div>
+            company_elem = self.driver.find_element(By.CSS_SELECTOR, ".company-name")
+            company_name = company_elem.text.strip()
+            
+            # Clean up the text (remove exchange info like "/ HOSE")
+            if '/' in company_name:
+                company_name = company_name.split('/')[0].strip()
+            
+            print(f"Extracted company name: {company_name}")
+            return company_name
+            
+        except Exception as e:
+            print(f"Could not extract company name: {e}")
+            return ""
+    
     def get_current_symbol(self) -> str:
         """
-        Get the currently loaded symbol from the page
+        Get the currently loaded symbol from the page (uses multiple methods)
         Returns:
             Current symbol or 'UNKNOWN' if not found
         """
         try:
-            # Try to find the current symbol in the search box or company info
-            current_symbol = "UNKNOWN"
+            # Method 1: Try to get from iframe URL (most reliable)
+            symbol = self.get_symbol_from_iframe()
+            if symbol != "UNKNOWN":
+                return symbol
             
-            # Try different selectors to find current symbol
-            selectors = [
-                ".search-filter .ticker",
-                ".ticker",
-                ".company-code",
-                ".symbol"
-            ]
+            # Method 2: Try to find in the ticker search box
+            try:
+                self.driver.switch_to.default_content()
+                element = self.driver.find_element(By.CSS_SELECTOR, ".organization-search-box .ticker")
+                text = element.text.strip()
+                if text and len(text) <= 5 and text.isalpha():
+                    symbol = text.upper()
+                    print(f"Extracted symbol from ticker box: {symbol}")
+                    return symbol
+            except:
+                pass
             
-            for selector in selectors:
-                try:
-                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
-                    text = element.text.strip()
-                    if text and len(text) <= 5 and text.isalpha():
-                        current_symbol = text.upper()
-                        break
-                except:
-                    continue
-            
-            print(f"Current symbol appears to be: {current_symbol}")
-            return current_symbol
+            print(f"Could not determine current symbol, using default")
+            return "UNKNOWN"
             
         except Exception as e:
-            print(f"Could not determine current symbol: {e}")
+            print(f"Error getting current symbol: {e}")
             return "UNKNOWN"
     
     def switch_to_iframe(self) -> bool:
@@ -589,6 +649,17 @@ class SSIiBoardCrawler:
             # Switch back to main content
             self.switch_back_to_main()
             
+            # Extract actual symbol and company name from page
+            if result:
+                actual_symbol = self.get_current_symbol()
+                company_name = self.get_company_name()
+                
+                # Store in result for later use
+                result['_metadata'] = {
+                    'symbol': actual_symbol,
+                    'company_name': company_name
+                }
+            
             return result
             
         except Exception as e:
@@ -726,6 +797,231 @@ class FinancialAnalyzer:
         
         return report_df
 
+def export_financial_metrics(data: Dict[str, pd.DataFrame], symbol: str, company_name: str = "", 
+                            fetch_market_data: bool = True) -> pd.DataFrame:
+    """
+    Calculate and export financial metrics in database-ready format for financial_metrics table
+    Calculates:
+    - Định giá: P/E, P/B, EPS, Vốn hóa, Khối lượng lưu hành
+    - Sinh lời: ROE, Biên lợi nhuận gộp
+    - Tăng trưởng: Doanh thu YoY, EPS YoY
+    - Đòn bẩy: Nợ/VCSH, Hệ số thanh toán hiện hành
+    - Dòng tiền: FCF, EV/EBITDA, Beta
+    
+    Args:
+        data: Dictionary of DataFrames from crawler (balance_sheet, income_statement, cash_flow)
+        symbol: Stock symbol
+        company_name: Company name (optional)
+        fetch_market_data: Whether to fetch historical market data (default True)
+    Returns:
+        DataFrame ready for financial_metrics table import
+    """
+    metrics_records = []
+    
+    # Get available years from data
+    years = []
+    for df in data.values():
+        if not df.empty and hasattr(df, 'columns'):
+            years = list(df.columns)
+            break
+    
+    if not years:
+        return pd.DataFrame()
+    
+    # Fetch historical market data if enabled
+    market_data = {}
+    api_company_name = None
+    if fetch_market_data:
+        print(f"\n{'='*60}")
+        print("FETCHING HISTORICAL MARKET DATA")
+        print(f"{'='*60}")
+        try:
+            year_ints = [int(y) for y in years]
+            market_data = fetch_market_data_for_years(symbol, year_ints)
+            # Extract company name from first year's market data
+            if market_data:
+                first_year_data = next(iter(market_data.values()))
+                api_company_name = first_year_data.get('company_name')
+        except Exception as e:
+            print(f"⚠️  Failed to fetch market data: {e}")
+            market_data = {}
+    
+    # Use API company name if available, otherwise use provided company_name
+    final_company_name = api_company_name or company_name
+    
+    # Get data for easier access
+    balance_sheet = data.get('balance_sheet', pd.DataFrame())
+    income_statement = data.get('income_statement', pd.DataFrame())
+    cash_flow = data.get('cash_flow', pd.DataFrame())
+    
+    def safe_get(df: pd.DataFrame, indicator: str, year: str) -> Optional[float]:
+        """Safely get value from DataFrame"""
+        try:
+            if indicator in df.index and year in df.columns:
+                val = df.loc[indicator, year]
+                return float(val) if pd.notna(val) else None
+        except:
+            pass
+        return None
+    
+    def find_indicator(df: pd.DataFrame, keywords: List[str], year: str) -> Optional[float]:
+        """Find indicator by multiple possible keywords (case-insensitive)"""
+        if df.empty:
+            return None
+        for keyword in keywords:
+            for idx in df.index:
+                if keyword.lower() in str(idx).lower():
+                    val = safe_get(df, idx, year)
+                    if val is not None:
+                        return val
+        return None
+    
+    # Calculate metrics for each year
+    for year in years:
+        record = {
+            'symbol': symbol,
+            'company_name': final_company_name,
+            'year': str(year),
+            'data_source': 'SSI iBoard'
+        }
+        
+        # ============ GET KEY FINANCIAL VALUES ============
+        # Income Statement
+        revenue = find_indicator(income_statement, ['Doanh Số Thuần', 'Doanh thu thuần', 'Doanh thu', 'Revenue'], year)
+        gross_profit = find_indicator(income_statement, ['Lãi Gộp', 'Lợi nhuận gộp', 'Gross Profit'], year)
+        net_income = find_indicator(income_statement, ['Lợi Nhuận Của Cổ Đông Của Công Ty Mẹ', 'Lãi/(Lỗ) Thuần Sau Thuế', 'Lợi nhuận sau thuế', 'Net Income'], year)
+        ebit = find_indicator(income_statement, ['EBIT'], year)
+        ebitda = find_indicator(income_statement, ['EBITDA'], year)
+        eps_value = find_indicator(income_statement, ['Lãi Cơ Bản Trên Cổ Phiếu', 'EPS'], year)
+        
+        # Balance Sheet  
+        total_assets = find_indicator(balance_sheet, ['TỔNG TÀI SẢN', 'Tổng tài sản', 'Total Assets'], year)
+        total_equity = find_indicator(balance_sheet, ['VỐN CHỦ SỞ HỮU', 'Vốn chủ sở hữu', 'Vốn Và Các Quỹ', 'Equity'], year)
+        current_assets = find_indicator(balance_sheet, ['TÀI SẢN NGẮN HẠN', 'Tài sản ngắn hạn', 'Current Assets'], year)
+        current_liabilities = find_indicator(balance_sheet, ['Nợ Ngắn Hạn', 'Current Liabilities'], year)
+        total_debt = find_indicator(balance_sheet, ['NỢ PHẢI TRẢ', 'Tổng nợ', 'Total Liabilities'], year)
+        cash = find_indicator(balance_sheet, ['Tiền Và Tương Đương Tiền', 'Cash'], year)
+        
+        cash = find_indicator(balance_sheet, ['Tiền Và Tương Đương Tiền', 'Cash'], year)
+        
+        # Cash Flow
+        operating_cash_flow = find_indicator(cash_flow, ['Lưu Chuyển Tiền Tệ Ròng Từ Các Hoạt Động Sản Xuất Kinh Doanh', 'Lưu chuyển tiền thuần từ hoạt động kinh doanh', 'Operating Cash Flow'], year)
+        investment_cash_flow = find_indicator(cash_flow, ['Lưu Chuyển Tiền Tệ Ròng Từ Hoạt Động Đầu Tư', 'Investment Cash Flow'], year)
+        
+        # Get market data for this year
+        year_market_data = market_data.get(int(year), {})
+        stock_price = year_market_data.get('stock_price')
+        shares_outstanding = year_market_data.get('shares_outstanding')
+        
+        # ============ CALCULATE METRICS ============
+        
+        # 1. ĐỊNH GIÁ (Valuation Metrics)
+        # EPS - already in the data
+        if eps_value:
+            record['eps'] = round(eps_value, 2)
+            eps = eps_value
+        else:
+            eps = None
+        
+        # Shares Outstanding
+        if shares_outstanding:
+            record['shares_outstanding'] = round(shares_outstanding, 2)
+        
+        # Market Cap = Stock Price × Shares Outstanding
+        if stock_price and shares_outstanding:
+            market_cap = (stock_price / 1000) * shares_outstanding  # stock_price is in VND, convert to billions
+            record['market_cap'] = round(market_cap, 2)
+        else:
+            market_cap = None
+        
+        # P/E = Stock Price / EPS
+        if stock_price and eps and eps > 0:
+            record['pe_ratio'] = round(stock_price / eps, 2)
+        
+        # P/B = Stock Price / Book Value Per Share
+        if stock_price and total_equity and shares_outstanding and shares_outstanding > 0:
+            # Book value per share (in thousands VND per share)
+            bvps = (total_equity * 1_000_000_000) / (shares_outstanding * 1_000_000)  # Convert to VND per share
+            if bvps > 0:
+                record['pb_ratio'] = round(stock_price / bvps, 2)
+        
+        # 2. SINH LỜI (Profitability Metrics)
+        # ROE = (Net Income / Total Equity) * 100
+        if net_income and total_equity and total_equity > 0:
+            record['roe'] = round((net_income / total_equity) * 100, 2)
+        
+        # Gross Margin = (Gross Profit / Revenue) * 100
+        if gross_profit and revenue and revenue > 0:
+            record['gross_margin'] = round((gross_profit / revenue) * 100, 2)
+        
+        # 3. TĂNG TRƯỞNG (Growth Metrics)
+        year_int = int(year)
+        prev_year = str(year_int - 1)
+        
+        if prev_year in years:
+            # Revenue YoY
+            prev_revenue = find_indicator(income_statement, ['Doanh Số Thuần', 'Doanh thu thuần', 'Doanh thu', 'Revenue'], prev_year)
+            if revenue and prev_revenue and prev_revenue > 0:
+                record['revenue_yoy'] = round(((revenue - prev_revenue) / prev_revenue) * 100, 2)
+            
+            # EPS YoY
+            if eps:
+                prev_eps = find_indicator(income_statement, ['Lãi Cơ Bản Trên Cổ Phiếu', 'EPS'], prev_year)
+                if prev_eps and prev_eps > 0:
+                    record['eps_yoy'] = round(((eps - prev_eps) / prev_eps) * 100, 2)
+        
+        # 4. ĐÒN BẨY (Leverage Metrics)
+        # Debt to Equity = Total Debt / Total Equity
+        if total_debt and total_equity and total_equity > 0:
+            record['debt_to_equity'] = round(total_debt / total_equity, 2)
+        
+        # Current Ratio = Current Assets / Current Liabilities
+        if current_assets and current_liabilities and current_liabilities > 0:
+            record['current_ratio'] = round(current_assets / current_liabilities, 2)
+        
+        # 5. DÒNG TIỀN & OTHER
+        # FCF = Operating Cash Flow + Investment Cash Flow (investment CF is negative for outflows)
+        if operating_cash_flow and investment_cash_flow is not None:
+            record['fcf'] = round(operating_cash_flow + investment_cash_flow, 2)
+        elif operating_cash_flow:
+            record['fcf'] = round(operating_cash_flow, 2)
+        
+        # EV/EBITDA = Enterprise Value / EBITDA
+        # EV = Market Cap + Total Debt - Cash
+        if market_cap and total_debt and cash and ebitda and ebitda > 0:
+            # All values in billions VND
+            enterprise_value = market_cap + total_debt - cash
+            record['ev_ebitda'] = round(enterprise_value / ebitda, 2)
+        
+        # Beta - Would need historical price data compared to market index
+        # TODO: Implement beta calculation with full year price data
+        record['beta'] = None
+        
+        metrics_records.append(record)
+    
+    # Create DataFrame with exact column order matching database schema
+    columns = [
+        'symbol', 'company_name', 'year',
+        'pe_ratio', 'pb_ratio', 'eps', 'market_cap', 'shares_outstanding',
+        'roe', 'gross_margin',
+        'revenue_yoy', 'eps_yoy',
+        'debt_to_equity', 'current_ratio',
+        'fcf', 'ev_ebitda', 'beta',
+        'data_source'
+    ]
+    
+    db_df = pd.DataFrame(metrics_records)
+    
+    # Ensure all columns exist (fill missing with None)
+    for col in columns:
+        if col not in db_df.columns:
+            db_df[col] = None
+    
+    # Reorder columns to match schema
+    db_df = db_df[columns]
+    
+    return db_df
+
 # Main execution
 def main():
     """Main execution function"""
@@ -747,10 +1043,18 @@ def main():
             print("No data crawled!")
             return
         
-        # Get actual symbol that was crawled
-        actual_symbol = crawler.get_current_symbol() if hasattr(crawler, 'driver') and crawler.driver else target_symbol
+        # Extract metadata (symbol and company name)
+        metadata = data.pop('_metadata', {})
+        actual_symbol = metadata.get('symbol', target_symbol)
+        company_name = metadata.get('company_name', '')
         
-        # Display results
+        print(f"\n{'='*60}")
+        print(f"EXTRACTED INFO")
+        print(f"{'='*60}")
+        print(f"Symbol: {actual_symbol}")
+        print(f"Company: {company_name}")
+        
+        # Display results and save original format CSVs
         for sheet_name, df in data.items():
             print(f"\n{'='*60}")
             print(f"{sheet_name.upper()}")
@@ -759,10 +1063,44 @@ def main():
             print(f"\nFirst 10 indicators:")
             print(df.head(10))
             
-            # Save to CSV
+            # Save to CSV (original wide format for reference)
             filename = f"{actual_symbol}_{sheet_name}.csv"
             df.to_csv(filename, encoding='utf-8-sig')
-            print(f"\nSaved to: {filename}")
+            print(f"\nSaved original format to: {filename}")
+        
+        # Export database-ready format for financial_metrics table
+        print(f"\n{'='*60}")
+        print("CALCULATING & EXPORTING FINANCIAL METRICS")
+        print(f"{'='*60}")
+        
+        metrics_data = export_financial_metrics(data, actual_symbol, company_name)
+        
+        if not metrics_data.empty:
+            db_filename = f"{actual_symbol}_financial_metrics.csv"
+            metrics_data.to_csv(db_filename, index=False, encoding='utf-8-sig')
+            print(f"\n✅ Financial metrics file saved: {db_filename}")
+            print(f"   Total records: {len(metrics_data)} years")
+            print(f"   Years covered: {sorted(metrics_data['year'].unique())}")
+            print(f"   Company: {company_name}")
+            print(f"\n📊 Calculated Metrics Summary:")
+            print(f"   ├─ Định giá: P/E, P/B, EPS, Market Cap, Shares Outstanding")
+            print(f"   ├─ Sinh lời: ROE, Gross Margin")
+            print(f"   ├─ Tăng trưởng: Revenue YoY, EPS YoY")
+            print(f"   ├─ Đòn bẩy: Debt/Equity, Current Ratio")
+            print(f"   └─ Dòng tiền: FCF, EV/EBITDA, Beta")
+            print(f"\n📋 Sample metrics:")
+            # Show non-null columns for first 3 years
+            sample = metrics_data.head(3)
+            display_cols = [col for col in sample.columns if sample[col].notna().any()]
+            if display_cols:
+                print(sample[display_cols].to_string(index=False))
+            print(f"\n💡 Import to PostgreSQL using:")
+            print(f"   \\COPY financial_metrics(symbol, company_name, year, pe_ratio, pb_ratio, eps,")
+            print(f"        market_cap, shares_outstanding, roe, gross_margin, revenue_yoy, eps_yoy,")
+            print(f"        debt_to_equity, current_ratio, fcf, ev_ebitda, beta, data_source)")
+            print(f"   FROM '{db_filename}' DELIMITER ',' CSV HEADER;")
+        else:
+            print("⚠️  No metrics to export")
         
         # Analyze if we have the required data
         if 'balance_sheet' in data and 'income_statement' in data:
