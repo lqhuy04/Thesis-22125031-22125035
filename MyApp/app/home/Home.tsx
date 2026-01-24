@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { FlatList, View, Text} from "react-native";
+import { FlatList, View, Text, TouchableOpacity } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { SearchBar } from "@/components/ui/SearchBar";
 import SearchResultItem from "@/components/ui/SearchResultItem";
 import { SearchStockItem, searchStocks } from "@/helpers/SearchHelper";
+import { router } from "expo-router";
 
 const Home = () => {
   const { theme } = useTheme();
@@ -27,6 +28,11 @@ const Home = () => {
         paddingTop: 12,
       }}
     >
+      <TouchableOpacity
+        style={{ width: 20, height: 20, backgroundColor: "red" }}
+        onPress={() => router.push("../detail/Detail")}
+      />
+
       <SearchBar value={text} onChange={setText} onSearchPress={onSearch} />
 
       {loading ? (
