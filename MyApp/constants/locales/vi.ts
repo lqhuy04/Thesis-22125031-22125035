@@ -13,7 +13,11 @@ export default {
     phoneNumber: "Số điện thoại",
     phoneNumberPlaceholder: "Nhập số điện thoại của bạn",
     home: {
-      search: 'Tìm kiếm',
-    }
+      search: "Tìm kiếm",
+    },
+    detail: {
+      newsSectionTitle: "Tin tức",
+      newsSectionViewAll: "Xem tất cả",
+    },
   },
 };

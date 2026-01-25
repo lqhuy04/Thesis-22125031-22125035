@@ -15,5 +15,9 @@ export default {
   },
   home: {
     search: 'Search',
+  },
+  detail: {
+    newsSectionTitle: "News",
+    newsSectionViewAll: "View All",
   }
 };
