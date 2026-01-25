@@ -1,15 +1,15 @@
 import React, { useState } from "react";
-import { FlatList, View, Text, TouchableOpacity } from "react-native";
+import { FlatList, Text } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { SearchBar } from "@/components/ui/SearchBar";
 import SearchResultItem from "@/components/ui/SearchResultItem";
 import { SearchStockItem, searchStocks } from "@/helpers/SearchHelper";
-import { router } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Home = () => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
-  const [text, setText] = React.useState("");
+  const [text, setText] = useState("");
   const [searchResults, setSearchResults] = useState<SearchStockItem[]>([]);
 
   const onSearch = () => {
@@ -20,7 +20,7 @@ const Home = () => {
     });
   };
   return (
-    <View
+    <SafeAreaView
       style={{
         padding: 12,
         backgroundColor: theme.background.bg,
@@ -28,11 +28,6 @@ const Home = () => {
         paddingTop: 12,
       }}
     >
-      <TouchableOpacity
-        style={{ width: 20, height: 20, backgroundColor: "red" }}
-        onPress={() => router.push("../detail/Detail")}
-      />
-
       <SearchBar value={text} onChange={setText} onSearchPress={onSearch} />
 
       {loading ? (
@@ -44,7 +39,7 @@ const Home = () => {
           renderItem={({ item }) => <SearchResultItem item={item} />}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

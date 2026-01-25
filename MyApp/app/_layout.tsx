@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useFonts } from "expo-font";
 import React from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -16,18 +17,18 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <GestureHandlerRootView>
-      <LocalizationProvider>
-        <ThemeProvider>
-          <Stack>
-            <Stack.Screen
-              name="authentication/Authentication"
-              options={{ headerShown: false }}
-            />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </LocalizationProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <LocalizationProvider>
+          <ThemeProvider>
+            <Stack screenOptions={{ headerShown: false }}>
+              {/* Các màn hình chính sẽ tự động được Stack quản lý qua file-based routing */}
+              <Stack.Screen name="index" />
+            </Stack>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </LocalizationProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

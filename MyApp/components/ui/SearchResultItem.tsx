@@ -1,8 +1,9 @@
 import { useTheme } from "@/hooks/ThemeContext";
 import React from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { Text } from "./Text";
 import { SearchStockItem } from "@/helpers/SearchHelper";
+import { router } from "expo-router";
 
 interface SearchResultItemProps {
   item: SearchStockItem;
@@ -12,7 +13,15 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
   const { theme } = useTheme();
 
   return (
-    <View
+    <TouchableOpacity
+      onPress={() => {
+        router.push(
+          {
+            pathname: '/Detail',
+            params: {data: JSON.stringify(item)},
+          }
+        );
+      }}
       style={{
         paddingHorizontal: 16,
         paddingVertical: 12,
@@ -28,12 +37,12 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
           marginRight: 8,
           width: 40,
           height: 40,
-          backgroundColor: "red",
+          backgroundColor: theme.background.primarySurface,
           borderRadius: 2,
         }}
       ></View>
 
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, marginRight: 12 }}>
         <Text typography="titleMedium" color={theme.text.primary}>
           {item.symbol}
         </Text>
@@ -77,7 +86,7 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
           </Text>
         ) : null}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

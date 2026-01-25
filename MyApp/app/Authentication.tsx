@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { View, KeyboardAvoidingView, ScrollView } from "react-native";
+import { KeyboardAvoidingView, ScrollView } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import SignInComponent from "@/components/authentication/SignIn";
 import SignUpComponent from "@/components/authentication/SignUp";
 import { Button } from "@react-navigation/elements";
 import AuthenticationTab from "@/components/authentication/AuthenticationTab";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const Authentication = () => {
   const [tab, setTab] = useState<"signIn" | "signUp">("signIn");
@@ -14,7 +15,7 @@ const Authentication = () => {
   const { setLanguage } = useLocalization();
 
   return (
-    <View
+    <SafeAreaView
       style={{
         padding: 12,
         backgroundColor: theme.background.bg,
@@ -51,7 +52,7 @@ const Authentication = () => {
           </Button>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 };
 
