@@ -65,18 +65,15 @@ class StockBizCrawler:
         self.driver = webdriver.Chrome(options=chrome_options)
         self.driver.implicitly_wait(10)
         
-    def scroll_and_collect(self, scroll_pause_time: float = 2.0, max_scrolls: int = 10, stop_at_latest: bool = False):
+    def scroll_and_collect(self, check_interval: float = 1.0, stop_at_latest: bool = False):
         """
-        Scroll down and collect items continuously (handles virtual scrolling)
+        Monitor and collect items as user scrolls manually
         
         Args:
-            scroll_pause_time: Time to wait between scrolls
-            max_scrolls: Maximum number of scrolls to perform
+            check_interval: Time between checks for new items (seconds)
             stop_at_latest: Stop when reaching a news item already in database
         """
         seen_links = set()  # Track unique news items by link
-        scrolls = 0
-        no_new_items_count = 0
         
         # Get latest news link from database if stop_at_latest is enabled
         latest_db_link = None
@@ -88,9 +85,32 @@ class StockBizCrawler:
             except Exception as e:
                 print(f"Could not fetch latest news link: {e}")
         
-        while scrolls < max_scrolls:
-            # Find currently visible news items
-            news_items = self.driver.find_elements(By.CSS_SELECTOR, '[data-test-id="virtuoso-item-list"] > div[data-index]')
+        print("\n" + "="*60)
+        print("MANUAL SCROLL MODE - Active Monitoring")
+        print("="*60)
+        print("📜 Scroll the page with your mouse/trackpad")
+        print("🔍 The crawler is watching and will collect items automatically")
+        print("🛑 Close the browser window when you're done scrolling")
+        print("="*60 + "\n")
+        
+        last_count = 0
+        check_count = 0
+        
+        while True:
+            # Check if browser is still open
+            try:
+                _ = self.driver.current_url
+            except Exception:
+                print("\n✓ Browser closed. Stopping collection.")
+                print(f"Total items collected: {len(self.news_data)}")
+                break
+            
+            # Collect items from current view
+            try:
+                news_items = self.driver.find_elements(By.CSS_SELECTOR, '[data-test-id="virtuoso-item-list"] > div[data-index]')
+            except Exception:
+                print("\n✓ Browser closed. Stopping collection.")
+                break
             
             # Parse visible items
             items_added = 0
@@ -101,35 +121,30 @@ class StockBizCrawler:
                     
                     # Check if we've reached the latest news in database
                     if stop_at_latest and latest_db_link and news_data['link'] == latest_db_link:
-                        print(f"\nReached latest news in database. Stopping crawl.")
-                        return
+                        print(f"\n✓ Reached latest news in database! ({len(self.news_data)} items)")
+                        print("Continuing to monitor for more news as you scroll...")
+                        stop_at_latest = False  # Only show once
                     
                     self.news_data.append(news_data)
                     items_added += 1
-                    print(f"Collected {len(self.news_data)}: {news_data['title'][:60]}...")
+                    print(f"  + [{len(self.news_data)}] {news_data['title'][:65]}...")
             
-            if items_added == 0:
-                no_new_items_count += 1
-                if no_new_items_count >= 3:
-                    print("No new items found after 3 scrolls, stopping...")
-                    break
-            else:
-                no_new_items_count = 0
+            # Show periodic status update
+            if items_added > 0:
+                last_count = len(self.news_data)
             
-            # Scroll by viewport height (smooth scrolling, avoids footer)
-            # This scrolls approximately 80% of viewport to keep content in view
-            self.driver.execute_script("window.scrollBy(0, window.innerHeight * 0.8);")
+            check_count += 1
+            if check_count % 5 == 0:  # Every 5 checks, show status
+                print(f"  → Monitoring... ({len(self.news_data)} items collected)")
             
-            # Wait for page to load
-            time.sleep(scroll_pause_time)
-            
-            scrolls += 1
-            print(f"Scrolled {scrolls}/{max_scrolls} times...")
+            # Wait before next check
+            time.sleep(check_interval)
         
         # Extract full content from each article if enabled
         if self.extract_content and self.news_data:
             print(f"\n{'='*60}")
             print(f"Extracting full content from {len(self.news_data)} articles...")
+            print(f"Note: This will reopen browser if you closed it")
             print(f"{'='*60}\n")
             
             for idx, news in enumerate(self.news_data, 1):
@@ -138,7 +153,9 @@ class StockBizCrawler:
                 if article_content:
                     news.update(article_content)
                     if article_content['is_content_extracted']:
-                        print(f"  ✓ Extracted {len(article_content['content'])} chars")
+                        # Count total blocks extracted
+                        num_blocks = len(article_content['content']['blocks']) if article_content['content'] else 0
+                        print(f"  ✓ Extracted {num_blocks} content blocks")
                     else:
                         print(f"  ⚠ Could not extract content")
                 time.sleep(1)  # Be nice to the server
@@ -246,6 +263,13 @@ class StockBizCrawler:
         """
         try:
             print(f"  → Extracting content from: {article_url[:70]}...")
+            
+            # Check if driver is still valid, if not create a new one
+            try:
+                _ = self.driver.current_url
+            except:
+                print(f"  ⚠ Browser closed, reopening for content extraction...")
+                self.setup_driver()
             
             # Navigate to article page
             self.driver.get(article_url)
@@ -388,12 +412,12 @@ class StockBizCrawler:
                 'is_content_extracted': False
             }
     
-    def crawl(self, max_scrolls: int = 10, stop_at_latest: bool = False) -> List[Dict]:
+    def crawl(self, check_interval: float = 1.0, stop_at_latest: bool = False) -> List[Dict]:
         """
-        Main crawl method
+        Main crawl method with manual scrolling
         
         Args:
-            max_scrolls: Maximum number of scrolls to perform
+            check_interval: How often to check for new items (seconds)
             stop_at_latest: Stop when reaching the latest news in database
             
         Returns:
@@ -411,15 +435,12 @@ class StockBizCrawler:
             wait = WebDriverWait(self.driver, 10)
             wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[data-test-id="virtuoso-item-list"]')))
             
-            # Zoom out the page content to 33% to display more items
-            self.driver.execute_script("document.body.style.zoom='0.33'")
-            time.sleep(1)  # Wait for zoom to apply
-            print("Page loaded successfully (zoomed to 33%)")
+            print("Page loaded successfully")
             
-            # Scroll and collect items (handles virtual scrolling)
-            print(f"Scrolling and collecting items (max {max_scrolls} scrolls)...")
-            print("Note: Site uses virtual scrolling - items collected as we scroll\n")
-            self.scroll_and_collect(scroll_pause_time=2.0, max_scrolls=max_scrolls, stop_at_latest=stop_at_latest)
+            # Monitor and collect items as user scrolls manually
+            print(f"Starting manual scroll monitoring...")
+            print("Note: Site uses virtual scrolling - scroll with your mouse!\n")
+            self.scroll_and_collect(check_interval=check_interval, stop_at_latest=stop_at_latest)
             
             print(f"\nSuccessfully crawled {len(self.news_data)} unique news items")
             return self.news_data
@@ -480,10 +501,12 @@ async def main():
         clear_before_save=True     # Set True to clear table before saving
     )
     
-    # Crawl news
-    # stop_at_latest=True will stop when it reaches a news item already in database
-    # For first run or full refresh, set stop_at_latest=False and max_scrolls higher
-    news_data = crawler.crawl(max_scrolls=5, stop_at_latest=True)
+    # Crawl news with manual scrolling
+    # You scroll the page yourself, the crawler monitors and collects items automatically
+    # stop_at_latest=True will notify when reaching a news item already in database
+    # check_interval controls how often it checks for new items (in seconds)
+    # Close the browser window when you're done scrolling
+    news_data = crawler.crawl(check_interval=1.0, stop_at_latest=True)
     
     # Save to database if enabled
     if crawler.save_to_db and news_data:
