@@ -21,7 +21,9 @@ export type New = {
   source: string;
 };
 
-export const fetchNews = async (symbol: string): Promise<{
+export const fetchNews = async (
+  symbol: string,
+): Promise<{
   status: boolean;
   data: New[];
 }> => {
@@ -46,7 +48,7 @@ export const fetchNews = async (symbol: string): Promise<{
     return {
       status: false,
       data: [],
-    }
+    };
   } catch (error) {
     console.error(error);
     return {
@@ -71,12 +73,14 @@ export type FundamentalAnalysisIndexes = {
   current_ratio: number; // Hệ số thanh toán hiện hành
   fcf: number; // FCF
   ev_ebitda: number; // EV/EBITDA
-}
+};
 
-export const fetchFundamentalAnalysisIndexes = async (symbol: string): Promise<{
-    status: boolean,
-    data: FundamentalAnalysisIndexes | null,
-} > => {
+export const fetchFundamentalAnalysisIndexes = async (
+  symbol: string,
+): Promise<{
+  status: boolean;
+  data: FundamentalAnalysisIndexes | null;
+}> => {
   try {
     const response = await fetch(baseUrl + `api/financial/analysis/${symbol}`, {
       method: "GET",
@@ -87,15 +91,77 @@ export const fetchFundamentalAnalysisIndexes = async (symbol: string): Promise<{
     });
 
     const result = await response.json();
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data?.metrics as FundamentalAnalysisIndexes,
+      };
+    }
     return {
-      status: true,
-      data: result?.metrics
+      status: false,
+      data: null,
     };
   } catch (error) {
     console.error(error);
     return {
       status: false,
-      data: null
+      data: null,
+    };
+  }
+};
+
+//------------------------------------------------------------
+export type StockData = {
+  Symbol: string;
+  TradingDate: string;
+  Time: string;
+  Open: string;
+  High: string;
+  Low: string;
+  Close: string;
+  Volume: string;
+  Value: string;
+};
+
+export const fetchStockData = async (
+  symbol: string,
+  timeframe: "1D" | "1W" | "1M" | "1Y" | "5Y",
+): Promise<{
+  status: boolean;
+  data: StockData[];
+}> => {
+  try {
+    const response = await fetch(
+      baseUrl +
+        `market-data/stock-price/timeframe/${symbol}?timeframe=${timeframe}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    const result = await response.json();
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data?.data as StockData[],
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
     };
   }
 };
