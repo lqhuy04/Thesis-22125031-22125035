@@ -16,11 +16,13 @@ from app.models.market_data_schemas import (
     IntradayOHLCRequest,
     DailyIndexRequest,
     DailyStockPriceRequest,
+    StockPriceByTimeFrameRequest,
     MarketDataResponse,
     SSIApiStatus,
     MarketEnum,
     ExchangeEnum,
     ResolutionEnum,
+    TimeFrameEnum,
     SecurityItem,
     SecuritySearchResponse
 )
@@ -357,5 +359,41 @@ async def get_daily_stock_price(
     service = get_ssi_service()
     result = service.get_daily_stock_price(
         symbol.lower(), from_date, to_date, page_index, page_size, market.lower()
+    )
+    return create_response(result, request_id)
+
+
+@router.get("/stock-price/timeframe/{symbol}", response_model=MarketDataResponse)
+async def get_stock_price_by_timeframe(
+    symbol: str,
+    timeframe: TimeFrameEnum = Query(..., description="Time frame (1D, 1W, 7D, 1M, 1Y, 5Y)"),
+    market: str = Query("hose", description="Market code (hose, hnx, upcom)")
+):
+    """
+    📊 Get stock prices optimized for different time frames
+    
+    **Automatic interval selection:**
+    - **1D** (1 day): 5-minute intervals - Perfect for intraday trading
+    - **1W** (1 week): 1-hour intervals - Short-term trends
+    - **7D** (7 days): 1-hour intervals - Weekly analysis
+    - **1M** (1 month): 1-day intervals - Monthly trends
+    - **1Y** (1 year): 1-day intervals - Annual performance
+    - **5Y** (5 years): 1-week intervals - Long-term investment view
+    
+    Returns OHLC (Open, High, Low, Close) data with timestamps optimized for chart display.
+    
+    **Response includes:**
+    - Price data with appropriate intervals
+    - Timeframe metadata (from_date, to_date, interval)
+    - Total number of data points
+    
+    **Example:** `/market-data/stock-price/timeframe/VNM?timeframe=1M`
+    """
+    request_id = str(uuid.uuid4())
+    service = get_ssi_service()
+    result = service.get_stock_prices_by_timeframe(
+        symbol=symbol.upper(),
+        timeframe=timeframe.value,
+        market=market.lower()
     )
     return create_response(result, request_id)

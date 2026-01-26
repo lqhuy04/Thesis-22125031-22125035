@@ -647,6 +647,245 @@ class SSIMarketDataService:
             logger.error(f"Error getting top stocks: {str(e)}")
             return {"success": False, "error": str(e)}
 
+    def _round_time_to_interval(self, time_str: str, interval_minutes: int) -> str:
+        """
+        Round time to nearest interval (e.g., 09:17:56 -> 09:15:00 for 5-min interval)
+        
+        Args:
+            time_str: Time string in format HH:MM:SS
+            interval_minutes: Interval in minutes (5, 60, etc.)
+        
+        Returns:
+            Rounded time string in format HH:MM:00
+        """
+        try:
+            from datetime import datetime, timedelta
+            time_obj = datetime.strptime(time_str, "%H:%M:%S")
+            
+            # Round down to nearest interval
+            minutes = (time_obj.hour * 60 + time_obj.minute) // interval_minutes * interval_minutes
+            hours = minutes // 60
+            mins = minutes % 60
+            
+            return f"{hours:02d}:{mins:02d}:00"
+        except:
+            return time_str
+    
+    def _aggregate_intraday_data(self, data_list: list, interval_minutes: int) -> list:
+        """
+        Aggregate intraday data by time intervals (e.g., group by 5-minute buckets)
+        
+        For each time bucket (9:00, 9:05, 9:10...):
+        - Take the first Open of the bucket
+        - Take the highest High of the bucket
+        - Take the lowest Low of the bucket
+        - Take the last Close of the bucket
+        - Sum the Volume of the bucket
+        
+        Args:
+            data_list: List of intraday OHLC data points
+            interval_minutes: Interval in minutes (5, 60, etc.)
+        
+        Returns:
+            Aggregated data list with rounded time intervals
+        """
+        if not data_list:
+            return []
+        
+        from collections import defaultdict
+        
+        # Group data by rounded time
+        time_buckets = defaultdict(list)
+        
+        for item in data_list:
+            if "Time" in item and "TradingDate" in item:
+                rounded_time = self._round_time_to_interval(item["Time"], interval_minutes)
+                bucket_key = f"{item['TradingDate']}_{rounded_time}"
+                time_buckets[bucket_key].append(item)
+        
+        # Aggregate each bucket
+        aggregated = []
+        for bucket_key in sorted(time_buckets.keys()):
+            bucket_items = time_buckets[bucket_key]
+            
+            if not bucket_items:
+                continue
+            
+            # Extract date and time from bucket key
+            trading_date, rounded_time = bucket_key.split("_")
+            
+            # Aggregate OHLC
+            first_item = bucket_items[0]
+            last_item = bucket_items[-1]
+            
+            aggregated_item = {
+                "Symbol": first_item.get("Symbol", ""),
+                "TradingDate": trading_date,
+                "Time": rounded_time,
+                "Open": first_item.get("Open", "0"),  # First open
+                "High": max([float(item.get("High", 0)) for item in bucket_items]),  # Highest high
+                "Low": min([float(item.get("Low", 999999)) for item in bucket_items if float(item.get("Low", 999999)) > 0]),  # Lowest low
+                "Close": last_item.get("Close", "0"),  # Last close
+                "Volume": sum([float(item.get("Volume", 0)) for item in bucket_items]),  # Total volume
+                "Value": last_item.get("Value", "0")  # Last value
+            }
+            
+            # Convert back to strings for consistency
+            aggregated_item["High"] = str(int(aggregated_item["High"]))
+            aggregated_item["Low"] = str(int(aggregated_item["Low"]))
+            aggregated_item["Volume"] = str(int(aggregated_item["Volume"]))
+            
+            aggregated.append(aggregated_item)
+        
+        return aggregated
+
+    def get_stock_prices_by_timeframe(
+        self, 
+        symbol: str, 
+        timeframe: str,
+        market: str = "hose"
+    ) -> Dict[str, Any]:
+        """
+        Get stock prices based on timeframe with appropriate intervals
+        
+        Timeframe logic:
+        - 1D (1 day): 5-minute intervals (9:00, 9:05, 9:10...)
+        - 1W (1 week): 1-hour intervals (9:00, 10:00, 11:00...)
+        - 7D (7 days): 1-hour intervals (9:00, 10:00, 11:00...)
+        - 1M (1 month): 1-day intervals
+        - 1Y (1 year): 1-day intervals
+        - 5Y (5 years): Weekly aggregation (sample every 7 days)
+        
+        Args:
+            symbol: Stock symbol (e.g., 'VNM', 'FPT')
+            timeframe: Time frame ('1D', '1W', '7D', '1M', '1Y', '5Y')
+            market: Market code (hose, hnx, upcom)
+        
+        Returns:
+            Dict with success flag and data containing price points
+        """
+        try:
+            if not self._ensure_token():
+                return {"success": False, "error": "Failed to get access token"}
+            
+            from datetime import datetime, timedelta
+            
+            # Calculate date ranges
+            today = datetime.now()
+            
+            timeframe_config = {
+                "1D": {
+                    "days": 1,
+                    "use_intraday": True,
+                    "resolution": 1,  # Get 1-min data to aggregate to 5-min
+                    "aggregate_interval": 5,  # Aggregate to 5-minute intervals
+                    "page_size": 500  # Max data points for 1 day
+                },
+                "1W": {
+                    "days": 7,
+                    "use_intraday": True,
+                    "resolution": 1,  # Get 1-min data to aggregate to 1-hour
+                    "aggregate_interval": 60,  # Aggregate to 1-hour intervals
+                    "page_size": 1000  # ~168 hours in a week
+                },
+                "7D": {
+                    "days": 7,
+                    "use_intraday": True,
+                    "resolution": 1,  # Get 1-min data to aggregate to 1-hour
+                    "aggregate_interval": 60,  # Aggregate to 1-hour intervals
+                    "page_size": 1000
+                },
+                "1M": {
+                    "days": 30,
+                    "use_intraday": False,
+                    "page_size": 50  # ~30 days
+                },
+                "1Y": {
+                    "days": 365,
+                    "use_intraday": False,
+                    "page_size": 400  # ~365 days
+                },
+                "5Y": {
+                    "days": 1825,  # 5 years
+                    "use_intraday": False,
+                    "page_size": 1000,  # ~260 weeks
+                    "sample_interval": 7  # Sample every 7 days
+                }
+            }
+            
+            config = timeframe_config.get(timeframe)
+            if not config:
+                return {"success": False, "error": f"Invalid timeframe: {timeframe}"}
+            
+            # Calculate date range
+            from_date_obj = today - timedelta(days=config["days"])
+            from_date = from_date_obj.strftime("%d/%m/%Y")
+            to_date = today.strftime("%d/%m/%Y")
+            
+            # Get data based on timeframe
+            if config["use_intraday"]:
+                # Use intraday OHLC for short timeframes
+                result = self.get_intraday_ohlc(
+                    symbol=symbol.lower(),
+                    from_date=from_date,
+                    to_date=to_date,
+                    page_index=1,
+                    page_size=config["page_size"],
+                    ascending=True,
+                    resolution=config["resolution"]
+                )
+            else:
+                # Use daily OHLC for longer timeframes
+                result = self.get_daily_ohlc(
+                    symbol=symbol.lower(),
+                    from_date=from_date,
+                    to_date=to_date,
+                    page_index=1,
+                    page_size=config["page_size"],
+                    ascending=True
+                )
+            
+            if not result.get("success"):
+                return result
+            
+            # Aggregate intraday data to clean intervals if needed
+            if config["use_intraday"] and config.get("aggregate_interval"):
+                if result.get("data", {}).get("data"):
+                    data_list = result["data"]["data"]
+                    aggregated_data = self._aggregate_intraday_data(
+                        data_list, 
+                        config["aggregate_interval"]
+                    )
+                    result["data"]["data"] = aggregated_data
+                    result["data"]["totalRecord"] = len(aggregated_data)
+            
+            # Post-process data for 5Y to sample every week
+            if timeframe == "5Y" and result.get("data", {}).get("data"):
+                data_list = result["data"]["data"]
+                # Sample every 7th data point for weekly intervals
+                sampled_data = data_list[::7] if len(data_list) > 7 else data_list
+                result["data"]["data"] = sampled_data
+                result["data"]["totalRecord"] = len(sampled_data)
+            
+            # Add metadata about the timeframe
+            if result.get("data"):
+                result["data"]["timeframe"] = timeframe
+                result["data"]["from_date"] = from_date
+                result["data"]["to_date"] = to_date
+                if config["use_intraday"]:
+                    result["data"]["interval"] = f"{config['aggregate_interval']} minutes"
+                else:
+                    if timeframe == "5Y":
+                        result["data"]["interval"] = "1 week"
+                    else:
+                        result["data"]["interval"] = "1 day"
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error getting stock prices by timeframe: {str(e)}")
+            return {"success": False, "error": str(e)}
+
 
 # Singleton instance
 _ssi_service: Optional[SSIMarketDataService] = None

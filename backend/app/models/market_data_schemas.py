@@ -28,6 +28,16 @@ class ResolutionEnum(int, Enum):
     ONE_HOUR = 60
 
 
+class TimeFrameEnum(str, Enum):
+    """Time frame options for stock price charts"""
+    ONE_DAY = "1D"      # 1 day - 5 minute intervals
+    ONE_WEEK = "1W"     # 1 week - 1 hour intervals
+    SEVEN_DAYS = "7D"   # 7 days - 1 hour intervals
+    ONE_MONTH = "1M"    # 1 month - 1 day intervals
+    ONE_YEAR = "1Y"     # 1 year - 1 day intervals
+    FIVE_YEARS = "5Y"   # 5 years - 1 week intervals
+
+
 # Request Models
 class SecuritiesListRequest(BaseModel):
     """Request for getting securities list"""
@@ -97,6 +107,13 @@ class DailyStockPriceRequest(BaseModel):
     to_date: str = Field(..., description="End date in format DD/MM/YYYY")
     page_index: int = Field(1, ge=1, description="Page number for pagination")
     page_size: int = Field(100, ge=1, le=1000, description="Number of items per page")
+    market: str = Field("hose", description="Market code (hose, hnx, upcom)")
+
+
+class StockPriceByTimeFrameRequest(BaseModel):
+    """Request for getting stock prices by time frame"""
+    symbol: str = Field(..., min_length=1, max_length=10, description="Stock symbol (e.g., VNM, FPT)")
+    timeframe: TimeFrameEnum = Field(..., description="Time frame (1D, 1W, 7D, 1M, 1Y, 5Y)")
     market: str = Field("hose", description="Market code (hose, hnx, upcom)")
 
 
