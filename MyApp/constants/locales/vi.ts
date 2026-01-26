@@ -16,8 +16,18 @@ export default {
       search: "Tìm kiếm",
     },
     detail: {
+      screenTitle: 'Chi tiết cổ phiếu',
       newsSectionTitle: "Tin tức",
       newsSectionViewAll: "Xem tất cả",
+    },
+    fundamentalAnalysis: {
+      fundamentalAnalysisMetricsSectionTitle: "Các chỉ số",
+      PE: "P/E",
+    PB: "P/B",
+    EPS: "EPS",
+    marketCap: 'Vốn hoá (Tỷ VND)',
+    shareOutstanding: 'Khối lượng lưu hành (Triệu cổ phiếu)',
+    ROE: "ROE",
     },
   },
 };

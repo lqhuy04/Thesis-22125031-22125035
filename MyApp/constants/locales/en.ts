@@ -17,7 +17,17 @@ export default {
     search: 'Search',
   },
   detail: {
+    screenTitle: 'Stock Detail',
     newsSectionTitle: "News",
     newsSectionViewAll: "View All",
+  },
+  fundamentalAnalysis: {
+    fundamentalAnalysisMetricsSectionTitle: "Metrics",
+    PE: "P/E",
+    PB: "P/B",
+    EPS: "EPS",
+    marketCap: 'Market Cap (Billion VND)',
+    shareOutstanding: 'Share Outstanding (Million stocks)',
+    ROE: "ROE",
   }
 };
