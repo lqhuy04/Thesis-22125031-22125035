@@ -381,23 +381,11 @@ class StockBizCrawler:
                 if tag_text:
                     tags.append(tag_text)
             
-            # Extract stock symbols from text content
-            related_stocks = set()
-            full_text = ' '.join(all_text_content)
-            if full_text:
-                # Find patterns like VNM, SSI, HOSE:VNM, etc.
-                stock_pattern = r'\b[A-Z]{3,4}\b'
-                matches = re.findall(stock_pattern, full_text)
-                # Filter out common words
-                common_words = {'THE', 'AND', 'FOR', 'ARE', 'BUT', 'NOT', 'YOU', 'ALL', 'CAN', 'HER', 'WAS', 'ONE', 'OUR', 'OUT', 'DAY', 'NEW', 'NOW', 'OLD', 'SEE', 'TWO', 'WAY', 'WHO', 'BOY', 'DID', 'ITS', 'LET', 'PUT', 'SAY', 'SHE', 'TOO', 'USE'}
-                related_stocks = set([m for m in matches if m not in common_words])
-            
             return {
                 'content': structured_content,
                 'author': author,
                 'article_images': list(set(article_images))[:10],  # Limit to 10 unique images
                 'tags': list(set(tags))[:10],  # Limit to 10 unique tags
-                'related_stocks': list(related_stocks),
                 'is_content_extracted': structured_content is not None
             }
             
@@ -408,7 +396,6 @@ class StockBizCrawler:
                 'author': None,
                 'article_images': [],
                 'tags': [],
-                'related_stocks': [],
                 'is_content_extracted': False
             }
     

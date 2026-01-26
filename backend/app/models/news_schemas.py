@@ -33,7 +33,6 @@ class NewsBase(BaseModel):
     author: Optional[str] = Field(None, description="Article author name")
     article_images: Optional[List[str]] = Field(default=[], description="Array of image URLs in article")
     tags: Optional[List[str]] = Field(default=[], description="Article tags/categories")
-    related_stocks: Optional[List[str]] = Field(default=[], description="All stock symbols mentioned")
     source: Optional[str] = Field(default="StockBiz", description="News source website")
     is_content_extracted: Optional[bool] = Field(default=False, description="Content extraction status")
 
@@ -53,10 +52,19 @@ class NewsResponse(NewsBase):
         from_attributes = True
 
 
-class NewsListResponse(BaseModel):
-    """Schema for list of news"""
-    data: list[NewsResponse]
+class NewsListData(BaseModel):
+    """Paginated news data"""
+    items: list[NewsResponse]
     total: int
     page: int
     page_size: int
     total_pages: int
+
+
+class NewsListResponse(BaseModel):
+    """Standardized API response for news list"""
+    data: NewsListData
+    errorCode: int = Field(default=0, description="Error code (0 = success)")
+    errorDesc: str = Field(default="", description="Error description")
+    requestId: str = Field(default="", description="Unique request ID")
+    result: bool = Field(default=True, description="Success flag")

@@ -3,9 +3,10 @@ News Routes
 API endpoints for financial news
 """
 from fastapi import APIRouter, Query
-from app.models.news_schemas import NewsListResponse
+from app.models.news_schemas import NewsListResponse, NewsListData
 from app.services.news_db_service import NewsDBService
 from typing import Optional
+from uuid import uuid4
 
 router = APIRouter(prefix="/news", tags=["News"])
 
@@ -32,4 +33,10 @@ async def get_news(
         search=search
     )
     
-    return NewsListResponse(**result)
+    return NewsListResponse(
+        data=NewsListData(**result),
+        errorCode=0,
+        errorDesc="",
+        requestId=str(uuid4()),
+        result=True
+    )

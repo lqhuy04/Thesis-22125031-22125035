@@ -86,7 +86,6 @@ class NewsDBService:
                 "author": news.author,
                 "article_images": news.article_images if news.article_images else [],
                 "tags": news.tags if news.tags else [],
-                "related_stocks": news.related_stocks if news.related_stocks else [],
                 "source": news.source if news.source else "StockBiz",
                 "is_content_extracted": news.is_content_extracted if news.is_content_extracted is not None else False
             }
@@ -176,7 +175,7 @@ class NewsDBService:
             news_list = [NewsResponse(**item) for item in result.data] if result.data else []
             
             return {
-                "data": news_list,
+                "items": news_list,
                 "total": total,
                 "page": page,
                 "page_size": page_size,
@@ -186,7 +185,7 @@ class NewsDBService:
         except Exception as e:
             print(f"Error getting news: {e}")
             return {
-                "data": [],
+                "items": [],
                 "total": 0,
                 "page": page,
                 "page_size": page_size,
