@@ -8,6 +8,7 @@ from app.models.financial_schemas import (
     FinancialRatiosSchema,
     FinancialAnalysisResponse
 )
+from app.models.base_schemas import success_response, error_response
 from app.services.financial_db_service import FinancialDBService
 from datetime import datetime
 import uuid
@@ -176,7 +177,6 @@ async def get_available_years(symbol: str):
 
 
 @router.get("/analysis/{symbol}",
-            response_model=FinancialAnalysisResponse,
             summary="Get Comprehensive Financial Analysis",
             description="Get a comprehensive financial analysis with formatted metrics")
 async def get_financial_analysis(
@@ -229,17 +229,17 @@ async def get_financial_analysis(
             beta=data.get("beta")
         )
         
-        # Build response
-        response = FinancialAnalysisResponse(
-            symbol=symbol.upper(),
-            company_name=data.get("company_name"),
-            analysis_date=datetime.now(),
-            year=data.get("year"),
-            metrics=metrics,
-            data_source=data.get("data_source", "SSI iBoard")
-        )
+        # Build response data
+        analysis_data = {
+            "symbol": symbol.upper(),
+            "company_name": data.get("company_name"),
+            "analysis_date": datetime.now().isoformat(),
+            "year": data.get("year"),
+            "metrics": metrics.model_dump(),
+            "data_source": data.get("data_source", "SSI iBoard")
+        }
         
-        return response
+        return success_response(data=analysis_data, request_id=request_id)
         
     except HTTPException:
         raise
