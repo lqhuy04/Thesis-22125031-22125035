@@ -1,6 +1,7 @@
 import FundamentalAnalysisMetricsSection from "@/components/detail/FundamentalAnalysisMetricsSection";
 import NewsSection from "@/components/detail/NewsSection";
 import DetailHeader from "@/components/ui/DetailHeader";
+import PriceCandleChart from "@/components/ui/PriceCandleChart";
 import PriceLineGraph from "@/components/ui/PriceLineChart";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { fetchStockData, StockData } from "@/helpers/DetailHelpers";
@@ -42,6 +43,8 @@ const Detail = () => {
         <FundamentalAnalysisMetricsSection stock_symbol={item?.symbol || ""} />
 
         <PriceLineGraph  data={stockData}/>
+
+        <PriceCandleChart data={stockData} />
 
       </ScrollView>
 
