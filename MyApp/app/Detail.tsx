@@ -8,6 +8,7 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { ScrollView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const Detail = () => {
@@ -20,7 +21,7 @@ const Detail = () => {
   const [stockData, setStockData] = useState<StockData[]>([]);
 
   useEffect(() => {
-    fetchStockData(item?.symbol || "", "1M").then((res) => {
+    fetchStockData(item?.symbol || "", "1D").then((res) => {
       if (res.status) {
         setStockData(res.data);
       }
@@ -33,13 +34,18 @@ const Detail = () => {
     >
       <ScreenHeader title={t("detail.screenTitle")} />
 
-      <DetailHeader item={item} />
+      <ScrollView style={{flex: 1}}>
+        <DetailHeader item={item} />
 
-      <NewsSection stockSymbol={item?.symbol || ""} />
+        <NewsSection stockSymbol={item?.symbol || ""} />
 
-      <FundamentalAnalysisMetricsSection stock_symbol={item?.symbol || ""} />
+        <FundamentalAnalysisMetricsSection stock_symbol={item?.symbol || ""} />
 
-      <PriceLineGraph />
+        <PriceLineGraph  data={stockData}/>
+
+      </ScrollView>
+
+
     </SafeAreaView>
   );
 };
