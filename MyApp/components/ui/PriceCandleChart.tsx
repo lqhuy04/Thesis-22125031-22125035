@@ -52,88 +52,89 @@ const PriceCandleChart = ({ data }: Props) => {
   const screenWidth = Dimensions.get("window").width;
 
   return (
-    <View>
-      <View style={{ borderWidth: 1, borderColor: theme.border.default }}>
+    data.length !== 0 && (
+      <View>
+        <View style={{ borderWidth: 1, borderColor: theme.border.default }}>
+          <View
+            style={{
+              flexDirection: "row",
+              position: "absolute",
+            }}
+          >
+            {Array.from({
+              length: Math.floor(screenWidth / 36) + 1,
+            }).map((_, index) => {
+              return (
+                <View
+                  key={index.toString()}
+                  style={{
+                    width: 1,
+                    height: 278,
+                    backgroundColor: theme.border.default,
+                    marginHorizontal: 18,
+                  }}
+                />
+              );
+            })}
+          </View>
+
+          <View
+            style={{
+              position: "absolute",
+            }}
+          >
+            {Array.from({
+              length: Math.floor(278 / 36) + 1,
+            }).map((_, index) => {
+              return (
+                <View
+                  key={index.toString()}
+                  style={{
+                    width: screenWidth,
+                    height: 1,
+                    backgroundColor: theme.border.default,
+                    marginVertical: 18,
+                  }}
+                />
+              );
+            })}
+          </View>
+
+          <View style={styles.container}>
+            {/* 3. Cấu hình Biểu đồ */}
+            <CandlestickChart.Provider data={chartData}>
+              <CandlestickChart width={screenWidth} height={278}>
+                <CandlestickChart.Candles
+                  positiveColor={theme.base.success} // Xanh (Tăng)
+                  negativeColor={theme.base.error} // Đỏ (Giảm)
+                />
+                {/* Đường chéo tương tác */}
+                <CandlestickChart.Crosshair>
+                  <CandlestickChart.Tooltip />
+                </CandlestickChart.Crosshair>
+              </CandlestickChart>
+            </CandlestickChart.Provider>
+          </View>
+        </View>
+
         <View
           style={{
             flexDirection: "row",
-            position: "absolute",
+            justifyContent: "space-between",
+            marginVertical: 4,
+            marginHorizontal: 16,
           }}
         >
-          {Array.from({
-            length: Math.floor((screenWidth) / 36) + 1,
-          }).map((_, index) => {
-            return (
-              <View
-                key={index.toString()}
-                style={{
-                  width: 1,
-                  height: 278,
-                  backgroundColor: theme.border.default,
-                  marginHorizontal: 18,
-                }}
-              />
-            );
-          })}
+          <Text typography="titleSmall">09:00</Text>
+          <Text typography="titleSmall">10:00</Text>
+          <Text typography="titleSmall">11:00</Text>
+          <Text typography="titleSmall">12:00</Text>
+          <Text typography="titleSmall">13:00</Text>
+          <Text typography="titleSmall">14:00</Text>
+          <Text typography="titleSmall">15:00</Text>
         </View>
-
-        <View
-          style={{
-            position: "absolute",
-          }}
-        >
-          {Array.from({
-            length: Math.floor(278 / 36) + 1,
-          }).map((_, index) => {
-            return (
-              <View
-                key={index.toString()}
-                style={{
-                  width: screenWidth,
-                  height: 1,
-                  backgroundColor: theme.border.default,
-                  marginVertical: 18,
-                }}
-              />
-            );
-          })}
-        </View>
-
-        <View style={styles.container}>
-          {/* 3. Cấu hình Biểu đồ */}
-          <CandlestickChart.Provider data={chartData}>
-            <CandlestickChart width={screenWidth} height={278}>
-              <CandlestickChart.Candles
-                positiveColor={theme.base.success} // Xanh (Tăng)
-                negativeColor={theme.base.error} // Đỏ (Giảm)
-              />
-              {/* Đường chéo tương tác */}
-              <CandlestickChart.Crosshair>
-                <CandlestickChart.Tooltip />
-              </CandlestickChart.Crosshair>
-            </CandlestickChart>
-          </CandlestickChart.Provider>
-        </View>
-
       </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "space-between",
-          marginVertical: 4,
-          marginHorizontal: 16,
-        }}
-      >
-        <Text typography="titleSmall">09:00</Text>
-        <Text typography="titleSmall">10:00</Text>
-        <Text typography="titleSmall">11:00</Text>
-        <Text typography="titleSmall">12:00</Text>
-        <Text typography="titleSmall">13:00</Text>
-        <Text typography="titleSmall">14:00</Text>
-        <Text typography="titleSmall">15:00</Text>
-      </View>
-    </View>
+    )
   );
 };
 
