@@ -44,19 +44,17 @@ const PriceLineGraph = ({ data }: Props) => {
               <LinearGradient
                 start={vec(0, 0)}
                 end={vec(0, chartBounds.bottom)}
-                colors={[
-                  theme.base.primary + "80", // 50% opacity at top
-                  theme.base.primary + "10", // 6% opacity at bottom
-                ]}
+                colors={[theme.base.primary + "30"]}
               />
             </Area>
-            
+
             {/* Line on top of gradient */}
             <Line
               points={points.y}
-              color={theme.base.primary}
+              color={"#4E31B6"}
               strokeWidth={3}
               animate={{ type: "timing", duration: 300 }}
+              curveType="natural"
             />
           </>
         )}

@@ -1,16 +1,15 @@
 import { StockData } from "@/helpers/DetailHelpers";
 import React, { useMemo } from "react";
-import { View, Text, Dimensions, StyleSheet } from "react-native";
+import { View, Dimensions, StyleSheet } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { CandlestickChart } from "react-native-wagmi-charts";
-
-
+import { Text } from "./Text";
 
 function parseDate(dateString: string): Date {
-  const parts = dateString.split('/');
-  
+  const parts = dateString.split("/");
+
   if (parts.length !== 3) {
-    throw new Error('Invalid date format. Expected dd/mm/yyyy');
+    throw new Error("Invalid date format. Expected dd/mm/yyyy");
   }
 
   const day = parseInt(parts[0], 10);
@@ -25,111 +24,121 @@ function parseDate(dateString: string): Date {
     date.getMonth() !== month ||
     date.getFullYear() !== year
   ) {
-    throw new Error('Invalid date');
+    throw new Error("Invalid date");
   }
 
   return date;
 }
 
-// Usage example:
-const dateStr = "27/01/2026";
-const date = parseDate(dateStr);
-console.log(date); // Tue Jan 27 2026 00:00:00
-
 interface Props {
-  data: StockData[]
+  data: StockData[];
 }
 
-const PriceCandleChart = ({data}: Props) => {
+const PriceCandleChart = ({ data }: Props) => {
   const { theme } = useTheme();
 
   const chartData = useMemo(() => {
-    return data.map((item, index) => {
+    return data.map((item, _) => {
       return {
         timestamp: parseDate(item.TradingDate).getTime(),
-        open: Number(item.Open) / 1000,
-        close: Number(item.Close) / 1000,
-        high: Number(item.High) / 1000,
-        low: Number(item.Close) / 1000
+        open: Number(item.Open),
+        close: Number(item.Close),
+        high: Number(item.High),
+        low: Number(item.Low),
       };
     });
   }, [data]);
 
   const screenWidth = Dimensions.get("window").width;
 
-
   return (
-    <View style={styles.container}>
-      {/* Tên mã chứng khoán */}
-      <Text style={styles.symbolText}>{"Stock Chart"}</Text>
-
-      {/* 3. Cấu hình Biểu đồ */}
-      <CandlestickChart.Provider data={chartData}>
-        <CandlestickChart width={screenWidth - 32} height={300}>
-          <CandlestickChart.Candles
-            positiveColor="#22c55e" // Xanh (Tăng)
-            negativeColor="#ef4444" // Đỏ (Giảm)
-          />
-          {/* Đường chéo tương tác */}
-          <CandlestickChart.Crosshair>
-            <CandlestickChart.Tooltip />
-          </CandlestickChart.Crosshair>
-        </CandlestickChart>
-
-        {/* Hiển thị thông tin chi tiết khi chạm vào nến */}
-        <View style={styles.infoContainer}>
-          <View style={styles.row}>
-            <Text style={styles.label}>Giá đóng cửa: </Text>
-            <CandlestickChart.PriceText
-              type="close"
-              style={styles.priceValue}
-            />
-          </View>
-          <CandlestickChart.DatetimeText style={styles.dateText} />
+    <View>
+      <View style={{ borderWidth: 1, borderColor: theme.border.default }}>
+        <View
+          style={{
+            flexDirection: "row",
+            position: "absolute",
+          }}
+        >
+          {Array.from({
+            length: Math.floor((screenWidth - 24) / 36) + 1,
+          }).map((_, index) => {
+            return (
+              <View
+                key={index.toString()}
+                style={{
+                  width: 1,
+                  height: 278,
+                  backgroundColor: theme.border.default,
+                  marginHorizontal: 18,
+                }}
+              />
+            );
+          })}
         </View>
-      </CandlestickChart.Provider>
+
+        <View
+          style={{
+            position: "absolute",
+          }}
+        >
+          {Array.from({
+            length: Math.floor(278 / 36) + 1,
+          }).map((_, index) => {
+            return (
+              <View
+                key={index.toString()}
+                style={{
+                  width: screenWidth - 24,
+                  height: 1,
+                  backgroundColor: theme.border.default,
+                  marginVertical: 18,
+                }}
+              />
+            );
+          })}
+        </View>
+
+        <View style={styles.container}>
+          {/* 3. Cấu hình Biểu đồ */}
+          <CandlestickChart.Provider data={chartData}>
+            <CandlestickChart width={screenWidth - 24} height={278}>
+              <CandlestickChart.Candles
+                positiveColor={theme.base.success} // Xanh (Tăng)
+                negativeColor={theme.base.error} // Đỏ (Giảm)
+              />
+              {/* Đường chéo tương tác */}
+              <CandlestickChart.Crosshair>
+                <CandlestickChart.Tooltip />
+              </CandlestickChart.Crosshair>
+            </CandlestickChart>
+          </CandlestickChart.Provider>
+        </View>
+
+      </View>
+
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginVertical: 4,
+          marginHorizontal: 16,
+        }}
+      >
+        <Text typography="titleSmall">09:00</Text>
+        <Text typography="titleSmall">10:00</Text>
+        <Text typography="titleSmall">11:00</Text>
+        <Text typography="titleSmall">12:00</Text>
+        <Text typography="titleSmall">13:00</Text>
+        <Text typography="titleSmall">14:00</Text>
+        <Text typography="titleSmall">15:00</Text>
+      </View>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#fff",
-    paddingHorizontal: 16,
-    paddingVertical: 20,
-    alignItems: "center",
-  },
-  symbolText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-    alignSelf: "flex-start",
-  },
-  infoContainer: {
-    marginTop: 15,
-    width: "100%",
-    padding: 10,
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  label: {
-    fontSize: 14,
-    color: "#666",
-  },
-  priceValue: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#000",
-  },
-  dateText: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 4,
-  },
+  container: {},
 });
 
-export default PriceCandleChart
+export default PriceCandleChart;
