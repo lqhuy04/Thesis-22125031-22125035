@@ -1,6 +1,6 @@
 import { useTheme } from "@/hooks/ThemeContext";
 import React from "react";
-import { View } from "react-native";
+import { View, Image } from "react-native";
 import { Text } from "./Text";
 import { SearchStockItem } from "@/helpers/SearchHelper";
 
@@ -22,15 +22,18 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
         alignItems: "center",
       }}
     >
-      <View
+      <Image
+        source={{
+          uri: "https://ibrand.vn/wp-content/uploads/2024/08/vinamilk-logo_brandlogos.net_quayf.png",
+        }}
         style={{
           marginRight: 8,
           width: 40,
           height: 40,
-          backgroundColor: theme.background.bg,
           borderRadius: 2,
+          backgroundColor: theme.text.onPrimary,
         }}
-      ></View>
+      />
 
       <View style={{ flex: 1, marginRight: 12 }}>
         <Text typography="titleMedium" color={theme.text.onPrimary}>

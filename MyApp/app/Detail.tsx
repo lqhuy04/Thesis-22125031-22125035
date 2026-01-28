@@ -1,3 +1,4 @@
+import IntroductionSection from "@/components/detail/IntroductionSection";
 import NewsSection from "@/components/detail/NewsSection";
 import DetailHeader from "@/components/ui/DetailHeader";
 import ScreenHeader from "@/components/ui/ScreenHeader";
@@ -24,6 +25,8 @@ const Detail = ({ stockItem }: Props) => {
 
       <ScrollView style={{ flex: 1 }}>
         <DetailHeader item={stockItem} />
+
+        <IntroductionSection />
 
         <NewsSection stockSymbol={stockItem.symbol} />
       </ScrollView>

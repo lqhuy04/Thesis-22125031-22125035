@@ -1,6 +1,6 @@
 import { useTheme } from "@/hooks/ThemeContext";
 import React from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
 import { Text } from "./Text";
 import { SearchStockItem } from "@/helpers/SearchHelper";
 import { router } from "expo-router";
@@ -15,12 +15,10 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
   return (
     <TouchableOpacity
       onPress={() => {
-        router.push(
-          {
-            pathname: '/StockTabs',
-            params: {data: JSON.stringify(item)},
-          }
-        );
+        router.push({
+          pathname: "/StockTabs",
+          params: { data: JSON.stringify(item) },
+        });
       }}
       style={{
         paddingHorizontal: 16,
@@ -32,15 +30,17 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
         marginTop: 16,
       }}
     >
-      <View
+      <Image
+        source={{
+          uri: "https://ibrand.vn/wp-content/uploads/2024/08/vinamilk-logo_brandlogos.net_quayf.png",
+        }}
         style={{
           marginRight: 8,
           width: 40,
           height: 40,
-          backgroundColor: theme.background.primarySurface,
           borderRadius: 2,
         }}
-      ></View>
+      />
 
       <View style={{ flex: 1, marginRight: 12 }}>
         <Text typography="titleMedium" color={theme.text.primary}>
