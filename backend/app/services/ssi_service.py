@@ -896,3 +896,37 @@ def get_ssi_service() -> SSIMarketDataService:
     if _ssi_service is None:
         _ssi_service = SSIMarketDataService()
     return _ssi_service
+
+
+class SSIService:
+    """Async wrapper for SSI Market Data Service"""
+    
+    @staticmethod
+    async def get_historical_price(symbol: str, from_date: str, to_date: str, page_size: int = 100) -> Dict[str, Any]:
+        """
+        Get historical price data for a stock (async wrapper)
+        
+        Args:
+            symbol: Stock symbol (e.g., 'VNM', 'FPT')
+            from_date: Start date in format 'DD/MM/YYYY'
+            to_date: End date in format 'DD/MM/YYYY'
+            page_size: Number of records to return
+            
+        Returns:
+            Dict with price data
+        """
+        service = get_ssi_service()
+        result = service.get_daily_ohlc(
+            symbol=symbol,
+            from_date=from_date,
+            to_date=to_date,
+            page_size=page_size,
+            ascending=False  # Latest first
+        )
+        
+        if result.get("success"):
+            response_data = result.get("data", {})
+            if response_data.get("status") == "Success":
+                return {"data": response_data.get("data", [])}
+        
+        return {"data": []}

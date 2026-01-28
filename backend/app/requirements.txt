@@ -17,3 +17,5 @@ pandas==2.1.4
 selenium==4.15.2
 webdriver-manager==4.0.1
 asyncio
+langchain-google-genai
+langgraph
