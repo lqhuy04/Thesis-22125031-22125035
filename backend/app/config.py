@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     SSI_AUTH_TYPE: str = "Bearer"
     SSI_API_URL: str = "https://fc-data.ssi.com.vn/"
     SSI_STREAM_URL: str = "https://fc-datahub.ssi.com.vn/"
+
+    GEMINI_API_KEY: str
     
     class Config:
         env_file = ".env"
