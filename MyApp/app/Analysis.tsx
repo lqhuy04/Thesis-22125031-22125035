@@ -56,13 +56,13 @@ const Analysis = ({ stockSymbol }: Props) => {
           setStockData(stockRes.data);
         }
 
-        // const analysisRes = await getAnalysis(stockSymbol, "", "");
+        const analysisRes = await getAnalysis(stockSymbol, "", "");
 
-        // if (analysisRes?.status) {
-        //   setFundamentalAnalysis(analysisRes.data?.fundamental_analysis ?? "");
-        //   setTechnicalAnalysis(analysisRes.data?.technical_analysis ?? "");
-        //   setSummary(analysisRes.data?.final_report ?? "");
-        // }
+        if (analysisRes?.status) {
+          setFundamentalAnalysis(analysisRes.data?.fundamental_analysis ?? "");
+          setTechnicalAnalysis(analysisRes.data?.technical_analysis ?? "");
+          setSummary(analysisRes.data?.final_report ?? "");
+        }
       } catch (error) {
         console.error("Error fetching stock analysis:", error);
       }
