@@ -61,7 +61,7 @@ const PriceCandleChart = ({ data }: Props) => {
           }}
         >
           {Array.from({
-            length: Math.floor((screenWidth - 24) / 36) + 1,
+            length: Math.floor((screenWidth) / 36) + 1,
           }).map((_, index) => {
             return (
               <View
@@ -89,7 +89,7 @@ const PriceCandleChart = ({ data }: Props) => {
               <View
                 key={index.toString()}
                 style={{
-                  width: screenWidth - 24,
+                  width: screenWidth,
                   height: 1,
                   backgroundColor: theme.border.default,
                   marginVertical: 18,
@@ -102,7 +102,7 @@ const PriceCandleChart = ({ data }: Props) => {
         <View style={styles.container}>
           {/* 3. Cấu hình Biểu đồ */}
           <CandlestickChart.Provider data={chartData}>
-            <CandlestickChart width={screenWidth - 24} height={278}>
+            <CandlestickChart width={screenWidth} height={278}>
               <CandlestickChart.Candles
                 positiveColor={theme.base.success} // Xanh (Tăng)
                 negativeColor={theme.base.error} // Đỏ (Giảm)

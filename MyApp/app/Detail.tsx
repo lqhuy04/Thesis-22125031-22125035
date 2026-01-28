@@ -31,7 +31,7 @@ const Detail = () => {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, padding: 12, backgroundColor: theme.background.bg }}
+      style={{ flex: 1, backgroundColor: theme.background.bg }}
     >
       <ScreenHeader title={t("detail.screenTitle")} />
 

@@ -20,7 +20,6 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
         borderRadius: 4,
         flexDirection: "row",
         alignItems: "center",
-        marginTop: 16,
       }}
     >
       <View
