@@ -39,29 +39,36 @@ const Analysis = ({ stockSymbol }: Props) => {
   );
 
   useEffect(() => {
-    fetchFundamentalAnalysisIndexes(stockSymbol).then((data) => {
-      if (data.status) {
-        setMetrics(data.data);
-      }
-    });
-  }, [stockSymbol]);
+    if (!stockSymbol) return;
 
-  useEffect(() => {
-    fetchStockData(stockSymbol, "1D").then((res) => {
-      if (res.status) {
-        setStockData(res.data);
-      }
-    });
-  }, [stockSymbol]);
+    const fetchAll = async () => {
+      try {
+        const [fundamentalRes, stockRes] = await Promise.all([
+          fetchFundamentalAnalysisIndexes(stockSymbol),
+          fetchStockData(stockSymbol, "1D"),
+        ]);
 
-  useEffect(() => {
-    getAnalysis(stockSymbol, "", "").then((res) => {
-      if (res.status) {
-        setFundamentalAnalysis(res.data?.fundamental_analysis ?? "");
-        setTechnicalAnalysis(res.data?.technical_analysis ?? "");
-        setSummary(res.data?.final_report ?? "");
+        if (fundamentalRes?.status) {
+          setMetrics(fundamentalRes.data);
+        }
+
+        if (stockRes?.status) {
+          setStockData(stockRes.data);
+        }
+
+        const analysisRes = await getAnalysis(stockSymbol, "", "");
+
+        if (analysisRes?.status) {
+          setFundamentalAnalysis(analysisRes.data?.fundamental_analysis ?? "");
+          setTechnicalAnalysis(analysisRes.data?.technical_analysis ?? "");
+          setSummary(analysisRes.data?.final_report ?? "");
+        }
+      } catch (error) {
+        console.error("Error fetching stock analysis:", error);
       }
-    });
+    };
+
+    fetchAll();
   }, [stockSymbol]);
 
   return (
