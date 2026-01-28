@@ -1,8 +1,10 @@
 import { New } from "@/helpers/DetailHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
 import React from "react";
-import { View, Image } from "react-native";
+import { View, Image, TouchableOpacity } from "react-native";
 import { Text } from "./Text";
+import { router } from "expo-router";
+
 
 interface NewsItemProps {
   newItem: New;
@@ -12,7 +14,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
   const { theme } = useTheme();
 
   return (
-    <View
+    <TouchableOpacity
       style={{
         borderRadius: 4,
         padding: 12,
@@ -20,6 +22,15 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
         marginTop: 16,
         flexDirection: "row",
         alignItems: "center",
+      }}
+
+      onPress={() => {
+        router.push(
+          {
+            pathname: '/NewDetail',
+            params: {data: JSON.stringify(newItem)},
+          }
+        );
       }}
     >
       <Image
@@ -43,7 +54,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
           {newItem.description}
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

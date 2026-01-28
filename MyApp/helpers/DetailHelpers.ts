@@ -3,7 +3,7 @@ import { baseUrl } from "./base";
 export type Content = {
   type: "text" | "image";
   url?: string;
-  text?: string;
+  content?: string;
 };
 
 export type New = {
