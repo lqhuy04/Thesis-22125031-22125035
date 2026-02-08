@@ -9,4 +9,6 @@ def news_analysis_agent(state: AgentState) -> AgentState:
     print("Agent phân tích tin tức - RUNNING")
     print("Agent phân tích tin tức - END")
     
-    return state
+    return {
+        "completed_agents": ["news_analysis_agent"]
+    }

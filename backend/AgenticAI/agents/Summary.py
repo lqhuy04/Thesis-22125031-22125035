@@ -7,4 +7,6 @@ def summary_agent(state: AgentState) -> AgentState:
     print("Agent tổng hợp, gợi ý - RUNNING")
     print("Agent tổng hợp, gợi ý - END")
     
-    return state
+    return {
+        "completed_agents": ["summary_agent"]
+    }

@@ -9,4 +9,6 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
     print("Agent phân tích kĩ thuật - RUNNING")
     print("Agent phân tích kĩ thuật - END")
     
-    return state
+    return {
+        "completed_agents": ["technical_analysis_agent"]
+    }

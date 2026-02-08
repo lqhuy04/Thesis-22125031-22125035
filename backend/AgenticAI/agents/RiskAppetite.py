@@ -9,4 +9,6 @@ def risk_appetite_agent(state: AgentState) -> AgentState:
     print("Agent phân tích khẩu vị rủi ro - RUNNING")
     print("Agent phân tích khẩu vị rủi ro - END")
     
-    return state
+    return {
+        "completed_agents": ["risk_appetite_agent"]
+    }

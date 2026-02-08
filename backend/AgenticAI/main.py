@@ -41,6 +41,8 @@ def run():
     result = app.invoke(initial_state)
     print(app.get_graph().draw_ascii())
 
+    print('Kết quả', result)
+
 if __name__ == "__main__":
     run()
 
