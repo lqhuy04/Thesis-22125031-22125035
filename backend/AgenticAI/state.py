@@ -18,8 +18,8 @@ class AgentState(TypedDict):
     # ===== NEWS SENTIMENT OUTPUT =====
     news_sentiment: dict
 
-    # ===== RISK ASSESSMENT OUTPUT =====
-    risk_assessment: dict
+    # ===== RISK APPETITE OUTPUT =====
+    risk_appetite: dict
 
     # ===== FINAL RECOMMENDATION OUTPUT =====
     recommendation: dict

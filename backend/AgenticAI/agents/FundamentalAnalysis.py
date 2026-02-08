@@ -4,9 +4,8 @@ import time
 def fundamental_analysis_agent(state: AgentState) -> AgentState:
     """Agent phân tích cơ bản"""
     
-    print("Agent phân tích cơ bản - START")
-
     # Fetch DB lấy ra ptcb của mã
+    print("Agent phân tích cơ bản - START")
     print("Agent phân tích cơ bản - RUNNING")
     time.sleep(3)
 
