@@ -6,6 +6,7 @@ class AgentState(TypedDict):
     symbol: str
     company_name: str
     price_data: list
+    news_data: list
     userProfile: dict
     
     # ===== FUNDAMENTAL ANALYSIS OUTPUT =====
@@ -15,7 +16,7 @@ class AgentState(TypedDict):
     technical_analysis: dict
 
     # ===== NEWS SENTIMENT OUTPUT =====
-    news_sentiment: dict
+    news_analysis: dict
 
     # ===== RISK APPETITE OUTPUT =====
     risk_appetite: dict
