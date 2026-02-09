@@ -5,15 +5,12 @@ def risk_appetite_agent(state: AgentState) -> AgentState:
     """Agent phân tích khẩu vị rủi ro"""
     
     # Fetch DB lấy ra khẩu vị rủi ro của user
-    print("Agent phân tích khẩu vị rủi ro - START")
-    print("Agent phân tích khẩu vị rủi ro - RUNNING")
-    time.sleep(4)
+    time.sleep(2)
 
-    print("Agent phân tích khẩu vị rủi ro - END")
-    
+
     return {
-            "risk_appetite": {
-                "user_id": "USER_12345",
+        "risk_appetite": {
+            "user_id": "USER_12345",
             "profile": {
                 "age": 35,
                 "occupation": "Kỹ sư phần mềm",

@@ -5,8 +5,7 @@ class AgentState(TypedDict):
     # ===== INPUT INFORMATION =====
     symbol: str
     company_name: str
-    startTime: str
-    endTime: str
+    price_data: list
     userProfile: dict
     
     # ===== FUNDAMENTAL ANALYSIS OUTPUT =====
