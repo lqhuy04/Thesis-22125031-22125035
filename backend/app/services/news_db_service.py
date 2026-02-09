@@ -22,7 +22,7 @@ class NewsDBService:
         Parse Vietnamese time string to datetime
         
         Args:
-            time_str: Time string like "Yesterday 23:10", "Hôm qua 23:10", "22/1 07:02"
+            time_str: Time string like "6 ngày trước", "Yesterday 23:10", "22/1 07:02"
             
         Returns:
             Parsed datetime or None
@@ -32,6 +32,26 @@ class NewsDBService:
             
             time_str = time_str.strip()
             now = datetime.now()
+            
+            # Handle relative dates "X ngày/giờ/tuần trước"
+            pattern = r'(\d+)\s*(phút|giờ|ngày|tuần|tháng|năm)\s*trước'
+            match = re.search(pattern, time_str.lower())
+            if match:
+                value = int(match.group(1))
+                unit = match.group(2)
+                
+                if unit == 'phút':
+                    return now - timedelta(minutes=value)
+                elif unit == 'giờ':
+                    return now - timedelta(hours=value)
+                elif unit == 'ngày':
+                    return now - timedelta(days=value)
+                elif unit == 'tuần':
+                    return now - timedelta(weeks=value)
+                elif unit == 'tháng':
+                    return now - timedelta(days=value * 30)
+                elif unit == 'năm':
+                    return now - timedelta(days=value * 365)
             
             # Handle "Yesterday" or "Hôm qua"
             if "Yesterday" in time_str or "Hôm qua" in time_str:
@@ -68,26 +88,16 @@ class NewsDBService:
             Created news response or None if duplicate
         """
         try:
-            # Parse published_at if not provided
-            published_at = news.published_at
-            if not published_at and news.time:
-                published_at = NewsDBService.parse_time_to_datetime(news.time)
-            
-            # Prepare data
+            # Prepare data - only fields that exist in database
             data = {
                 "title": news.title,
                 "link": news.link,
                 "stock_symbol": news.stock_symbol,
                 "description": news.description,
-                "time": news.time,
+                "time": news.time.isoformat() if news.time else None,
                 "image_url": news.image_url,
-                "published_at": published_at.isoformat() if published_at else None,
-                "content": news.content,  # Already a dict/JSONB structure
-                "author": news.author,
-                "article_images": news.article_images if news.article_images else [],
-                "tags": news.tags if news.tags else [],
-                "source": news.source if news.source else "StockBiz",
-                "is_content_extracted": news.is_content_extracted if news.is_content_extracted is not None else False
+                "content": news.content,
+                "source": news.source,
             }
             
             # Insert (will fail silently if duplicate link)
@@ -158,8 +168,8 @@ class NewsDBService:
                 # Search in title or description
                 query = query.or_(f"title.ilike.%{search}%,description.ilike.%{search}%")
             
-            # Order by created_at descending (newest first)
-            query = query.order("created_at", desc=True)
+            # Order by updated_at descending (newest first)
+            query = query.order("updated_at", desc=True)
             
             # Apply pagination
             offset = (page - 1) * page_size
@@ -172,7 +182,11 @@ class NewsDBService:
             total = result.count if result.count else 0
             total_pages = (total + page_size - 1) // page_size
             
-            news_list = [NewsResponse(**item) for item in result.data] if result.data else []
+            # Convert to NewsResponse objects
+            news_list = []
+            if result.data:
+                for item in result.data:
+                    news_list.append(NewsResponse(**item))
             
             return {
                 "items": news_list,
@@ -184,6 +198,8 @@ class NewsDBService:
             
         except Exception as e:
             print(f"Error getting news: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 "items": [],
                 "total": 0,
@@ -203,7 +219,7 @@ class NewsDBService:
         try:
             result = supabase.table("financial_news")\
                 .select("link")\
-                .order("created_at", desc=True)\
+                .order("updated_at", desc=True)\
                 .limit(1)\
                 .execute()
             
