@@ -19,3 +19,5 @@ webdriver-manager==4.0.1
 asyncio
 langchain-google-genai
 langgraph
+TA-Lib==0.4.28
+numpy==1.24.3
