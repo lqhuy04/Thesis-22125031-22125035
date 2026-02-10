@@ -29,11 +29,6 @@ class AgentState(TypedDict):
     completed_agents: Annotated[Sequence[str], operator.add]
     messages: Annotated[Sequence[str], operator.add]
     
-    # ===== METADATA =====
-    timestamp: str
-    analysis_duration: float  # seconds
-    data_sources: list  # Các nguồn dữ liệu đã sử dụng
-    
     # ===== ERROR HANDLING =====
     errors: Annotated[Sequence[dict], operator.add]
     warnings: Annotated[Sequence[str], operator.add]
