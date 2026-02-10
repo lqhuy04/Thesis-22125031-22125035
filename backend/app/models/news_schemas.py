@@ -2,39 +2,20 @@
 News data models and schemas
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any, Literal
+from typing import Optional
 from datetime import datetime
 
 
-class ContentBlock(BaseModel):
-    """Individual content block (text, image, etc.)"""
-    type: Literal["text", "image"] = Field(..., description="Block type")
-    content: Optional[str] = Field(None, description="Text content for text blocks")
-    url: Optional[str] = Field(None, description="Image URL for image blocks")
-    caption: Optional[str] = Field(None, description="Image caption")
-    alt: Optional[str] = Field(None, description="Image alt text")
-
-
-class StructuredContent(BaseModel):
-    """Structured content with blocks"""
-    blocks: List[ContentBlock] = Field(default=[], description="Array of content blocks")
-
-
 class NewsBase(BaseModel):
-    """Base news schema"""
+    """Base news schema - matches database structure"""
     title: str = Field(..., description="News article title")
     link: str = Field(..., description="URL to the full article")
     stock_symbol: Optional[str] = Field(None, description="Associated stock ticker symbol")
     description: Optional[str] = Field(None, description="News article summary/description")
-    time: Optional[str] = Field(None, description="Publication time as string")
+    time: Optional[datetime] = Field(None, description="Publication time")
     image_url: Optional[str] = Field(None, description="URL to article image")
-    published_at: Optional[datetime] = Field(None, description="Parsed publication timestamp")
-    content: Optional[Dict[str, Any]] = Field(None, description="Structured article content with blocks")
-    author: Optional[str] = Field(None, description="Article author name")
-    article_images: Optional[List[str]] = Field(default=[], description="Array of image URLs in article")
-    tags: Optional[List[str]] = Field(default=[], description="Article tags/categories")
-    source: Optional[str] = Field(default="StockBiz", description="News source website")
-    is_content_extracted: Optional[bool] = Field(default=False, description="Content extraction status")
+    content: Optional[str] = Field(None, description="Article content text")
+    source: Optional[str] = Field(None, description="News source website")
 
 
 class NewsCreate(NewsBase):
@@ -45,8 +26,7 @@ class NewsCreate(NewsBase):
 class NewsResponse(NewsBase):
     """Schema for news response"""
     id: str = Field(..., description="Unique news identifier")
-    created_at: datetime = Field(..., description="When the news was added to database")
-    updated_at: datetime = Field(..., description="Last update timestamp")
+    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     
     class Config:
         from_attributes = True

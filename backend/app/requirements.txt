@@ -21,3 +21,6 @@ langchain-google-genai
 langgraph
 TA-Lib==0.4.28
 numpy==1.24.3
+requests==2.31.0
+newspaper3k==0.2.8
+lxml==4.9.3
