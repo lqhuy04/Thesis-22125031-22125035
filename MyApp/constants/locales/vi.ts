@@ -1,4 +1,9 @@
 export default {
+  ui: {
+      continue: "Tiếp tục",
+      skip: "Bỏ qua",
+      start: "Bắt đầu",
+  },
   auth: {
     signIn: "Đăng nhập",
     forgotPassword: "Quên mật khẩu?",

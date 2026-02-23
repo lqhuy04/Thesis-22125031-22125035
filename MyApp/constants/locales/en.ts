@@ -1,4 +1,9 @@
 export default {
+  ui: {
+    continue: "Continue",
+    skip: "Skip",
+    start: "Start",
+},
   auth: {
     signIn: "Sign in",
     forgotPassword: "Forgot Password?",

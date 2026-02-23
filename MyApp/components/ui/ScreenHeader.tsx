@@ -6,21 +6,22 @@ import { router } from "expo-router";
 
 interface Props {
   title: string;
+  hiddenBack?: boolean;
   onPressBack?: () => void;
 }
 
-const ScreenHeader = ({ title, onPressBack }: Props) => {
+const ScreenHeader = ({hiddenBack = false, title, onPressBack }: Props) => {
   return (
     <View
       style={{ flexDirection: "row", alignItems: "center", marginVertical: 12 }}
     >
-      <TouchableOpacity
-        onPress={() => (onPressBack != null ? onPressBack : router.dismiss())}
+      {hiddenBack ? null : <TouchableOpacity
+        onPress={() => (onPressBack != null ? onPressBack() : router.dismiss())}
       >
         <Ionicons name="arrow-back" size={24} style={{ marginRight: 16 }} />
-      </TouchableOpacity>
+      </TouchableOpacity>}
 
-      <Text typography="titleMedium">{title}</Text>
+      <Text typography="titleLarge">{title}</Text>
     </View>
   );
 };
