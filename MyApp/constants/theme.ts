@@ -9,6 +9,7 @@ export const lightTheme = {
 
   base: {
     primary: "#613DE4",
+    primaryHover: "#4E31B6",
     attention: "#FACC15",
     warning: "#F59E0B",
     error: "#EF4444",
@@ -42,6 +43,7 @@ export const darkTheme = {
 
   base: {
     primary: "#613DE4",
+    primaryHover: "#4E31B6",
     attention: "#FACC15",
     warning: "#F59E0B",
     error: "#EF4444",
