@@ -1,7 +1,7 @@
-import React, { useMemo } from "react";
-import { StockData } from "@/helpers/DetailHelpers";
+import React, { useMemo, useState, useEffect } from "react";
+import { fetchStockData, StockData } from "@/helpers/DetailHelpers";
 import { CartesianChart, Line, Area, useChartPressState } from "victory-native";
-import { View, Dimensions } from "react-native";
+import { View, Dimensions, ActivityIndicator } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import {
   Rect,
@@ -15,12 +15,29 @@ import {
   DashPathEffect,
 } from "@shopify/react-native-skia";
 import { useDerivedValue } from "react-native-reanimated";
+import { Text } from "./Text";
+import PriceCandleChart from "./PriceCandleChart";
 
 interface Props {
-  data: StockData[];
+  stockSymbol: string
 }
 
-const PriceLineGraph = ({ data }: Props) => {
+const PriceLineGraph = ({ stockSymbol }: Props) => {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [option, setOption] = useState<"1D" | "1W" | "1M" | "1Y" | "5Y">("1D")
+  const [data, setData] = useState<StockData[]>([]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchStockData(stockSymbol, option ).then((stockRes) => {
+      setLoading(false);
+      if (stockRes?.status) {
+        setData(stockRes.data);
+      }
+    });
+        
+  }, [stockSymbol, option]);
+  
   const screenWidth = Dimensions.get("window").width;
   const chartData = useMemo(() => {
     return data.map((item, index) => {
@@ -53,6 +70,30 @@ const PriceLineGraph = ({ data }: Props) => {
   const fontDateSize = 10;
 
   //-----------------------------------------------------------------
+  const toolTipY = useDerivedValue(()=> {
+    if (state.y.y.position.value > 200) {
+      return state.y.y.position.value - 48;
+    } else {
+      return state.y.y.position.value + 6
+    }
+  })
+
+  const toolTipPriceTextY = useDerivedValue(()=> {
+    if (state.y.y.position.value > 200) {
+
+      return state.y.y.position.value - 48 + 42 / 2 + (fontPrice?.getSize() ?? 0) / 2 - 10;
+    } else {
+      return state.y.y.position.value + 6 + 42 / 2 + (fontPrice?.getSize() ?? 0) / 2 - 10;
+    }
+  })
+
+  const toolTipDateTextY = useDerivedValue(()=> {
+    if (state.y.y.position.value > 200) {
+      return state.y.y.position.value - 48 + 42 / 2 + (fontDate?.getSize() ?? 0) / 2 + 10;
+    } else {
+      return state.y.y.position.value + 6 + 42 / 2 + (fontDate?.getSize() ?? 0) / 2 + 10;
+    }
+  })
   const times = useMemo(() => chartData.map((d) => d.time), [chartData]);
 
   const dates = useMemo(() => chartData.map((d) => d.date), [chartData]);
@@ -74,7 +115,7 @@ const PriceLineGraph = ({ data }: Props) => {
   const lineP1 = useDerivedValue(() =>
     vec(state.x.position.value, state.y.y.position.value),
   );
-  const lineP2 = useDerivedValue(() => vec(state.x.position.value, 360));
+  const lineP2 = useDerivedValue(() => vec(state.x.position.value, 300));
 
   //-----------------------------------------------------------------
   const dashedLineP1 = useDerivedValue(() => vec(0, state.y.y.position.value));
@@ -91,218 +132,255 @@ const PriceLineGraph = ({ data }: Props) => {
 
   const xTicks = 8;
 
-  return (
-    data.length !== 0 && (
-      <View style={{ height: 360 }}>
-        <CartesianChart
-          data={chartData}
-          xKey="x"
-          yKeys={["y"]}
-          axisOptions={{
-            lineColor: "transparent",
-          }}
-          frame={{
-            lineWidth: 0,
-            lineColor: "transparent",
-          }}
-          chartPressState={state}
-          domainPadding={{ top: 60 }}
-        >
-          {({ points, chartBounds, yScale, xScale }) => {
-            return (
-              <>
-                {/* Area */}
-                <Area
-                  points={points.y}
-                  y0={chartBounds.bottom}
-                  color={theme.background.bg}
-                  curveType="natural"
-                >
-                  <LinearGradient
-                    start={vec(chartBounds.bottom, chartBounds.top)}
-                    end={vec(chartBounds.bottom, chartBounds.bottom)}
-                    colors={[theme.background.bg, theme.base.primary + "16"]}
-                  />
-                </Area>
-
-                {/* Line */}
-                <Line
-                  points={points.y}
-                  color={theme.base.primaryHover}
-                  strokeWidth={2}
-                  animate={{ type: "timing", duration: 300 }}
-                  curveType="natural"
+  return <View>
+    { loading ? <View style={{height: 300, justifyContent: 'center',
+    alignItems: 'center',}}>
+    <ActivityIndicator size="large" color={theme.base.primary} />
+  </View> :
+    data.length !== 0 ? (
+      <View style={{ height: 300 }}>
+      <CartesianChart
+      key={option}
+        data={chartData}
+        xKey="x"
+        yKeys={["y"]}
+        axisOptions={{
+          lineColor: "transparent",
+        }}
+        frame={{
+          lineWidth: 0,
+          lineColor: "transparent",
+        }}
+        chartPressState={state}
+    
+      >
+        {({ points, chartBounds, yScale, xScale }) => {
+          return (
+            <>
+              {/* Area */}
+              <Area
+                points={points.y}
+                y0={chartBounds.bottom}
+                color={theme.background.bg}
+                curveType="natural"
+              >
+                <LinearGradient
+                  start={vec(chartBounds.bottom, chartBounds.top)}
+                  end={vec(chartBounds.bottom, chartBounds.bottom)}
+                  colors={[theme.background.bg, theme.base.primary + "16"]}
                 />
+              </Area>
 
-                {/* Interactive circle point */}
-                {isActive && (
-                  <>
-                    <SkiaLine
-                      p1={dashedLineP1}
-                      p2={dashedLineP2}
-                      color={theme.base.primary}
-                      strokeWidth={1}
-                    >
-                      <DashPathEffect intervals={[6, 4]} />
-                    </SkiaLine>
-                    {/* Linear Gradient*/}
-                    <Rect
-                      x={linearGradientX}
-                      y={linearGradientY}
-                      width={24}
-                      height={360}
-                    >
-                      <LinearGradient
-                        start={vec(0, chartBounds.top)}
-                        end={vec(0, chartBounds.bottom)}
-                        colors={[
-                          theme.base.primary + "00",
-                          theme.base.primary + "39",
-                        ]}
-                      />
-                    </Rect>
-                    {/* Vertical Line */}
-                    <SkiaLine
-                      p1={lineP1}
-                      p2={lineP2}
-                      color={theme.background.bg}
-                      strokeWidth={2}
+              {/* Line */}
+              <Line
+                points={points.y}
+                color={theme.base.primaryHover}
+                strokeWidth={2}
+                animate={{ type: "timing", duration: 300 }}
+                curveType="natural"
+              />
+
+             
+
+            {Array.from({ length: horizontalLines - 1 }).map((_, i) => {
+                const y =
+                chartBounds.top + 30 +
+                ((chartBounds.bottom - chartBounds.top ) * i) / (horizontalLines - 1);
+
+
+                const value =
+                  yScale.invert(y)
+
+                const label = `${value.toFixed(1).toLocaleString()}K`;
+
+                return (
+                  <SkiaText
+                    key={i}
+                    x={chartBounds.left + 6}
+                    y={y + 4}
+                    text={label}
+                    font={fontPrice}
+                    color={theme.text.primary}
+                  />
+                );
+              })}
+
+              {Array.from({ length: horizontalLines }).map((_, i) => {
+                const y =
+                  chartBounds.top + 30 +
+                  ((chartBounds.bottom - chartBounds.top ) * i) / (horizontalLines - 1);
+
+                return (
+                  <SkiaLine
+                    key={i}
+                    p1={{
+                      x: chartBounds.left + 50,
+                      y,
+                    }}
+                    p2={{
+                      x: chartBounds.right,
+                      y,
+                    }}
+                    color={theme.border.default}
+                    strokeWidth={1}
+                  >
+                    <DashPathEffect intervals={[4, 4]} />
+                  </SkiaLine>
+                );
+              })}
+
+
+              {Array.from({ length: xTicks - 1 }).map((_, i) => {
+                const domain = xScale.domain(); // [0, data.length - 1]
+                const value = option === '1D' ? 
+                  3 + ((domain[1] - domain[0]) * i) / (xTicks - 1) : 1+ ((domain[1] - domain[0]) * i) / (xTicks - 1);
+
+                const index = Math.round(value);
+                if (index < 0 || index >= chartData.length) return null;
+
+                const x = xScale(value);
+                const label = option === '1D' ? chartData[index].time.substring(0, 5) : chartData[index].date.substring(0, 5);
+
+                const textWidth = fontDate?.measureText(label).width ?? 0;
+                return (
+                  <SkiaText
+                    key={i}
+                    x={x - textWidth / 2}
+                    y={chartBounds.top + 280}
+                    text={label}
+                    font={fontPrice}
+                    color={theme.text.primary}
+                  />
+                );
+              })}
+
+               {/* Interactive circle point */}
+               {isActive && (
+                <>
+                  <SkiaLine
+                    p1={dashedLineP1}
+                    p2={dashedLineP2}
+                    color={theme.base.primary}
+                    strokeWidth={1}
+                  >
+                    <DashPathEffect intervals={[6, 4]} />
+                  </SkiaLine>
+                  {/* Linear Gradient*/}
+                  <Rect
+                    x={linearGradientX}
+                    y={linearGradientY}
+                    width={24}
+                    height={300}
+                  >
+                    <LinearGradient
+                      start={vec(0, chartBounds.top)}
+                      end={vec(0, chartBounds.bottom)}
+                      colors={[
+                        theme.base.primary + "00",
+                        theme.base.primary + "39",
+                      ]}
                     />
-                    {/* Outer glow circle */}
-                    <Circle
-                      cx={state.x.position}
-                      cy={state.y.y.position}
-                      r={12}
-                      color={theme.base.primary + "30"}
-                    />
-                    {/* Center circle */}
-                    <Circle
-                      cx={state.x.position}
-                      cy={state.y.y.position}
-                      r={4}
-                      color={theme.text.onPrimary}
-                    />
+                  </Rect>
+                  {/* Vertical Line */}
+                  <SkiaLine
+                    p1={lineP1}
+                    p2={lineP2}
+                    color={theme.background.bg}
+                    strokeWidth={2}
+                  />
+                  {/* Outer glow circle */}
+                  <Circle
+                    cx={state.x.position}
+                    cy={state.y.y.position}
+                    r={12}
+                    color={theme.base.primary + "30"}
+                  />
+                  {/* Center circle */}
+                  <Circle
+                    cx={state.x.position}
+                    cy={state.y.y.position}
+                    r={4}
+                    color={theme.text.onPrimary}
+                  />
 
-                    {/* Tooltip */}
-                    <RoundedRect
-                      x={chartBounds.left - 4 + screenWidth / 2 - 127 / 2}
-                      y={0}
-                      width={127}
-                      height={42}
-                      r={4}
-                      color={theme.base.primary}
-                    />
-                    <SkiaText
-                      x={
-                        chartBounds.left -
-                        4 +
-                        screenWidth / 2 -
-                        127 / 2 +
-                        (127 - textPriceWidth) / 2
-                      }
-                      y={0 + 42 / 2 + (fontPrice?.getSize() ?? 0) / 2 - 8}
-                      text={textPrice}
-                      font={fontPrice}
-                      color={theme.text.onPrimary}
-                    />
-                    <SkiaText
-                      x={
-                        chartBounds.left -
-                        4 +
-                        screenWidth / 2 -
-                        127 / 2 +
-                        (127 - textDateWidth) / 2
-                      }
-                      y={0 + 42 / 2 + (fontDate?.getSize() ?? 0) / 2 + 6}
-                      text={textDate}
-                      font={fontDate}
-                      color={theme.text.onPrimary}
-                    />
-                  </>
-                )}
+                  {/* Tooltip */}
+                  <RoundedRect
+                    x={chartBounds.left - 4 + screenWidth / 2 - 127 / 2}
+                    y={toolTipY}
+                    width={127}
+                    height={42}
+                    r={4}
+                    color={theme.base.primary}
+                  />
+                  <SkiaText
+                    x={
+                      chartBounds.left -
+                      4 +
+                      screenWidth / 2 -
+                      127 / 2 +
+                      (127 - textPriceWidth) / 2
+                    }
+                    y={toolTipPriceTextY}
+                    text={textPrice}
+                    font={fontPrice}
+                    color={theme.text.onPrimary}
+                  />
+                  <SkiaText
+                    x={
+                      chartBounds.left -
+                      4 +
+                      screenWidth / 2 -
+                      127 / 2 +
+                      (127 - textDateWidth) / 2
+                    }
+                    y={toolTipDateTextY}
+                    text={textDate}
+                    font={fontDate}
+                    color={theme.text.onPrimary}
+                  />
+                </>
+              )}
+            </>
+          );
+        }}
+      </CartesianChart>
 
-                {Array.from({ length: horizontalLines - 1 }).map((_, i) => {
-                  const y =
-                    chartBounds.top +
-                    71 +
-                    ((chartBounds.bottom - 71) * i) / (horizontalLines - 1) +
-                    4;
+    </View>
+      
+    ) : null
+}
 
-                  const domain = yScale.domain(); // [minY, maxY]
+  <View style={{flexDirection: 'row', alignItems: "center", justifyContent: "space-between"}}>
+        <View style={{backgroundColor: option ==='1D' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
+            <Text typography="titleMedium" color={option ==='1D' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("1D")} >
+                1D
+            </Text>
+        </View>
+        <View style={{backgroundColor: option ==='1W' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
+            <Text typography="titleMedium" color={option ==='1W' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("1W")} >
+                1W
+            </Text>
+        </View>
+        <View style={{backgroundColor: option ==='1M' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
+            <Text typography="titleMedium" color={option ==='1M' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("1M")} >
+                1M
+            </Text>
+        </View>
+        <View style={{backgroundColor: option ==='1Y' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
+            <Text typography="titleMedium" color={option ==='1Y' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("1Y")} >
+                1Y
+            </Text>
+        </View>
+        <View style={{backgroundColor: option ==='5Y' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
+            <Text typography="titleMedium" color={option ==='5Y' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("5Y")} >
+                5Y
+            </Text>
+        </View>
+          </View>
 
-                  const value =
-                    domain[0] +
-                    ((domain[1] - domain[0]) * i) / (horizontalLines - 1);
 
-                  const label = `${value.toFixed(1).toLocaleString()}K`;
-
-                  return (
-                    <SkiaText
-                      key={i}
-                      x={chartBounds.left + 10}
-                      y={y}
-                      text={label}
-                      font={fontPrice}
-                      color={theme.text.primary}
-                    />
-                  );
-                })}
-
-                {Array.from({ length: horizontalLines }).map((_, i) => {
-                  const y =
-                    chartBounds.top +
-                    71 +
-                    ((chartBounds.bottom - 71) * i) / (horizontalLines - 1);
-
-                  return (
-                    <SkiaLine
-                      key={i}
-                      p1={{
-                        x: chartBounds.left + 54,
-                        y,
-                      }}
-                      p2={{
-                        x: chartBounds.right,
-                        y,
-                      }}
-                      color={theme.border.default}
-                      strokeWidth={1}
-                    >
-                      <DashPathEffect intervals={[4, 4]} />
-                    </SkiaLine>
-                  );
-                })}
-
-                {Array.from({ length: xTicks - 1 }).map((_, i) => {
-                  const domain = xScale.domain(); // [0, data.length - 1]
-                  const value =
-                    3 + ((domain[1] - domain[0]) * i) / (xTicks - 1);
-
-                  const index = Math.round(value);
-                  if (index < 0 || index >= chartData.length) return null;
-
-                  const x = xScale(value);
-                  const label = chartData[index].time.substring(0, 5);
-
-                  const textWidth = fontDate?.measureText(label).width ?? 0;
-                  return (
-                    <SkiaText
-                      key={i}
-                      x={x - textWidth / 2}
-                      y={chartBounds.top + 340}
-                      text={label}
-                      font={fontPrice}
-                      color={theme.text.primary}
-                    />
-                  );
-                })}
-              </>
-            );
-          }}
-        </CartesianChart>
-      </View>
-    )
-  );
+    <PriceCandleChart data={data} />
+  </View>;
 };
 
 export default PriceLineGraph;

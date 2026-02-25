@@ -46,18 +46,14 @@ const Detail = ({ stockItem }: Props) => {
       style={{
         flex: 1,
         backgroundColor: theme.background.bg,
-        paddingVertical: 12,
       }}
     >
       <ScreenHeader title={t("detail.screenTitle")} />
 
       <ScrollView style={{ flex: 1 }}>
         <DetailHeader item={stockItem} />
-        
-        <View style={{height: 40}}/>
-        <PriceLineGraph data={stockData} />
-        <PriceCandleChart data={stockData} />
 
+        <PriceLineGraph stockSymbol={stockItem.symbol} />
         <IntroductionSection />
 
         <NewsSection stockSymbol={stockItem.symbol} />
