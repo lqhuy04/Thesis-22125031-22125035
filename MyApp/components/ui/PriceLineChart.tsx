@@ -87,9 +87,9 @@ const PriceLineGraph = ({ data }: Props) => {
   const linearGradientY = useDerivedValue(() => state.y.y.position.value);
 
   //-----------------------------------------------------------------
-  const horizontalLines = 5;
+  const horizontalLines = 4;
 
-  const xTicks = 7;
+  const xTicks = 8;
 
   return (
     data.length !== 0 && (
@@ -116,6 +116,7 @@ const PriceLineGraph = ({ data }: Props) => {
                   points={points.y}
                   y0={chartBounds.bottom}
                   color={theme.background.bg}
+                  curveType="natural"
                 >
                   <LinearGradient
                     start={vec(chartBounds.bottom, chartBounds.top)}
@@ -204,7 +205,6 @@ const PriceLineGraph = ({ data }: Props) => {
                       font={fontPrice}
                       color={theme.text.onPrimary}
                     />
-
                     <SkiaText
                       x={
                         chartBounds.left -
@@ -221,25 +221,29 @@ const PriceLineGraph = ({ data }: Props) => {
                   </>
                 )}
 
-                {Array.from({ length: horizontalLines }).map((_, i) => {
+                {Array.from({ length: horizontalLines - 1 }).map((_, i) => {
                   const y =
                     chartBounds.top +
-                    60 +
-                    ((chartBounds.bottom - chartBounds.top + 60) * i) /
-                      (horizontalLines - 1);
+                    71 +
+                    ((chartBounds.bottom - 71) * i) / (horizontalLines - 1) +
+                    4;
 
-                  const value = yScale.invert(y);
+                  const domain = yScale.domain(); // [minY, maxY]
 
-                  const label = `${Math.floor(value).toLocaleString()}K`;
+                  const value =
+                    domain[0] +
+                    ((domain[1] - domain[0]) * i) / (horizontalLines - 1);
+
+                  const label = `${value.toFixed(1).toLocaleString()}K`;
 
                   return (
                     <SkiaText
                       key={i}
                       x={chartBounds.left + 10}
-                      y={y + 4}
+                      y={y}
                       text={label}
                       font={fontPrice}
-                      color={"black"}
+                      color={theme.text.primary}
                     />
                   );
                 })}
@@ -247,15 +251,20 @@ const PriceLineGraph = ({ data }: Props) => {
                 {Array.from({ length: horizontalLines }).map((_, i) => {
                   const y =
                     chartBounds.top +
-                    60 +
-                    ((chartBounds.bottom - chartBounds.top + 60) * i) /
-                      (horizontalLines - 1);
+                    71 +
+                    ((chartBounds.bottom - 71) * i) / (horizontalLines - 1);
 
                   return (
                     <SkiaLine
                       key={i}
-                      p1={{ x: chartBounds.left + 40, y }}
-                      p2={{ x: chartBounds.right, y }}
+                      p1={{
+                        x: chartBounds.left + 54,
+                        y,
+                      }}
+                      p2={{
+                        x: chartBounds.right,
+                        y,
+                      }}
                       color={theme.border.default}
                       strokeWidth={1}
                     >
@@ -264,29 +273,26 @@ const PriceLineGraph = ({ data }: Props) => {
                   );
                 })}
 
-                {Array.from({ length: xTicks }).map((_, i) => {
+                {Array.from({ length: xTicks - 1 }).map((_, i) => {
                   const domain = xScale.domain(); // [0, data.length - 1]
-
                   const value =
-                    domain[0] + ((domain[1] - domain[0]) * i) / (xTicks - 1);
+                    3 + ((domain[1] - domain[0]) * i) / (xTicks - 1);
 
                   const index = Math.round(value);
                   if (index < 0 || index >= chartData.length) return null;
 
                   const x = xScale(value);
                   const label = chartData[index].time.substring(0, 5);
-                  console.log("labelhuhu: ", label);
 
                   const textWidth = fontDate?.measureText(label).width ?? 0;
-                  console.log("textWidth: ", textWidth);
                   return (
                     <SkiaText
                       key={i}
                       x={x - textWidth / 2}
-                      y={chartBounds.bottom + 14}
+                      y={chartBounds.top + 340}
                       text={label}
                       font={fontPrice}
-                      color={"black"}
+                      color={theme.text.primary}
                     />
                   );
                 })}
