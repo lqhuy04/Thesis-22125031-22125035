@@ -1,5 +1,6 @@
 import IntroductionSection from "@/components/detail/IntroductionSection";
 import NewsSection from "@/components/detail/NewsSection";
+import PriceChartComponent from "@/components/detail/PriceChartComponent";
 import DetailHeader from "@/components/ui/DetailHeader";
 import PriceCandleChart from "@/components/ui/PriceCandleChart";
 import PriceLineGraph from "@/components/ui/PriceLineChart";
@@ -53,7 +54,8 @@ const Detail = ({ stockItem }: Props) => {
       <ScrollView style={{ flex: 1 }}>
         <DetailHeader item={stockItem} />
 
-        <PriceLineGraph stockSymbol={stockItem.symbol} />
+        <PriceChartComponent stockSymbol={stockItem.symbol}/>
+
         <IntroductionSection />
 
         <NewsSection stockSymbol={stockItem.symbol} />

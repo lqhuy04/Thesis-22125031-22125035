@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect } from "react";
-import { fetchStockData, StockData } from "@/helpers/DetailHelpers";
+import React, { useMemo } from "react";
+import {  StockData } from "@/helpers/DetailHelpers";
 import { CartesianChart, Line, Area, useChartPressState } from "victory-native";
-import { View, Dimensions, ActivityIndicator } from "react-native";
+import { View, Dimensions } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import {
   Rect,
@@ -15,28 +15,13 @@ import {
   DashPathEffect,
 } from "@shopify/react-native-skia";
 import { useDerivedValue } from "react-native-reanimated";
-import { Text } from "./Text";
-import PriceCandleChart from "./PriceCandleChart";
 
 interface Props {
-  stockSymbol: string
+  data: StockData[];
+  option: "1D" | "1W" | "1M" | "1Y" | "5Y"
 }
 
-const PriceLineGraph = ({ stockSymbol }: Props) => {
-  const [loading, setLoading] = useState<boolean>(false);
-  const [option, setOption] = useState<"1D" | "1W" | "1M" | "1Y" | "5Y">("1D")
-  const [data, setData] = useState<StockData[]>([]);
-
-  useEffect(() => {
-    setLoading(true);
-    fetchStockData(stockSymbol, option ).then((stockRes) => {
-      setLoading(false);
-      if (stockRes?.status) {
-        setData(stockRes.data);
-      }
-    });
-        
-  }, [stockSymbol, option]);
+const PriceLineGraph = ({ data, option }: Props) => {
   
   const screenWidth = Dimensions.get("window").width;
   const chartData = useMemo(() => {
@@ -133,10 +118,7 @@ const PriceLineGraph = ({ stockSymbol }: Props) => {
   const xTicks = 8;
 
   return <View>
-    { loading ? <View style={{height: 300, justifyContent: 'center',
-    alignItems: 'center',}}>
-    <ActivityIndicator size="large" color={theme.base.primary} />
-  </View> :
+    { 
     data.length !== 0 ? (
       <View style={{ height: 300 }}>
       <CartesianChart
@@ -349,37 +331,6 @@ const PriceLineGraph = ({ stockSymbol }: Props) => {
       
     ) : null
 }
-
-  <View style={{flexDirection: 'row', alignItems: "center", justifyContent: "space-between"}}>
-        <View style={{backgroundColor: option ==='1D' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
-            <Text typography="titleMedium" color={option ==='1D' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("1D")} >
-                1D
-            </Text>
-        </View>
-        <View style={{backgroundColor: option ==='1W' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
-            <Text typography="titleMedium" color={option ==='1W' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("1W")} >
-                1W
-            </Text>
-        </View>
-        <View style={{backgroundColor: option ==='1M' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
-            <Text typography="titleMedium" color={option ==='1M' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("1M")} >
-                1M
-            </Text>
-        </View>
-        <View style={{backgroundColor: option ==='1Y' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
-            <Text typography="titleMedium" color={option ==='1Y' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("1Y")} >
-                1Y
-            </Text>
-        </View>
-        <View style={{backgroundColor: option ==='5Y' ? theme.base.primary : theme.background.surface, padding: 4, borderRadius: 2}}>
-            <Text typography="titleMedium" color={option ==='5Y' ? theme.text.onPrimary : theme.text.primary} onPress={() => setOption("5Y")} >
-                5Y
-            </Text>
-        </View>
-          </View>
-
-
-    <PriceCandleChart data={data} />
   </View>;
 };
 

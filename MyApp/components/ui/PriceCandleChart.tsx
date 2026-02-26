@@ -111,7 +111,7 @@ const LastOpenLine = () => {
   if (!data?.length) return null;
 
   const lastCandle = data[data.length - 1];
-  const openPrice = lastCandle.open;
+  const openPrice = lastCandle.close;
 
   const [ min, max ] = domain;
 
@@ -297,35 +297,32 @@ const PriceCandleChart = ({ data }: Props) => {
     data.length !== 0 && (
 
         <View >
-          <View style={styles.container}>
-            {/* 3. Cấu hình Biểu đồ */}
-            <CandlestickChart.Provider data={chartData}>
-              <CandlestickChart width={screenWidth} height={278}>
+          <CandlestickChart.Provider data={chartData}>
+            <CandlestickChart width={screenWidth} height={300}>
 
-              <LastOpenLine />
+            <LastOpenLine />
 
-                <CandlestickChart.Candles
-                  positiveColor={theme.base.success} // Xanh (Tăng)
-                  negativeColor={theme.base.error} // Đỏ (Giảm)
-                />
-                {/* Đường chéo tương tác */}
-                <CandlestickChart.Crosshair
-                color={theme.base.primary}
-                  horizontalCrosshairProps={{
-                    style: {
-                      backgroundColor: "transparent",
-                      borderWidth: 0,
-                    },
-                  }}
-                >
-                </CandlestickChart.Crosshair>
-                <CandleTooltip />
-              </CandlestickChart>
-            </CandlestickChart.Provider>
-          </View>
+              <CandlestickChart.Candles
+                positiveColor={theme.base.success} // Xanh (Tăng)
+                negativeColor={theme.base.error} // Đỏ (Giảm)
+              />
+              {/* Đường chéo tương tác */}
+              <CandlestickChart.Crosshair
+              color={theme.base.primary}
+                horizontalCrosshairProps={{
+                  style: {
+                    backgroundColor: "transparent",
+                    borderWidth: 0,
+                  },
+                }}
+              >
+              </CandlestickChart.Crosshair>
+              <CandleTooltip />
+            </CandlestickChart>
+          </CandlestickChart.Provider>
   
 
-        <View
+        {/* <View
           style={{
             flexDirection: "row",
             justifyContent: "space-between",
@@ -346,31 +343,27 @@ const PriceCandleChart = ({ data }: Props) => {
             ((labelWidths[i] ?? 0) ) + 4, // 👈 trừ đúng 1/2 width
         }}
       >
-        <Text
-          typography="titleSmall"
-          onLayout={(e) => {
-            const w = e.nativeEvent.layout.width;
+              <Text
+                typography="titleSmall"
+                onLayout={(e) => {
+                  const w = e.nativeEvent.layout.width;
 
-            setLabelWidths((prev) => {
-              const copy = [...prev];
-              copy[i] = w;
-              return copy;
-            });
-          }}
-        >
-          {tick.label}
-        </Text>
-      </View>
-    );
-  })}
-        </View>
-      </View>
+                  setLabelWidths((prev) => {
+                    const copy = [...prev];
+                    copy[i] = w;
+                    return copy;
+                  });
+                }}
+              >
+                {tick.label}
+              </Text>
+            </View>
+          );
+        })}
+        </View> */}
+    </View>
     )
   );
 };
-
-const styles = StyleSheet.create({
-  container: {},
-});
 
 export default PriceCandleChart;
