@@ -1,165 +1,74 @@
 """
 Agentic AI Service for stock analysis
-Integrates fundamental and technical analysis using LangGraph
+Uses the AgenticAI workflow (agents: Fundamental, Technical, News, RiskAppetite, Summary)
 """
+import sys
 import os
-from typing import TypedDict, Dict, Any
-from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.graph import StateGraph, END
+import importlib.util
+from typing import Dict, Any
 
-# Load environment variables
-load_dotenv()
+# Add AgenticAI directory to sys.path so its internal imports work
+_agentic_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'AgenticAI'))
+if _agentic_dir not in sys.path:
+    sys.path.insert(0, _agentic_dir)
 
-# Initialize LLM
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash", 
-    google_api_key=os.getenv("GEMINI_API_KEY")
-)
+# Import create_workflow via importlib to avoid name conflict with app.main
+_spec = importlib.util.spec_from_file_location("agentic_ai_main", os.path.join(_agentic_dir, "main.py"))
+_agentic_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_agentic_module)
 
+create_workflow = _agentic_module.create_workflow
 
-# Define Agent State
-class AgentState(TypedDict):
-    raw_data: dict
-    fundamental_analysis: str
-    technical_analysis: str
-    final_report: str
-    revision_count: int
-
-
-# Node: Start Node (để trigger parallel execution)
-def start_node(state: AgentState):
-    """Node khởi đầu để trigger parallel analysis."""
-    return {}
-
-
-# Node: Fundamental Analysis
-def analyzer_node(state: AgentState):
-    """Phân tích dữ liệu tài chính cơ bản (Fundamental Analysis)."""
-    data = state['raw_data']
-    prompt = f"""Phân tích các chỉ số tài chính cơ bản cho cổ phiếu {data['symbol']}:
-    {data['metrics']}
-    
-    Hãy đánh giá:
-    - Định giá (P/E, P/B, EV/EBITDA)
-    - Khả năng sinh lời (ROE, ROA, các margin)
-    - Tăng trưởng (revenue YoY, EPS YoY)
-    - Tình hình tài chính (debt to equity, current ratio)
-    - Dòng tiền tự do (FCF)
-    
-    Đưa ra nhận định tổng quan về sức khỏe tài chính của công ty."""
-    response = llm.invoke(prompt)
-    return {"fundamental_analysis": response.content}
-
-
-# Node: Technical Analysis
-def technical_analyzer_node(state: AgentState):
-    """Phân tích kỹ thuật (Technical Analysis) dựa trên dữ liệu giá."""
-    data = state['raw_data']
-    
-    # Only analyze if price_data is available
-    if not data.get('price_data'):
-        return {"technical_analysis": "Không có dữ liệu giá để phân tích kỹ thuật."}
-    
-    prompt = f"""Phân tích kỹ thuật cho cổ phiếu {data['symbol']} dựa trên dữ liệu giá gần đây:
-    {data['price_data']}
-    
-    Hãy phân tích:
-    - Xu hướng giá (trend) trong giai đoạn này
-    - Mức hỗ trợ và kháng cự
-    - Khối lượng giao dịch và thanh khoản
-    - Biên độ dao động giá
-    - Các tín hiệu mua/bán tiềm năng
-    
-    Đưa ra nhận định về xu hướng ngắn hạn và trung hạn."""
-    response = llm.invoke(prompt)
-    return {"technical_analysis": response.content}
-
-
-# Node: Final Report
-def final_report_node(state: AgentState):
-    """Tổng hợp báo cáo ngắn gọn từ phân tích cơ bản và kỹ thuật."""
-    data = state['raw_data']
-    prompt = f"""Dựa trên hai phân tích sau đây cho cổ phiếu {data['symbol']}, hãy tổng hợp thành một đoạn văn ngắn gọn (khoảng 150-200 từ):
-
-    PHÂN TÍCH CƠ BẢN:
-    {state['fundamental_analysis']}
-    
-    PHÂN TÍCH KỸ THUẬT:
-    {state['technical_analysis']}
-    
-    Hãy viết một đoạn văn ngắn gọn bao gồm:
-    1. Đánh giá tổng quan về cổ phiếu
-    2. Khuyến nghị đầu tư (Mua/Giữ/Bán) với lý do chính
-    3. Mức giá mục tiêu (nếu có)
-    
-    LƯU Ý: Chỉ viết một đoạn văn ngắn, súc tích, dễ hiểu. KHÔNG viết dài dòng."""
-    response = llm.invoke(prompt)
-    return {"final_report": response.content}
-
-
-# Build the workflow graph
-workflow = StateGraph(AgentState)
-
-# Add nodes
-workflow.add_node("start", start_node)
-workflow.add_node("fundamental_analysis", analyzer_node)
-workflow.add_node("technical_analysis", technical_analyzer_node)
-workflow.add_node("final_report", final_report_node)
-
-# Set the flow - Parallel execution
-# Start node triggers both fundamental and technical analysis in parallel
-workflow.set_entry_point("start")
-workflow.add_edge("start", "fundamental_analysis")
-workflow.add_edge("start", "technical_analysis")
-
-# Both fundamental and technical must complete before final report
-workflow.add_edge("fundamental_analysis", "final_report")
-workflow.add_edge("technical_analysis", "final_report")
-
-workflow.add_edge("final_report", END)
-
-# Compile the graph
-app = workflow.compile()
+# Compile the workflow once at module level
+workflow_app = create_workflow()
 
 
 class AgenticAIService:
-    """Service for AI-powered stock analysis"""
-    
+    """Service for AI-powered stock analysis using AgenticAI workflow"""
+
     @staticmethod
-    async def analyze_stock(symbol: str, metrics: list, price_data: list = None) -> Dict[str, Any]:
+    async def analyze_stock(
+        symbol: str,
+        company_name: str = "",
+        price_data: list = None,
+        news_data: list = None,
+        user_profile: dict = None,
+    ) -> Dict[str, Any]:
         """
-        Analyze stock using agentic AI
-        
+        Run the full AgenticAI workflow (Fundamental, Technical, News, RiskAppetite → Summary).
+
         Args:
-            symbol: Stock symbol
-            metrics: List of financial metrics
-            price_data: Optional list of price data for technical analysis
-            
+            symbol: Stock symbol (e.g. VNM)
+            company_name: Full company name
+            price_data: List of price records for technical analysis
+            news_data: List of news articles for sentiment analysis
+            user_profile: User risk-appetite profile dict
+
         Returns:
-            Dictionary containing analysis results
+            Dictionary containing all analysis results and recommendation
         """
         try:
-            # Prepare input data
-            input_data = {
-                "raw_data": {
-                    "symbol": symbol,
-                    "metrics": metrics,
-                    "price_data": price_data or []
-                },
-                "revision_count": 0
+            initial_state: Dict[str, Any] = {
+                "symbol": symbol,
+                "company_name": company_name,
+                "price_data": price_data or [],
+                "news_data": news_data or [],
             }
-            
-            # Run the agentic AI workflow
-            result = app.invoke(input_data)
-            
+
+            if user_profile:
+                initial_state["userProfile"] = user_profile
+
+            # Run the LangGraph workflow (parallel agents → summary)
+            result = workflow_app.invoke(initial_state)
+
             return {
                 "symbol": symbol,
-                "fundamental_analysis": result.get("fundamental_analysis", ""),
-                "technical_analysis": result.get("technical_analysis", ""),
-                "final_report": result.get("final_report", ""),
-                "analysis_timestamp": None  # You can add timestamp if needed
+                "fundamental_analysis": result.get("fundamental_analysis", {}),
+                "technical_analysis": result.get("technical_analysis", {}),
+                "news_analysis": result.get("news_analysis", {}),
+                "risk_appetite": result.get("risk_appetite", {}),
+                "recommendation": result.get("recommendation", {}),
             }
-            
+
         except Exception as e:
             raise Exception(f"Error in agentic AI analysis: {str(e)}")
