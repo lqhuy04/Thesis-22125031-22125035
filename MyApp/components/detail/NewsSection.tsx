@@ -6,7 +6,6 @@ import { fetchNews, New } from "@/helpers/DetailHelpers";
 import NewsItem from "../ui/NewsItem";
 import SeeAllBtn from "@/components/ui/SeeAllBtn";
 
-
 interface NewsSectionProps {
   stockSymbol: string;
 }
@@ -25,10 +24,10 @@ const NewsSection = ({ stockSymbol }: NewsSectionProps) => {
   }, [stockSymbol]);
 
   return (
-    <View>
-       <Text typography="titleLarge" style={{marginTop: 24}}>
-          {t("detail.newsSectionTitle")}
-        </Text>
+    <View style={{ marginHorizontal: 12, marginTop: 12 }}>
+      <Text typography="titleLarge" style={{ marginTop: 24 }}>
+        {t("detail.newsSectionTitle")}
+      </Text>
 
       {newsItems.slice(0, 3).map((item) => (
         <NewsItem key={item.id} newItem={item} />

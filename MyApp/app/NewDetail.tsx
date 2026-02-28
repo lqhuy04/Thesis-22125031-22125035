@@ -1,6 +1,6 @@
 import { Text } from "@/components/ui/Text";
 import React from "react";
-import { Image, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { New } from "@/helpers/DetailHelpers";
@@ -32,33 +32,20 @@ const NewDetal = () => {
             marginHorizontal: 12,
           }}
         >
-          <Text typography="bodyLarge" style={{ marginRight: 12 }}>
-            Stockbiz
-          </Text>
-          <Text typography="bodyMedium">- {item?.published_at}</Text>
+          <Text typography="bodyLarge">{item?.source} </Text>
+          <Text typography="bodyMedium">- {item?.time.slice(0, 10)}</Text>
         </View>
 
         <Text typography="titleLarge" style={{ marginHorizontal: 12 }}>
           {item?.description}
         </Text>
 
-        {item?.content?.blocks.map((data, index) => {
-          return data?.type === "text" ? (
-            <Text
-              key={index.toString()}
-              typography="bodyLarge"
-              style={{ marginVertical: 8, marginHorizontal: 12 }}
-            >
-              {data?.content ?? ""}
-            </Text>
-          ) : data?.type === "image" ? (
-            <Image
-              key={index.toString()}
-              source={{ uri: data?.url }}
-              style={{ width: "100%", height: 200, marginVertical: 16 }}
-            />
-          ) : null;
-        })}
+        <Text
+          typography="bodyLarge"
+          style={{ marginVertical: 8, marginHorizontal: 12 }}
+        >
+          {item?.content ?? ""}
+        </Text>
 
         <Text
           typography="bodyLarge"

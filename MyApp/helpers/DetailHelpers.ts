@@ -15,9 +15,7 @@ export type New = {
   time: string;
   image_url: string;
   published_at: string;
-  content: {
-    blocks: Content[];
-  };
+  content: string;
   source: string;
 };
 
