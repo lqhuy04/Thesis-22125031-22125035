@@ -50,13 +50,7 @@ async def test_analyze_stock(symbol: str):
                 "fundamental_analysis": analysis_result["fundamental_analysis"],
                 "technical_analysis": analysis_result["technical_analysis"],
                 "news_analysis": analysis_result["news_analysis"],
-                "risk_appetite": analysis_result["risk_appetite"],
                 "recommendation": analysis_result["recommendation"],
-                "data_sources": {
-                    "price_data_count": len(mock_price_data),
-                    "news_data_count": len(mock_news_data),
-                    "note": "Using hard-coded test data from AgenticAI"
-                }
             },
             "errorCode": 0,
             "errorDesc": "",
@@ -142,12 +136,7 @@ async def analyze_stock(
                 "fundamental_analysis": analysis_result["fundamental_analysis"],
                 "technical_analysis": analysis_result["technical_analysis"],
                 "news_analysis": analysis_result["news_analysis"],
-                "risk_appetite": analysis_result["risk_appetite"],
                 "recommendation": analysis_result["recommendation"],
-                "data_sources": {
-                    "price_data_count": len(price_data),
-                    "news_data_count": len(news_data),
-                }
             },
             "errorCode": 0,
             "errorDesc": "",

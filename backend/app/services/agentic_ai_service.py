@@ -63,11 +63,10 @@ class AgenticAIService:
 
             return {
                 "symbol": symbol,
-                "fundamental_analysis": result.get("fundamental_analysis", {}),
-                "technical_analysis": result.get("technical_analysis", {}),
-                "news_analysis": result.get("news_analysis", {}),
-                "risk_appetite": result.get("risk_appetite", {}),
-                "recommendation": result.get("recommendation", {}),
+                "fundamental_analysis": result.get("fundamental_analysis", ""),
+                "technical_analysis": result.get("technical_analysis", ""),
+                "news_analysis": result.get("news_analysis", ""),
+                "recommendation": result.get("recommendation", ""),
             }
 
         except Exception as e:
