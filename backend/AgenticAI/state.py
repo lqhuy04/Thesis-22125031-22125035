@@ -23,6 +23,7 @@ class AgentState(TypedDict):
 
     # ===== FINAL RECOMMENDATION OUTPUT =====
     recommendation: dict
+    confidence: float
 
     # ===== AGENT COORDINATION =====
     current_agent: str
