@@ -28,7 +28,7 @@ from app.models.market_data_schemas import (
 )
 from app.config import settings
 
-router = APIRouter(prefix="/market-data", tags=["Market Data"])
+router = APIRouter(prefix="/api", tags=["Market Data"])
 
 
 def create_response(result: dict, request_id: str) -> MarketDataResponse:
@@ -118,27 +118,19 @@ async def get_top_stocks(
     return create_response(result, request_id)
 
 
-@router.get("/search", response_model=MarketDataResponse)
+@router.get("/search/{query}", response_model=MarketDataResponse)
 async def search_securities(
-    query: str = Query("", description="Search by symbol only"),
+    query: str,
     market: Optional[str] = Query(None, description="Filter by market (HOSE, HNX, UPCOM)"),
     page_index: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page (max 100)")
 ):
     """
-    🚀 Search for securities with prices (optimized with parallel fetching)
+    🚀 Search for securities by symbol (case-insensitive)
     
-    Returns securities matching the search query with current price information:
-    - **symbol**: Stock symbol
-    - **name**: Company name
-    - **market**: Market (HOSE, HNX, UPCOM)
-    - **current_price**: Latest closing price
-    - **price_change**: Change from previous day's close
-    - **price_change_percent**: Percentage change from previous day
+    Filters out đị quỹ, chứng quyền - only returns actual stocks.
     
-    **Performance**: Uses parallel API calls to fetch prices (~1-2s for 20 results)
-    
-    - **query**: Search term (symbol only) - matches against stock symbols containing this text
+    - **query**: Stock symbol to search for (e.g., VNM, fpt)
     - **market**: Filter by specific market - HOSE, HNX, or UPCOM (optional)
     - **page_index**: Page number for pagination (default: 1)
     - **page_size**: Number of items per page (default: 20, max: 100)
@@ -157,15 +149,17 @@ async def search_securities(
 @router.get("/price/{symbol}", response_model=MarketDataResponse)
 async def get_stock_price(symbol: str):
     """
-    💰 Get current price for a single stock
+    💰 Get ceiling/floor/reference price for a stock
     
-    Returns:
-    - **symbol**: Stock symbol
+    Calculates prices based on Vietnamese stock market rules:
+    - **reference_price**: Previous day's closing price (giá tham chiếu)
+    - **ceiling_price**: giá trần = RefPrice * (1 + band)
+    - **floor_price**: giá sàn = RefPrice * (1 - band)
     - **current_price**: Latest closing price
     - **price_change**: Change from previous day's close
-    - **price_change_percent**: Percentage change from previous day
+    - **price_change_percent**: Percentage change
     
-    Formula: `(Current Price - Previous Close) / Previous Close × 100`
+    Fluctuation bands: HOSE 7%, HNX 10%, UPCOM 15%
     """
     request_id = str(uuid.uuid4())
     service = get_ssi_service()
@@ -273,7 +267,7 @@ async def get_daily_ohlc(
     request_id = str(uuid.uuid4())
     service = get_ssi_service()
     result = service.get_daily_ohlc(
-        symbol.lower(), from_date, to_date, page_index, page_size, ascending
+        symbol.upper(), from_date, to_date, page_index, page_size, ascending
     )
     return create_response(result, request_id)
 
@@ -302,7 +296,7 @@ async def get_intraday_ohlc(
     request_id = str(uuid.uuid4())
     service = get_ssi_service()
     result = service.get_intraday_ohlc(
-        symbol.lower(), from_date, to_date, page_index, page_size, ascending, resolution.value
+        symbol.upper(), from_date, to_date, page_index, page_size, ascending, resolution.value
     )
     return create_response(result, request_id)
 
@@ -358,36 +352,28 @@ async def get_daily_stock_price(
     request_id = str(uuid.uuid4())
     service = get_ssi_service()
     result = service.get_daily_stock_price(
-        symbol.lower(), from_date, to_date, page_index, page_size, market.lower()
+        symbol.upper(), from_date, to_date, page_index, page_size, market.upper()
     )
     return create_response(result, request_id)
 
 
-@router.get("/stock-price/timeframe/{symbol}", response_model=MarketDataResponse)
+@router.get("/stock-price/{symbol}", response_model=MarketDataResponse)
 async def get_stock_price_by_timeframe(
     symbol: str,
-    timeframe: TimeFrameEnum = Query(..., description="Time frame (1D, 1W, 7D, 1M, 1Y, 5Y)"),
+    timeframe: TimeFrameEnum = Query(..., description="Time frame (1D, 1W, 1M, 1Y, 5Y)"),
     market: str = Query("hose", description="Market code (hose, hnx, upcom)")
 ):
     """
-    📊 Get stock prices optimized for different time frames
+    📊 Get stock price data optimized for chart display
     
-    **Automatic interval selection:**
-    - **1D** (1 day): 5-minute intervals - Perfect for intraday trading
-    - **1W** (1 week): 1-hour intervals - Short-term trends
-    - **7D** (7 days): 1-hour intervals - Weekly analysis
-    - **1M** (1 month): 1-day intervals - Monthly trends
-    - **1Y** (1 year): 1-day intervals - Annual performance
-    - **5Y** (5 years): 1-week intervals - Long-term investment view
+    **Interval per timeframe:**
+    - **1D** (1 day): 15-minute intervals
+    - **1W** (1 week): 2-hour intervals
+    - **1M** (1 month): 12-hour intervals
+    - **1Y** (1 year): 1-week intervals
+    - **5Y** (5 years): 1-month intervals
     
-    Returns OHLC (Open, High, Low, Close) data with timestamps optimized for chart display.
-    
-    **Response includes:**
-    - Price data with appropriate intervals
-    - Timeframe metadata (from_date, to_date, interval)
-    - Total number of data points
-    
-    **Example:** `/market-data/stock-price/timeframe/VNM?timeframe=1M`
+    **Example:** `/api/stock-price/VNM?timeframe=1M`
     """
     request_id = str(uuid.uuid4())
     service = get_ssi_service()

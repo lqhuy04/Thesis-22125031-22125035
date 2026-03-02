@@ -13,10 +13,10 @@ from app.services.financial_db_service import FinancialDBService
 from datetime import datetime
 import uuid
 
-router = APIRouter(prefix="/api/financial", tags=["Financial Analysis"])
+router = APIRouter(prefix="/api/fundamental-metrics", tags=["Fundamental Metrics"])
 
 
-@router.get("/metrics/{symbol}", 
+@router.get("/{symbol}", 
             summary="Get Financial Metrics by Symbol",
             description="Retrieve financial metrics for a specific stock symbol. Optionally filter by year.")
 async def get_financial_metrics(
@@ -88,7 +88,7 @@ async def get_financial_metrics(
         )
 
 
-@router.get("/metrics/{symbol}/latest",
+@router.get("/{symbol}/latest",
             summary="Get Latest Financial Metrics",
             description="Retrieve the most recent financial metrics for a stock symbol")
 async def get_latest_metrics(symbol: str):
@@ -132,7 +132,7 @@ async def get_latest_metrics(symbol: str):
         )
 
 
-@router.get("/metrics/{symbol}/years",
+@router.get("/{symbol}/years",
             summary="Get Available Years",
             description="Get list of years with available financial data for a symbol")
 async def get_available_years(symbol: str):
@@ -176,7 +176,7 @@ async def get_available_years(symbol: str):
         )
 
 
-@router.get("/analysis/{symbol}",
+@router.get("/{symbol}/analysis",
             summary="Get Comprehensive Financial Analysis",
             description="Get a comprehensive financial analysis with formatted metrics")
 async def get_financial_analysis(

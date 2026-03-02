@@ -578,35 +578,122 @@ class SSIMarketDataService:
 
     def get_stock_price(self, symbol: str) -> Dict[str, Any]:
         """
-        Get current price for a single stock using daily OHLC data
+        Get current price for a single stock using daily OHLC data,
+        including calculated ceiling, floor, and reference prices.
+        
+        Ceiling = RefPrice * (1 + band), Floor = RefPrice * (1 - band)
+        Band: HOSE 7%, HNX 10%, UPCOM 15%
+        RefPrice: previous trading day's close (HOSE/HNX) or average price (UPCOM)
         
         Args:
             symbol: Stock symbol (e.g., VNM, FPT)
         
         Returns:
-            Price data including current_price, price_change, price_change_percent, etc.
+            Price data including current_price, price_change, ceiling_price, floor_price, reference_price
         """
         try:
             if not self._ensure_token():
                 return {"success": False, "error": "Failed to get access token"}
             
-            from datetime import datetime
+            from datetime import datetime, timedelta
+            import math
             today_str = datetime.now().strftime("%d/%m/%Y")
+            symbol_upper = symbol.upper()
             
-            price_data = self._get_daily_price(symbol.upper(), today_str)
+            # 1. Get last 7 days of OHLC to have at least 2 trading days
+            today = datetime.now()
+            from_date = today - timedelta(days=7)
+            from_date_str = from_date.strftime("%d/%m/%Y")
+            
+            params = {
+                "symbol": symbol_upper,
+                "fromDate": from_date_str,
+                "toDate": today_str,
+                "pageIndex": 1,
+                "pageSize": 10,
+                "ascending": "false"  # Latest first
+            }
+            
+            response = self._make_get_request(SSIEndpoints.DAILY_OHLC, params)
+            
+            current_price = None
+            price_change = None
+            price_change_percent = None
+            reference_price = None
+            ceiling_price = None
+            floor_price = None
+            
+            if response.get("status") == "Success":
+                data_list = response.get("data", [])
+                
+                if data_list and len(data_list) > 0:
+                    latest = data_list[0]
+                    current_price = self._parse_number(latest.get("Close") or latest.get("close"))
+                    
+                    if len(data_list) >= 2 and current_price:
+                        previous = data_list[1]
+                        prev_close = self._parse_number(previous.get("Close") or previous.get("close"))
+                        
+                        if prev_close and prev_close > 0:
+                            price_change = round(current_price - prev_close, 2)
+                            price_change_percent = round((price_change / prev_close) * 100, 2)
+                            reference_price = prev_close
+            
+            # 2. Detect market for the symbol to determine fluctuation band
+            if reference_price:
+                market = self._detect_market(symbol_upper)
+                band = {"HOSE": 0.07, "HNX": 0.10, "UPCOM": 0.15}.get(market, 0.07)
+                
+                # Ceiling and floor prices, rounded down to nearest 100 (standard VN stock pricing)
+                raw_ceiling = reference_price * (1 + band)
+                raw_floor = reference_price * (1 - band)
+                ceiling_price = math.floor(raw_ceiling / 100) * 100
+                floor_price = math.floor(raw_floor / 100) * 100
             
             return {
                 "success": True,
                 "data": {
-                    "symbol": symbol.upper(),
-                    "current_price": price_data.get("current_price"),
-                    "price_change": price_data.get("price_change"),
-                    "price_change_percent": price_data.get("price_change_percent")
+                    "symbol": symbol_upper,
+                    "current_price": current_price,
+                    "price_change": price_change,
+                    "price_change_percent": price_change_percent,
+                    "reference_price": reference_price,
+                    "ceiling_price": ceiling_price,
+                    "floor_price": floor_price,
                 }
             }
         except Exception as e:
             logger.error(f"Error getting stock price for {symbol}: {str(e)}")
             return {"success": False, "error": str(e)}
+
+    def _detect_market(self, symbol: str) -> str:
+        """
+        Detect which market a stock belongs to (HOSE, HNX, UPCOM).
+        Searches each market's securities list for the symbol.
+        
+        Args:
+            symbol: Stock symbol (uppercase)
+        
+        Returns:
+            Market string: 'HOSE', 'HNX', or 'UPCOM'. Defaults to 'HOSE' if not found.
+        """
+        try:
+            for market in ["HOSE", "HNX", "UPCOM"]:
+                params = {
+                    "market": market,
+                    "symbol": symbol,
+                    "pageIndex": 1,
+                    "pageSize": 10
+                }
+                response = self._make_get_request(SSIEndpoints.SECURITIES_DETAILS, params)
+                if response.get("status") == "Success" and response.get("data"):
+                    data = response["data"]
+                    if isinstance(data, list) and len(data) > 0:
+                        return market
+            return "HOSE"  # Default fallback
+        except Exception as e:
+            logger.warning(f"Error detecting market for {symbol}: {str(e)}")
+            return "HOSE"
 
     def get_top_stocks(self, symbols: list = None) -> Dict[str, Any]:
         """
@@ -749,16 +836,15 @@ class SSIMarketDataService:
         Get stock prices based on timeframe with appropriate intervals
         
         Timeframe logic:
-        - 1D (1 day): 5-minute intervals (9:00, 9:05, 9:10...)
-        - 1W (1 week): 1-hour intervals (9:00, 10:00, 11:00...)
-        - 7D (7 days): 1-hour intervals (9:00, 10:00, 11:00...)
-        - 1M (1 month): 1-day intervals
-        - 1Y (1 year): 1-day intervals
-        - 5Y (5 years): Weekly aggregation (sample every 7 days)
+        - 1D (1 day): 15-minute intervals
+        - 1W (1 week): 2-hour intervals
+        - 1M (1 month): 12-hour intervals
+        - 1Y (1 year): 1-week intervals (sampled from daily)
+        - 5Y (5 years): 1-month intervals (sampled from daily)
         
         Args:
             symbol: Stock symbol (e.g., 'VNM', 'FPT')
-            timeframe: Time frame ('1D', '1W', '7D', '1M', '1Y', '5Y')
+            timeframe: Time frame ('1D', '1W', '1M', '1Y', '5Y')
             market: Market code (hose, hnx, upcom)
         
         Returns:
@@ -777,39 +863,35 @@ class SSIMarketDataService:
                 "1D": {
                     "days": 1,
                     "use_intraday": True,
-                    "resolution": 1,  # Get 1-min data to aggregate to 5-min
-                    "aggregate_interval": 5,  # Aggregate to 5-minute intervals
-                    "page_size": 500  # Max data points for 1 day
+                    "resolution": 1,  # Get 1-min data to aggregate to 15-min
+                    "aggregate_interval": 15,  # Aggregate to 15-minute intervals
+                    "page_size": 500
                 },
                 "1W": {
                     "days": 7,
                     "use_intraday": True,
-                    "resolution": 1,  # Get 1-min data to aggregate to 1-hour
-                    "aggregate_interval": 60,  # Aggregate to 1-hour intervals
-                    "page_size": 1000  # ~168 hours in a week
-                },
-                "7D": {
-                    "days": 7,
-                    "use_intraday": True,
-                    "resolution": 1,  # Get 1-min data to aggregate to 1-hour
-                    "aggregate_interval": 60,  # Aggregate to 1-hour intervals
+                    "resolution": 1,  # Get 1-min data to aggregate to 2-hour
+                    "aggregate_interval": 120,  # Aggregate to 2-hour intervals
                     "page_size": 1000
                 },
                 "1M": {
                     "days": 30,
-                    "use_intraday": False,
-                    "page_size": 50  # ~30 days
+                    "use_intraday": True,
+                    "resolution": 1,  # Get 1-min data to aggregate to 12-hour
+                    "aggregate_interval": 720,  # Aggregate to 12-hour intervals
+                    "page_size": 1000
                 },
                 "1Y": {
                     "days": 365,
                     "use_intraday": False,
-                    "page_size": 400  # ~365 days
+                    "page_size": 400,  # ~365 days
+                    "sample_interval": 7  # Sample every 7 days (weekly)
                 },
                 "5Y": {
                     "days": 1825,  # 5 years
                     "use_intraday": False,
-                    "page_size": 1000,  # ~260 weeks
-                    "sample_interval": 7  # Sample every 7 days
+                    "page_size": 1000,
+                    "sample_interval": 21  # ~21 trading days per month
                 }
             }
             
@@ -859,26 +941,27 @@ class SSIMarketDataService:
                     result["data"]["data"] = aggregated_data
                     result["data"]["totalRecord"] = len(aggregated_data)
             
-            # Post-process data for 5Y to sample every week
-            if timeframe == "5Y" and result.get("data", {}).get("data"):
+            # Post-process daily data: sample at configured intervals
+            if not config["use_intraday"] and config.get("sample_interval") and result.get("data", {}).get("data"):
                 data_list = result["data"]["data"]
-                # Sample every 7th data point for weekly intervals
-                sampled_data = data_list[::7] if len(data_list) > 7 else data_list
+                interval = config["sample_interval"]
+                sampled_data = data_list[::interval] if len(data_list) > interval else data_list
                 result["data"]["data"] = sampled_data
                 result["data"]["totalRecord"] = len(sampled_data)
             
             # Add metadata about the timeframe
+            interval_labels = {
+                "1D": "15 minutes",
+                "1W": "2 hours",
+                "1M": "12 hours",
+                "1Y": "1 week",
+                "5Y": "1 month",
+            }
             if result.get("data"):
                 result["data"]["timeframe"] = timeframe
                 result["data"]["from_date"] = from_date
                 result["data"]["to_date"] = to_date
-                if config["use_intraday"]:
-                    result["data"]["interval"] = f"{config['aggregate_interval']} minutes"
-                else:
-                    if timeframe == "5Y":
-                        result["data"]["interval"] = "1 week"
-                    else:
-                        result["data"]["interval"] = "1 day"
+                result["data"]["interval"] = interval_labels.get(timeframe, "unknown")
             
             return result
             

@@ -30,12 +30,11 @@ class ResolutionEnum(int, Enum):
 
 class TimeFrameEnum(str, Enum):
     """Time frame options for stock price charts"""
-    ONE_DAY = "1D"      # 1 day - 5 minute intervals
-    ONE_WEEK = "1W"     # 1 week - 1 hour intervals
-    SEVEN_DAYS = "7D"   # 7 days - 1 hour intervals
-    ONE_MONTH = "1M"    # 1 month - 1 day intervals
-    ONE_YEAR = "1Y"     # 1 year - 1 day intervals
-    FIVE_YEARS = "5Y"   # 5 years - 1 week intervals
+    ONE_DAY = "1D"      # 1 day - 15 minute intervals
+    ONE_WEEK = "1W"     # 1 week - 2 hour intervals
+    ONE_MONTH = "1M"    # 1 month - 12 hour intervals
+    ONE_YEAR = "1Y"     # 1 year - 1 week intervals
+    FIVE_YEARS = "5Y"   # 5 years - 1 month intervals
 
 
 # Request Models

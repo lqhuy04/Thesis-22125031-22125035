@@ -12,7 +12,7 @@ from app.services.agentic_ai_service import AgenticAIService
 from datetime import datetime, timedelta
 import uuid
 
-router = APIRouter(prefix="/api/agentic-ai", tags=["Agentic AI Analysis"])
+router = APIRouter(prefix="/api/analysis", tags=["AI Analysis"])
 
 
 @router.get("/test/analyze/{symbol}", 
@@ -67,7 +67,7 @@ async def test_analyze_stock(symbol: str):
         )
 
 
-@router.get("/analyze/{symbol}", 
+@router.get("/{symbol}", 
             summary="AI-Powered Stock Analysis",
             description="Get comprehensive AI analysis combining fundamental, technical, news, and risk analysis")
 async def analyze_stock(

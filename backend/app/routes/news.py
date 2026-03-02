@@ -8,28 +8,28 @@ from app.services.news_db_service import NewsDBService
 from typing import Optional
 from uuid import uuid4
 
-router = APIRouter(prefix="/news", tags=["News"])
+router = APIRouter(prefix="/api/news", tags=["News"])
 
 
-@router.get("", response_model=NewsListResponse)
+@router.get("/{stock_symbol}", response_model=NewsListResponse)
 async def get_news(
+    stock_symbol: str,
     page: int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    stock_symbol: Optional[str] = Query(None, description="Filter by stock symbol"),
     search: Optional[str] = Query(None, description="Search in title and description")
 ):
     """
-    Get financial news with pagination and filters
+    Get financial news for a specific stock
     
+    - **stock_symbol**: Stock ticker (e.g., VNM, SSI)
     - **page**: Page number (starts from 1)
     - **page_size**: Number of items per page (max 100)
-    - **stock_symbol**: Filter news by stock ticker (e.g., VNM, SSI)
     - **search**: Search keyword in title and description
     """
     result = await NewsDBService.get_news(
         page=page,
         page_size=page_size,
-        stock_symbol=stock_symbol,
+        stock_symbol=stock_symbol.upper(),
         search=search
     )
     
