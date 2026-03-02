@@ -16,7 +16,7 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
     <TouchableOpacity
       onPress={() => {
         router.push({
-          pathname: "/StockTabs",
+          pathname: "/Detail",
           params: { data: JSON.stringify(item) },
         });
       }}

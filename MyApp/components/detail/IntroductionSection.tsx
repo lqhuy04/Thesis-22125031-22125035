@@ -4,8 +4,8 @@ import { Text } from "../ui/Text";
 
 const IntroductionSection = () => {
   return (
-    <View>
-      <Text typography="titleLarge" style={{ marginTop: 24, marginBottom: 12 }}>
+    <View style={{ marginTop: 12, marginHorizontal: 12 }}>
+      <Text typography="titleLarge" style={{ marginBottom: 8 }}>
         Introduction
       </Text>
 

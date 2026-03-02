@@ -20,7 +20,7 @@ const LocalizationContext = createContext<LocalizationContextType | null>(null);
 export const LocalizationProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>("en");
+  const [language, setLanguage] = useState<Language>("vi");
 
   const t = useMemo(() => {
     return (key: string) => {

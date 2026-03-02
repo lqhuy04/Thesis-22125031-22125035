@@ -1,8 +1,8 @@
 export default {
   ui: {
-      continue: "Tiếp tục",
-      skip: "Bỏ qua",
-      start: "Bắt đầu",
+    continue: "Tiếp tục",
+    skip: "Bỏ qua",
+    start: "Bắt đầu",
   },
   auth: {
     signIn: "Đăng nhập",
@@ -17,22 +17,22 @@ export default {
     email: "Email",
     phoneNumber: "Số điện thoại",
     phoneNumberPlaceholder: "Nhập số điện thoại của bạn",
-    home: {
-      search: "Tìm kiếm",
-    },
-    detail: {
-      screenTitle: 'Chi tiết cổ phiếu',
-      newsSectionTitle: "Tin tức",
-      newsSectionViewAll: "Xem tất cả",
-    },
-    fundamentalAnalysis: {
-      fundamentalAnalysisMetricsSectionTitle: "Các chỉ số",
-      PE: "P/E",
+  },
+  home: {
+    search: "Tìm kiếm",
+  },
+  detail: {
+    screenTitle: "Chi tiết cổ phiếu",
+    newsSectionTitle: "Tin tức",
+    newsSectionViewAll: "Xem tất cả",
+  },
+  fundamentalAnalysis: {
+    fundamentalAnalysisMetricsSectionTitle: "Số liệu chính",
+    PE: "P/E",
     PB: "P/B",
     EPS: "EPS",
-    marketCap: 'Vốn hoá (Tỷ VND)',
-    shareOutstanding: 'Khối lượng lưu hành (Triệu cổ phiếu)',
+    marketCap: "Vốn hoá (Tỷ VND)",
+    shareOutstanding: "Khối lượng lưu hành (Triệu cổ phiếu)",
     ROE: "ROE",
-    },
   },
 };

@@ -169,13 +169,12 @@ export type AnalysisData = {
   symbol: string;
   fundamental_analysis: string;
   technical_analysis: string;
-  final_report: string;
+  news_analysis: string;
+  recommendation: string;
 };
 
 export const getAnalysis = async (
   symbol: string,
-  fundamentalAnalysisInput: string,
-  technicalAnalysisInput: string,
 ): Promise<{
   status: boolean;
   data: AnalysisData | null;

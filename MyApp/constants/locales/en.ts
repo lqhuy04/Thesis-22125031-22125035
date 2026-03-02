@@ -3,7 +3,7 @@ export default {
     continue: "Continue",
     skip: "Skip",
     start: "Start",
-},
+  },
   auth: {
     signIn: "Sign in",
     forgotPassword: "Forgot Password?",
@@ -19,20 +19,20 @@ export default {
     phoneNumberPlaceholder: "Enter your phone number",
   },
   home: {
-    search: 'Search',
+    search: "Search",
   },
   detail: {
-    screenTitle: 'Stock Detail',
+    screenTitle: "Stock Detail",
     newsSectionTitle: "News",
     newsSectionViewAll: "View All",
   },
   fundamentalAnalysis: {
-    fundamentalAnalysisMetricsSectionTitle: "Metrics",
+    fundamentalAnalysisMetricsSectionTitle: "Key figures",
     PE: "P/E",
     PB: "P/B",
     EPS: "EPS",
-    marketCap: 'Market Cap (Billion VND)',
-    shareOutstanding: 'Share Outstanding (Million stocks)',
+    marketCap: "Market Cap (Billion VND)",
+    shareOutstanding: "Share Outstanding (Million stocks)",
     ROE: "ROE",
-  }
+  },
 };

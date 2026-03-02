@@ -10,18 +10,20 @@ interface Props {
   onPressBack?: () => void;
 }
 
-const ScreenHeader = ({hiddenBack = false, title, onPressBack }: Props) => {
+const ScreenHeader = ({ hiddenBack = false, title, onPressBack }: Props) => {
   return (
-    <View
-      style={{ flexDirection: "row", alignItems: "center", marginVertical: 12 }}
-    >
-      {hiddenBack ? null : <TouchableOpacity
-        onPress={() => (onPressBack != null ? onPressBack() : router.dismiss())}
-      >
-        <Ionicons name="arrow-back" size={24} style={{ marginRight: 16 }} />
-      </TouchableOpacity>}
+    <View style={{ flexDirection: "row", alignItems: "center", margin: 12 }}>
+      {hiddenBack ? null : (
+        <TouchableOpacity
+          onPress={() =>
+            onPressBack != null ? onPressBack() : router.dismiss()
+          }
+        >
+          <Ionicons name="arrow-back" size={18} style={{ marginRight: 16 }} />
+        </TouchableOpacity>
+      )}
 
-      <Text typography="titleLarge">{title}</Text>
+      <Text typography="titleMedium">{title}</Text>
     </View>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FlatList, Text } from "react-native";
+import { ActivityIndicator, FlatList, View } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { SearchBar } from "@/components/ui/SearchBar";
 import SearchResultItem from "@/components/ui/SearchResultItem";
@@ -15,6 +15,7 @@ const Home = () => {
   const onSearch = () => {
     setLoading(true);
     searchStocks(text).then((results) => {
+      console.log("Search results:", results);
       setSearchResults(results);
       setLoading(false);
     });
@@ -31,7 +32,15 @@ const Home = () => {
       <SearchBar value={text} onChange={setText} onSearchPress={onSearch} />
 
       {loading ? (
-        <Text>Searching...</Text>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <ActivityIndicator size="large" color={theme.base.primary} />
+        </View>
       ) : (
         <FlatList
           data={searchResults}
