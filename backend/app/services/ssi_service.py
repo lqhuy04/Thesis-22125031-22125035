@@ -535,8 +535,8 @@ class SSIMarketDataService:
                         if not symbol:
                             continue
                         
-                        # Filter out covered warrants (CQ securities) and ETFs (QUY securities)
-                        if "CQ " in name or name.startswith("CQ") or name.startswith("QUY"):
+                        # Filter out covered warrants (CQ securities), ETFs (QUY securities), and Chứng quyền
+                        if "CQ " in name or name.startswith("CQ") or name.startswith("QUY") or "Chứng quyền" in name:
                             continue
                         
                         # Filter by search query - symbol only (case-insensitive)

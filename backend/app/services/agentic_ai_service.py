@@ -67,6 +67,7 @@ class AgenticAIService:
                 "technical_analysis": result.get("technical_analysis", ""),
                 "news_analysis": result.get("news_analysis", ""),
                 "recommendation": result.get("recommendation", ""),
+                "confidence": result.get("confidence", 0.0),
             }
 
         except Exception as e:
