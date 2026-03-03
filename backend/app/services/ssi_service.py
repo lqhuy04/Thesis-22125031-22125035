@@ -736,23 +736,42 @@ class SSIMarketDataService:
 
     def _round_time_to_interval(self, time_str: str, interval_minutes: int) -> str:
         """
-        Round time to nearest interval (e.g., 09:17:56 -> 09:15:00 for 5-min interval)
+        Round time to nearest interval aligned to market open (09:15).
+        All times are clamped to trading hours [09:15, 14:45].
         
         Args:
             time_str: Time string in format HH:MM:SS
-            interval_minutes: Interval in minutes (5, 60, etc.)
+            interval_minutes: Interval in minutes (15, 120, etc.)
         
         Returns:
             Rounded time string in format HH:MM:00
         """
         try:
-            from datetime import datetime, timedelta
+            from datetime import datetime
             time_obj = datetime.strptime(time_str, "%H:%M:%S")
             
-            # Round down to nearest interval
-            minutes = (time_obj.hour * 60 + time_obj.minute) // interval_minutes * interval_minutes
-            hours = minutes // 60
-            mins = minutes % 60
+            MARKET_OPEN = 9 * 60 + 15   # 09:15 = 555 minutes
+            MARKET_CLOSE = 14 * 60 + 45  # 14:45 = 885 minutes
+            
+            current_minutes = time_obj.hour * 60 + time_obj.minute
+            
+            # Clamp to trading hours
+            if current_minutes < MARKET_OPEN:
+                current_minutes = MARKET_OPEN
+            if current_minutes > MARKET_CLOSE:
+                current_minutes = MARKET_CLOSE
+            
+            # Round down relative to market open
+            elapsed = current_minutes - MARKET_OPEN
+            rounded_elapsed = (elapsed // interval_minutes) * interval_minutes
+            rounded_minutes = MARKET_OPEN + rounded_elapsed
+            
+            # Cap at market close
+            if rounded_minutes > MARKET_CLOSE:
+                rounded_minutes = MARKET_CLOSE
+            
+            hours = rounded_minutes // 60
+            mins = rounded_minutes % 60
             
             return f"{hours:02d}:{mins:02d}:00"
         except:
@@ -790,9 +809,14 @@ class SSIMarketDataService:
                 bucket_key = f"{item['TradingDate']}_{rounded_time}"
                 time_buckets[bucket_key].append(item)
         
-        # Aggregate each bucket
+        # Aggregate each bucket (sort by YYYY/MM/DD_HH:MM:SS for correct chronological order)
+        def _sort_bucket_key(key):
+            trading_date, time_part = key.split("_")
+            day, month, year = trading_date.split("/")
+            return f"{year}/{month}/{day}_{time_part}"
+        
         aggregated = []
-        for bucket_key in sorted(time_buckets.keys()):
+        for bucket_key in sorted(time_buckets.keys(), key=_sort_bucket_key):
             bucket_items = time_buckets[bucket_key]
             
             if not bucket_items:
@@ -861,7 +885,7 @@ class SSIMarketDataService:
             
             timeframe_config = {
                 "1D": {
-                    "days": 1,
+                    "days": 0,
                     "use_intraday": True,
                     "resolution": 1,  # Get 1-min data to aggregate to 15-min
                     "aggregate_interval": 15,  # Aggregate to 15-minute intervals
@@ -876,10 +900,9 @@ class SSIMarketDataService:
                 },
                 "1M": {
                     "days": 30,
-                    "use_intraday": True,
-                    "resolution": 1,  # Get 1-min data to aggregate to 12-hour
-                    "aggregate_interval": 720,  # Aggregate to 12-hour intervals
-                    "page_size": 1000
+                    "use_intraday": False,
+                    "page_size": 100,
+                    "sample_interval": 1  # Every trading day
                 },
                 "1Y": {
                     "days": 365,
@@ -941,13 +964,14 @@ class SSIMarketDataService:
                     result["data"]["data"] = aggregated_data
                     result["data"]["totalRecord"] = len(aggregated_data)
             
-            # Post-process daily data: sample at configured intervals and strip "Value"
+            # Post-process daily data: sample at configured intervals, set Time=14:45, strip "Value"
             if not config["use_intraday"] and config.get("sample_interval") and result.get("data", {}).get("data"):
                 data_list = result["data"]["data"]
                 interval = config["sample_interval"]
                 sampled_data = data_list[::interval] if len(data_list) > interval else data_list
-                # Remove "Value" field from daily data (1Y, 5Y)
+                # Set Time to market close (14:45) and remove "Value" field
                 for item in sampled_data:
+                    item["Time"] = "14:45:00"
                     item.pop("Value", None)
                 result["data"]["data"] = sampled_data
                 result["data"]["totalRecord"] = len(sampled_data)
@@ -956,7 +980,7 @@ class SSIMarketDataService:
             interval_labels = {
                 "1D": "15 minutes",
                 "1W": "2 hours",
-                "1M": "12 hours",
+                "1M": "1 day",
                 "1Y": "1 week",
                 "5Y": "1 month",
             }
