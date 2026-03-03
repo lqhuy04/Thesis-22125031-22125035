@@ -814,7 +814,7 @@ class SSIMarketDataService:
                 "Low": min([float(item.get("Low", 999999)) for item in bucket_items if float(item.get("Low", 999999)) > 0]),  # Lowest low
                 "Close": last_item.get("Close", "0"),  # Last close
                 "Volume": sum([float(item.get("Volume", 0)) for item in bucket_items]),  # Total volume
-                "Value": last_item.get("Value", "0")  # Last value
+                # "Value": last_item.get("Value", "0")  # Last value
             }
             
             # Convert back to strings for consistency
@@ -941,11 +941,14 @@ class SSIMarketDataService:
                     result["data"]["data"] = aggregated_data
                     result["data"]["totalRecord"] = len(aggregated_data)
             
-            # Post-process daily data: sample at configured intervals
+            # Post-process daily data: sample at configured intervals and strip "Value"
             if not config["use_intraday"] and config.get("sample_interval") and result.get("data", {}).get("data"):
                 data_list = result["data"]["data"]
                 interval = config["sample_interval"]
                 sampled_data = data_list[::interval] if len(data_list) > interval else data_list
+                # Remove "Value" field from daily data (1Y, 5Y)
+                for item in sampled_data:
+                    item.pop("Value", None)
                 result["data"]["data"] = sampled_data
                 result["data"]["totalRecord"] = len(sampled_data)
             

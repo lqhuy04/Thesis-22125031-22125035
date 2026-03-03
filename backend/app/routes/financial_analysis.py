@@ -18,23 +18,21 @@ router = APIRouter(prefix="/api/fundamental-metrics", tags=["Fundamental Metrics
 
 @router.get("/{symbol}", 
             summary="Get Financial Metrics by Symbol",
-            description="Retrieve financial metrics for a specific stock symbol. Optionally filter by year.")
+            description="Retrieve financial metrics for a specific stock symbol. Returns latest year by default.")
 async def get_financial_metrics(
     symbol: str,
-    year: Optional[str] = Query(None, description="Specific year (e.g., '2024')"),
-    limit: Optional[int] = Query(None, ge=1, le=100, description="Maximum number of records to return")
+    year: Optional[str] = Query(None, description="Specific year (e.g., '2024'). If not provided, returns the latest year.")
 ):
     """
     Get financial metrics for a specific stock symbol
     
     - **symbol**: Stock symbol (e.g., VNM, FPT, SSI)
-    - **year**: Optional year filter (e.g., '2024', '2023')
-    - **limit**: Optional limit on number of records returned (default: all)
+    - **year**: Optional year filter (e.g., '2024', '2023'). Defaults to latest available year.
     
     Returns financial metrics including:
     - Valuation metrics (P/E, P/B, EPS, Market Cap)
-    - Profitability metrics (ROE, Gross Margin)
-    - Growth metrics (Revenue YoY, EPS YoY)
+    - Profitability metrics (ROE, Gross Margin, Net Margin, ROA)
+    - Growth metrics (Revenue YoY, EPS YoY, Profit YoY)
     - Leverage metrics (Debt/Equity, Current Ratio)
     - Cash flow metrics (FCF, EV/EBITDA)
     """
@@ -49,23 +47,53 @@ async def get_financial_metrics(
             )
         
         # Fetch data from database
-        metrics_data = await FinancialDBService.get_financial_metrics_by_symbol(
-            symbol=symbol.upper(),
-            year=year,
-            limit=limit
-        )
+        if year:
+            metrics_data = await FinancialDBService.get_financial_metrics_by_symbol(
+                symbol=symbol.upper(),
+                year=year,
+                limit=1
+            )
+            data = metrics_data[0] if metrics_data else None
+        else:
+            # Default: return latest year
+            data = await FinancialDBService.get_latest_financial_metrics(symbol.upper())
         
-        if not metrics_data:
+        if not data:
             raise HTTPException(
                 status_code=404,
-                detail=f"No financial metrics found for symbol: {symbol}"
+                detail=f"No financial metrics found for symbol: {symbol}" + (f" in {year}" if year else "")
             )
+        
+        # Build structured metrics
+        metrics = FinancialRatiosSchema(
+            pe_ratio=data.get("pe_ratio"),
+            pb_ratio=data.get("pb_ratio"),
+            eps=data.get("eps"),
+            market_cap_billion=data.get("market_cap"),
+            shares_outstanding_million=data.get("shares_outstanding"),
+            roe=data.get("roe"),
+            gross_margin=data.get("gross_margin"),
+            net_margin=data.get("net_margin"),
+            roa=data.get("roa"),
+            revenue_yoy=data.get("revenue_yoy"),
+            eps_yoy=data.get("eps_yoy"),
+            profit_yoy=data.get("profit_yoy"),
+            debt_to_equity=data.get("debt_to_equity"),
+            current_ratio=data.get("current_ratio"),
+            ev_ebitda=data.get("ev_ebitda"),
+            bvps=data.get("bvps"),
+            fcf=data.get("fcf"),
+            beta=data.get("beta")
+        )
         
         return {
             "data": {
                 "symbol": symbol.upper(),
-                "total_records": len(metrics_data),
-                "metrics": metrics_data
+                "company_name": data.get("company_name"),
+                "analysis_date": datetime.now().isoformat(),
+                "year": data.get("year"),
+                "metrics": metrics.model_dump(),
+                "data_source": data.get("data_source", "SSI iBoard")
             },
             "errorCode": 0,
             "errorDesc": "",
