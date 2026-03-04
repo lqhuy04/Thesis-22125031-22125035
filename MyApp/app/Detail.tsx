@@ -6,7 +6,7 @@ import DetailHeader from "@/components/ui/DetailHeader";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { useTheme } from "@/hooks/ThemeContext";
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TouchableOpacity, View } from "react-native";
@@ -43,7 +43,10 @@ const Detail = () => {
       <ScrollView style={{ flex: 1 }}>
         <DetailHeader item={stockItem} priceData={priceData} />
 
-        <PriceChartComponent stockSymbol={stockItem.symbol} />
+        <PriceChartComponent
+          stockSymbol={stockItem.symbol}
+          referencePrice={priceData?.reference_price ?? 0}
+        />
 
         <FundamentalAnalysisMetricsSection stockSymbol={stockItem.symbol} />
 

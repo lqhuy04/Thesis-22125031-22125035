@@ -80,13 +80,16 @@ export const fetchFundamentalAnalysisIndexes = async (
   data: FundamentalAnalysisIndexes | null;
 }> => {
   try {
-    const response = await fetch(baseUrl + `api/fundamental-metrics/${symbol}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
+    const response = await fetch(
+      baseUrl + `api/fundamental-metrics/${symbol}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
 
     const result = await response.json();
     const { errorCode, data } = result || {};
@@ -130,8 +133,7 @@ export const fetchStockData = async (
 }> => {
   try {
     const response = await fetch(
-      baseUrl +
-        `api/stock-price/${symbol}?timeframe=${timeframe}`,
+      baseUrl + `api/stock-price/${symbol}?timeframe=${timeframe}`,
       {
         method: "GET",
         headers: {
@@ -179,16 +181,13 @@ export const getAnalysis = async (
   data: AnalysisData | null;
 }> => {
   try {
-    const response = await fetch(
-      baseUrl + `api/agentic-ai/test/analyze/${symbol}`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
+    const response = await fetch(baseUrl + `api/analysis/${symbol}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
       },
-    );
+    });
 
     const result = await response.json();
     const { errorCode, data } = result || {};
@@ -211,7 +210,6 @@ export const getAnalysis = async (
     };
   }
 };
-
 
 //------------------------------------------------------------
 export type PriceData = {
@@ -258,5 +256,5 @@ export const fetchPriceData = async (
       status: false,
       data: null,
     };
-  } 
+  }
 };

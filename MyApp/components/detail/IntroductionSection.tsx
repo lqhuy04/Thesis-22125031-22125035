@@ -6,7 +6,7 @@ const IntroductionSection = () => {
   return (
     <View style={{ marginTop: 12, marginHorizontal: 12 }}>
       <Text typography="titleLarge" style={{ marginBottom: 8 }}>
-        Introduction
+        Giới thiệu
       </Text>
 
       <Text typography="bodyMedium">

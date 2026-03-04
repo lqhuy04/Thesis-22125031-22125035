@@ -1,18 +1,20 @@
 import { StockData } from "@/helpers/DetailHelpers";
-import React, {  useMemo } from "react";
-import { View, Dimensions, StyleSheet } from "react-native";
+import React, { useMemo } from "react";
+import { View, Dimensions } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
-import { CandlestickChart, useCandlestickChart } from "react-native-wagmi-charts";
+import {
+  CandlestickChart,
+  useCandlestickChart,
+} from "react-native-wagmi-charts";
 import { Text } from "./Text";
-import Animated, {  useAnimatedReaction, useAnimatedStyle } from "react-native-reanimated";
+import Animated, {
+  useAnimatedReaction,
+  useAnimatedStyle,
+} from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import Svg, { Line } from "react-native-svg";
 
-
-function parseDateTime(
-  dateString: string,
-  timeString: string
-): number {
+function parseDateTime(dateString: string, timeString: string): number {
   // ---- Parse date ----
   const dateParts = dateString.split("/");
 
@@ -48,9 +50,12 @@ function parseDateTime(
 
   // ---- Validate time ----
   if (
-    hours < 0 || hours > 23 ||
-    minutes < 0 || minutes > 59 ||
-    seconds < 0 || seconds > 59
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    seconds < 0 ||
+    seconds > 59
   ) {
     throw new Error("Invalid time");
   }
@@ -73,37 +78,6 @@ function formatTimestamp(timestamp: number): string {
   return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
 
-function generateIndexTicks<T extends { timestamp: number }>(
-  data: T[],
-  count = 7,
-  startIndex = 3 // 👈 mặc định phần tử thứ 3
-) {
-  if (!data.length || startIndex >= data.length) return [];
-
-  const lastIndex = data.length - 1;
-
-  // 👇 range mới tính từ startIndex
-  const range = lastIndex - startIndex;
-  const step = range / (count - 1);
-
-  const pad = (n: number) => n.toString().padStart(2, "0");
-
-  return Array.from({ length: count }).map((_, i) => {
-    const index = Math.round(startIndex + step * i);
-    const item = data[index];
-
-    const date = new Date(item.timestamp);
-
-    const hours = pad(date.getHours());
-    const minutes = pad(date.getMinutes());
-
-    return {
-      label: `${hours}:${minutes}`,
-      index,
-    };
-  });
-}
-
 const LastOpenLine = () => {
   const { theme } = useTheme();
   const { data, domain, height, width } = useCandlestickChart();
@@ -113,20 +87,15 @@ const LastOpenLine = () => {
   const lastCandle = data[data.length - 1];
   const openPrice = lastCandle.close;
 
-  const [ min, max ] = domain;
+  const [min, max] = domain;
 
   if (min === undefined || max === undefined) return null;
 
   // 👇 Convert price → y coordinate
-  const y =
-    height - ((openPrice - min) / (max - min)) * height;
+  const y = height - ((openPrice - min) / (max - min)) * height;
 
   return (
-    <Svg
-      width={width}
-      height={height}
-      style={{ position: "absolute" }}
-    >
+    <Svg width={width} height={height} style={{ position: "absolute" }}>
       <Line
         x1="0"
         y1={y}
@@ -173,10 +142,10 @@ const CandleTooltip = () => {
         high: item.high,
         low: item.low,
         close: item.close,
-        time: convertTime
+        time: convertTime,
       });
     },
-    [data]
+    [data],
   );
 
   // 👇 Animated style cho position
@@ -216,52 +185,63 @@ const CandleTooltip = () => {
           borderWidth: 1,
           backgroundColor: theme.background.surface,
           borderColor: theme.border.default,
-          alignItems: 'center',
-          justifyContent: 'center'
+          alignItems: "center",
+          justifyContent: "center",
         },
         animatedStyle,
       ]}
     >
-      <View style={{flexDirection: 'row', alignItems: 'center'}}>
-      <Text typography="titleSmall" color={theme.text.primary}>
-        O{' '}
-        <Text typography="titleSmall" color={isUp? theme.base.success : theme.base.error}>
-          {format(candle.open)}
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Text typography="titleSmall" color={theme.text.primary}>
+          O{" "}
+          <Text
+            typography="titleSmall"
+            color={isUp ? theme.base.success : theme.base.error}
+          >
+            {format(candle.open)}
+          </Text>
         </Text>
-      </Text>
 
-      <View style={{width: 8}}/>
+        <View style={{ width: 8 }} />
 
-      <Text typography="titleSmall" color={theme.text.primary}>
-        H{' '}
-        <Text typography="titleSmall" color={isUp? theme.base.success : theme.base.error}>
-          {format(candle.high)}
+        <Text typography="titleSmall" color={theme.text.primary}>
+          H{" "}
+          <Text
+            typography="titleSmall"
+            color={isUp ? theme.base.success : theme.base.error}
+          >
+            {format(candle.high)}
+          </Text>
         </Text>
-      </Text>
       </View>
 
-      <View style={{flexDirection: 'row', alignItems: 'center'}}>
-      <Text typography="titleSmall" color={theme.text.primary}>
-        L{' '}
-        <Text typography="titleSmall" color={isUp? theme.base.success : theme.base.error}>
-          {format(candle.low)}
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <Text typography="titleSmall" color={theme.text.primary}>
+          L{" "}
+          <Text
+            typography="titleSmall"
+            color={isUp ? theme.base.success : theme.base.error}
+          >
+            {format(candle.low)}
+          </Text>
         </Text>
-      </Text>
 
-      <View style={{width: 8}}/>
+        <View style={{ width: 8 }} />
 
-      <Text typography="titleSmall" color={theme.text.primary}>
-        C{' '}
-        <Text typography="titleSmall" color={isUp? theme.base.success : theme.base.error}>
-          {format(candle.close)}
+        <Text typography="titleSmall" color={theme.text.primary}>
+          C{" "}
+          <Text
+            typography="titleSmall"
+            color={isUp ? theme.base.success : theme.base.error}
+          >
+            {format(candle.close)}
+          </Text>
         </Text>
-      </Text>
       </View>
 
       <Text typography="titleSmall" color={theme.text.primary}>
         {formatTimestamp(candle.time)}
       </Text>
-
     </AnimatedView>
   );
 };
@@ -285,83 +265,33 @@ const PriceCandleChart = ({ data }: Props) => {
     });
   }, [data]);
 
-  const timeTicks = useMemo(() => {
-    return generateIndexTicks(chartData, 7);
-  }, [chartData]);
-
   const screenWidth = Dimensions.get("window").width;
-
-  const [labelWidths, setLabelWidths] = React.useState<number[]>([]);
 
   return (
     data.length !== 0 && (
-
-        <View >
-          <CandlestickChart.Provider data={chartData}>
-            <CandlestickChart width={screenWidth} height={300}>
-
+      <View>
+        <CandlestickChart.Provider data={chartData}>
+          <CandlestickChart width={screenWidth} height={300}>
             <LastOpenLine />
 
-              <CandlestickChart.Candles
-                positiveColor={theme.base.success} // Xanh (Tăng)
-                negativeColor={theme.base.error} // Đỏ (Giảm)
-              />
-              {/* Đường chéo tương tác */}
-              <CandlestickChart.Crosshair
+            <CandlestickChart.Candles
+              positiveColor={theme.base.success} // Xanh (Tăng)
+              negativeColor={theme.base.error} // Đỏ (Giảm)
+            />
+            {/* Đường chéo tương tác */}
+            <CandlestickChart.Crosshair
               color={theme.base.primary}
-                horizontalCrosshairProps={{
-                  style: {
-                    backgroundColor: "transparent",
-                    borderWidth: 0,
-                  },
-                }}
-              >
-              </CandlestickChart.Crosshair>
-              <CandleTooltip />
-            </CandlestickChart>
-          </CandlestickChart.Provider>
-  
-
-        {/* <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            marginHorizontal: 16,
-          }}
-        >
-          {timeTicks.map((tick, i) => {
-    const x =
-      (tick.index / (chartData.length - 1)) * screenWidth;
-
-    return (
-      <View
-        key={i}
-        style={{
-          position: "absolute",
-          left:
-            x -
-            ((labelWidths[i] ?? 0) ) + 4, // 👈 trừ đúng 1/2 width
-        }}
-      >
-              <Text
-                typography="titleSmall"
-                onLayout={(e) => {
-                  const w = e.nativeEvent.layout.width;
-
-                  setLabelWidths((prev) => {
-                    const copy = [...prev];
-                    copy[i] = w;
-                    return copy;
-                  });
-                }}
-              >
-                {tick.label}
-              </Text>
-            </View>
-          );
-        })}
-        </View> */}
-    </View>
+              horizontalCrosshairProps={{
+                style: {
+                  backgroundColor: "transparent",
+                  borderWidth: 0,
+                },
+              }}
+            ></CandlestickChart.Crosshair>
+            <CandleTooltip />
+          </CandlestickChart>
+        </CandlestickChart.Provider>
+      </View>
     )
   );
 };

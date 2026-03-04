@@ -19,9 +19,10 @@ import { useDerivedValue } from "react-native-reanimated";
 interface Props {
   data: StockData[];
   option: "1D" | "1W" | "1M" | "1Y" | "5Y";
+  referencePrice: number;
 }
 
-const PriceLineGraph = ({ data, option }: Props) => {
+const PriceLineGraph = ({ data, option, referencePrice }: Props) => {
   const screenWidth = Dimensions.get("window").width;
   const chartData = useMemo(() => {
     return data.map((item, index) => {
@@ -45,7 +46,7 @@ const PriceLineGraph = ({ data, option }: Props) => {
   );
 
   const tooltipText = useDerivedValue(
-    () => `${state.y.y.value.value * 1000} VND`,
+    () => `${(state.y.y.value.value * 1000).toFixed(0)} VND`,
   );
 
   const textPrice = tooltipText; // string hoặc SkiaValue
@@ -135,7 +136,7 @@ const PriceLineGraph = ({ data, option }: Props) => {
   const linearGradientY = useDerivedValue(() => state.y.y.position.value);
 
   //-----------------------------------------------------------------
-  const horizontalLines = 4;
+  const horizontalLines = 5;
 
   const xTicks = 8;
 
@@ -158,6 +159,7 @@ const PriceLineGraph = ({ data, option }: Props) => {
             chartPressState={state}
           >
             {({ points, chartBounds, yScale, xScale }) => {
+              const referenceY = yScale(referencePrice / 1000);
               return (
                 <>
                   {/* Area */}
@@ -183,22 +185,23 @@ const PriceLineGraph = ({ data, option }: Props) => {
                     curveType="monotoneX"
                   />
 
-                  {Array.from({ length: horizontalLines - 1 }).map((_, i) => {
-                    const y =
-                      chartBounds.top +
-                      24 +
-                      ((chartBounds.bottom - chartBounds.top) * i) /
-                        (horizontalLines - 1);
+                  {Array.from({ length: horizontalLines }).map((_, i) => {
+                    if (i === 0) {
+                      return null;
+                    }
 
-                    const value = yScale.invert(y);
-
-                    const label = `${value.toFixed(1).toLocaleString()}K`;
+                    const domain = yScale.domain();
+                    const value =
+                      domain[0] -
+                      ((domain[0] - domain[1]) * i) / horizontalLines;
+                    const y = yScale(value);
+                    const label = `${value.toFixed(2).toLocaleString()}K`;
 
                     return (
                       <SkiaText
                         key={i}
                         x={chartBounds.left + 6}
-                        y={y + 4}
+                        y={y + 6}
                         text={label}
                         font={fontPrice}
                         color={theme.text.primary}
@@ -206,37 +209,10 @@ const PriceLineGraph = ({ data, option }: Props) => {
                     );
                   })}
 
-                  {Array.from({ length: horizontalLines }).map((_, i) => {
-                    const y =
-                      chartBounds.top +
-                      24 +
-                      ((chartBounds.bottom - chartBounds.top) * i) /
-                        (horizontalLines - 1);
-
-                    return (
-                      <SkiaLine
-                        key={i}
-                        p1={{
-                          x: chartBounds.left + 50,
-                          y,
-                        }}
-                        p2={{
-                          x: chartBounds.right,
-                          y,
-                        }}
-                        color={theme.border.default}
-                        strokeWidth={1}
-                      >
-                        <DashPathEffect intervals={[4, 4]} />
-                      </SkiaLine>
-                    );
-                  })}
-
                   {Array.from({ length: xTicks - 1 }).map((_, i) => {
                     const domain = xScale.domain(); // [0, data.length - 1]
                     const value =
-                    
-                         1 + ((domain[1] - domain[0]) * i) / (xTicks - 1);
+                      1 + ((domain[1] - domain[0]) * i) / (xTicks - 1);
 
                     const index = Math.round(value);
                     if (index < 0 || index >= chartData.length) return null;
@@ -259,6 +235,15 @@ const PriceLineGraph = ({ data, option }: Props) => {
                       />
                     );
                   })}
+
+                  <SkiaLine
+                    p1={vec(chartBounds.left, referenceY)}
+                    p2={vec(chartBounds.right, referenceY)}
+                    color={theme.base.warning}
+                    strokeWidth={1}
+                  >
+                    <DashPathEffect intervals={[6, 4]} />
+                  </SkiaLine>
 
                   {/* Interactive circle point */}
                   {isActive && (

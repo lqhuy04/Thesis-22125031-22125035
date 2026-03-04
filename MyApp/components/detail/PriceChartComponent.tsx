@@ -9,9 +9,10 @@ import { Images } from "@/constants/Images";
 
 interface Props {
   stockSymbol: string;
+  referencePrice: number;
 }
 
-const PriceChartComponent = ({ stockSymbol }: Props) => {
+const PriceChartComponent = ({ stockSymbol, referencePrice }: Props) => {
   const { theme } = useTheme();
   const [chartType, setChartType] = useState<"Line" | "Candlestick">("Line");
   const [loading, setLoading] = useState<boolean>(false);
@@ -44,7 +45,11 @@ const PriceChartComponent = ({ stockSymbol }: Props) => {
         ) : (
           <View>
             {chartType === "Line" ? (
-              <PriceLineGraph data={data} option={option} />
+              <PriceLineGraph
+                data={data}
+                option={option}
+                referencePrice={referencePrice}
+              />
             ) : (
               <PriceCandleChart data={data} />
             )}
