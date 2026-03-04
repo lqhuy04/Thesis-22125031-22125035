@@ -850,6 +850,80 @@ class SSIMarketDataService:
         
         return aggregated
 
+    def _aggregate_daily_data(self, data_list: list, mode: str = "week") -> list:
+        """
+        Aggregate daily OHLC data into weekly or monthly buckets.
+        
+        For each bucket:
+        - Open: first day's Open
+        - High: highest High across all days
+        - Low: lowest Low across all days  
+        - Close: last day's Close
+        - Volume: sum of all days' Volume
+        - TradingDate: last day's TradingDate (the closing date of that period)
+        
+        Args:
+            data_list: List of daily OHLC data points (must be in ascending order)
+            mode: 'week' for weekly aggregation, 'month' for monthly aggregation
+        
+        Returns:
+            Aggregated data list
+        """
+        if not data_list:
+            return []
+        
+        from datetime import datetime
+        from collections import OrderedDict
+        
+        buckets = OrderedDict()
+        
+        for item in data_list:
+            trading_date_str = item.get("TradingDate", "")
+            try:
+                dt = datetime.strptime(trading_date_str, "%d/%m/%Y")
+            except ValueError:
+                continue
+            
+            if mode == "week":
+                # ISO year-week as bucket key
+                iso_year, iso_week, _ = dt.isocalendar()
+                bucket_key = f"{iso_year}-W{iso_week:02d}"
+            else:
+                # Year-month as bucket key
+                bucket_key = f"{dt.year}-{dt.month:02d}"
+            
+            if bucket_key not in buckets:
+                buckets[bucket_key] = []
+            buckets[bucket_key].append(item)
+        
+        aggregated = []
+        for bucket_key, bucket_items in buckets.items():
+            if not bucket_items:
+                continue
+            
+            first_item = bucket_items[0]
+            last_item = bucket_items[-1]
+            
+            aggregated_item = {
+                "Symbol": first_item.get("Symbol", ""),
+                "Market": first_item.get("Market", ""),
+                "TradingDate": last_item.get("TradingDate", ""),
+                "Time": "14:45:00",
+                "Open": first_item.get("Open", "0"),
+                "High": max([float(item.get("High", 0)) for item in bucket_items]),
+                "Low": min([float(item.get("Low", 999999)) for item in bucket_items if float(item.get("Low", 999999)) > 0]),
+                "Close": last_item.get("Close", "0"),
+                "Volume": sum([float(item.get("Volume", 0)) for item in bucket_items]),
+            }
+            
+            aggregated_item["High"] = str(int(aggregated_item["High"]))
+            aggregated_item["Low"] = str(int(aggregated_item["Low"]))
+            aggregated_item["Volume"] = str(int(aggregated_item["Volume"]))
+            
+            aggregated.append(aggregated_item)
+        
+        return aggregated
+
     def get_stock_prices_by_timeframe(
         self, 
         symbol: str, 
@@ -901,20 +975,19 @@ class SSIMarketDataService:
                 "1M": {
                     "days": 30,
                     "use_intraday": False,
-                    "page_size": 100,
-                    "sample_interval": 1  # Every trading day
+                    "page_size": 100
                 },
                 "1Y": {
                     "days": 365,
                     "use_intraday": False,
-                    "page_size": 400,  # ~365 days
-                    "sample_interval": 7  # Sample every 7 days (weekly)
+                    "page_size": 400,
+                    "aggregate_mode": "week"  # Aggregate daily data into weekly OHLC candles
                 },
                 "5Y": {
                     "days": 1825,  # 5 years
                     "use_intraday": False,
-                    "page_size": 1000,
-                    "sample_interval": 21  # ~21 trading days per month
+                    "page_size": 2000,
+                    "aggregate_mode": "month"  # Aggregate daily data into monthly OHLC candles
                 }
             }
             
@@ -941,14 +1014,44 @@ class SSIMarketDataService:
                 )
             else:
                 # Use daily OHLC for longer timeframes
-                result = self.get_daily_ohlc(
-                    symbol=symbol.lower(),
-                    from_date=from_date,
-                    to_date=to_date,
-                    page_index=1,
-                    page_size=config["page_size"],
-                    ascending=True
-                )
+                # Fetch all pages to ensure we get complete data
+                all_data = []
+                page_index = 1
+                page_size = min(config["page_size"], 1000)  # API may cap at 1000
+                
+                while True:
+                    page_result = self.get_daily_ohlc(
+                        symbol=symbol.lower(),
+                        from_date=from_date,
+                        to_date=to_date,
+                        page_index=page_index,
+                        page_size=page_size,
+                        ascending=True
+                    )
+                    
+                    if not page_result.get("success"):
+                        if page_index == 1:
+                            return page_result
+                        break
+                    
+                    page_data = page_result.get("data", {}).get("data", [])
+                    if not page_data:
+                        break
+                    
+                    all_data.extend(page_data)
+                    
+                    # If we got fewer records than page_size, we've reached the end
+                    total_record = page_result.get("data", {}).get("totalRecord", 0)
+                    if len(page_data) < page_size or len(all_data) >= total_record:
+                        break
+                    
+                    page_index += 1
+                
+                # Build a unified result from the first page response
+                result = page_result
+                if result.get("data"):
+                    result["data"]["data"] = all_data
+                    result["data"]["totalRecord"] = len(all_data)
             
             if not result.get("success"):
                 return result
@@ -964,17 +1067,24 @@ class SSIMarketDataService:
                     result["data"]["data"] = aggregated_data
                     result["data"]["totalRecord"] = len(aggregated_data)
             
-            # Post-process daily data: sample at configured intervals, set Time=14:45, strip "Value"
-            if not config["use_intraday"] and config.get("sample_interval") and result.get("data", {}).get("data"):
+            # Post-process daily data: aggregate into proper weekly/monthly buckets or just clean up
+            if not config["use_intraday"] and result.get("data", {}).get("data"):
                 data_list = result["data"]["data"]
-                interval = config["sample_interval"]
-                sampled_data = data_list[::interval] if len(data_list) > interval else data_list
-                # Set Time to market close (14:45) and remove "Value" field
-                for item in sampled_data:
-                    item["Time"] = "14:45:00"
+                # Remove "Value" field from all items
+                for item in data_list:
                     item.pop("Value", None)
-                result["data"]["data"] = sampled_data
-                result["data"]["totalRecord"] = len(sampled_data)
+                
+                aggregate_mode = config.get("aggregate_mode")
+                if aggregate_mode:
+                    # Aggregate daily data into weekly or monthly OHLC candles
+                    aggregated_data = self._aggregate_daily_data(data_list, mode=aggregate_mode)
+                    result["data"]["data"] = aggregated_data
+                    result["data"]["totalRecord"] = len(aggregated_data)
+                else:
+                    # For 1M: just set Time to market close
+                    for item in data_list:
+                        item["Time"] = "14:45:00"
+                    result["data"]["totalRecord"] = len(data_list)
             
             # Add metadata about the timeframe
             interval_labels = {
