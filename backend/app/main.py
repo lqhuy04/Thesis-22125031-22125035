@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError, HTTPException
 from fastapi.responses import JSONResponse
 from app.config import settings
-from app.routes import auth, market_data, financial_analysis, agentic_ai, technical_indicators, news
+from app.routes import auth, market_data, financial_analysis, agentic_ai, technical_indicators, news, risk_appetite
 import uuid
 
 app = FastAPI(
@@ -85,6 +85,7 @@ app.include_router(financial_analysis.router)
 app.include_router(agentic_ai.router)
 app.include_router(technical_indicators.router)
 app.include_router(news.router)
+app.include_router(risk_appetite.router)
 
 @app.get("/")
 async def root():
