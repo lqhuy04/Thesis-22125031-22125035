@@ -28,6 +28,21 @@ supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 SERPER_API_KEY = "fd31c8b1df830b479395c7e633bdbc1bf44c37a0"
 SERPER_API_URL = "https://google.serper.dev/news"
 
+# Các nguồn tin tức uy tín được phép
+TRUSTED_SOURCES = [
+    'vietstock.vn', 
+]
+
+# ============================================================================
+# CẤU HÌNH TÌM KIẾM - CHỈNH TẠI ĐÂY
+# ============================================================================
+SEARCH_QUERY = "Tin tức Vinamilk Vietstock"          # Từ khóa tìm kiếm (công ty, cổ phiếu, chủ đề...)
+STOCK_SYMBOL = "VNM"               # Mã cổ phiếu (hoặc None nếu không có)
+TIME_RANGE = "qdr:y"               # qdr:h (1 giờ), qdr:d (1 ngày), qdr:w (1 tuần), qdr:m (1 tháng), qdr:y (1 năm)
+NUM_RESULTS = 100                  # Số kết quả lấy từ Serper API (tối đa 100)
+MAX_RESULTS = None                 # Số bài tối đa sau khi lọc (hoặc None để lấy tất cả)
+# ============================================================================
+
 
 def parse_vietnamese_date(date_str: str) -> Optional[datetime]:
     """
@@ -70,8 +85,29 @@ def parse_vietnamese_date(date_str: str) -> Optional[datetime]:
         return None
 
 
+def is_trusted_source(url: str) -> bool:
+    """
+    Kiểm tra xem URL có từ nguồn uy tín không
+    
+    Args:
+        url: URL của bài báo
+    
+    Returns:
+        True nếu nguồn uy tín, False nếu không
+    """
+    try:
+        url_lower = url.lower()
+        for source in TRUSTED_SOURCES:
+            if source in url_lower:
+                return True
+        return False
+    except Exception as e:
+        print(f"Error checking trusted source: {e}")
+        return False
+
+
 def search_serper(query: str, country: str = "vn", language: str = "vi", 
-                  time_range: str = "qdr:m") -> List[Dict]:
+                  time_range: str = "qdr:m", num: int = 100) -> List[Dict]:
     """
     Search news using Serper API
     
@@ -80,6 +116,7 @@ def search_serper(query: str, country: str = "vn", language: str = "vi",
         country: Country code (default: "vn")
         language: Language code (default: "vi")
         time_range: Time range (qdr:h, qdr:d, qdr:w, qdr:m, qdr:y)
+        num: Number of results to fetch (max 100)
     
     Returns:
         List of news items
@@ -89,7 +126,8 @@ def search_serper(query: str, country: str = "vn", language: str = "vi",
             "q": query,
             "gl": country,
             "hl": language,
-            "tbs": time_range
+            "tbs": time_range,
+            "num": num
         }
         
         headers = {
@@ -188,7 +226,8 @@ def save_to_database(news_item: Dict, stock_symbol: Optional[str] = None) -> boo
 
 
 def crawl_news(query: str, stock_symbol: Optional[str] = None, 
-               time_range: str = "qdr:m", max_results: Optional[int] = None):
+               time_range: str = "qdr:m", num_results: int = 100,
+               max_results: Optional[int] = None):
     """
     Main crawl function
     
@@ -196,7 +235,8 @@ def crawl_news(query: str, stock_symbol: Optional[str] = None,
         query: Search query
         stock_symbol: Optional stock symbol
         time_range: Time range filter
-        max_results: Maximum number of results to process
+        num_results: Number of results to fetch from Serper API
+        max_results: Maximum number of results to process after filtering
     """
     print("\n" + "="*80)
     print(f"🚀 Starting News Crawler")
@@ -207,10 +247,17 @@ def crawl_news(query: str, stock_symbol: Optional[str] = None,
     print("="*80 + "\n")
     
     # Step 1: Search Serper
-    news_items = search_serper(query, time_range=time_range)
+    news_items = search_serper(query, time_range=time_range, num=num_results)
     
     if not news_items:
         print("⚠️  No news found")
+        return
+    
+    # Filter only trusted sources
+    original_count = len(news_items)
+    news_items = [item for item in news_items if is_trusted_source(item.get('link', ''))]
+    
+    if not news_items:
         return
     
     if max_results:
@@ -221,11 +268,12 @@ def crawl_news(query: str, stock_symbol: Optional[str] = None,
     duplicate_count = 0
     
     for idx, item in enumerate(news_items, 1):
+        link = item.get('link', '')
         print(f"\n[{idx}/{len(news_items)}] {item.get('title', 'No title')[:80]}...")
+        print(f"  🔗 Source: {link}")
         
         # Extract basic fields from Serper
         title = item.get('title', '')
-        link = item.get('link', '')
         description = item.get('snippet', '')
         date_str = item.get('date', '')
         source = item.get('source', 'Serper')
@@ -269,23 +317,13 @@ def crawl_news(query: str, stock_symbol: Optional[str] = None,
 
 
 def main():
-    """Main function for command-line usage"""
-    import argparse
-    
-    parser = argparse.ArgumentParser(description='Serper News Crawler')
-    parser.add_argument('query', type=str, help='Search query (e.g., company name)')
-    parser.add_argument('--symbol', '-s', type=str, help='Stock symbol (e.g., VNM)', default=None)
-    parser.add_argument('--time', '-t', type=str, default='qdr:m', 
-                       help='Time range: qdr:h, qdr:d, qdr:w, qdr:m, qdr:y')
-    parser.add_argument('--max', '-m', type=int, help='Maximum results', default=None)
-    
-    args = parser.parse_args()
-    
+    """Main function - chỉnh cấu hình ở đầu file"""   
     crawl_news(
-        query=args.query,
-        stock_symbol=args.symbol,
-        time_range=args.time,
-        max_results=args.max
+        query=SEARCH_QUERY,
+        stock_symbol=STOCK_SYMBOL,
+        time_range=TIME_RANGE,
+        num_results=NUM_RESULTS,
+        max_results=MAX_RESULTS
     )
 
 
