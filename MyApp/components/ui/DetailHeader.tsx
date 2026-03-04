@@ -3,12 +3,14 @@ import React from "react";
 import { View, Image } from "react-native";
 import { Text } from "./Text";
 import { SearchStockItem } from "@/helpers/SearchHelper";
+import { PriceData } from "@/helpers/DetailHelpers";
 
 interface SearchResultItemProps {
   item: SearchStockItem;
+  priceData: PriceData | null;
 }
 
-const SearchResultItem = ({ item }: SearchResultItemProps) => {
+const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
   const { theme } = useTheme();
 
   return (
@@ -47,7 +49,7 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
       </View>
 
       <View style={{ alignItems: "flex-end" }}>
-        {item.current_price != null ? (
+        {priceData?.current_price != null ? (
           <View
             style={{
               paddingHorizontal: 4,
@@ -60,23 +62,23 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
             <Text
               typography="labelLarge"
               color={
-                item.price_change_percent != null &&
-                item.price_change_percent >= 0
+                priceData?.price_change_percent != null &&
+                priceData?.price_change_percent >= 0
                   ? theme.base.success
                   : theme.base.error
               }
             >
-              {item.price_change_percent != null &&
-              item.price_change_percent >= 0
+              {priceData?.price_change_percent != null &&
+              priceData?.price_change_percent >= 0
                 ? "+"
                 : ""}
-              {item.price_change_percent}%
+              {priceData?.price_change_percent}%
             </Text>
           </View>
         ) : null}
-        {item.current_price != null ? (
+        {priceData?.current_price != null ? (
           <Text typography="titleSmall" color={theme.text.onPrimary}>
-            {item.current_price}
+            {priceData?.current_price}
           </Text>
         ) : null}
       </View>

@@ -6,12 +6,13 @@ import DetailHeader from "@/components/ui/DetailHeader";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { useTheme } from "@/hooks/ThemeContext";
-import React from "react";
+import React, {useEffect, useState} from "react";
 import { ScrollView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TouchableOpacity, View } from "react-native";
 import { Text } from "@/components/ui/Text";
 import { router, useLocalSearchParams } from "expo-router";
+import { fetchPriceData, PriceData } from "@/helpers/DetailHelpers";
 
 const Detail = () => {
   const { t } = useLocalization();
@@ -19,6 +20,16 @@ const Detail = () => {
 
   const { data } = useLocalSearchParams() || {};
   const stockItem = data ? JSON.parse(data as string) : null;
+
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+
+  useEffect(() => {
+    fetchPriceData(stockItem.symbol).then((res) => {
+      if (res.status) {
+        setPriceData(res.data);
+      }
+    });
+  }, [stockItem]);
 
   return (
     <SafeAreaView
@@ -30,7 +41,7 @@ const Detail = () => {
       <ScreenHeader title={t("detail.screenTitle")} />
 
       <ScrollView style={{ flex: 1 }}>
-        <DetailHeader item={stockItem} />
+        <DetailHeader item={stockItem} priceData={priceData} />
 
         <PriceChartComponent stockSymbol={stockItem.symbol} />
 

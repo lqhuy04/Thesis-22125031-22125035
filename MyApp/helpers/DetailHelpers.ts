@@ -214,7 +214,7 @@ export const getAnalysis = async (
 
 
 //------------------------------------------------------------
-export type priceData = {
+export type PriceData = {
   symbol: string;
   current_price: number;
   price_change: number;
@@ -228,7 +228,7 @@ export const fetchPriceData = async (
   symbol: string,
 ): Promise<{
   status: boolean;
-  data: priceData | null;
+  data: PriceData | null;
 }> => {
   try {
     const response = await fetch(baseUrl + `api/price/${symbol}`, {
@@ -244,7 +244,7 @@ export const fetchPriceData = async (
     if (errorCode === 0) {
       return {
         status: true,
-        data: data as priceData,
+        data: data as PriceData,
       };
     }
 
