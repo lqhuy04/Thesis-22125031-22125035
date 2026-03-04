@@ -26,7 +26,7 @@ export const fetchNews = async (
   data: New[];
 }> => {
   try {
-    const response = await fetch(baseUrl + `news?stock_symbol=${symbol}`, {
+    const response = await fetch(baseUrl + `api/news/${symbol}`, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -80,7 +80,7 @@ export const fetchFundamentalAnalysisIndexes = async (
   data: FundamentalAnalysisIndexes | null;
 }> => {
   try {
-    const response = await fetch(baseUrl + `api/financial/analysis/${symbol}`, {
+    const response = await fetch(baseUrl + `api/fundamental-metrics/${symbol}`, {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -119,7 +119,6 @@ export type StockData = {
   Low: string;
   Close: string;
   Volume: string;
-  Value: string;
 };
 
 export const fetchStockData = async (
@@ -132,7 +131,7 @@ export const fetchStockData = async (
   try {
     const response = await fetch(
       baseUrl +
-        `market-data/stock-price/timeframe/${symbol}?timeframe=${timeframe}`,
+        `api/stock-price/${symbol}?timeframe=${timeframe}`,
       {
         method: "GET",
         headers: {
@@ -211,4 +210,53 @@ export const getAnalysis = async (
       data: null,
     };
   }
+};
+
+
+//------------------------------------------------------------
+export type priceData = {
+  symbol: string;
+  current_price: number;
+  price_change: number;
+  price_change_percent: number;
+  reference_price: number;
+  ceiling_price: number;
+  floor_price: number;
+};
+
+export const fetchPriceData = async (
+  symbol: string,
+): Promise<{
+  status: boolean;
+  data: priceData | null;
+}> => {
+  try {
+    const response = await fetch(baseUrl + `api/price/${symbol}`, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+    });
+
+    const result = await response.json();
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as priceData,
+      };
+    }
+
+    return {
+      status: false,
+      data: null,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: null,
+    };
+  } 
 };

@@ -15,7 +15,6 @@ const Home = () => {
   const onSearch = () => {
     setLoading(true);
     searchStocks(text).then((results) => {
-      console.log("Search results:", results);
       setSearchResults(results);
       setLoading(false);
     });

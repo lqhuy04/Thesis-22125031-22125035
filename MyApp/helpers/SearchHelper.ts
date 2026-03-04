@@ -14,7 +14,7 @@ export const searchStocks = async (
 ): Promise<SearchStockItem[]> => {
   try {
     const response = await fetch(
-      baseUrl + `market-data/search?query=${query}`,
+      baseUrl + `api/search/${query}`,
       {
         method: "GET",
         headers: {

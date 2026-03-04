@@ -27,7 +27,7 @@ const PriceLineGraph = ({ data, option }: Props) => {
     return data.map((item, index) => {
       return {
         x: index,
-        y: Number(item?.Value) / 1000,
+        y: Number(item?.Close) / 1000,
         date: item?.TradingDate,
         time: item?.Time,
       };
@@ -235,9 +235,8 @@ const PriceLineGraph = ({ data, option }: Props) => {
                   {Array.from({ length: xTicks - 1 }).map((_, i) => {
                     const domain = xScale.domain(); // [0, data.length - 1]
                     const value =
-                      option === "1D"
-                        ? 3 + ((domain[1] - domain[0]) * i) / (xTicks - 1)
-                        : 1 + ((domain[1] - domain[0]) * i) / (xTicks - 1);
+                    
+                         1 + ((domain[1] - domain[0]) * i) / (xTicks - 1);
 
                     const index = Math.round(value);
                     if (index < 0 || index >= chartData.length) return null;
