@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from newspaper import Article
 from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import BaseModel, Field
 
 # Load environment variables
 load_dotenv(os.path.join(os.path.dirname(__file__), 'app', '.env'))
@@ -43,6 +45,47 @@ NUM_RESULTS = 100                  # Số kết quả lấy từ Serper API (t�
 MAX_RESULTS = None                 # Số bài tối đa sau khi lọc (hoặc None để lấy tất cả)
 # ============================================================================
 
+class SentimentOutput(BaseModel):
+    sentiment: str = Field(
+        description="positive | neutral | negative"
+    )
+    
+llm = ChatGoogleGenerativeAI(
+    model="gemini-2.5-flash",
+    temperature=0,
+    google_api_key='AIzaSyAchGgs2WEi91ogZBWxJr8fR42Vj2ODcN4'
+)
+
+structured_llm = llm.with_structured_output(SentimentOutput)
+
+def analyze_sentiment(title: str, content: str) -> Optional[str]:
+    """
+    Analyze sentiment of financial news
+    """
+    try:
+        text = f"""
+        Analyze the sentiment of this financial news.
+
+        Title: {title}
+
+        Content:
+        {content[:3000]}
+
+        Classify sentiment as:
+        - positive (good news for company/stock)
+        - neutral (informational)
+        - negative (bad news)
+
+        Return only the classification.
+        """
+
+        result = structured_llm.invoke(text)
+
+        return result.sentiment
+
+    except Exception as e:
+        print(f"  ⚠️ Sentiment analysis error: {e}")
+        return None
 
 def parse_vietnamese_date(date_str: str) -> Optional[datetime]:
     """
@@ -199,12 +242,13 @@ def save_to_database(news_item: Dict, stock_symbol: Optional[str] = None) -> boo
         data = {
             "title": news_item.get('title'),
             "link": news_item.get('link'),
-            "stock_symbol": stock_symbol,
+            "stock_symbol": [stock_symbol],
             "description": news_item.get('description'),
             "time": news_item.get('time_parsed').isoformat() if news_item.get('time_parsed') else None,
             "image_url": news_item.get('image_url'),
             "content": news_item.get('content'),
             "source": news_item.get('source'),
+            "sentiment": news_item.get('sentiment'),
         }
         
         # Insert to database
@@ -285,6 +329,11 @@ def crawl_news(query: str, stock_symbol: Optional[str] = None,
         # Step 3: Extract content with newspaper3k
         extracted = extract_content_with_newspaper(link)
         
+        # Step 3.5: Analyze sentiment
+        sentiment = analyze_sentiment(title, extracted.get('content', ''))
+
+        print(f"  📊 Sentiment: {sentiment}")
+        
         # Use extracted title if original is empty
         if not title and extracted.get('title'):
             title = extracted['title']
@@ -297,7 +346,8 @@ def crawl_news(query: str, stock_symbol: Optional[str] = None,
             'time_parsed': time_parsed,
             'image_url': image_url,
             'content': extracted.get('content'),
-            'source': source
+            'source': source,
+            'sentiment': sentiment
         }
         
         # Step 4: Save to database
