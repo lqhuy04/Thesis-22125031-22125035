@@ -2,7 +2,7 @@
 News data models and schemas
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import List, Optional
 from datetime import datetime
 
 
@@ -10,7 +10,7 @@ class NewsBase(BaseModel):
     """Base news schema - matches database structure"""
     title: str = Field(..., description="News article title")
     link: str = Field(..., description="URL to the full article")
-    stock_symbol: Optional[str] = Field(None, description="Associated stock ticker symbol")
+    stock_symbol: Optional[List[str]] = Field(None, description="Associated stock ticker symbol")
     description: Optional[str] = Field(None, description="News article summary/description")
     time: Optional[datetime] = Field(None, description="Publication time")
     image_url: Optional[str] = Field(None, description="URL to article image")

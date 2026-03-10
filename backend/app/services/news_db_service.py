@@ -162,7 +162,7 @@ class NewsDBService:
             
             # Apply filters
             if stock_symbol:
-                query = query.eq("stock_symbol", stock_symbol.upper())
+                query = query.contains("stock_symbol", [stock_symbol.upper()])
             
             if search:
                 # Search in title or description
