@@ -1,29 +1,201 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View } from "react-native";
 import { Text } from "../ui/Text";
+import {
+  CompanyProfile,
+  getCompanyProfile,
+} from "@/helpers/CompanyProfileHelpers";
 
-const IntroductionSection = () => {
-  return (
+interface IntroductionSectionProps {
+  stockSymbol: string;
+}
+
+const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
+  const [companyProfileData, setCompanyProfileData] =
+    React.useState<CompanyProfile | null>(null);
+
+  useEffect(() => {
+    getCompanyProfile(stockSymbol).then((res) => {
+      if (res.status) {
+        setCompanyProfileData(res.data);
+      }
+    });
+  }, [stockSymbol]);
+
+  return companyProfileData != null ? (
     <View style={{ marginTop: 12, marginHorizontal: 12 }}>
       <Text typography="titleLarge" style={{ marginBottom: 8 }}>
         Giới thiệu
       </Text>
 
-      <Text typography="bodyMedium">
-        Công ty Cổ phần Sữa Việt Nam (VNM) có tiền thân là Công ty Sữa – Cà Phê
-        Miền Nam, được thành lập vào năm 1976. Công ty hoạt động chính trong
-        lĩnh vực chế biến sản xuất, kinh doanh xuất nhập khẩu các sản phẩm sữa
-        và các sản phẩm dinh dưỡng khác. VNM chính thức hoạt động theo mô hình
-        công ty cổ phần từ năm 2003. Công ty giữ vững vị thế top 1 thị phần
-        ngành sữa Việt Nam , hiện nay VNM đang quản lý hơn 130.000 đàn bò sữa
-        đang khai thác, 15 trang trại bò sữa công nghệ cao, 16 nhà máy sữa hiện
-        đại và 1 nhà máy thị bò mát 10.000 tấn. Sản phẩm của VNM đã có mặt tại
-        hơn 200.000 điểm bán trong hệ thống phân phối và được xuất khẩu trực
-        tiếp đến 63 quốc gia và vùng lãnh thổ trên thế giới. VNM được niêm yết
-        và giao dịch trên Sở Chứng khoán Thành phố Hồ Chí Minh (HOSE) từ năm
-        2006.
-      </Text>
+      <Text typography="bodyMedium">{companyProfileData?.description}</Text>
+
+      {/* ── Basic Info ── */}
+      <View>
+        <Text
+          typography="titleLarge"
+          style={{ marginBottom: 4, marginTop: 24 }}
+        >
+          Thông tin cơ bản
+        </Text>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">Mã</Text>
+          <Text typography="bodyMedium">{companyProfileData?.symbol}</Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">Tên ngành ICB</Text>
+          <Text typography="bodyMedium">
+            {companyProfileData?.industry_name}
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">Mã ngành ICB</Text>
+          <Text typography="bodyMedium">{companyProfileData?.icb_code}</Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">Năm thành lập</Text>
+          <Text typography="bodyMedium">
+            {companyProfileData?.founded_date}
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">Vốn điều lệ</Text>
+          <Text typography="bodyMedium">
+            {companyProfileData?.listed_volume} tỷ
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">Số lượng nhân viên</Text>
+          <Text typography="bodyMedium">
+            {companyProfileData?.employee_count}
+          </Text>
+        </View>
+      </View>
+
+      {/* ── Listing information ── */}
+      <View>
+        <Text
+          typography="titleLarge"
+          style={{ marginBottom: 4, marginTop: 24 }}
+        >
+          Thông tin niêm yết
+        </Text>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">Ngày niêm yết</Text>
+          <Text typography="bodyMedium">
+            {companyProfileData?.listing_date}
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">Nơi niêm yết</Text>
+          <Text typography="bodyMedium">{companyProfileData?.exchange}</Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">{`Giá chào sàn (1000 VND)`}</Text>
+          <Text typography="bodyMedium">{companyProfileData?.ipo_price}</Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">KL đang niêm yết</Text>
+          <Text typography="bodyMedium">
+            {companyProfileData?.market_cap_billion} tỷ
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginTop: 8,
+          }}
+        >
+          <Text typography="titleMedium">SLCP lưu hành</Text>
+          <Text typography="bodyMedium">
+            {companyProfileData?.shares_outstanding}
+          </Text>
+        </View>
+      </View>
     </View>
-  );
+  ) : null;
 };
 export default IntroductionSection;

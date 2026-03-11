@@ -1,192 +1,88 @@
-import React, { useRef, useState, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  FlatList,
-  Platform,
-  StatusBar,
-} from "react-native";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import React from "react";
+import { View, ScrollView, TouchableOpacity } from "react-native";
+import { useTheme } from "@/hooks/ThemeContext";
+import { Text } from "@/components/ui/Text";
 
 export interface TabItem {
   key: string;
   label: string;
 }
 
-export interface StickyTabViewProps {
-  /** Tab definitions */
+export interface TabViewProps {
   tabs: TabItem[];
-  /** Render content for each tab by key */
-  renderTabContent: (tabKey: string) => React.ReactNode;
-  /** Active tab indicator color (default: #6C63FF) */
-  accentColor?: string;
-  /** Background color of the tab bar (default: #fff) */
-  tabBarBackground?: string;
+  activeTab: string;
+  tabScrollRef: React.RefObject<ScrollView | null>;
+  tabRefs: React.RefObject<{
+    [key: string]: number;
+  }>;
+  handleTabPress: (key: string) => void;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-const StickyTabView: React.FC<StickyTabViewProps> = ({
+const TabView: React.FC<TabViewProps> = ({
   tabs,
-  renderTabContent,
-  accentColor = "#6C63FF",
-  tabBarBackground = "#ffffff",
+  activeTab,
+  tabScrollRef,
+  tabRefs,
+  handleTabPress,
 }) => {
-  const [activeTab, setActiveTab] = useState<string>(tabs[0]?.key ?? "");
-  const tabScrollRef = useRef<ScrollView>(null);
-  const tabRefs = useRef<{ [key: string]: number }>({});
-
-  // ── Scroll active tab indicator into view ──
-  const scrollTabIntoView = useCallback((key: string) => {
-    const x = tabRefs.current[key] ?? 0;
-    tabScrollRef.current?.scrollTo({ x: Math.max(0, x - 24), animated: true });
-  }, []);
-
-  const handleTabPress = useCallback(
-    (key: string) => {
-      setActiveTab(key);
-      scrollTabIntoView(key);
-    },
-    [scrollTabIntoView],
-  );
+  const { theme } = useTheme();
 
   return (
-    // stickyHeaderIndices={[1]} makes the element at index 1 (TabBar) stick to the top
-    <View style={styles.root}>
-      {/* ── 1: Tab Bar (sticks to top) ── */}
-      <View
-        style={[styles.tabBarWrapper, { backgroundColor: tabBarBackground }]}
+    <View
+      style={{
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderTopColor: theme.border.default,
+        borderBottomColor: theme.border.default,
+        backgroundColor: theme.background.bg,
+      }}
+    >
+      <ScrollView
+        ref={tabScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 12 }}
+        bounces={false}
       >
-        <ScrollView
-          ref={tabScrollRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabBarContent}
-          bounces={false}
-        >
-          {tabs.map((tab) => {
-            const isActive = tab.key === activeTab;
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                activeOpacity={0.75}
-                onPress={() => handleTabPress(tab.key)}
-                onLayout={(e) => {
-                  tabRefs.current[tab.key] = e.nativeEvent.layout.x;
-                }}
-                style={styles.tabItem}
+        {tabs.map((tab) => {
+          const isActive = tab.key === activeTab;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              onPress={() => handleTabPress(tab.key)}
+              onLayout={(e) => {
+                tabRefs.current[tab.key] = e.nativeEvent.layout.x;
+              }}
+              style={{
+                alignItems: "center",
+                paddingHorizontal: 12,
+                paddingTop: 8,
+              }}
+            >
+              <Text
+                typography="labelLarge"
+                color={isActive ? theme.text.primary : theme.text.secondary}
               >
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    isActive
-                      ? { color: accentColor, fontWeight: "700" }
-                      : { color: "#9CA3AF" },
-                  ]}
-                >
-                  {tab.label}
-                </Text>
-                {/* Active indicator pill */}
-                {isActive && (
-                  <View
-                    style={[styles.indicator, { backgroundColor: accentColor }]}
-                  />
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-        {/* Bottom border */}
-        <View style={styles.tabBarBorder} />
-      </View>
+                {tab.label}
+              </Text>
 
-      {/* ── 2: Tab Content ── */}
-      <View style={styles.contentArea}>{renderTabContent(activeTab)}</View>
+              {isActive && (
+                <View
+                  style={{
+                    backgroundColor: theme.base.primary,
+                    marginTop: 8,
+                    height: 2,
+                    width: "100%",
+                    borderRadius: 2,
+                  }}
+                />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
     </View>
   );
 };
 
-export default StickyTabView;
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#F9FAFB",
-  },
-  tabBarWrapper: {
-    // Shadow for iOS
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    // Elevation for Android
-    elevation: 3,
-    zIndex: 10,
-  },
-  tabBarContent: {
-    paddingHorizontal: 12,
-  },
-  tabItem: {
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginRight: 4,
-  },
-  tabLabel: {
-    fontSize: 14,
-    letterSpacing: 0.2,
-  },
-  indicator: {
-    marginTop: 6,
-    height: 3,
-    width: "80%",
-    borderRadius: 2,
-  },
-  tabBarBorder: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-  },
-  contentArea: {
-    flex: 1,
-    minHeight: 600, // ensure enough height so sticky effect is visible
-  },
-});
-
-// ─── USAGE EXAMPLE ────────────────────────────────────────────────────────────
-//
-// import StickyTabView from './StickyTabView';
-//
-// const TABS = [
-//   { key: 'posts',    label: 'Bài viết' },
-//   { key: 'photos',   label: 'Ảnh' },
-//   { key: 'videos',   label: 'Video' },
-//   { key: 'likes',    label: 'Yêu thích' },
-//   { key: 'mentions', label: 'Đề cập' },
-// ];
-//
-// export default function ProfileScreen() {
-//   return (
-//     <StickyTabView
-//       accentColor="#6C63FF"
-//       headerComponent={<ProfileHeader />}   // your own component
-//       tabs={TABS}
-//       renderTabContent={(key) => {
-//         switch (key) {
-//           case 'posts':  return <PostsList />;
-//           case 'photos': return <PhotosGrid />;
-//           default:       return <Text>Tab: {key}</Text>;
-//         }
-//       }}
-//     />
-//   );
-// }
+export default TabView;

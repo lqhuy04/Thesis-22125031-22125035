@@ -25,9 +25,7 @@ const NewsSection = ({ stockSymbol }: NewsSectionProps) => {
 
   return (
     <View style={{ marginHorizontal: 12, marginTop: 12 }}>
-      <Text typography="titleLarge" style={{ marginTop: 24 }}>
-        {t("detail.newsSectionTitle")}
-      </Text>
+      <Text typography="titleLarge">{t("detail.newsSectionTitle")}</Text>
 
       {newsItems.slice(0, 3).map((item) => (
         <NewsItem key={item.id} newItem={item} />
