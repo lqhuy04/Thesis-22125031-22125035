@@ -79,3 +79,7 @@ Thumbs.db
 *.tmp
 *.temp
 .cache/
+
+# output files
+.output/
+*.csv
