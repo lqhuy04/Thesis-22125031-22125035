@@ -7,7 +7,6 @@ from datetime import datetime
 
 
 class CompanyProfileResponse(BaseModel):
-    id: int
     symbol: str
     company_name: Optional[str] = None
 
@@ -45,7 +44,6 @@ class CompanyProfileResponse(BaseModel):
 
 
 class LeaderResponse(BaseModel):
-    id: int
     symbol: str
     full_name: Optional[str] = None
     position: Optional[str] = None
@@ -56,7 +54,6 @@ class LeaderResponse(BaseModel):
 
 
 class SubsidiaryResponse(BaseModel):
-    id: int
     symbol: str
     company_name: Optional[str] = None
     sub_symbol: Optional[str] = None
