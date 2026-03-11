@@ -9,10 +9,11 @@ import { useTheme } from "@/hooks/ThemeContext";
 import React, { useEffect, useState } from "react";
 import { ScrollView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { TouchableOpacity, View } from "react-native";
+import { Platform, TouchableOpacity, View } from "react-native";
 import { Text } from "@/components/ui/Text";
 import { router, useLocalSearchParams } from "expo-router";
 import { fetchPriceData, PriceData } from "@/helpers/DetailHelpers";
+import StickyTabView from "@/components/ui/StickyTabView";
 
 const Detail = () => {
   const { t } = useLocalization();
@@ -31,6 +32,14 @@ const Detail = () => {
     });
   }, [stockItem]);
 
+  const TABS = [
+    { key: "posts", label: "Bài viết" },
+    { key: "photos", label: "Ảnh" },
+    { key: "videos", label: "Video" },
+    { key: "likes", label: "Yêu thích" },
+    { key: "mentions", label: "Đề cập" },
+  ];
+
   return (
     <SafeAreaView
       style={{
@@ -40,13 +49,18 @@ const Detail = () => {
     >
       <ScreenHeader title={t("detail.screenTitle")} />
 
-      <ScrollView style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        stickyHeaderIndices={[4]}
+        showsVerticalScrollIndicator={false}
+        bounces={Platform.OS === "ios"}
+      >
         <DetailHeader item={stockItem} priceData={priceData} />
 
-        <PriceChartComponent
+        {/* <PriceChartComponent
           stockSymbol={stockItem.symbol}
           referencePrice={priceData?.reference_price ?? 0}
-        />
+        /> */}
 
         <FundamentalAnalysisMetricsSection stockSymbol={stockItem.symbol} />
 
@@ -54,7 +68,26 @@ const Detail = () => {
 
         <NewsSection stockSymbol={stockItem.symbol} />
 
-        <View style={{ height: 40 }} />
+        <StickyTabView
+          accentColor="#6C63FF"
+          tabs={TABS}
+          renderTabContent={(key) => {
+            switch (key) {
+              default:
+                return (
+                  <View
+                    style={{
+                      height: 1000,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text>Tab: {key}</Text>;
+                  </View>
+                );
+            }
+          }}
+        />
       </ScrollView>
 
       <TouchableOpacity
