@@ -11,5 +11,5 @@ export default function Index() {
   //   }
 
   // Nếu đã đăng nhập, đẩy sang màn hình chính (ví dụ: /home)
-  return <Redirect href="/RiskAppetite" />;
+  return <Redirect href="/Home" />;
 }
