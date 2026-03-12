@@ -33,7 +33,7 @@ const NewDetal = () => {
           }}
         >
           <Text typography="bodyLarge">{item?.source} </Text>
-          <Text typography="bodyMedium">- {item?.time.slice(0, 10)}</Text>
+          <Text typography="bodyMedium">- {item?.time?.slice(0, 10)}</Text>
         </View>
 
         <Text typography="titleLarge" style={{ marginHorizontal: 12 }}>

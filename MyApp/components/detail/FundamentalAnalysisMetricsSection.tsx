@@ -31,7 +31,7 @@ const FundamentalAnalysisMetricsSection = ({
   }, [stockSymbol]);
 
   return (
-    <View style={{ marginTop: 12, marginHorizontal: 12 }}>
+    <View style={{ marginVertical: 12, marginHorizontal: 12 }}>
       <Text typography="titleLarge">
         {t("fundamentalAnalysis.fundamentalAnalysisMetricsSectionTitle")}
       </Text>

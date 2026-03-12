@@ -4,7 +4,6 @@ import { Text } from "../ui/Text";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { fetchNews, New } from "@/helpers/DetailHelpers";
 import NewsItem from "../ui/NewsItem";
-import SeeAllBtn from "@/components/ui/SeeAllBtn";
 
 interface NewsSectionProps {
   stockSymbol: string;
@@ -27,11 +26,9 @@ const NewsSection = ({ stockSymbol }: NewsSectionProps) => {
     <View style={{ marginHorizontal: 12, marginTop: 12 }}>
       <Text typography="titleLarge">{t("detail.newsSectionTitle")}</Text>
 
-      {newsItems.slice(0, 3).map((item) => (
+      {newsItems.map((item) => (
         <NewsItem key={item.id} newItem={item} />
       ))}
-
-      <SeeAllBtn />
     </View>
   );
 };

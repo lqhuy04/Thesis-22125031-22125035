@@ -222,7 +222,7 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
       {subsidiaries.length > 0
         ? subsidiaries.map((sub) => (
             <View
-              key={sub.symbol}
+              key={`subsidary_${sub.company_name}`}
               style={{
                 borderRadius: 4,
                 padding: 8,
@@ -258,7 +258,7 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
       {associates.length > 0
         ? associates.map((sub) => (
             <View
-              key={sub.symbol}
+              key={`associate_${sub.company_name}`}
               style={{
                 borderRadius: 4,
                 padding: 8,

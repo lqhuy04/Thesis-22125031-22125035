@@ -1,17 +1,26 @@
 import { useTheme } from "@/hooks/ThemeContext";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Image } from "react-native";
 import { Text } from "./Text";
 import { SearchStockItem } from "@/helpers/SearchHelper";
-import { PriceData } from "@/helpers/DetailHelpers";
+import { fetchPriceData, PriceData } from "@/helpers/DetailHelpers";
 
 interface SearchResultItemProps {
   item: SearchStockItem;
-  priceData: PriceData | null;
 }
 
-const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
+const SearchResultItem = ({ item }: SearchResultItemProps) => {
   const { theme } = useTheme();
+
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+
+  useEffect(() => {
+    fetchPriceData(item.symbol).then((res) => {
+      if (res.status) {
+        setPriceData(res.data);
+      }
+    });
+  }, [item.symbol]);
 
   return (
     <View>
@@ -85,47 +94,7 @@ const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
         </View>
       </View>
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginTop: 12,
-          marginHorizontal: 12,
-          backgroundColor: theme.background.surface,
-          paddingVertical: 8,
-          paddingHorizontal: 12,
-          borderRadius: 4,
-          borderWidth: 1,
-          borderColor: theme.base.primary,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text typography="bodyMedium">Sàn</Text>
-          <Text typography="labelLarge" color={theme.base.error}>
-            {priceData?.floor_price}
-          </Text>
-        </View>
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <Text typography="bodyMedium">Tham chiếu</Text>
-          <Text typography="labelLarge" color={theme.base.warning}>
-            {priceData?.reference_price}
-          </Text>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "flex-end",
-            alignItems: "flex-end",
-          }}
-        >
-          <Text typography="bodyMedium">Trần</Text>
-          <Text typography="labelLarge" color={theme.base.success}>
-            {priceData?.ceiling_price}
-          </Text>
-        </View>
-      </View>
+      
     </View>
   );
 };

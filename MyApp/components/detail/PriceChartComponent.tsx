@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { fetchStockData, StockData } from "@/helpers/DetailHelpers";
+import { fetchPriceData, fetchStockData, PriceData, StockData } from "@/helpers/DetailHelpers";
 import { ActivityIndicator, TouchableOpacity, View, Image } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
@@ -9,15 +9,25 @@ import { Images } from "@/constants/Images";
 
 interface Props {
   stockSymbol: string;
-  referencePrice: number;
 }
 
-const PriceChartComponent = ({ stockSymbol, referencePrice }: Props) => {
+const PriceChartComponent = ({ stockSymbol }: Props) => {
   const { theme } = useTheme();
   const [chartType, setChartType] = useState<"Line" | "Candlestick">("Line");
   const [loading, setLoading] = useState<boolean>(false);
   const [option, setOption] = useState<"1D" | "1W" | "1M" | "1Y" | "5Y">("1D");
   const [data, setData] = useState<StockData[]>([]);
+
+  const [priceData, setPriceData] = useState<PriceData | null>(null);
+
+  useEffect(() => {
+    fetchPriceData(stockSymbol).then((res) => {
+      if (res.status) {
+        setPriceData(res.data);
+      }
+    });
+  }, [stockSymbol]);
+  
 
   useEffect(() => {
     setLoading(true);
@@ -44,11 +54,53 @@ const PriceChartComponent = ({ stockSymbol, referencePrice }: Props) => {
           </View>
         ) : (
           <View>
+            <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginHorizontal: 12,
+          marginBottom: 12,
+          backgroundColor: theme.background.surface,
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+          borderRadius: 4,
+          borderWidth: 1,
+          borderColor: theme.base.primary,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <Text typography="bodyMedium">Sàn</Text>
+          <Text typography="labelLarge" color={theme.base.error}>
+            {priceData?.floor_price}
+          </Text>
+        </View>
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text typography="bodyMedium">Tham chiếu</Text>
+          <Text typography="labelLarge" color={theme.base.warning}>
+            {priceData?.reference_price}
+          </Text>
+        </View>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "flex-end",
+            alignItems: "flex-end",
+          }}
+        >
+          <Text typography="bodyMedium">Trần</Text>
+          <Text typography="labelLarge" color={theme.base.success}>
+            {priceData?.ceiling_price}
+          </Text>
+        </View>
+      </View>
+
             {chartType === "Line" ? (
               <PriceLineGraph
                 data={data}
                 option={option}
-                referencePrice={referencePrice}
+                referencePrice={priceData?.reference_price ?? 0}
               />
             ) : (
               <PriceCandleChart data={data} />
@@ -67,8 +119,8 @@ const PriceChartComponent = ({ stockSymbol, referencePrice }: Props) => {
                 width: 24,
                 backgroundColor: theme.background.surface,
                 position: "absolute",
-                top: 8,
-                right: 8,
+                bottom: 270,
+                right: 12,
                 borderRadius: 4,
                 borderWidth: 1,
                 borderColor: theme.border.default,
