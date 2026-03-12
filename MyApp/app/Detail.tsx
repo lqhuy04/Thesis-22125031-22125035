@@ -13,7 +13,8 @@ import { Platform, TouchableOpacity } from "react-native";
 import { Text } from "@/components/ui/Text";
 import { router, useLocalSearchParams } from "expo-router";
 import { fetchPriceData, PriceData } from "@/helpers/DetailHelpers";
-import StickyTabView from "@/components/ui/StickyTabView";
+import TabView from "@/components/detail/DetailTabView";
+import BoardSection from "@/components/detail/BoardSection";
 
 const Detail = () => {
   const { t } = useLocalization();
@@ -33,25 +34,33 @@ const Detail = () => {
   }, [stockItem]);
 
   const TABS = [
-    { key: "overview", label: "Hồ sơ" },
-    { key: "news", label: "Tin tức" },
+    { key: "profile", label: "Hồ sơ", subTabs: [
+      { key: "introduction", label: "Giới thiệu" },
+      { key: "board", label: "Lãnh đạo" },
+    ]},
+    { key: "news", label: "Tin tức"},
   ];
 
   const [activeTab, setActiveTab] = useState<string>(TABS[0]?.key ?? "");
+  const [activeSubTab, setActiveSubTab] = useState<string | undefined>(
+    TABS[0]?.subTabs?.[0]?.key ?? undefined
+  );
+ 
   const tabScrollRef = useRef<ScrollView>(null);
   const tabRefs = useRef<{ [key: string]: number }>({});
-
+ 
   const scrollTabIntoView = useCallback((key: string) => {
     const x = tabRefs.current[key] ?? 0;
     tabScrollRef.current?.scrollTo({ x: Math.max(0, x - 24), animated: true });
   }, []);
-
+ 
   const handleTabPress = useCallback(
-    (key: string) => {
+    (key: string, subTabKey?: string) => {
       setActiveTab(key);
+      setActiveSubTab(subTabKey);
       scrollTabIntoView(key);
     },
-    [scrollTabIntoView],
+    [scrollTabIntoView]
   );
 
   return (
@@ -78,17 +87,24 @@ const Detail = () => {
 
         <FundamentalAnalysisMetricsSection stockSymbol={stockItem.symbol} />
 
-        <StickyTabView
+        <TabView
           tabs={TABS}
           activeTab={activeTab}
+          activeSubTab={activeSubTab}
           tabScrollRef={tabScrollRef}
           tabRefs={tabRefs}
           handleTabPress={handleTabPress}
         />
 
-        {activeTab === "overview" ? (
+        {activeSubTab === "introduction" ? (
           <IntroductionSection stockSymbol={stockItem.symbol} />
-        ) : activeTab === "news" ? (
+        ) : null}
+
+        {activeSubTab === "board" ? (
+          <BoardSection stockSymbol={stockItem.symbol} />
+        ) : null}
+
+        {activeTab === "news" ? (
           <NewsSection stockSymbol={stockItem.symbol} />
         ) : null}
       </ScrollView>

@@ -130,3 +130,47 @@ export const getCompanySubsidiaries = async (
     };
   }
 };
+
+export type CompanyLeader = {
+  full_name: string | null,
+  position: string | null,
+}
+
+export const getCompanyLeaders = async (
+  symbol: string,
+): Promise<{
+  status: boolean;
+  data: CompanyLeader[]
+}> => {
+  try {
+    const response = await fetch(
+      baseUrl + `api/company/${symbol}/leaders`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    const result = await response.json();
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as CompanyLeader[],
+      };
+    }
+    return {
+      status: false,
+      data: [],
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+}; 

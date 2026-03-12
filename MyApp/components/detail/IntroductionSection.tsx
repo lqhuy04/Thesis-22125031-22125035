@@ -39,11 +39,14 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
 
   return companyProfileData != null ? (
     <View style={{ marginTop: 12, marginHorizontal: 12 }}>
-      <Text typography="titleLarge" style={{ marginBottom: 8 }}>
-        Giới thiệu
-      </Text>
-
+      
       <Text typography="bodyMedium">{companyProfileData?.description}</Text>
+      <View style={{height: 12}}/>
+      <Text typography="bodyMedium">• Địa chỉ: {companyProfileData?.address}</Text>
+      <Text typography="bodyMedium">• Email: {companyProfileData?.email}</Text>
+      <Text typography="bodyMedium">• Điện thoại: {companyProfileData?.phone}</Text>
+      <Text typography="bodyMedium">• Website: {companyProfileData?.website}</Text>
+      <Text typography="bodyMedium">• Fax: {companyProfileData?.fax}</Text>
 
       {/* ── Basic Info ── */}
       <View>
@@ -248,7 +251,6 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
         : null}
 
       {/* ── Associates ── */}
-
       <Text typography="titleLarge" style={{ marginBottom: 8, marginTop: 24 }}>
         Công ty liên kết
       </Text>
