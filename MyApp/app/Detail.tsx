@@ -66,15 +66,15 @@ const Detail = () => {
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[3]}
+        stickyHeaderIndices={[2]}
         bounces={Platform.OS === "ios"}
       >
         <DetailHeader item={stockItem} priceData={priceData} />
-
+        {/* 
         <PriceChartComponent
           stockSymbol={stockItem.symbol}
           referencePrice={priceData?.reference_price ?? 0}
-        />
+        /> */}
 
         <FundamentalAnalysisMetricsSection stockSymbol={stockItem.symbol} />
 

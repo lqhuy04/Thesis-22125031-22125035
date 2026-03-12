@@ -1,23 +1,38 @@
-import React, { useEffect } from "react";
-import { View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Image, View } from "react-native";
 import { Text } from "../ui/Text";
 import {
   CompanyProfile,
   getCompanyProfile,
+  getCompanySubsidiaries,
+  SubsidiaryCompany,
 } from "@/helpers/CompanyProfileHelpers";
+import { useTheme } from "@/hooks/ThemeContext";
+import { Images } from "@/constants/Images";
 
 interface IntroductionSectionProps {
   stockSymbol: string;
 }
 
 const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
+  const { theme } = useTheme();
   const [companyProfileData, setCompanyProfileData] =
-    React.useState<CompanyProfile | null>(null);
+    useState<CompanyProfile | null>(null);
+
+  const [subsidiaries, setSubsidiaries] = useState<SubsidiaryCompany[]>([]);
+  const [associates, setAssociates] = useState<SubsidiaryCompany[]>([]);
 
   useEffect(() => {
     getCompanyProfile(stockSymbol).then((res) => {
       if (res.status) {
         setCompanyProfileData(res.data);
+      }
+    });
+
+    getCompanySubsidiaries(stockSymbol).then((res) => {
+      if (res.status) {
+        setSubsidiaries(res.data.subsidiaries);
+        setAssociates(res.data.associates);
       }
     });
   }, [stockSymbol]);
@@ -195,6 +210,79 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
           </Text>
         </View>
       </View>
+
+      {/* ── Subsidiaries ── */}
+      <Text typography="titleLarge" style={{ marginBottom: 8, marginTop: 24 }}>
+        Công ty con
+      </Text>
+
+      {subsidiaries.length > 0
+        ? subsidiaries.map((sub) => (
+            <View
+              key={sub.symbol}
+              style={{
+                borderRadius: 4,
+                padding: 8,
+                backgroundColor: theme.background.surface,
+                marginTop: 8,
+                flexDirection: "row",
+                alignItems: "flex-start",
+              }}
+            >
+              <Image
+                source={Images.ic_subsidiary}
+                style={{ width: 36, height: 36, marginRight: 16 }}
+              />
+
+              <View style={{ flex: 1 }}>
+                <Text typography="titleMedium">{sub.company_name}</Text>
+                <Text typography="bodyMedium" style={{ marginTop: 4 }}>
+                  Vốn điều lệ: {sub.charter_capital_billion} tỷ
+                </Text>
+                <Text typography="bodyMedium" style={{ marginTop: 4 }}>
+                  Tỉ lệ nắm giữ: {sub.ownership_pct}%
+                </Text>
+              </View>
+            </View>
+          ))
+        : null}
+
+      {/* ── Associates ── */}
+
+      <Text typography="titleLarge" style={{ marginBottom: 8, marginTop: 24 }}>
+        Công ty liên kết
+      </Text>
+
+      {associates.length > 0
+        ? associates.map((sub) => (
+            <View
+              key={sub.symbol}
+              style={{
+                borderRadius: 4,
+                padding: 8,
+                backgroundColor: theme.background.surface,
+                marginTop: 8,
+                flexDirection: "row",
+                alignItems: "flex-start",
+              }}
+            >
+              <Image
+                source={Images.ic_subsidiary}
+                style={{ width: 36, height: 36, marginRight: 16 }}
+              />
+
+              <View style={{ flex: 1 }}>
+                <Text typography="titleMedium">{sub.company_name}</Text>
+                <Text typography="bodyMedium" style={{ marginTop: 4 }}>
+                  Vốn điều lệ: {sub.charter_capital_billion} tỷ
+                </Text>
+                <Text typography="bodyMedium" style={{ marginTop: 4 }}>
+                  Tỉ lệ nắm giữ: {sub.ownership_pct}%
+                </Text>
+              </View>
+            </View>
+          ))
+        : null}
     </View>
   ) : null;
 };
