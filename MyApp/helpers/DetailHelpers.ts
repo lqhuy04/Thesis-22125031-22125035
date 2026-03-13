@@ -1,4 +1,4 @@
-import { baseUrl } from "./base";
+import { sendMessage } from "./api/ApiClients";
 
 export type Content = {
   type: "text" | "image";
@@ -26,15 +26,8 @@ export const fetchNews = async (
   data: New[];
 }> => {
   try {
-    const response = await fetch(baseUrl + `api/news/${symbol}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
+    const result = await sendMessage(`api/news/${symbol}`);
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
@@ -80,18 +73,8 @@ export const fetchFundamentalAnalysisIndexes = async (
   data: FundamentalAnalysisIndexes | null;
 }> => {
   try {
-    const response = await fetch(
-      baseUrl + `api/fundamental-metrics/${symbol}`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    const result = await sendMessage(`api/fundamental-metrics/${symbol}`);
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
@@ -132,18 +115,10 @@ export const fetchStockData = async (
   data: StockData[];
 }> => {
   try {
-    const response = await fetch(
-      baseUrl + `api/stock-price/${symbol}?timeframe=${timeframe}`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      },
+    const result = await sendMessage(
+      `api/stock-price/${symbol}?timeframe=${timeframe}`,
     );
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
@@ -181,15 +156,8 @@ export const getAnalysis = async (
   data: AnalysisData | null;
 }> => {
   try {
-    const response = await fetch(baseUrl + `api/analysis/${symbol}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
+    const result = await sendMessage(`api/analysis/${symbol}`);
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
@@ -229,15 +197,8 @@ export const fetchPriceData = async (
   data: PriceData | null;
 }> => {
   try {
-    const response = await fetch(baseUrl + `api/price/${symbol}`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
+    const result = await sendMessage(`api/price/${symbol}`);
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {

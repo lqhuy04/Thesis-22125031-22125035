@@ -1,4 +1,4 @@
-import { baseUrl } from "./base";
+import { sendMessage } from "./api/ApiClients";
 
 export type SearchStockItem = {
   symbol: string;
@@ -13,18 +13,8 @@ export const searchStocks = async (
   query: string,
 ): Promise<SearchStockItem[]> => {
   try {
-    const response = await fetch(
-      baseUrl + `api/search/${query}`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    const result = await sendMessage(`api/search/${query}`);
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return data as SearchStockItem[];

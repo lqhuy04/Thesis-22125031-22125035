@@ -1,9 +1,5 @@
-import { baseUrl } from "./base";
-
-type Response<T = any> = {
-  status: boolean;
-  data: T | null;
-};
+import { sendMessage } from "./api/ApiClients";
+import { saveToken, removeToken } from "./api/TokenStorage";
 
 export const signIn = async ({
   username,
@@ -11,39 +7,35 @@ export const signIn = async ({
 }: {
   username: string;
   password: string;
-}): Promise<Response> => {
+}): Promise<{
+  status: boolean;
+}> => {
   try {
-    const response = await fetch(baseUrl + "api/auth/login", {
+    const result = await sendMessage("api/auth/login", {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
         email: username,
         password: password,
       }),
     });
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
 
     if (errorCode === 0) {
+      await saveToken(data.token);
+
       return {
         status: true,
-        data: data,
       };
     } else {
       return {
         status: false,
-        data: null,
       };
     }
   } catch (error) {
     console.error(error);
     return {
       status: false,
-      data: null,
     };
   }
 };
@@ -56,38 +48,38 @@ export const signUp = async ({
   email: string;
   phoneNumber: string;
   password: string;
-}): Promise<Response> => {
+}): Promise<{
+  status: boolean;
+}> => {
   try {
-    const response = await fetch(baseUrl + "api/auth/signup", {
+    const result = await sendMessage("api/auth/signup", {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({
         email: email,
-        phoneNumber: phoneNumber,
+        phone_number: phoneNumber,
         password: password,
       }),
     });
-    const result = await response.json();
+
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
+      await saveToken(data.token);
       return {
         status: true,
-        data: data,
       };
     } else {
       return {
         status: false,
-        data: null,
       };
     }
   } catch (error) {
     console.error(error);
     return {
       status: false,
-      data: null,
     };
   }
+};
+
+export const logout = async () => {
+  await removeToken();
 };

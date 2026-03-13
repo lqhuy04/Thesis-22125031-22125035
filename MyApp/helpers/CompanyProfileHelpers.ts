@@ -1,4 +1,4 @@
-import { baseUrl } from "./base";
+import { sendMessage } from "./api/ApiClients";
 
 export type CompanyProfile = {
   symbol: string | null;
@@ -34,15 +34,8 @@ export const getCompanyProfile = async (
   data: CompanyProfile | null;
 }> => {
   try {
-    const response = await fetch(baseUrl + `api/company/${symbol}/profile`, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
+    const result = await sendMessage(`api/company/${symbol}/profile`);
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
@@ -82,18 +75,8 @@ export const getCompanySubsidiaries = async (
   };
 }> => {
   try {
-    const response = await fetch(
-      baseUrl + `api/company/${symbol}/subsidiaries`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    const result = await sendMessage(`api/company/${symbol}/subsidiaries`);
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
@@ -132,29 +115,19 @@ export const getCompanySubsidiaries = async (
 };
 
 export type CompanyLeader = {
-  full_name: string | null,
-  position: string | null,
-}
+  full_name: string | null;
+  position: string | null;
+};
 
 export const getCompanyLeaders = async (
   symbol: string,
 ): Promise<{
   status: boolean;
-  data: CompanyLeader[]
+  data: CompanyLeader[];
 }> => {
   try {
-    const response = await fetch(
-      baseUrl + `api/company/${symbol}/leaders`,
-      {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    const result = await sendMessage(`api/company/${symbol}/leaders`);
 
-    const result = await response.json();
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
@@ -173,4 +146,4 @@ export const getCompanyLeaders = async (
       data: [],
     };
   }
-}; 
+};

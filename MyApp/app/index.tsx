@@ -1,15 +1,34 @@
 import { Redirect } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { View } from "react-native";
+import { getToken } from "@/helpers/api/TokenStorage";
 
 export default function Index() {
-  //   // Giả sử bạn có biến kiểm tra login từ Context hoặc Storage
-  //   const isLoggedIn = false; // Thay bằng logic thực tế của bạn
+  const [loading, setLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  //   if (!isLoggedIn) {
-  //     // Nếu chưa đăng nhập, tự động đẩy sang màn hình Authentication
-  //     return <Redirect href="/Authentication" />;
-  //   }
+  useEffect(() => {
+    const checkAuth = async () => {
+      setLoading(true);
+      const token = await getToken();
 
-  // Nếu đã đăng nhập, đẩy sang màn hình chính (ví dụ: /home)
-  return <Redirect href="/Home" />;
+      if (token != null) {
+        setIsLoggedIn(true);
+      }
+
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, []);
+
+  if (loading) {
+    return <View />;
+  }
+
+  if (isLoggedIn) {
+    return <Redirect href="/Home" />;
+  }
+
+  return <Redirect href="/Authentication" />;
 }

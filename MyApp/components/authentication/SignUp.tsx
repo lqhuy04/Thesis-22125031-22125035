@@ -21,7 +21,7 @@ const SignUpComponent = () => {
       password: formData?.password,
     }).then((response) => {
       if (response.status) {
-        router.push("../home/Home");
+        router.push("/RiskAppetite");
       } else {
         Alert.alert(
           "Sign Up Failed",
@@ -50,6 +50,7 @@ const SignUpComponent = () => {
         name="phoneNumber"
         label={t("auth.phoneNumber")}
         placeholder={t("auth.phoneNumberPlaceholder")}
+        required={true}
       />
 
       <Input
