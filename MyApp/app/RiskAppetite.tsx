@@ -1,5 +1,11 @@
-import React, { useCallback, useMemo, useState } from "react";
-import { Dimensions, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import * as Progress from "react-native-progress";
@@ -8,6 +14,7 @@ import { Text } from "@/components/ui/Text";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import DropDown from "@/components/ui/Dropdown";
 import { router } from "expo-router";
+import { getRiskAppetite, saveRiskAppetite } from "@/helpers/ProfileHelpers";
 
 const RiskAppetite = () => {
   const screenWidth = Dimensions.get("window").width;
@@ -16,19 +23,30 @@ const RiskAppetite = () => {
 
   const [index, setIndex] = useState<number>(1);
 
-  const Continue = useCallback(() => {
-    if (index === 5) {
-      router.push("/HomeTabs");
-    } else {
-      setIndex((prev) => prev + 1);
-    }
-  }, [index]);
+  const [experience, setExperience] = useState<string>("");
+  const [expectation, setExpectation] = useState<string>("");
+  const [period, setPeriod] = useState<string>("");
+  const [comfortZone, setComfortZone] = useState<string>("");
+  const [capitalRatio, setCapitalRatio] = useState<string>("");
 
-  const Back = useCallback(() => {
-    setIndex((prev) => (prev > 1 ? prev - 1 : prev));
+  const [loading, setLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    setLoading(true);
+    getRiskAppetite().then((res) => {
+      if (res.status && res.data) {
+        console.log(res.data);
+        setExperience(res.data.experience);
+        setExpectation(res.data.expectation);
+        setPeriod(res.data.period);
+        setComfortZone(res.data.comfort_zone);
+        setCapitalRatio(res.data.capital_ratio);
+      }
+      setLoading(false);
+    });
   }, []);
 
-  const initialSurveyData = useMemo(() => {
+  const surveyData = useMemo(() => {
     return [
       {
         key: 1,
@@ -42,7 +60,7 @@ const RiskAppetite = () => {
           { key: "2", value: "Đã có kinh nghiệm" },
           { key: "3", value: "Nhà đầu tư chuyên nghiệp" },
         ],
-        selected: "",
+        selected: experience,
       },
       {
         key: 2,
@@ -56,7 +74,7 @@ const RiskAppetite = () => {
           { key: "2", value: "Kiếm thêm thu nhập thụ động" },
           { key: "3", value: "Tăng trưởng tài sản nhanh" },
         ],
-        selected: "",
+        selected: expectation,
       },
       {
         key: 3,
@@ -68,9 +86,9 @@ const RiskAppetite = () => {
         data: [
           { key: "1", value: "Ngắn hạn (Dưới 1 năm)" },
           { key: "2", value: "Trung hạn (1-3 năm)" },
-          { key: "3", value: "Dài hạn (trên 3-5 năm" },
+          { key: "3", value: "Dài hạn (trên 3-5 năm)" },
         ],
-        selected: "",
+        selected: period,
       },
       {
         key: 4,
@@ -83,7 +101,7 @@ const RiskAppetite = () => {
           { key: "2", value: "Lợi nhuận +15% | Rủi ro lỗ tối đa -10%" },
           { key: "3", value: "Lợi nhuận +30% | Rủi ro lỗ tối đa -25%" },
         ],
-        selected: "",
+        selected: comfortZone,
       },
       {
         key: 5,
@@ -96,14 +114,40 @@ const RiskAppetite = () => {
           { key: "2", value: "Khoảng 10 - 30%" },
           { key: "3", value: "Trên 30%" },
         ],
-        selected: "",
+        selected: capitalRatio,
       },
     ];
+  }, [capitalRatio, comfortZone, expectation, experience, period]);
+
+  const Continue = useCallback(() => {
+    if (index === 5) {
+      saveRiskAppetite({
+        experience: experience,
+        expectation: expectation,
+        period: period,
+        comfort_zone: comfortZone,
+        capital_ratio: capitalRatio,
+      }).then((res) => {
+        if (res.status) {
+          router.back();
+        } else {
+          Alert.alert("Lỗi", "Đã có lỗi xảy ra, vui lòng thử lại sau.");
+        }
+      });
+    } else {
+      setIndex((prev) => prev + 1);
+    }
+  }, [capitalRatio, comfortZone, expectation, experience, index, period]);
+
+  const Back = useCallback(() => {
+    setIndex((prev) => (prev > 1 ? prev - 1 : prev));
   }, []);
 
-  const [surveyData, setSurveyData] = useState(initialSurveyData);
-
-  return (
+  return loading ? (
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <ActivityIndicator size="large" color={theme.base.primary} />
+    </View>
+  ) : (
     <SafeAreaView
       style={{
         backgroundColor: theme.background.bg,
@@ -112,7 +156,7 @@ const RiskAppetite = () => {
         paddingBottom: 40,
       }}
     >
-      <View style={{ marginHorizontal: 16 }}>
+      <View style={{ marginHorizontal: 12 }}>
         <ScreenHeader
           title="Khảo sát khẩu vị rủi ro"
           onPressBack={Back}
@@ -143,11 +187,26 @@ const RiskAppetite = () => {
           placeholder={surveyData[index - 1].placeholder}
           label={surveyData[index - 1].label}
           setSelected={(val) => {
-            setSurveyData((prev) =>
-              prev.map((item) =>
-                item.key === index ? { ...item, selected: val } : item,
-              ),
-            );
+            const currentData = surveyData[index - 1];
+            const selectedValue =
+              currentData.data.find((item) => item.key === val)?.value || "";
+            switch (currentData.key) {
+              case 1:
+                setExperience(selectedValue);
+                break;
+              case 2:
+                setExpectation(selectedValue);
+                break;
+              case 3:
+                setPeriod(selectedValue);
+                break;
+              case 4:
+                setComfortZone(selectedValue);
+                break;
+              case 5:
+                setCapitalRatio(selectedValue);
+                break;
+            }
           }}
           value={surveyData[index - 1].selected}
           required

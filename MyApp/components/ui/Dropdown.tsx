@@ -45,7 +45,7 @@ const DropDown = ({
       ) : null}
 
       <SelectList
-        defaultOption={data.find((e) => e?.key === value)}
+        defaultOption={data.find((e) => e?.value === value)}
         setSelected={setSelected}
         data={data}
         search={false}

@@ -23,7 +23,15 @@ const Authentication = () => {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={"padding"}>
         <ScrollView keyboardShouldPersistTaps="handled">
-          {tab === "signIn" ? <SignInComponent /> : <SignUpComponent />}
+          {tab === "signIn" ? (
+            <SignInComponent />
+          ) : (
+            <SignUpComponent
+              onSuccess={() => {
+                setTab("signIn");
+              }}
+            />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

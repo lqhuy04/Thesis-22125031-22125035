@@ -6,9 +6,12 @@ import { Text } from "@/components/ui/Text";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { signUp } from "@/helpers/AuthenticationHelper";
 import { Input } from "../ui/Input";
-import { router } from "expo-router";
 
-const SignUpComponent = () => {
+interface SignUpComponentProps {
+  onSuccess: () => void;
+}
+
+const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
 
@@ -21,7 +24,7 @@ const SignUpComponent = () => {
       password: formData?.password,
     }).then((response) => {
       if (response.status) {
-        router.push("/RiskAppetite");
+        onSuccess();
       } else {
         Alert.alert(
           "Sign Up Failed",

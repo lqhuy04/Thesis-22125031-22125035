@@ -5,6 +5,7 @@ import { TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
 import { router } from "expo-router";
+import { removeToken } from "@/helpers/api/TokenStorage";
 
 const Profile = () => {
   const { theme } = useTheme();
@@ -34,7 +35,7 @@ const Profile = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.push("/RiskProfile")}
+          onPress={() => router.push("/RiskAppetite")}
           style={{
             flexDirection: "row",
             alignItems: "center",
@@ -42,11 +43,30 @@ const Profile = () => {
           }}
         >
           <Ionicons
-            name="settings-outline"
+            name="bar-chart-outline"
             size={20}
             style={{ marginRight: 8 }}
           />
           <Text typography="titleSmall">Khẩu vị rủi ro</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={async () => {
+            await removeToken();
+            router.replace("/Authentication");
+          }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginVertical: 12,
+          }}
+        >
+          <Ionicons
+            name="log-out-outline"
+            size={20}
+            style={{ marginRight: 8 }}
+          />
+          <Text typography="titleSmall">Đăng xuất</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
