@@ -1,0 +1,121 @@
+-- Run this snippet in your Supabase SQL Editor to create the 4 tables
+
+-- 1. Balance Sheets
+CREATE TABLE IF NOT EXISTS financial_balance_sheets (
+    symbol TEXT,
+    year INT,
+    total_assets FLOAT,
+    current_assets FLOAT,
+    cash_and_equivalents FLOAT,
+    short_term_investments_net FLOAT,
+    accounts_receivable FLOAT,
+    inventory_net FLOAT,
+    long_term_assets FLOAT,
+    fixed_assets FLOAT,
+    long_term_investments FLOAT,
+    total_liabilities FLOAT,
+    current_liabilities FLOAT,
+    accounts_payable FLOAT,
+    short_term_loans FLOAT,
+    long_term_liabilities FLOAT,
+    long_term_loans FLOAT,
+    equity FLOAT,
+    paid_in_capital FLOAT,
+    retained_earnings FLOAT,
+    total_liabilities_and_equity FLOAT,
+    PRIMARY KEY (symbol, year)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fbs_year ON financial_balance_sheets(year);
+
+-- 2. Cash Flows
+CREATE TABLE IF NOT EXISTS financial_cash_flows (
+    symbol TEXT,
+    year INT,
+    cfo FLOAT,
+    profit_before_wc_changes FLOAT,
+    profit_before_tax_cf FLOAT,
+    depreciation FLOAT,
+    cfi FLOAT,
+    capex FLOAT,
+    dividends_received FLOAT,
+    cff FLOAT,
+    proceeds_from_share_issuance FLOAT,
+    proceeds_from_loans FLOAT,
+    repayment_of_loans FLOAT,
+    dividends_paid FLOAT,
+    net_cash_change FLOAT,
+    cash_beginning FLOAT,
+    cash_ending FLOAT,
+    PRIMARY KEY (symbol, year)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fcf_year ON financial_cash_flows(year);
+
+-- 3. Financial Indicators
+CREATE TABLE IF NOT EXISTS financial_indicators (
+    symbol TEXT,
+    year INT,
+    cash_cycle_days FLOAT,
+    net_income FLOAT,
+    profit_yoy FLOAT,
+    revenue FLOAT,
+    revenue_yoy FLOAT,
+    market_cap FLOAT,
+    eps FLOAT,
+    pe_ratio FLOAT,
+    pb_ratio FLOAT,
+    ps_ratio FLOAT,
+    p_cash_flow FLOAT,
+    shares_outstanding FLOAT,
+    ev_ebitda FLOAT,
+    bvps FLOAT,
+    cash_ratio FLOAT,
+    debt_to_equity FLOAT,
+    roe FLOAT,
+    roa FLOAT,
+    days_receivable FLOAT,
+    days_inventory FLOAT,
+    quick_ratio FLOAT,
+    days_payable FLOAT,
+    gross_margin FLOAT,
+    ebit_margin FLOAT,
+    net_margin FLOAT,
+    current_ratio FLOAT,
+    asset_turnover FLOAT,
+    loans_to_equity FLOAT,
+    financial_leverage FLOAT,
+    roic FLOAT,
+    interest_coverage FLOAT,
+    fixed_asset_turnover FLOAT,
+    PRIMARY KEY (symbol, year)
+);
+
+CREATE INDEX IF NOT EXISTS idx_find_year ON financial_indicators(year);
+
+-- 4. Income Statements
+CREATE TABLE IF NOT EXISTS financial_income_statements (
+    symbol TEXT,
+    year INT,
+    gross_revenue FLOAT,
+    net_revenue FLOAT,
+    cogs FLOAT,
+    gross_profit FLOAT,
+    financial_income FLOAT,
+    financial_expense FLOAT,
+    interest_expense FLOAT,
+    selling_expense FLOAT,
+    admin_expense FLOAT,
+    operating_profit FLOAT,
+    profit_before_tax FLOAT,
+    income_tax_expense FLOAT,
+    net_profit_after_tax FLOAT,
+    net_income_parent FLOAT,
+    eps_basic FLOAT,
+    ebit FLOAT,
+    ebitda FLOAT,
+    PRIMARY KEY (symbol, year)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fis_year ON financial_income_statements(year);
+
