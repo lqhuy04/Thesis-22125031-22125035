@@ -26,7 +26,7 @@ class RiskAppetiteService:
         try:
             result = supabase.table("risk_appetite") \
                 .select("*") \
-                .eq("userId", user_id) \
+                .eq("userid", user_id) \
                 .limit(1) \
                 .execute()
 
@@ -44,7 +44,7 @@ class RiskAppetiteService:
         period: Optional[str] = None,
         comfort_zone: Optional[str] = None,
         capital_ratio: Optional[str] = None,
-    ) -> None:
+    ) -> Dict:
         """
         Create or update risk appetite for a user.
         If a record already exists for the user, it will be updated.
@@ -59,7 +59,7 @@ class RiskAppetiteService:
         """
         try:
             payload = {
-                "userId": user_id,
+                "userid": user_id,
                 "experience": experience,
                 "expectation": expectation,
                 "period": period,
@@ -70,21 +70,23 @@ class RiskAppetiteService:
             # Check if record already exists
             existing = supabase.table("risk_appetite") \
                 .select("id") \
-                .eq("userId", user_id) \
+                .eq("userid", user_id) \
                 .limit(1) \
                 .execute()
 
             if existing.data:
                 # Update existing record
-                supabase.table("risk_appetite") \
+                result = supabase.table("risk_appetite") \
                     .update(payload) \
-                    .eq("userId", user_id) \
+                    .eq("userid", user_id) \
                     .execute()
             else:
                 # Insert new record
-                supabase.table("risk_appetite") \
+                result = supabase.table("risk_appetite") \
                     .insert(payload) \
                     .execute()
+            
+            return result.data[0] if result.data else payload
 
         except Exception as e:
             print(f"Error upserting risk appetite: {e}")

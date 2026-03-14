@@ -35,7 +35,7 @@ async def get_risk_appetite(current_user: dict = Depends(get_current_user)):
 
         risk_data = RiskAppetiteData(
             id=data.get("id"),
-            userId=data.get("userId"),
+            userId=data.get("userid"),
             experience=data.get("experience"),
             expectation=data.get("expectation"),
             period=data.get("period"),
@@ -75,7 +75,7 @@ async def save_risk_appetite(
     try:
         user_id = current_user["user_id"]
 
-        await RiskAppetiteService.upsert_risk_appetite(
+        data = await RiskAppetiteService.upsert_risk_appetite(
             user_id=user_id,
             experience=request.experience,
             expectation=request.expectation,
@@ -84,7 +84,17 @@ async def save_risk_appetite(
             capital_ratio=request.capital_ratio,
         )
 
-        return success_response(request_id=request_id)
+        risk_data = RiskAppetiteData(
+            id=data.get("id"),
+            userId=data.get("userid"),
+            experience=data.get("experience"),
+            expectation=data.get("expectation"),
+            period=data.get("period"),
+            comfort_zone=data.get("comfort_zone"),
+            capital_ratio=data.get("capital_ratio"),
+        ).model_dump()
+
+        return success_response(data=risk_data, request_id=request_id)
 
     except ValueError as e:
         return error_response(
