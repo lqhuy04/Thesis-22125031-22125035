@@ -27,7 +27,7 @@ export default function Index() {
   }
 
   if (isLoggedIn) {
-    return <Redirect href="/Home" />;
+    return <Redirect href="/HomeTabs" />;
   }
 
   return <Redirect href="/Authentication" />;

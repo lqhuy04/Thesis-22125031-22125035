@@ -35,4 +35,9 @@ export default {
     shareOutstanding: "Khối lượng lưu hành (Triệu cổ phiếu)",
     ROE: "ROE",
   },
+  setting: {
+    settingScreenTitle: "Cài đặt",
+    darkMode: "Chế độ tối",
+    language: "Ngôn ngữ",
+  },
 };

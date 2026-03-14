@@ -35,4 +35,9 @@ export default {
     shareOutstanding: "Share Outstanding (Million stocks)",
     ROE: "ROE",
   },
+  setting: {
+    settingScreenTitle: "Setting",
+    darkMode: "Dark mode",
+    language: "Language",
+  },
 };

@@ -10,7 +10,7 @@ import React, { useCallback, useRef, useState } from "react";
 import { ScrollView } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { View } from "react-native";
-import {  useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import TabView from "@/components/detail/DetailTabView";
 import PriceChartComponent from "@/components/detail/PriceChartComponent";
 
@@ -35,7 +35,7 @@ const Detail = () => {
 
   const [activeTab, setActiveTab] = useState<string>(TABS[0]?.key ?? "");
   const [activeSubTab, setActiveSubTab] = useState<string | undefined>(
-    TABS[0]?.subTabs?.[0]?.key ?? undefined
+    TABS[0]?.subTabs?.[0]?.key ?? undefined,
   );
 
   const tabScrollRef = useRef<ScrollView>(null);
@@ -52,7 +52,7 @@ const Detail = () => {
       setActiveSubTab(subTabKey);
       scrollTabIntoView(key);
     },
-    [scrollTabIntoView]
+    [scrollTabIntoView],
   );
 
   /**
@@ -73,15 +73,17 @@ const Detail = () => {
       }
       return null;
     },
-    [stockItem?.symbol]
+    [stockItem?.symbol],
   );
 
-  const renderHeaderContent = useCallback(()=> {
-    return <View>
-      <PriceChartComponent stockSymbol={stockItem.symbol}/>
-      <FundamentalAnalysisMetricsSection stockSymbol={stockItem.symbol} />
-    </View>
-  },[])
+  const renderHeaderContent = useCallback(() => {
+    return (
+      <View>
+        <PriceChartComponent stockSymbol={stockItem.symbol} />
+        <FundamentalAnalysisMetricsSection stockSymbol={stockItem.symbol} />
+      </View>
+    );
+  }, [stockItem.symbol]);
 
   return (
     <SafeAreaView
@@ -95,15 +97,15 @@ const Detail = () => {
       <DetailHeader item={stockItem} />
 
       <TabView
-          tabs={TABS}
-          activeTab={activeTab}
-          activeSubTab={activeSubTab}
-          tabScrollRef={tabScrollRef}
-          tabRefs={tabRefs}
-          headerContent={renderHeaderContent}
-          handleTabPress={handleTabPress}
-          renderContent={renderContent}
-        />
+        tabs={TABS}
+        activeTab={activeTab}
+        activeSubTab={activeSubTab}
+        tabScrollRef={tabScrollRef}
+        tabRefs={tabRefs}
+        headerContent={renderHeaderContent}
+        handleTabPress={handleTabPress}
+        renderContent={renderContent}
+      />
 
       {/* <TouchableOpacity
         onPress={() => {

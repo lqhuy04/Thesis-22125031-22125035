@@ -5,6 +5,7 @@ import { lightTheme, darkTheme, Theme } from "../constants/theme";
 type ThemeContextType = {
   theme: Theme;
   toggleTheme: () => void;
+  isDark: boolean;
 };
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
@@ -17,6 +18,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <ThemeContext.Provider
       value={{
+        isDark,
         theme: isDark ? darkTheme : lightTheme,
         toggleTheme: () => setIsDark(!isDark),
       }}

@@ -10,6 +10,7 @@ const translations = {
 };
 
 type LocalizationContextType = {
+  languageOptions: { key: Language; value: string }[];
   language: Language;
   setLanguage: (lang: Language) => void;
   t: (key: string) => string;
@@ -21,6 +22,11 @@ export const LocalizationProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>("vi");
+
+  const languageOptions = [
+    { key: "en" as Language, value: "English" },
+    { key: "vi" as Language, value: "Tiếng Việt" },
+  ];
 
   const t = useMemo(() => {
     return (key: string) => {
@@ -36,7 +42,9 @@ export const LocalizationProvider: React.FC<{
   }, [language]);
 
   return (
-    <LocalizationContext.Provider value={{ language, setLanguage, t }}>
+    <LocalizationContext.Provider
+      value={{ language, setLanguage, t, languageOptions }}
+    >
       {children}
     </LocalizationContext.Provider>
   );
