@@ -141,3 +141,68 @@ class FinancialDBService:
         except Exception as e:
             print(f"Error upserting financial metrics: {e}")
             raise ValueError(f"Failed to upsert financial metrics: {str(e)}")
+
+    @staticmethod
+    async def get_balance_sheets(symbol: str, year: Optional[int] = None) -> List[Dict]:
+        """
+        Get balance sheets for a specific symbol
+        """
+        try:
+            query = supabase.table("financial_balance_sheets").select("*").eq("symbol", symbol.upper())
+            if year:
+                query = query.eq("year", year)
+            query = query.order("year", desc=True)
+            result = query.execute()
+            return result.data if result.data else []
+        except Exception as e:
+            print(f"Error fetching balance sheets: {e}")
+            raise ValueError(f"Failed to fetch balance sheets: {str(e)}")
+
+    @staticmethod
+    async def get_cash_flows(symbol: str, year: Optional[int] = None) -> List[Dict]:
+        """
+        Get cash flows for a specific symbol
+        """
+        try:
+            query = supabase.table("financial_cash_flows").select("*").eq("symbol", symbol.upper())
+            if year:
+                query = query.eq("year", year)
+            query = query.order("year", desc=True)
+            result = query.execute()
+            return result.data if result.data else []
+        except Exception as e:
+            print(f"Error fetching cash flows: {e}")
+            raise ValueError(f"Failed to fetch cash flows: {str(e)}")
+
+    @staticmethod
+    async def get_financial_indicators(symbol: str, year: Optional[int] = None) -> List[Dict]:
+        """
+        Get financial indicators for a specific symbol
+        """
+        try:
+            query = supabase.table("financial_indicators").select("*").eq("symbol", symbol.upper())
+            if year:
+                query = query.eq("year", year)
+            query = query.order("year", desc=True)
+            result = query.execute()
+            return result.data if result.data else []
+        except Exception as e:
+            print(f"Error fetching financial indicators: {e}")
+            raise ValueError(f"Failed to fetch financial indicators: {str(e)}")
+
+    @staticmethod
+    async def get_income_statements(symbol: str, year: Optional[int] = None) -> List[Dict]:
+        """
+        Get income statements for a specific symbol
+        """
+        try:
+            query = supabase.table("financial_income_statements").select("*").eq("symbol", symbol.upper())
+            if year:
+                query = query.eq("year", year)
+            query = query.order("year", desc=True)
+            result = query.execute()
+            return result.data if result.data else []
+        except Exception as e:
+            print(f"Error fetching income statements: {e}")
+            raise ValueError(f"Failed to fetch income statements: {str(e)}")
+

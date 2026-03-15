@@ -204,6 +204,44 @@ async def get_available_years(symbol: str):
         )
 
 
+@router.get("/{symbol}/balance-sheets", summary="Get Balance Sheets")
+async def get_balance_sheets(symbol: str, year: Optional[int] = None):
+    try:
+        data = await FinancialDBService.get_balance_sheets(symbol, year)
+        return success_response(data=data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{symbol}/cash-flows", summary="Get Cash Flows")
+async def get_cash_flows(symbol: str, year: Optional[int] = None):
+    try:
+        data = await FinancialDBService.get_cash_flows(symbol, year)
+        return success_response(data=data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{symbol}/financial-indicators", summary="Get Financial Indicators")
+async def get_financial_indicators(symbol: str, year: Optional[int] = None):
+    try:
+        data = await FinancialDBService.get_financial_indicators(symbol, year)
+        return success_response(data=data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{symbol}/income-statements", summary="Get Income Statements")
+async def get_income_statements(symbol: str, year: Optional[int] = None):
+    try:
+        data = await FinancialDBService.get_income_statements(symbol, year)
+        return success_response(data=data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error"
+        )
+
+
 @router.get("/{symbol}/analysis",
             summary="Get Comprehensive Financial Analysis",
             description="Get a comprehensive financial analysis with formatted metrics")

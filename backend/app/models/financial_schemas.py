@@ -63,3 +63,110 @@ class MarketDataResponse(BaseModel):
     errorDesc: str = Field("", description="Error description")
     requestId: str = Field(..., description="Unique request ID")
     result: bool = Field(True, description="Request success status")
+
+
+class BalanceSheetSchema(BaseModel):
+    """Schema for Financial Balance Sheets"""
+    symbol: str = Field(..., description="Stock symbol")
+    year: int = Field(..., description="Year")
+    total_assets: Optional[float] = None
+    current_assets: Optional[float] = None
+    cash_and_equivalents: Optional[float] = None
+    short_term_investments_net: Optional[float] = None
+    accounts_receivable: Optional[float] = None
+    inventory_net: Optional[float] = None
+    long_term_assets: Optional[float] = None
+    fixed_assets: Optional[float] = None
+    long_term_investments: Optional[float] = None
+    total_liabilities: Optional[float] = None
+    current_liabilities: Optional[float] = None
+    accounts_payable: Optional[float] = None
+    short_term_loans: Optional[float] = None
+    long_term_liabilities: Optional[float] = None
+    long_term_loans: Optional[float] = None
+    equity: Optional[float] = None
+    paid_in_capital: Optional[float] = None
+    retained_earnings: Optional[float] = None
+    total_liabilities_and_equity: Optional[float] = None
+
+
+class CashFlowSchema(BaseModel):
+    """Schema for Financial Cash Flows"""
+    symbol: str = Field(..., description="Stock symbol")
+    year: int = Field(..., description="Year")
+    cfo: Optional[float] = None
+    profit_before_wc_changes: Optional[float] = None
+    profit_before_tax_cf: Optional[float] = None
+    depreciation: Optional[float] = None
+    cfi: Optional[float] = None
+    capex: Optional[float] = None
+    dividends_received: Optional[float] = None
+    cff: Optional[float] = None
+    proceeds_from_share_issuance: Optional[float] = None
+    proceeds_from_loans: Optional[float] = None
+    repayment_of_loans: Optional[float] = None
+    dividends_paid: Optional[float] = None
+    net_cash_change: Optional[float] = None
+    cash_beginning: Optional[float] = None
+    cash_ending: Optional[float] = None
+
+
+class FinancialIndicatorSchema(BaseModel):
+    """Schema for Financial Indicators"""
+    symbol: str = Field(..., description="Stock symbol")
+    year: int = Field(..., description="Year")
+    cash_cycle_days: Optional[float] = None
+    net_income: Optional[float] = None
+    profit_yoy: Optional[float] = None
+    revenue: Optional[float] = None
+    revenue_yoy: Optional[float] = None
+    market_cap: Optional[float] = None
+    eps: Optional[float] = None
+    pe_ratio: Optional[float] = None
+    pb_ratio: Optional[float] = None
+    ps_ratio: Optional[float] = None
+    p_cash_flow: Optional[float] = None
+    shares_outstanding: Optional[float] = None
+    ev_ebitda: Optional[float] = None
+    bvps: Optional[float] = None
+    cash_ratio: Optional[float] = None
+    debt_to_equity: Optional[float] = None
+    roe: Optional[float] = None
+    roa: Optional[float] = None
+    days_receivable: Optional[float] = None
+    days_inventory: Optional[float] = None
+    quick_ratio: Optional[float] = None
+    days_payable: Optional[float] = None
+    gross_margin: Optional[float] = None
+    ebit_margin: Optional[float] = None
+    net_margin: Optional[float] = None
+    current_ratio: Optional[float] = None
+    asset_turnover: Optional[float] = None
+    loans_to_equity: Optional[float] = None
+    financial_leverage: Optional[float] = None
+    roic: Optional[float] = None
+    interest_coverage: Optional[float] = None
+    fixed_asset_turnover: Optional[float] = None
+
+
+class IncomeStatementSchema(BaseModel):
+    """Schema for Financial Income Statements"""
+    symbol: str = Field(..., description="Stock symbol")
+    year: int = Field(..., description="Year")
+    gross_revenue: Optional[float] = None
+    net_revenue: Optional[float] = None
+    cogs: Optional[float] = None
+    gross_profit: Optional[float] = None
+    financial_income: Optional[float] = None
+    financial_expense: Optional[float] = None
+    interest_expense: Optional[float] = None
+    selling_expense: Optional[float] = None
+    admin_expense: Optional[float] = None
+    operating_profit: Optional[float] = None
+    profit_before_tax: Optional[float] = None
+    income_tax_expense: Optional[float] = None
+    net_profit_after_tax: Optional[float] = None
+    net_income_parent: Optional[float] = None
+    eps_basic: Optional[float] = None
+    ebit: Optional[float] = None
+    ebitda: Optional[float] = None
