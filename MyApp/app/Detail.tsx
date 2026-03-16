@@ -1,4 +1,3 @@
-import FundamentalAnalysisMetricsSection from "@/components/detail/FundamentalAnalysisMetricsSection";
 import IntroductionSection from "@/components/detail/IntroductionSection";
 import NewsSection from "@/components/detail/NewsSection";
 import BoardSection from "@/components/detail/BoardSection";
@@ -13,6 +12,7 @@ import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import TabView from "@/components/detail/DetailTabView";
 import PriceChartComponent from "@/components/detail/PriceChartComponent";
+import FinancialIndicatorsSection from "@/components/detail/FinancialIndicatorsSection";
 
 const Detail = () => {
   const { t } = useLocalization();
@@ -28,6 +28,14 @@ const Detail = () => {
       subTabs: [
         { key: "introduction", label: "Giới thiệu" },
         { key: "board", label: "Lãnh đạo" },
+      ],
+    },
+    {
+      key: "fundamental-analysis",
+      label: "Phân tích cơ bản",
+      subTabs: [
+        { key: "financial-report", label: "Báo cáo tài chính" },
+        { key: "financial-indicators", label: "Chỉ số tài chính" },
       ],
     },
     { key: "news", label: "Tin tức" },
@@ -71,6 +79,12 @@ const Detail = () => {
       if (tabKey === "news") {
         return <NewsSection stockSymbol={stockItem.symbol} />;
       }
+      if (
+        tabKey === "fundamental-analysis" &&
+        subTabKey === "financial-indicators"
+      ) {
+        return <FinancialIndicatorsSection stockSymbol={stockItem.symbol} />;
+      }
       return null;
     },
     [stockItem?.symbol],
@@ -80,7 +94,6 @@ const Detail = () => {
     return (
       <View>
         <PriceChartComponent stockSymbol={stockItem.symbol} />
-        <FundamentalAnalysisMetricsSection stockSymbol={stockItem.symbol} />
       </View>
     );
   }, [stockItem.symbol]);
@@ -106,30 +119,6 @@ const Detail = () => {
         handleTabPress={handleTabPress}
         renderContent={renderContent}
       />
-
-      {/* <TouchableOpacity
-        onPress={() => {
-          router.push({
-            pathname: "/Analysis",
-            params: { data: JSON.stringify({ stockSymbol: stockItem.symbol }) },
-          });
-        }}
-        style={{
-          position: "absolute",
-          bottom: 24,
-          right: 12,
-          height: 40,
-          width: 40,
-          borderRadius: 20,
-          backgroundColor: theme.base.primary,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Text typography="labelLarge" color={theme.text.onPrimary}>
-          AI
-        </Text>
-      </TouchableOpacity> */}
     </SafeAreaView>
   );
 };
