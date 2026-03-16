@@ -13,7 +13,7 @@ from app.services.financial_db_service import FinancialDBService
 from datetime import datetime
 import uuid
 
-router = APIRouter(prefix="/api/fundamental-metrics", tags=["Fundamental Metrics"])
+router = APIRouter(prefix="/api/fundamental-analysis", tags=["Fundamental Metrics"])
 
 
 @router.get("/{symbol}", 
