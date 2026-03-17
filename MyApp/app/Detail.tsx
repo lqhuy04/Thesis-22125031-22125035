@@ -33,10 +33,6 @@ const Detail = () => {
     {
       key: "fundamental-analysis",
       label: "Phân tích cơ bản",
-      subTabs: [
-        { key: "financial-report", label: "Báo cáo tài chính" },
-        { key: "financial-indicators", label: "Chỉ số tài chính" },
-      ],
     },
     { key: "news", label: "Tin tức" },
   ];
@@ -79,10 +75,7 @@ const Detail = () => {
       if (tabKey === "news") {
         return <NewsSection stockSymbol={stockItem.symbol} />;
       }
-      if (
-        tabKey === "fundamental-analysis" &&
-        subTabKey === "financial-indicators"
-      ) {
+      if (tabKey === "fundamental-analysis") {
         return <FinancialIndicatorsSection stockSymbol={stockItem.symbol} />;
       }
       return null;
