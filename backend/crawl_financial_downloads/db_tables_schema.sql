@@ -119,3 +119,47 @@ CREATE TABLE IF NOT EXISTS financial_income_statements (
 
 CREATE INDEX IF NOT EXISTS idx_fis_year ON financial_income_statements(year);
 
+-- 5. Stock Prices (15-minute intervals)
+CREATE TABLE IF NOT EXISTS stock_prices_15m (
+    symbol TEXT,
+    trading_time TIMESTAMP WITH TIME ZONE,
+    open FLOAT,
+    high FLOAT,
+    low FLOAT,
+    close FLOAT,
+    volume FLOAT,
+    PRIMARY KEY (symbol, trading_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_prices_15m_symbol_time ON stock_prices_15m(symbol, trading_time DESC);
+
+-- 6. Stock Prices (1-hour intervals)
+CREATE TABLE IF NOT EXISTS stock_prices_1h (
+    symbol TEXT,
+    trading_time TIMESTAMP WITH TIME ZONE,
+    open FLOAT,
+    high FLOAT,
+    low FLOAT,
+    close FLOAT,
+    volume FLOAT,
+    PRIMARY KEY (symbol, trading_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_prices_1h_symbol_time ON stock_prices_1h(symbol, trading_time DESC);
+
+-- 7. Stock Prices (1-day intervals)
+CREATE TABLE IF NOT EXISTS stock_prices_1d (
+    symbol TEXT,
+    trading_time TIMESTAMP WITH TIME ZONE,
+    open FLOAT,
+    high FLOAT,
+    low FLOAT,
+    close FLOAT,
+    volume FLOAT,
+    PRIMARY KEY (symbol, trading_time)
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_prices_1d_symbol_time ON stock_prices_1d(symbol, trading_time DESC);
+
+
+

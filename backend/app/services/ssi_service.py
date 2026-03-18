@@ -9,6 +9,7 @@ expects 'data' parameter.
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, asdict
 from app.config import get_ssi_config, settings
+from app.services.price_db_service import PriceDBService
 import logging
 import requests
 import json
@@ -34,16 +35,109 @@ class SSIMarketDataService:
     """Service class for SSI Market Data API operations"""
     
     def __init__(self):
+        from datetime import datetime
+
         self._config = get_ssi_config()
         self._access_token: Optional[str] = None
         self._headers = {
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
+        # Per (symbol, interval) in-memory cooldown to avoid redundant sync on repeated calls.
+        self._last_sync_at: Dict[tuple, datetime] = {}
+        self._sync_cooldown_seconds = 120
     
     @property
     def config(self):
         return self._config
+
+    def _is_api_success(self, response: Dict[str, Any]) -> bool:
+        """Check whether SSI response indicates a successful business result."""
+        if not isinstance(response, dict):
+            return False
+        status = str(response.get("status", "")).strip().lower()
+        if not status:
+            # Some SSI endpoints may omit status and only return data.
+            return bool(response.get("data") is not None)
+        return status == "success"
+
+    def _is_auth_error(self, response: Dict[str, Any]) -> bool:
+        """Detect token/auth-related API failures from SSI payload."""
+        status = str(response.get("status", "")).strip().lower()
+        message = str(response.get("message", "")).strip().lower()
+        if status in {"unauthorized", "forbidden"}:
+            return True
+        if "unauthorized" in message or "token" in message or "expired" in message:
+            return True
+        return False
+
+    def _should_skip_sync(self, symbol: str, interval: str) -> bool:
+        """Return True only when DB already has full+fresh cache for this symbol/interval."""
+        from datetime import datetime
+
+        key = (symbol.upper(), interval.lower())
+        last_sync = self._last_sync_at.get(key)
+        if not last_sync:
+            return False
+
+        age_seconds = (datetime.now() - last_sync).total_seconds()
+        if age_seconds > self._sync_cooldown_seconds:
+            return False
+
+        return self._is_db_full_and_latest_today(symbol, interval, target_limit=1000)
+
+    def _is_db_full_and_latest_today(self, symbol: str, interval: str, target_limit: int = 1000) -> bool:
+        """
+        Fast-return condition:
+        - DB has at least target_limit rows for this symbol+interval
+        - Latest row belongs to the current calendar day
+        """
+        latest_rows = PriceDBService.get_latest_prices(symbol=symbol, limit=target_limit, interval=interval)
+        return self._is_records_full_and_latest_today(latest_rows, target_limit)
+
+    def _is_records_full_and_latest_today(self, rows: list, target_limit: int = 1000) -> bool:
+        """Evaluate cache readiness from already-fetched DB rows."""
+        from datetime import datetime
+        try:
+            from zoneinfo import ZoneInfo
+            vn_tz = ZoneInfo("Asia/Ho_Chi_Minh")
+        except Exception:
+            vn_tz = None
+
+        if len(rows) < target_limit:
+            return False
+
+        latest_row = rows[-1] if rows else None
+        if not latest_row:
+            return False
+
+        latest_raw = str(latest_row.get("trading_time", "")).strip()
+        if not latest_raw:
+            return False
+
+        try:
+            # Normalize ISO parsing with optional Z suffix.
+            parsed = datetime.fromisoformat(latest_raw.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                latest_local = parsed
+            elif vn_tz:
+                latest_local = parsed.astimezone(vn_tz).replace(tzinfo=None)
+            else:
+                latest_local = parsed.replace(tzinfo=None)
+        except Exception:
+            # Fallback: compare date part in raw ISO string.
+            latest_date_part = latest_raw.split("T")[0]
+            today_date_part = datetime.now().strftime("%Y-%m-%d")
+            return latest_date_part == today_date_part
+
+        today_local = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return latest_local.date() == today_local.date()
+
+    def _mark_synced_now(self, symbol: str, interval: str) -> None:
+        """Update sync timestamp for cooldown checks."""
+        from datetime import datetime
+
+        self._last_sync_at[(symbol.upper(), interval.lower())] = datetime.now()
     
     def _make_post_request(self, endpoint: str, data: dict) -> Dict[str, Any]:
         """Make a POST request to SSI API"""
@@ -59,7 +153,18 @@ class SSIMarketDataService:
         if self._access_token:
             headers["Authorization"] = f"{self._config.auth_type} {self._access_token}"
         response = requests.get(url, headers=headers, params=params)
-        return response.json()
+        payload = response.json()
+
+        # Retry once on auth failure by refreshing token.
+        if self._is_auth_error(payload):
+            token_result = self.get_access_token()
+            if token_result.get("success") and self._access_token:
+                retry_headers = self._headers.copy()
+                retry_headers["Authorization"] = f"{self._config.auth_type} {self._access_token}"
+                retry_response = requests.get(url, headers=retry_headers, params=params)
+                return retry_response.json()
+
+        return payload
     
     def _ensure_token(self) -> bool:
         """Ensure we have a valid access token"""
@@ -241,6 +346,12 @@ class SSIMarketDataService:
                 "ascending": str(ascending).lower()
             }
             response = self._make_get_request(SSIEndpoints.DAILY_OHLC, params)
+            if not self._is_api_success(response):
+                return {
+                    "success": False,
+                    "error": response.get("message") or "SSI Daily OHLC request failed",
+                    "data": response,
+                }
             return {"success": True, "data": response}
         except Exception as e:
             logger.error(f"Error getting daily OHLC: {str(e)}")
@@ -282,6 +393,12 @@ class SSIMarketDataService:
                 "resolution": resolution
             }
             response = self._make_get_request(SSIEndpoints.INTRADAY_OHLC, params)
+            if not self._is_api_success(response):
+                return {
+                    "success": False,
+                    "error": response.get("message") or "SSI Intraday OHLC request failed",
+                    "data": response,
+                }
             return {"success": True, "data": response}
         except Exception as e:
             logger.error(f"Error getting intraday OHLC: {str(e)}")
@@ -736,43 +853,55 @@ class SSIMarketDataService:
 
     def _round_time_to_interval(self, time_str: str, interval_minutes: int) -> str:
         """
-        Round time to nearest interval aligned to market open (09:15).
-        All times are clamped to trading hours [09:15, 14:45].
+        Round time to nearest interval within market sessions.
+        Sessions:
+        - Morning: [09:15, 11:30)
+        - Afternoon: [13:00, 14:45]
         
         Args:
             time_str: Time string in format HH:MM:SS
             interval_minutes: Interval in minutes (15, 120, etc.)
         
         Returns:
-            Rounded time string in format HH:MM:00
+            Rounded time string in format HH:MM:00.
+            Returns empty string if input falls in lunch break.
         """
         try:
             from datetime import datetime
             time_obj = datetime.strptime(time_str, "%H:%M:%S")
-            
-            MARKET_OPEN = 9 * 60 + 15   # 09:15 = 555 minutes
-            MARKET_CLOSE = 14 * 60 + 45  # 14:45 = 885 minutes
-            
+
+            MORNING_OPEN = 9 * 60 + 15
+            MORNING_BREAK = 11 * 60 + 30
+            AFTERNOON_OPEN = 13 * 60
+            MARKET_CLOSE = 14 * 60 + 45
+
             current_minutes = time_obj.hour * 60 + time_obj.minute
-            
-            # Clamp to trading hours
-            if current_minutes < MARKET_OPEN:
-                current_minutes = MARKET_OPEN
+
+            # Clamp outside market hours.
+            if current_minutes < MORNING_OPEN:
+                current_minutes = MORNING_OPEN
             if current_minutes > MARKET_CLOSE:
                 current_minutes = MARKET_CLOSE
-            
-            # Round down relative to market open
-            elapsed = current_minutes - MARKET_OPEN
+
+            # Skip lunch-break values to avoid synthetic break-time buckets.
+            if MORNING_BREAK <= current_minutes < AFTERNOON_OPEN:
+                return ""
+
+            # Round down within each session separately.
+            anchor = MORNING_OPEN if current_minutes < MORNING_BREAK else AFTERNOON_OPEN
+            elapsed = current_minutes - anchor
             rounded_elapsed = (elapsed // interval_minutes) * interval_minutes
-            rounded_minutes = MARKET_OPEN + rounded_elapsed
-            
-            # Cap at market close
+            rounded_minutes = anchor + rounded_elapsed
+
+            # Cap morning session before lunch; cap afternoon at market close.
+            if anchor == MORNING_OPEN and rounded_minutes >= MORNING_BREAK:
+                rounded_minutes = MORNING_BREAK - interval_minutes
             if rounded_minutes > MARKET_CLOSE:
                 rounded_minutes = MARKET_CLOSE
-            
+
             hours = rounded_minutes // 60
             mins = rounded_minutes % 60
-            
+
             return f"{hours:02d}:{mins:02d}:00"
         except:
             return time_str
@@ -806,6 +935,8 @@ class SSIMarketDataService:
         for item in data_list:
             if "Time" in item and "TradingDate" in item:
                 rounded_time = self._round_time_to_interval(item["Time"], interval_minutes)
+                if not rounded_time:
+                    continue
                 bucket_key = f"{item['TradingDate']}_{rounded_time}"
                 time_buckets[bucket_key].append(item)
         
@@ -818,6 +949,8 @@ class SSIMarketDataService:
         aggregated = []
         for bucket_key in sorted(time_buckets.keys(), key=_sort_bucket_key):
             bucket_items = time_buckets[bucket_key]
+            # Ensure OHLC uses true chronological order inside each bucket.
+            bucket_items = sorted(bucket_items, key=lambda x: x.get("Time", "00:00:00"))
             
             if not bucket_items:
                 continue
@@ -924,6 +1057,698 @@ class SSIMarketDataService:
         
         return aggregated
 
+    def _sync_15m_data_up_to_now(self, symbol: str) -> None:
+        '''Syncs missing 15m price data from SSI to DB from the last known time up to now.'''
+        from datetime import datetime, timedelta
+        latest_time = PriceDBService.get_latest_trading_time(symbol)
+        now_date = datetime.now()
+        
+        if not latest_time:
+            sync_start = now_date - timedelta(days=30)
+        else:
+            sync_start = latest_time - timedelta(days=1)
+            
+        today_close_str = now_date.strftime("%Y-%m-%d 14:45:00")
+        try:
+            is_fully_updated = latest_time and latest_time >= datetime.strptime(today_close_str, "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            is_fully_updated = False
+            
+        if not is_fully_updated:
+            page_index = 1
+            all_sync_data = []
+            
+            # Make sure we don't exceed SSI's 30-day limit for intraday calls
+            current_sync_start = sync_start
+            while current_sync_start <= now_date:
+                current_sync_end = min(current_sync_start + timedelta(days=20), now_date)
+                
+                chunk_start_str = current_sync_start.strftime("%d/%m/%Y")
+                chunk_end_str = current_sync_end.strftime("%d/%m/%Y")
+                
+                chunk_page_index = 1
+                while True:
+                    response = self.get_intraday_ohlc(
+                        symbol=symbol,
+                        from_date=chunk_start_str,
+                        to_date=chunk_end_str,
+                        page_index=chunk_page_index,
+                        page_size=1000,
+                        ascending=True,
+                        resolution=1
+                    )
+                    if not response.get("success"):
+                        break
+                    data = response.get("data", {}).get("data", [])
+                    if not data:
+                        break
+                    all_sync_data.extend(data)
+                    
+                    if len(data) < 1000 or len(data) == 0:
+                        break
+                    chunk_page_index += 1
+                
+                current_sync_start = current_sync_end + timedelta(days=1)
+                
+            aggregated_sync_data = self._aggregate_intraday_data(all_sync_data, 15) if all_sync_data else []
+                
+            # Insert to DB
+            records = []
+            for item in aggregated_sync_data:
+                t_date = item.get("TradingDate")
+                t_time = item.get("Time")
+                if not t_date or not t_time:
+                    continue
+                dt_str = f"{t_date} {t_time}"
+                try:
+                    dt_obj = datetime.strptime(dt_str, "%d/%m/%Y %H:%M:%S")
+                except ValueError:
+                    continue
+                if latest_time and dt_obj <= latest_time:
+                    continue
+                    
+                records.append({
+                    "symbol": symbol,
+                    "trading_time": dt_obj.isoformat(),
+                    "open": float(item.get("Open", 0)),
+                    "high": float(item.get("High", 0)),
+                    "low": float(item.get("Low", 0)),
+                    "close": float(item.get("Close", 0)),
+                    "volume": float(item.get("Volume", 0))
+                })
+            
+            if records:
+                PriceDBService.insert_prices(records)
+
+    def _format_db_to_ssi(self, symbol: str, db_prices: list) -> list:
+        from datetime import datetime
+        formatted = []
+        for r in db_prices:
+            t_str = r["trading_time"].split('+')[0].replace('Z', '')
+            try:
+                t_dt = datetime.fromisoformat(t_str)
+            except ValueError:
+                t_dt = datetime.strptime(t_str[:19], "%Y-%m-%dT%H:%M:%S")
+                
+            formatted.append({
+                "Symbol": symbol.upper(),
+                "TradingDate": t_dt.strftime("%d/%m/%Y"),
+                "Time": t_dt.strftime("%H:%M:%S"),
+                "Open": str(r["open"]),
+                "High": str(r["high"]),
+                "Low": str(r["low"]),
+                "Close": str(r["close"]),
+                "Volume": str(r["volume"])
+            })
+        return formatted
+
+    def _get_and_sync_15m_data(self, symbol: str, from_date_str: str, to_date_str: str) -> list:
+        from datetime import datetime, timedelta
+        symbol = symbol.upper()
+        self._sync_15m_data_up_to_now(symbol)
+        
+        start_obj = datetime.strptime(from_date_str, "%d/%m/%Y")
+        end_obj = datetime.strptime(to_date_str, "%d/%m/%Y") + timedelta(days=1, seconds=-1)
+        db_prices = PriceDBService.get_prices(symbol, start_obj, end_obj)
+        return self._format_db_to_ssi(symbol, db_prices)
+
+    def _ssi_item_to_db_record(self, symbol: str, item: Dict[str, Any], default_time: str = "14:45:00") -> Optional[Dict[str, Any]]:
+        """Convert SSI candle format into DB row format."""
+        from datetime import datetime
+
+        trading_date = item.get("TradingDate")
+        if not trading_date:
+            return None
+
+        trading_time = item.get("Time") or default_time
+        try:
+            dt_obj = datetime.strptime(f"{trading_date} {trading_time}", "%d/%m/%Y %H:%M:%S")
+        except ValueError:
+            return None
+
+        return {
+            "symbol": symbol.upper(),
+            "trading_time": dt_obj.isoformat(),
+            "open": float(self._parse_number(item.get("Open") or item.get("open")) or 0),
+            "high": float(self._parse_number(item.get("High") or item.get("high")) or 0),
+            "low": float(self._parse_number(item.get("Low") or item.get("low")) or 0),
+            "close": float(self._parse_number(item.get("Close") or item.get("close")) or 0),
+            "volume": float(self._parse_number(item.get("Volume") or item.get("volume")) or 0),
+        }
+
+    def _upsert_latest_records(self, symbol: str, interval: str, items: list, limit: int = 1000) -> int:
+        """Upsert rows into interval table, then trim older rows beyond latest N."""
+        records = []
+        for item in items:
+            record = self._ssi_item_to_db_record(symbol, item)
+            if record:
+                records.append(record)
+
+        if not records:
+            return 0
+
+        PriceDBService.insert_prices(records, interval=interval)
+        PriceDBService.prune_to_latest(symbol, limit=limit, interval=interval)
+        return len(records)
+
+    def _fetch_intraday_chunk(
+        self,
+        symbol: str,
+        from_date: str,
+        to_date: str,
+        resolution: int = 1,
+        page_size: int = 1000,
+    ) -> list:
+        """Fetch one date chunk with pagination and return all rows."""
+        chunk_data = []
+        page_index = 1
+        chunk_count = 0
+
+        while True:
+            response = None
+            for attempt in range(2):
+                response = self.get_intraday_ohlc(
+                    symbol=symbol,
+                    from_date=from_date,
+                    to_date=to_date,
+                    page_index=page_index,
+                    page_size=page_size,
+                    ascending=True,
+                    resolution=resolution,
+                )
+                if response.get("success"):
+                    break
+                # Refresh token once and retry current page.
+                if attempt == 0:
+                    self.get_access_token()
+
+            if not response.get("success"):
+                logger.warning(
+                    f"Failed intraday chunk fetch for {symbol} ({from_date}-{to_date}): "
+                    f"{response.get('error')}"
+                )
+                break
+
+            payload = response.get("data", {})
+            page_data = payload.get("data", [])
+            if not page_data:
+                break
+
+            chunk_data.extend(page_data)
+            chunk_count += len(page_data)
+
+            total_record = payload.get("totalRecord", 0)
+            if len(page_data) < page_size or (total_record and chunk_count >= total_record):
+                break
+            page_index += 1
+
+        return chunk_data
+
+    def _fetch_intraday_data_in_chunks(
+        self,
+        symbol: str,
+        from_obj,
+        to_obj,
+        resolution: int = 1,
+        page_size: int = 1000,
+        chunk_days: int = 10,
+        parallel: bool = False,
+        max_workers: int = 4,
+    ) -> list:
+        """Fetch SSI intraday data in <=20-day chunks to avoid SSI date-range failures."""
+        from datetime import datetime, timedelta
+
+        all_data = []
+        chunks = []
+        current_start = from_obj
+
+        while current_start <= to_obj:
+            current_end = min(current_start + timedelta(days=chunk_days), to_obj)
+            from_date = current_start.strftime("%d/%m/%Y")
+            to_date = current_end.strftime("%d/%m/%Y")
+            chunks.append((from_date, to_date))
+            current_start = current_end + timedelta(days=1)
+
+        if parallel and len(chunks) > 1:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_chunk = {
+                    executor.submit(
+                        self._fetch_intraday_chunk,
+                        symbol,
+                        from_date,
+                        to_date,
+                        resolution,
+                        page_size,
+                    ): (from_date, to_date)
+                    for from_date, to_date in chunks
+                }
+                for future in as_completed(future_to_chunk):
+                    try:
+                        chunk_rows = future.result()
+                        if chunk_rows:
+                            all_data.extend(chunk_rows)
+                    except Exception as e:
+                        chunk_from, chunk_to = future_to_chunk[future]
+                        logger.warning(
+                            f"Parallel chunk fetch failed for {symbol} ({chunk_from}-{chunk_to}): {str(e)}"
+                        )
+        else:
+            for from_date, to_date in chunks:
+                chunk_rows = self._fetch_intraday_chunk(
+                    symbol=symbol,
+                    from_date=from_date,
+                    to_date=to_date,
+                    resolution=resolution,
+                    page_size=page_size,
+                )
+                if chunk_rows:
+                    all_data.extend(chunk_rows)
+
+        # Normalize order after parallel fetch.
+        def _item_sort_key(item):
+            try:
+                return datetime.strptime(
+                    f"{item.get('TradingDate', '')} {item.get('Time', '00:00:00')}",
+                    "%d/%m/%Y %H:%M:%S",
+                )
+            except Exception:
+                return datetime.min
+
+        all_data.sort(key=_item_sort_key)
+
+        return all_data
+
+    def _fetch_daily_chunk(
+        self,
+        symbol: str,
+        from_date: str,
+        to_date: str,
+        page_size: int = 1000,
+    ) -> list:
+        """Fetch one daily chunk with pagination and return all rows."""
+        chunk_data = []
+        page_index = 1
+
+        while True:
+            response = self.get_daily_ohlc(
+                symbol=symbol.lower(),
+                from_date=from_date,
+                to_date=to_date,
+                page_index=page_index,
+                page_size=page_size,
+                ascending=True,
+            )
+
+            if not response.get("success"):
+                logger.warning(
+                    f"Failed daily chunk fetch for {symbol} ({from_date}-{to_date}): "
+                    f"{response.get('error')}"
+                )
+                break
+
+            payload = response.get("data", {})
+            page_data = payload.get("data", [])
+            if not page_data:
+                break
+
+            chunk_data.extend(page_data)
+            total_record = payload.get("totalRecord", 0)
+            if len(page_data) < page_size or (total_record and len(chunk_data) >= total_record):
+                break
+            page_index += 1
+
+        return chunk_data
+
+    def _fetch_daily_data_in_chunks(
+        self,
+        symbol: str,
+        from_obj,
+        to_obj,
+        chunk_days: int = 365,
+        page_size: int = 1000,
+        parallel: bool = False,
+        max_workers: int = 4,
+    ) -> list:
+        """Fetch daily OHLC in date chunks, optionally in parallel for cold start."""
+        from datetime import datetime, timedelta
+
+        all_data = []
+        chunks = []
+        current_start = from_obj
+
+        while current_start <= to_obj:
+            current_end = min(current_start + timedelta(days=chunk_days), to_obj)
+            chunks.append((current_start.strftime("%d/%m/%Y"), current_end.strftime("%d/%m/%Y")))
+            current_start = current_end + timedelta(days=1)
+
+        if parallel and len(chunks) > 1:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_chunk = {
+                    executor.submit(
+                        self._fetch_daily_chunk,
+                        symbol,
+                        from_date,
+                        to_date,
+                        page_size,
+                    ): (from_date, to_date)
+                    for from_date, to_date in chunks
+                }
+                for future in as_completed(future_to_chunk):
+                    try:
+                        chunk_rows = future.result()
+                        if chunk_rows:
+                            all_data.extend(chunk_rows)
+                    except Exception as e:
+                        chunk_from, chunk_to = future_to_chunk[future]
+                        logger.warning(
+                            f"Parallel daily chunk fetch failed for {symbol} ({chunk_from}-{chunk_to}): {str(e)}"
+                        )
+        else:
+            for from_date, to_date in chunks:
+                chunk_rows = self._fetch_daily_chunk(
+                    symbol=symbol,
+                    from_date=from_date,
+                    to_date=to_date,
+                    page_size=page_size,
+                )
+                if chunk_rows:
+                    all_data.extend(chunk_rows)
+
+        # Normalize order after parallel fetch.
+        def _item_sort_key(item):
+            try:
+                time_part = item.get("Time") or "14:45:00"
+                return datetime.strptime(
+                    f"{item.get('TradingDate', '')} {time_part}",
+                    "%d/%m/%Y %H:%M:%S",
+                )
+            except Exception:
+                return datetime.min
+
+        all_data.sort(key=_item_sort_key)
+        return all_data
+
+    def _sync_latest_interval_records(self, symbol: str, limit: int = 1000, interval: Optional[str] = None) -> None:
+        """Fetch and store latest records for 15m, 1h, and 1d intervals."""
+        from datetime import datetime, timedelta
+
+        if not self._ensure_token():
+            logger.warning(f"Skip syncing latest interval records for {symbol}: token unavailable")
+            return
+
+        symbol = symbol.upper()
+        now = datetime.now()
+        target_limit = max(1000, limit)
+        sync_15m = interval in {None, "15m"}
+        sync_1h = interval in {None, "1h"}
+        sync_1d = interval in {None, "1d"}
+
+        intraday_source_data = []
+
+        if sync_15m:
+            # 15m sync: resume from latest DB row with overlap, similar to backfill script.
+            latest_15m = PriceDBService.get_latest_trading_time(symbol, interval="15m")
+            existing_15m_count = len(PriceDBService.get_latest_prices(symbol, limit=target_limit, interval="15m"))
+            cold_start_15m = existing_15m_count == 0
+            if latest_15m and existing_15m_count >= target_limit:
+                intraday_start_15m = latest_15m - timedelta(days=1)
+            else:
+                # Fetch enough recent data to fill up to 1000 x 15m candles.
+                intraday_start_15m = now - timedelta(days=180)
+
+            intraday_source_data = self._fetch_intraday_data_in_chunks(
+                symbol=symbol,
+                from_obj=intraday_start_15m,
+                to_obj=now,
+                resolution=1,
+                page_size=1000,
+                chunk_days=10,
+                parallel=cold_start_15m,
+                max_workers=4,
+            )
+            if not intraday_source_data:
+                # Defensive retry: refresh token and retry a narrower recent window.
+                self.get_access_token()
+                intraday_source_data = self._fetch_intraday_data_in_chunks(
+                    symbol=symbol,
+                    from_obj=max(now - timedelta(days=45), intraday_start_15m),
+                    to_obj=now,
+                    resolution=1,
+                    page_size=1000,
+                    chunk_days=7,
+                    parallel=False,
+                )
+
+            if intraday_source_data:
+                aggregated_15m = self._aggregate_intraday_data(intraday_source_data, 15)
+                latest_15m_items = aggregated_15m[-target_limit:] if len(aggregated_15m) > target_limit else aggregated_15m
+                self._upsert_latest_records(symbol, "15m", latest_15m_items, limit=target_limit)
+
+            # Ensure we truly have 1000 records: backfill older windows until count reaches target.
+            count_15m = len(PriceDBService.get_latest_prices(symbol, limit=target_limit, interval="15m"))
+            backfill_round = 0
+            while count_15m < target_limit and backfill_round < 8:
+                oldest_15m = PriceDBService.get_oldest_trading_time(symbol, interval="15m")
+                if not oldest_15m:
+                    break
+
+                backfill_end = oldest_15m - timedelta(minutes=1)
+                backfill_start = backfill_end - timedelta(days=30)
+                older_intraday_data = self._fetch_intraday_data_in_chunks(
+                    symbol=symbol,
+                    from_obj=backfill_start,
+                    to_obj=backfill_end,
+                    resolution=1,
+                    page_size=1000,
+                    chunk_days=10,
+                )
+
+                if not older_intraday_data:
+                    break
+
+                older_15m = self._aggregate_intraday_data(older_intraday_data, 15)
+                if not older_15m:
+                    break
+
+                self._upsert_latest_records(symbol, "15m", older_15m, limit=target_limit)
+
+                new_count_15m = len(PriceDBService.get_latest_prices(symbol, limit=target_limit, interval="15m"))
+                if new_count_15m <= count_15m:
+                    break
+
+                count_15m = new_count_15m
+                backfill_round += 1
+
+            if count_15m < target_limit:
+                logger.warning(f"15m records for {symbol} still below target: {count_15m}/{target_limit}")
+
+        if sync_1h:
+            # 1h sync: staged fetch (recent first), then backfill only if still below target.
+            latest_1h = PriceDBService.get_latest_trading_time(symbol, interval="1h")
+            existing_1h_count = len(PriceDBService.get_latest_prices(symbol, limit=target_limit, interval="1h"))
+
+            if latest_1h and existing_1h_count >= target_limit and intraday_source_data:
+                intraday_source_for_1h = intraday_source_data
+            else:
+                if latest_1h and existing_1h_count >= target_limit:
+                    intraday_start_1h = latest_1h - timedelta(days=3)
+                else:
+                    # Cold start / underfilled: fetch recent window first (enough for most symbols).
+                    intraday_start_1h = now - timedelta(days=320)
+
+                intraday_source_for_1h = self._fetch_intraday_data_in_chunks(
+                    symbol=symbol,
+                    from_obj=intraday_start_1h,
+                    to_obj=now,
+                    resolution=1,
+                    page_size=1000,
+                    chunk_days=20,
+                    parallel=False,
+                    max_workers=2,
+                )
+
+            if intraday_source_for_1h:
+                aggregated_1h = self._aggregate_intraday_data(intraday_source_for_1h, 60)
+                latest_1h_items = aggregated_1h[-target_limit:] if len(aggregated_1h) > target_limit else aggregated_1h
+                self._upsert_latest_records(symbol, "1h", latest_1h_items, limit=target_limit)
+
+            # Ensure 1h table reaches the target count by fetching older windows when needed.
+            count_1h = len(PriceDBService.get_latest_prices(symbol, limit=target_limit, interval="1h"))
+            backfill_1h_round = 0
+            while count_1h < target_limit and backfill_1h_round < 10:
+                oldest_1h = PriceDBService.get_oldest_trading_time(symbol, interval="1h")
+                if not oldest_1h:
+                    break
+
+                backfill_end_1h = oldest_1h - timedelta(minutes=1)
+                backfill_start_1h = backfill_end_1h - timedelta(days=120)
+                older_intraday_1h = self._fetch_intraday_data_in_chunks(
+                    symbol=symbol,
+                    from_obj=backfill_start_1h,
+                    to_obj=backfill_end_1h,
+                    resolution=1,
+                    page_size=1000,
+                    chunk_days=7,
+                    parallel=False,
+                    max_workers=2,
+                )
+
+                if not older_intraday_1h:
+                    break
+
+                older_1h = self._aggregate_intraday_data(older_intraday_1h, 60)
+                if not older_1h:
+                    break
+
+                self._upsert_latest_records(symbol, "1h", older_1h, limit=target_limit)
+
+                new_count_1h = len(PriceDBService.get_latest_prices(symbol, limit=target_limit, interval="1h"))
+                if new_count_1h <= count_1h:
+                    break
+
+                count_1h = new_count_1h
+                backfill_1h_round += 1
+
+            if count_1h < target_limit:
+                logger.warning(f"1h records for {symbol} still below target: {count_1h}/{target_limit}")
+
+        if sync_1d:
+            latest_1d = PriceDBService.get_latest_trading_time(symbol, interval="1d")
+
+            # If we already have 1d data, fetch incrementally from the latest DB day to today.
+            if latest_1d:
+                incremental_from = latest_1d.strftime("%d/%m/%Y")
+                incremental_daily = self._fetch_daily_data_in_chunks(
+                    symbol=symbol,
+                    from_obj=latest_1d,
+                    to_obj=now,
+                    chunk_days=90,
+                    page_size=1000,
+                    parallel=False,
+                    max_workers=2,
+                )
+                if incremental_daily:
+                    for item in incremental_daily:
+                        item["Time"] = item.get("Time") or "14:45:00"
+                        item.pop("Value", None)
+                    self._upsert_latest_records(symbol, "1d", incremental_daily, limit=target_limit)
+                else:
+                    logger.info(f"No incremental 1d rows for {symbol} from {incremental_from} to today")
+            else:
+                # Cold start: fetch latest candles first to guarantee recency.
+                latest_daily_response = self.get_daily_ohlc(
+                    symbol=symbol.lower(),
+                    from_date="01/01/2000",
+                    to_date=now.strftime("%d/%m/%Y"),
+                    page_index=1,
+                    page_size=target_limit,
+                    ascending=False,
+                )
+                if latest_daily_response.get("success") and latest_daily_response.get("data", {}).get("data"):
+                    latest_daily_items = latest_daily_response["data"]["data"]
+                    latest_daily_items.reverse()
+                    for item in latest_daily_items:
+                        item["Time"] = item.get("Time") or "14:45:00"
+                        item.pop("Value", None)
+                    self._upsert_latest_records(symbol, "1d", latest_daily_items, limit=target_limit)
+
+            # Top-up older windows only when latest-first query still yields fewer than target rows.
+            count_1d = len(PriceDBService.get_latest_prices(symbol, limit=target_limit, interval="1d"))
+            backfill_1d_round = 0
+            while count_1d < target_limit and backfill_1d_round < 4:
+                oldest_1d = PriceDBService.get_oldest_trading_time(symbol, interval="1d")
+                if not oldest_1d:
+                    break
+
+                backfill_end_1d = oldest_1d - timedelta(days=1)
+                backfill_start_1d = backfill_end_1d - timedelta(days=730)
+                older_daily_data = self._fetch_daily_data_in_chunks(
+                    symbol=symbol,
+                    from_obj=backfill_start_1d,
+                    to_obj=backfill_end_1d,
+                    chunk_days=365,
+                    page_size=1000,
+                    parallel=False,
+                    max_workers=2,
+                )
+
+                if not older_daily_data:
+                    break
+
+                for item in older_daily_data:
+                    item["Time"] = item.get("Time") or "14:45:00"
+                    item.pop("Value", None)
+
+                self._upsert_latest_records(symbol, "1d", older_daily_data, limit=target_limit)
+
+                new_count_1d = len(PriceDBService.get_latest_prices(symbol, limit=target_limit, interval="1d"))
+                if new_count_1d <= count_1d:
+                    break
+
+                count_1d = new_count_1d
+                backfill_1d_round += 1
+
+            if count_1d < target_limit:
+                logger.warning(f"1d records for {symbol} still below target: {count_1d}/{target_limit}")
+
+    def get_latest_historical_chart_data(self, symbol: str, interval: str = "15m", limit: int = 1000) -> Dict[str, Any]:
+        '''
+        Get strictly the latest N available records up to today for a specific timeframe interval (15m, 1h, 1d)
+        '''
+        try:
+            symbol = symbol.upper()
+            interval = interval.lower()
+
+            if interval not in {"15m", "1h", "1d"}:
+                return {"success": False, "error": f"Unsupported interval: {interval}"}
+
+            # Keep this endpoint fixed to latest 1000 records.
+            normalized_limit = 1000
+
+            # Fetch once for fast-path check; reuse rows if already full and fresh.
+            current_rows = PriceDBService.get_latest_prices(
+                symbol=symbol,
+                limit=normalized_limit,
+                interval=interval,
+            )
+
+            # Fast path: if DB already has 1000 rows and latest row is today, return immediately.
+            if self._is_records_full_and_latest_today(current_rows, target_limit=normalized_limit):
+                formatted = self._format_db_to_ssi(symbol, current_rows)
+                return {
+                    "success": True,
+                    "data": {
+                        "data": formatted,
+                        "totalRecord": len(formatted),
+                        "interval": interval,
+                    }
+                }
+
+            # Sync only the requested interval for lower latency.
+            if not self._should_skip_sync(symbol=symbol, interval=interval):
+                self._sync_latest_interval_records(symbol=symbol, limit=normalized_limit, interval=interval)
+                self._mark_synced_now(symbol=symbol, interval=interval)
+
+            db_records = PriceDBService.get_latest_prices(
+                symbol=symbol,
+                limit=normalized_limit,
+                interval=interval,
+            )
+            formatted = self._format_db_to_ssi(symbol, db_records)
+
+            return {
+                "success": True,
+                "data": {
+                    "data": formatted,
+                    "totalRecord": len(formatted),
+                    "interval": interval,
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting latest historical data: {str(e)}")
+            return {"success": False, "error": str(e)}
+
     def get_stock_prices_by_timeframe(
         self, 
         symbol: str, 
@@ -1002,16 +1827,16 @@ class SSIMarketDataService:
             
             # Get data based on timeframe
             if config["use_intraday"]:
-                # Use intraday OHLC for short timeframes
-                result = self.get_intraday_ohlc(
-                    symbol=symbol.lower(),
-                    from_date=from_date,
-                    to_date=to_date,
-                    page_index=1,
-                    page_size=config["page_size"],
-                    ascending=True,
-                    resolution=config["resolution"]
-                )
+                # Use synced DB data (15-min intervals)
+                db_data = self._get_and_sync_15m_data(symbol, from_date, to_date)
+                
+                result = {
+                    "success": True, 
+                    "data": {
+                        "data": db_data,
+                        "totalRecord": len(db_data)
+                    }
+                }
             else:
                 # Use daily OHLC for longer timeframes
                 # Fetch all pages to ensure we get complete data

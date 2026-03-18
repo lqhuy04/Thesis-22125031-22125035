@@ -383,3 +383,26 @@ async def get_stock_price_by_timeframe(
         market=market.lower()
     )
     return create_response(result, request_id)
+
+@router.get("/historical-chart/{symbol}", response_model=MarketDataResponse)
+async def get_latest_historical_chart_data(
+    symbol: str,
+    interval: str = Query("15m", description="Interval: 15m, 1h, or 1d")
+):
+    """
+    📈 Get exactly the latest 1000 records for a specific interval
+    
+    This endpoint automatically syncs missing intra-day info and returns the latest available points:
+    - **interval**: 15m, 1h, 1d (defaults to 15m)
+    - Returns latest **1000** records (fixed)
+    
+    **Example:** `/api/historical-chart/VNM?interval=1h`
+    """
+    request_id = str(uuid.uuid4())
+    service = get_ssi_service()
+    result = service.get_latest_historical_chart_data(
+        symbol=symbol.upper(),
+        interval=interval.lower(),
+        limit=1000
+    )
+    return create_response(result, request_id)
