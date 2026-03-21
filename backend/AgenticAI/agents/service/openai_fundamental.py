@@ -1,4 +1,5 @@
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -7,6 +8,19 @@ from supabase import Client, create_client
 
 
 load_dotenv()
+
+
+def _execute_with_retry(query, max_retries: int = 4, delay_seconds: float = 2.0):
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            return query.execute()
+        except Exception as exc:
+            last_error = exc
+            if attempt == max_retries:
+                break
+            time.sleep(delay_seconds * attempt)
+    raise last_error
 
 
 def _get_supabase_client() -> Client:
@@ -35,34 +49,77 @@ def _fetch_table(
     if year is not None:
         query = query.eq("year", year)
     query = query.order("year", desc=True).limit(limit)
-    result = query.execute()
+    result = _execute_with_retry(query)
     return result.data if result.data else []
 
 
 def _upsert_summary(supabase: Client, symbol: str, summary: str) -> None:
-    supabase.table("fundamental_analysis_summary")\
+    _execute_with_retry(
+        supabase.table("fundamental_analysis_summary")\
         .upsert(
             {
                 "symbol": symbol.upper(),
                 "summary": summary,
             },
             on_conflict="symbol",
-        )\
-        .execute()
+        )
+    )
 
 
 def get_saved_summary(symbol: str) -> Optional[str]:
     supabase = _get_supabase_client()
-    result = (
+    result = _execute_with_retry(
         supabase.table("fundamental_analysis_summary")
         .select("summary")
         .eq("symbol", symbol.upper())
         .limit(1)
-        .execute()
     )
     if not result.data:
         return None
     return result.data[0].get("summary")
+
+
+def get_existing_summary_symbols() -> set[str]:
+    """Return symbols that already have generated summaries."""
+    supabase = _get_supabase_client()
+    result = _execute_with_retry(supabase.table("fundamental_analysis_summary").select("symbol"))
+    if not result.data:
+        return set()
+    return {
+        row.get("symbol", "").upper()
+        for row in result.data
+        if isinstance(row, dict) and row.get("symbol")
+    }
+
+
+def get_candidate_symbols(limit: int = 100, source_table: str = "financial_indicators") -> List[str]:
+    """
+    Get candidate symbols from a source financial table.
+    Duplicates are removed in Python while preserving first-seen order.
+    """
+    supabase = _get_supabase_client()
+    # Pull enough rows to collect unique symbols across multiple years.
+    fetch_size = max(limit * 20, 1000)
+    result = _execute_with_retry(supabase.table(source_table).select("symbol").limit(fetch_size))
+    rows = result.data if result.data else []
+
+    seen = set()
+    symbols: List[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        raw_symbol = row.get("symbol")
+        if not raw_symbol:
+            continue
+        symbol = str(raw_symbol).upper()
+        if symbol in seen:
+            continue
+        seen.add(symbol)
+        symbols.append(symbol)
+        if len(symbols) >= limit:
+            break
+
+    return symbols
 
 
 def fetch_fundamental_tables(symbol: str, year: Optional[int] = None, limit: int = 5) -> Dict[str, List[Dict[str, Any]]]:
