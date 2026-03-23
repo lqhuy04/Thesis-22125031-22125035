@@ -13,6 +13,7 @@ import { useLocalSearchParams } from "expo-router";
 import TabView from "@/components/detail/DetailTabView";
 import PriceChartComponent from "@/components/detail/PriceChartComponent";
 import FinancialIndicatorsSection from "@/components/detail/FinancialIndicatorsSection";
+import FinancialAnalysisSummarySection from "@/components/detail/FinancialAnalysisSummarySection";
 
 const Detail = () => {
   const { t } = useLocalization();
@@ -33,6 +34,10 @@ const Detail = () => {
     {
       key: "fundamental-analysis",
       label: "Phân tích cơ bản",
+      subTabs: [
+        { key: "fundamental-analysis-info", label: "Thông tin" },
+        { key: "fundamental-analysis-summary", label: "Tóm tắt" },
+      ],
     },
     { key: "news", label: "Tin tức" },
   ];
@@ -75,8 +80,19 @@ const Detail = () => {
       if (tabKey === "news") {
         return <NewsSection stockSymbol={stockItem.symbol} />;
       }
-      if (tabKey === "fundamental-analysis") {
+      if (
+        tabKey === "fundamental-analysis" &&
+        subTabKey === "fundamental-analysis-info"
+      ) {
         return <FinancialIndicatorsSection stockSymbol={stockItem.symbol} />;
+      }
+      if (
+        tabKey === "fundamental-analysis" &&
+        subTabKey === "fundamental-analysis-summary"
+      ) {
+        return (
+          <FinancialAnalysisSummarySection stockSymbol={stockItem.symbol} />
+        );
       }
       return null;
     },
