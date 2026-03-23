@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     SSI_STREAM_URL: str = "https://fc-datahub.ssi.com.vn/"
 
     GEMINI_API_KEY: str
+    OPENAI_API_KEY: str = ""
     
     class Config:
         env_file = ".env"

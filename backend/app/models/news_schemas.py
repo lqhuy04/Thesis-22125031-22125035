@@ -12,10 +12,12 @@ class NewsBase(BaseModel):
     link: str = Field(..., description="URL to the full article")
     stock_symbol: Optional[List[str]] = Field(None, description="Associated stock ticker symbol")
     description: Optional[str] = Field(None, description="News article summary/description")
+    summary: Optional[str] = Field(None, description="AI-generated short summary")
     time: Optional[datetime] = Field(None, description="Publication time")
     image_url: Optional[str] = Field(None, description="URL to article image")
     content: Optional[str] = Field(None, description="Article content text")
     source: Optional[str] = Field(None, description="News source website")
+    sentiment: Optional[str] = Field(None, description="Sentiment label: positive, neutral, negative")
 
 
 class NewsCreate(NewsBase):
@@ -26,7 +28,6 @@ class NewsCreate(NewsBase):
 class NewsResponse(NewsBase):
     """Schema for news response"""
     id: str = Field(..., description="Unique news identifier")
-    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     
     class Config:
         from_attributes = True

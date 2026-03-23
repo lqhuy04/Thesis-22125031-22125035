@@ -1,30 +1,31 @@
 """
 Market News Crawler
-Crawl tin tức thị trường -> Gemini extract stock symbols -> save database
+Serper -> Newspaper -> GPT-4o-mini extract symbols/sentiment/summary -> save database
 """
 
 import requests
 import sys
 import os
 import re
+from urllib.parse import urlparse
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 from newspaper import Article
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-
-from langchain_google_genai import ChatGoogleGenerativeAI
+from openai import OpenAI
 
 # ==========================================================
 # ENV + PATH
 # ==========================================================
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "app", ".env"))
+BASE_DIR = os.path.dirname(__file__)
+load_dotenv(os.path.join(BASE_DIR, "..", "app", ".env"))
 
-sys.path.append(os.path.join(os.path.dirname(__file__), "app"))
+sys.path.append(os.path.join(BASE_DIR, ".."))
 
-from config import get_settings
+from app.config import get_settings
 from supabase import create_client
 
 
@@ -39,9 +40,11 @@ supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 SERPER_API_KEY = "fd31c8b1df830b479395c7e633bdbc1bf44c37a0"
 SERPER_API_URL = "https://google.serper.dev/news"
 
-SEARCH_QUERY = "tin tức thị trường chứng khoán Việt Nam Vietstock, Cafef"
+SEARCH_QUERY = "(site:vietstock.vn OR site:cafef.vn) tin tức thị trường chứng khoán Việt Nam"
 TIME_RANGE = "qdr:d"
 NUM_RESULTS = 100
+TARGET_SAVED = 100
+MAX_FETCH_ROUNDS = 5
 
 TRUSTED_SOURCES = [
     "vietstock.vn",
@@ -49,7 +52,7 @@ TRUSTED_SOURCES = [
 ]
 
 # ==========================================================
-# GEMINI STRUCTURED OUTPUT
+# OPENAI STRUCTURED OUTPUT
 # ==========================================================
 
 
@@ -62,14 +65,22 @@ class NewsExtraction(BaseModel):
         description="positive | neutral | negative"
     )
 
+    summary: str = Field(
+        description="Short Vietnamese summary of the article (1-3 sentences)"
+    )
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    temperature=0,
-    google_api_key=settings.GEMINI_API_KEY,
-)
 
-structured_llm = llm.with_structured_output(NewsExtraction)
+def _get_openai_client() -> OpenAI:
+
+    api_key = os.getenv("OPENAI_API_KEY")
+
+    if not api_key:
+        raise ValueError("Missing OPENAI_API_KEY in environment")
+
+    return OpenAI(api_key=api_key)
+
+
+openai_client = _get_openai_client()
 
 
 # ==========================================================
@@ -117,6 +128,58 @@ def parse_vietnamese_date(date_str: str) -> Optional[datetime]:
         return None
 
 
+def parse_absolute_vietnamese_datetime(date_str: str) -> Optional[datetime]:
+
+    if not date_str:
+        return None
+
+    value = date_str.strip()
+
+    formats = [
+        "%d/%m/%Y %H:%M",
+        "%d-%m-%Y %H:%M:%S%z",
+        "%d-%m-%Y %H:%M:%S",
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+
+    return None
+
+
+def extract_publish_datetime_from_html(html: str) -> Optional[datetime]:
+
+    if not html:
+        return None
+
+    # Vietstock often includes <span class="datenew">06-05-2025 17:34:39+07:00</span>
+    datenew_match = re.search(
+        r'class=["\']datenew["\'][^>]*>\s*([^<]+?)\s*<',
+        html,
+        flags=re.IGNORECASE,
+    )
+    if datenew_match:
+        parsed = parse_absolute_vietnamese_datetime(datenew_match.group(1))
+        if parsed:
+            return parsed
+
+    # Fallback to <span class="date">06/05/2025 17:34</span>
+    date_match = re.search(
+        r'class=["\']date["\'][^>]*>\s*([^<]+?)\s*<',
+        html,
+        flags=re.IGNORECASE,
+    )
+    if date_match:
+        parsed = parse_absolute_vietnamese_datetime(date_match.group(1))
+        if parsed:
+            return parsed
+
+    return None
+
+
 def is_trusted_source(url: str):
 
     url = url.lower()
@@ -136,26 +199,83 @@ def is_trusted_source(url: str):
 
 def search_serper(query: str):
 
+    return search_serper_with_options(query=query, time_range=TIME_RANGE, num_results=NUM_RESULTS)
+
+
+def search_serper_with_options(query: str, time_range: str, num_results: int):
+
     payload = {
         "q": query,
         "gl": "vn",
         "hl": "vi",
-        "tbs": TIME_RANGE,
-        "num": NUM_RESULTS,
+        "num": num_results,
     }
+
+    if time_range:
+        payload["tbs"] = time_range
 
     headers = {
         "X-API-KEY": SERPER_API_KEY,
         "Content-Type": "application/json",
     }
 
-    print("Searching:", query)
+    print("Searching:", query, "|", (time_range or "no-time-filter"), "| num=", num_results)
 
     res = requests.post(SERPER_API_URL, headers=headers, json=payload)
 
     data = res.json()
 
     return data.get("news", [])
+
+
+def collect_candidates(seen_links: set[str], round_number: int):
+
+    query_variants = [
+        SEARCH_QUERY,
+        "site:vietstock.vn tin tức thị trường chứng khoán Việt Nam",
+        "site:cafef.vn tin tức thị trường chứng khoán Việt Nam",
+        "site:vietstock.vn tin tuc chung khoan",
+        "site:cafef.vn tin tuc chung khoan",
+        "vietstock vn chung khoan",
+        "cafef vn chung khoan",
+    ]
+
+    time_ranges = ["qdr:d", "qdr:w", "qdr:m", "qdr:y", ""]
+
+    candidates = []
+
+    print(f"\nCollecting candidates - round {round_number}")
+
+    for time_range in time_ranges:
+        for query in query_variants:
+            items = search_serper_with_options(
+                query=query,
+                time_range=time_range,
+                num_results=NUM_RESULTS,
+            )
+
+            print("Serper returned:", len(items))
+            if items:
+                print("Sources before trusted filter:")
+                for item in items[:10]:
+                    link = item.get("link", "")
+                    domain = urlparse(link).netloc
+                    print("-", domain or "(no-domain)", "|", item.get("source"))
+
+            for item in items:
+                link = item.get("link", "")
+                if not link:
+                    continue
+                if not is_trusted_source(link):
+                    continue
+                if link in seen_links:
+                    continue
+                seen_links.add(link)
+                candidates.append(item)
+
+    print("Trusted new candidates:", len(candidates))
+
+    return candidates
 
 
 # ==========================================================
@@ -173,10 +293,13 @@ def extract_article(url):
 
         article.parse()
 
+        html = article.html or ""
+        parsed_from_html = extract_publish_datetime_from_html(html)
+
         return {
             "title": article.title,
             "content": article.text,
-            "publish_date": article.publish_date,
+            "publish_date": parsed_from_html or article.publish_date,
         }
 
     except Exception as e:
@@ -187,7 +310,7 @@ def extract_article(url):
 
 
 # ==========================================================
-# GEMINI EXTRACTION
+# OPENAI EXTRACTION
 # ==========================================================
 
 
@@ -195,36 +318,66 @@ def extract_stock_info(title, content):
 
     try:
 
-        prompt = f"""
-Bạn là hệ thống phân tích tin tức tài chính.
+        system_prompt = """
+Bạn là hệ thống phân tích tin tức tài chính Việt Nam.
 
-Hãy đọc bài báo và trích xuất:
-
-1. Tóm tắt ngắn
-2. Các mã cổ phiếu Việt Nam liên quan (VD: VNM, VIC, ACB, FPT)
-3. Sentiment của tin
-4. Loại tin
+Nhiệm vụ:
+1. Trích xuất các mã cổ phiếu Việt Nam liên quan.
+2. Gán sentiment: positive | neutral | negative.
+3. Viết summary ngắn bằng tiếng Việt (1-3 câu).
 
 Quy tắc:
+- stock_symbols chỉ gồm mã 3-4 ký tự in hoa (VD: VNM, VIC, ACB, FPT).
+- Loại bỏ trùng lặp.
+- Nếu không có mã hợp lệ, trả [] cho stock_symbols.
+- sentiment bắt buộc thuộc một trong: positive, neutral, negative.
+""".strip()
 
-- chỉ lấy mã cổ phiếu 3-4 ký tự viết hoa
-- loại bỏ trùng lặp
-- nếu không có thì trả []
-
+        user_prompt = f"""
 TITLE:
 {title}
 
 CONTENT:
-{content[:6000]}
-"""
+{content[:7000]}
+""".strip()
 
-        result = structured_llm.invoke(prompt)
+        completion = openai_client.beta.chat.completions.parse(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format=NewsExtraction,
+            temperature=0,
+        )
 
-        return result
+        result = completion.choices[0].message.parsed
+
+        if not result:
+            return None
+
+        # Normalize sentiment to the expected enum in storage.
+        normalized_sentiment = (result.sentiment or "neutral").strip().lower()
+        if normalized_sentiment not in {"positive", "neutral", "negative"}:
+            normalized_sentiment = "neutral"
+
+        cleaned_symbols = []
+        for symbol in result.stock_symbols:
+            upper_symbol = symbol.strip().upper()
+            if re.fullmatch(r"[A-Z]{3,4}", upper_symbol):
+                cleaned_symbols.append(upper_symbol)
+
+        unique_symbols = list(dict.fromkeys(cleaned_symbols))
+
+        return NewsExtraction(
+            stock_symbols=unique_symbols,
+            sentiment=normalized_sentiment,
+            summary=(result.summary or "").strip(),
+        )
 
     except Exception as e:
 
-        print("Gemini error:", e)
+        print("OpenAI error:", e)
 
         return None
 
@@ -270,69 +423,85 @@ def crawl():
 
     print("\nSTART NEWS CRAWLER\n")
 
-    news_items = search_serper(SEARCH_QUERY)
-
-    news_items = [
-        n for n in news_items if is_trusted_source(n.get("link", ""))
-    ]
-
-    print("Trusted news:", len(news_items))
-
     saved = 0
+    round_number = 0
+    seen_links = set()
 
-    for idx, item in enumerate(news_items):
+    while saved < TARGET_SAVED and round_number < MAX_FETCH_ROUNDS:
+        round_number += 1
 
-        link = item.get("link")
+        news_items = collect_candidates(seen_links=seen_links, round_number=round_number)
 
-        print("\n", idx + 1, item.get("title"))
+        if not news_items:
+            print("No new trusted candidates left. Stop early.")
+            break
 
-        if is_duplicate(link):
+        for idx, item in enumerate(news_items):
 
-            print("duplicate skip")
+            if saved >= TARGET_SAVED:
+                break
 
-            continue
+            link = item.get("link")
 
-        date_str = item.get("date")
+            print("\n", idx + 1, item.get("title"))
 
-        time_parsed = parse_vietnamese_date(date_str) if date_str else None
+            if is_duplicate(link):
 
-        extracted = extract_article(link)
+                print("duplicate skip")
 
-        if not extracted:
+                continue
 
-            continue
+            date_str = item.get("date")
 
-        content = extracted["content"]
+            extracted = extract_article(link)
 
-        if not content or len(content) < 200:
+            if not extracted:
 
-            print("content too short")
+                continue
 
-            continue
+            content = extracted["content"]
 
-        ai = extract_stock_info(extracted["title"], content)
+            time_parsed = extracted.get("publish_date")
 
-        if not ai:
+            if not time_parsed and date_str:
+                absolute_from_serper = parse_absolute_vietnamese_datetime(date_str)
+                time_parsed = absolute_from_serper or parse_vietnamese_date(date_str)
 
-            continue
+            if not content or len(content) < 200:
 
-        data = {
-            "title": extracted["title"],
-            "link": link,
-            "stock_symbol": ai.stock_symbols,
-            "description": item.get("snippet"),
-            "time": time_parsed.isoformat() if time_parsed else None,
-            "image_url": item.get("imageUrl"),
-            "content": content,
-            "source": item.get("source"),
-            "sentiment": ai.sentiment,
-        }
+                print("content too short")
 
-        if save_news(data):
+                continue
 
-            saved += 1
+            ai = extract_stock_info(extracted["title"], content)
 
-            print("saved:", ai.stock_symbols)
+            if not ai:
+
+                continue
+
+            data = {
+                "title": extracted["title"],
+                "link": link,
+                "stock_symbol": ai.stock_symbols,
+                "description": item.get("snippet"),
+                "summary": ai.summary,
+                "time": time_parsed.isoformat() if time_parsed else None,
+                "image_url": item.get("imageUrl"),
+                "content": content,
+                "source": item.get("source"),
+                "sentiment": ai.sentiment,
+            }
+
+            if save_news(data):
+
+                saved += 1
+
+                print("saved:", ai.stock_symbols, f"({saved}/{TARGET_SAVED})")
+
+    if saved >= TARGET_SAVED:
+        print("Target reached.")
+    else:
+        print("Stopped before target. Saved", saved, "out of", TARGET_SAVED)
 
     print("\nDONE")
 

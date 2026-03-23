@@ -1,6 +1,6 @@
 """
 Serper News Crawler
-Crawl tin tức tài chính từ Serper API và lưu vào database
+Serper -> Newspaper -> GPT-4o-mini extraction -> save to database
 """
 import requests
 import sys
@@ -10,16 +10,17 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from newspaper import Article
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+from openai import OpenAI
 from pydantic import BaseModel, Field
 
 # Load environment variables
-load_dotenv(os.path.join(os.path.dirname(__file__), 'app', '.env'))
+BASE_DIR = os.path.dirname(__file__)
+load_dotenv(os.path.join(BASE_DIR, '..', 'app', '.env'))
 
 # Add app to path for imports
-sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
+sys.path.append(os.path.join(BASE_DIR, '..'))
 
-from config import get_settings
+from app.config import get_settings
 from supabase import create_client
 
 # Get settings
@@ -46,45 +47,90 @@ MAX_RESULTS = None                 # Số bài tối đa sau khi lọc (hoặc N
 # ============================================================================
 
 class SentimentOutput(BaseModel):
+    stock_symbols: List[str] = Field(
+        description="List of related Vietnamese stock symbols, e.g. VNM, VIC"
+    )
+
     sentiment: str = Field(
         description="positive | neutral | negative"
     )
+
+    summary: str = Field(
+        description="Short Vietnamese summary of the article (1-3 sentences)"
+    )
     
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    temperature=0,
-    google_api_key='AIzaSyAchGgs2WEi91ogZBWxJr8fR42Vj2ODcN4'
-)
+def _get_openai_client() -> OpenAI:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise ValueError("Missing OPENAI_API_KEY in environment")
+    return OpenAI(api_key=api_key)
 
-structured_llm = llm.with_structured_output(SentimentOutput)
 
-def analyze_sentiment(title: str, content: str) -> Optional[str]:
+openai_client = _get_openai_client()
+
+
+def analyze_news(title: str, content: str) -> Optional[SentimentOutput]:
     """
-    Analyze sentiment of financial news
+    Analyze symbols, sentiment, and summary of financial news with GPT-4o-mini.
     """
     try:
-        text = f"""
-        Analyze the sentiment of this financial news.
+        system_prompt = """
+Bạn là hệ thống phân tích tin tức tài chính Việt Nam.
 
-        Title: {title}
+Nhiệm vụ:
+1. Trích xuất các mã cổ phiếu Việt Nam liên quan.
+2. Gán sentiment: positive | neutral | negative.
+3. Viết summary ngắn bằng tiếng Việt (1-3 câu).
 
-        Content:
-        {content[:3000]}
+Quy tắc:
+- stock_symbols chỉ gồm mã 3-4 ký tự in hoa (VD: VNM, VIC, ACB, FPT).
+- Loại bỏ trùng lặp.
+- Nếu không có mã hợp lệ, trả [] cho stock_symbols.
+- sentiment bắt buộc thuộc một trong: positive, neutral, negative.
+""".strip()
 
-        Classify sentiment as:
-        - positive (good news for company/stock)
-        - neutral (informational)
-        - negative (bad news)
+        user_prompt = f"""
+TITLE:
+{title}
 
-        Return only the classification.
-        """
+CONTENT:
+{(content or '')[:7000]}
+""".strip()
 
-        result = structured_llm.invoke(text)
+        completion = openai_client.beta.chat.completions.parse(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format=SentimentOutput,
+            temperature=0,
+        )
 
-        return result.sentiment
+        parsed = completion.choices[0].message.parsed
+        if not parsed:
+            return None
+
+        normalized_sentiment = (parsed.sentiment or "neutral").strip().lower()
+        if normalized_sentiment not in {"positive", "neutral", "negative"}:
+            normalized_sentiment = "neutral"
+
+        cleaned_symbols = []
+        for symbol in parsed.stock_symbols:
+            upper_symbol = symbol.strip().upper()
+            if re.fullmatch(r"[A-Z]{3,4}", upper_symbol):
+                cleaned_symbols.append(upper_symbol)
+
+        unique_symbols = list(dict.fromkeys(cleaned_symbols))
+
+        return SentimentOutput(
+            stock_symbols=unique_symbols,
+            sentiment=normalized_sentiment,
+            summary=(parsed.summary or "").strip(),
+        )
 
     except Exception as e:
-        print(f"  ⚠️ Sentiment analysis error: {e}")
+        print(f"  Warning: OpenAI extraction error: {e}")
         return None
 
 def parse_vietnamese_date(date_str: str) -> Optional[datetime]:
@@ -126,6 +172,56 @@ def parse_vietnamese_date(date_str: str) -> Optional[datetime]:
     except Exception as e:
         print(f"Error parsing date '{date_str}': {e}")
         return None
+
+
+def parse_absolute_vietnamese_datetime(date_str: str) -> Optional[datetime]:
+    """Parse absolute datetime formats commonly found on Vietstock pages."""
+    if not date_str:
+        return None
+
+    value = date_str.strip()
+
+    formats = [
+        "%d/%m/%Y %H:%M",
+        "%d-%m-%Y %H:%M:%S%z",
+        "%d-%m-%Y %H:%M:%S",
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+
+    return None
+
+
+def extract_publish_datetime_from_html(html: str) -> Optional[datetime]:
+    """Extract publish datetime from Vietstock HTML blocks (.datenew/.date)."""
+    if not html:
+        return None
+
+    datenew_match = re.search(
+        r'class=["\']datenew["\'][^>]*>\s*([^<]+?)\s*<',
+        html,
+        flags=re.IGNORECASE,
+    )
+    if datenew_match:
+        parsed = parse_absolute_vietnamese_datetime(datenew_match.group(1))
+        if parsed:
+            return parsed
+
+    date_match = re.search(
+        r'class=["\']date["\'][^>]*>\s*([^<]+?)\s*<',
+        html,
+        flags=re.IGNORECASE,
+    )
+    if date_match:
+        parsed = parse_absolute_vietnamese_datetime(date_match.group(1))
+        if parsed:
+            return parsed
+
+    return None
 
 
 def is_trusted_source(url: str) -> bool:
@@ -209,12 +305,15 @@ def extract_content_with_newspaper(url: str) -> Dict:
         article = Article(url, language='vi')
         article.download()
         article.parse()
+
+        html = article.html or ""
+        parsed_publish_date = extract_publish_datetime_from_html(html)
         
         return {
             "title": article.title or None,
             "content": article.text or None,
             "author": ", ".join(article.authors) if article.authors else None,
-            "publish_date": article.publish_date
+            "publish_date": parsed_publish_date or article.publish_date
         }
         
     except Exception as e:
@@ -242,8 +341,9 @@ def save_to_database(news_item: Dict, stock_symbol: Optional[str] = None) -> boo
         data = {
             "title": news_item.get('title'),
             "link": news_item.get('link'),
-            "stock_symbol": [stock_symbol],
+            "stock_symbol": news_item.get('stock_symbol') or ([stock_symbol] if stock_symbol else []),
             "description": news_item.get('description'),
+            "summary": news_item.get('summary'),
             "time": news_item.get('time_parsed').isoformat() if news_item.get('time_parsed') else None,
             "image_url": news_item.get('image_url'),
             "content": news_item.get('content'),
@@ -323,16 +423,27 @@ def crawl_news(query: str, stock_symbol: Optional[str] = None,
         source = item.get('source', 'Serper')
         image_url = item.get('imageUrl', None)
         
-        # Parse date
-        time_parsed = parse_vietnamese_date(date_str) if date_str else None
-        
         # Step 3: Extract content with newspaper3k
         extracted = extract_content_with_newspaper(link)
-        
-        # Step 3.5: Analyze sentiment
-        sentiment = analyze_sentiment(title, extracted.get('content', ''))
 
-        print(f"  📊 Sentiment: {sentiment}")
+        # Prefer exact publish date from page, then absolute date string, then relative date string.
+        time_parsed = extracted.get('publish_date')
+        if not time_parsed and date_str:
+            absolute_from_serper = parse_absolute_vietnamese_datetime(date_str)
+            time_parsed = absolute_from_serper or parse_vietnamese_date(date_str)
+        
+        # Step 3.5: GPT-4o-mini extraction (symbols, sentiment, summary)
+        ai = analyze_news(title, extracted.get('content', ''))
+        if not ai:
+            print("  Warning: AI extraction failed, skip")
+            continue
+
+        ai_symbols = ai.stock_symbols
+        if stock_symbol and stock_symbol not in ai_symbols:
+            ai_symbols = [stock_symbol] + ai_symbols
+
+        print(f"  Sentiment: {ai.sentiment}")
+        print(f"  Symbols: {ai_symbols}")
         
         # Use extracted title if original is empty
         if not title and extracted.get('title'):
@@ -343,11 +454,13 @@ def crawl_news(query: str, stock_symbol: Optional[str] = None,
             'title': title,
             'link': link,
             'description': description,
+            'summary': ai.summary,
+            'stock_symbol': ai_symbols,
             'time_parsed': time_parsed,
             'image_url': image_url,
             'content': extracted.get('content'),
             'source': source,
-            'sentiment': sentiment
+            'sentiment': ai.sentiment
         }
         
         # Step 4: Save to database
@@ -355,7 +468,6 @@ def crawl_news(query: str, stock_symbol: Optional[str] = None,
             saved_count += 1
         else:
             duplicate_count += 1
-    
     # Summary
     print("\n" + "="*80)
     print("📊 SUMMARY")

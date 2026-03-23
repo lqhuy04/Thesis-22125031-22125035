@@ -94,10 +94,12 @@ class NewsDBService:
                 "link": news.link,
                 "stock_symbol": news.stock_symbol,
                 "description": news.description,
+                "summary": news.summary,
                 "time": news.time.isoformat() if news.time else None,
                 "image_url": news.image_url,
                 "content": news.content,
                 "source": news.source,
+                "sentiment": news.sentiment,
             }
             
             # Insert (will fail silently if duplicate link)
@@ -168,8 +170,6 @@ class NewsDBService:
                 # Search in title or description
                 query = query.or_(f"title.ilike.%{search}%,description.ilike.%{search}%")
             
-            # Order by updated_at descending (newest first)
-            query = query.order("updated_at", desc=True)
             
             # Apply pagination
             offset = (page - 1) * page_size
@@ -219,7 +219,7 @@ class NewsDBService:
         try:
             result = supabase.table("financial_news")\
                 .select("link")\
-                .order("updated_at", desc=True)\
+                .order("time", desc=True)\
                 .limit(1)\
                 .execute()
             
