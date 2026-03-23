@@ -82,41 +82,112 @@ def get_saved_summary(symbol: str) -> Optional[str]:
 def get_existing_summary_symbols() -> set[str]:
     """Return symbols that already have generated summaries."""
     supabase = _get_supabase_client()
-    result = _execute_with_retry(supabase.table("fundamental_analysis_summary").select("symbol"))
-    if not result.data:
-        return set()
-    return {
-        row.get("symbol", "").upper()
-        for row in result.data
-        if isinstance(row, dict) and row.get("symbol")
-    }
+    page_size = 500
+    start = 0
+    symbols: set[str] = set()
+
+    while True:
+        result = _execute_with_retry(
+            supabase.table("fundamental_analysis_summary")
+            .select("symbol", count="exact")
+            .range(start, start + page_size - 1)
+        )
+        rows = result.data if result.data else []
+        total_rows = result.count if isinstance(result.count, int) else None
+        if not rows:
+            break
+
+        for row in rows:
+            if isinstance(row, dict) and row.get("symbol"):
+                symbols.add(str(row.get("symbol")).upper())
+
+        start += len(rows)
+
+        if total_rows is not None and start >= total_rows:
+            break
+
+    return symbols
 
 
-def get_candidate_symbols(limit: int = 100, source_table: str = "financial_indicators") -> List[str]:
+def _collect_symbols_from_table(
+    supabase: Client,
+    source_table: str,
+    limit: Optional[int],
+    seen: set[str],
+    symbols: List[str],
+) -> None:
+    # Keep page size conservative because many Supabase projects cap max rows/page.
+    page_size = 200
+    start = 0
+
+    while True:
+        result = _execute_with_retry(
+            supabase.table(source_table)
+            .select("symbol", count="exact")
+            .range(start, start + page_size - 1)
+        )
+        rows = result.data if result.data else []
+        total_rows = result.count if isinstance(result.count, int) else None
+
+        if not rows:
+            break
+
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            raw_symbol = row.get("symbol")
+            if not raw_symbol:
+                continue
+            symbol = str(raw_symbol).upper()
+            if symbol in seen:
+                continue
+            seen.add(symbol)
+            symbols.append(symbol)
+            if limit is not None and len(symbols) >= limit:
+                return
+
+        start += len(rows)
+
+        if total_rows is not None and start >= total_rows:
+            break
+
+
+def get_candidate_symbols(limit: Optional[int] = 100, source_table: str = "financial_indicators") -> List[str]:
     """
-    Get candidate symbols from a source financial table.
+    Get candidate symbols from one source table.
     Duplicates are removed in Python while preserving first-seen order.
     """
-    supabase = _get_supabase_client()
-    # Pull enough rows to collect unique symbols across multiple years.
-    fetch_size = max(limit * 20, 1000)
-    result = _execute_with_retry(supabase.table(source_table).select("symbol").limit(fetch_size))
-    rows = result.data if result.data else []
+    return get_candidate_symbols_from_tables(limit=limit, source_tables=[source_table])
 
-    seen = set()
+
+def get_candidate_symbols_from_tables(
+    limit: Optional[int] = None,
+    source_tables: Optional[List[str]] = None,
+) -> List[str]:
+    """
+    Get candidate symbols from multiple source tables.
+    Duplicates are removed in Python while preserving first-seen order.
+    """
+    tables = source_tables or [
+        "financial_balance_sheets",
+        "financial_income_statements",
+        "financial_cash_flows",
+        "financial_indicators",
+    ]
+
+    supabase = _get_supabase_client()
+    seen: set[str] = set()
     symbols: List[str] = []
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        raw_symbol = row.get("symbol")
-        if not raw_symbol:
-            continue
-        symbol = str(raw_symbol).upper()
-        if symbol in seen:
-            continue
-        seen.add(symbol)
-        symbols.append(symbol)
-        if len(symbols) >= limit:
+
+    for table_name in tables:
+        _collect_symbols_from_table(
+            supabase=supabase,
+            source_table=table_name,
+            limit=limit,
+            seen=seen,
+            symbols=symbols,
+        )
+        if limit is not None and len(symbols) >= limit:
             break
 
     return symbols

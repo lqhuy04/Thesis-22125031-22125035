@@ -11,6 +11,32 @@ supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 class FinancialDBService:
     """Service for financial metrics database operations"""
+
+    @staticmethod
+    async def get_fundamental_summary(symbol: str) -> Optional[Dict]:
+        """
+        Get AI-generated fundamental summary for a specific symbol.
+
+        Args:
+            symbol: Stock symbol (e.g., 'VNM')
+
+        Returns:
+            Summary record with symbol and summary fields, or None if not found
+        """
+        try:
+            result = supabase.table("fundamental_analysis_summary") \
+                .select("symbol,summary") \
+                .eq("symbol", symbol.upper()) \
+                .limit(1) \
+                .execute()
+
+            if result.data:
+                return result.data[0]
+            return None
+
+        except Exception as e:
+            print(f"Error fetching fundamental summary: {e}")
+            raise ValueError(f"Failed to fetch fundamental summary: {str(e)}")
     
     @staticmethod
     async def get_financial_metrics_by_symbol(
