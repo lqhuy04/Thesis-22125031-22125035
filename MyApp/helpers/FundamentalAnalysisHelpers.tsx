@@ -136,11 +136,12 @@ export const getFinancialAnalysisSummary = async (
       `api/fundamental-analysis/${stockSymbol}/summary`,
     );
     const { errorCode, data } = result || {};
+    const { summary } = data || {};
 
     if (errorCode === 0 && data) {
       return {
         status: true,
-        data: data as string,
+        data: summary as string,
       };
     } else {
       return {

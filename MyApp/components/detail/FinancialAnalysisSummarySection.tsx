@@ -1,7 +1,7 @@
 import { getFinancialAnalysisSummary } from "@/helpers/FundamentalAnalysisHelpers";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
-import { Text } from "../ui/Text";
+import Markdown from "react-native-markdown-display";
 
 interface Props {
   stockSymbol: string;
@@ -21,8 +21,8 @@ const FinancialAnalysisSummarySection = ({ stockSymbol }: Props) => {
   return (
     <View>
       {summary ? (
-        <View>
-          <Text>{summary}</Text>
+        <View style={{ marginVertical: 12, marginHorizontal: 12 }}>
+          <Markdown>{summary}</Markdown>
         </View>
       ) : null}
     </View>
