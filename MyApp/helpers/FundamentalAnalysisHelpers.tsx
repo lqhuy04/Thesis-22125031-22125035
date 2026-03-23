@@ -124,3 +124,35 @@ export const getCashFlows = async (
     };
   }
 };
+
+export const getFinancialAnalysisSummary = async (
+  stockSymbol: string,
+): Promise<{
+  status: boolean;
+  data: string | null;
+}> => {
+  try {
+    const result = await sendMessage(
+      `api/fundamental-analysis/${stockSymbol}/summary`,
+    );
+    const { errorCode, data } = result || {};
+
+    if (errorCode === 0 && data) {
+      return {
+        status: true,
+        data: data as string,
+      };
+    } else {
+      return {
+        status: false,
+        data: null,
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: null,
+    };
+  }
+};
