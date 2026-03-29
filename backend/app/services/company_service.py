@@ -15,30 +15,43 @@ class CompanyService:
     @staticmethod
     def get_profile(symbol: str) -> Optional[dict]:
         result = (
-            supabase.table("company_profiles")
-            .select("*")
-            .eq("symbol", symbol.upper())
+            supabase.table("Stock")
+            .select("id, BI_Profile(*)")   # embedded resource qua FK
+            .eq("stock_symbol", symbol.upper())
             .single()
             .execute()
         )
-        return result.data or None
+        
+        if not result.data:
+            return None
+
+        return result.data.get("BI_Profile")[0] or None
 
     @staticmethod
     def get_leaders(symbol: str) -> list[dict]:
         result = (
-            supabase.table("company_leaders")
-            .select("*")
-            .eq("symbol", symbol.upper())
+            supabase.table("Stock")
+            .select("id, BI_Leader(*)")
+            .eq("stock_symbol", symbol.upper())
+            .single()
             .execute()
         )
-        return result.data or []
+        
+        if not result.data:
+            return []
+        
+        return result.data.get("BI_Leader") or []
 
     @staticmethod
     def get_subsidiaries(symbol: str) -> list[dict]:
         result = (
-            supabase.table("company_subsidiaries")
-            .select("*")
-            .eq("symbol", symbol.upper())
+            supabase.table("Stock")
+            .select("id, BI_Subsidiary(*)")
+            .eq("stock_symbol", symbol.upper())
+            .single()
             .execute()
         )
-        return result.data or []
+        if not result.data:
+            return []
+        
+        return result.data.get("BI_Subsidiary") or []

@@ -44,23 +44,21 @@ class CompanyProfileResponse(BaseModel):
 
 
 class LeaderResponse(BaseModel):
-    symbol: str
+    id: Optional[str] = None
     full_name: Optional[str] = None
     position: Optional[str] = None
-    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class SubsidiaryResponse(BaseModel):
-    symbol: str
+    id: Optional[str] = None
     company_name: Optional[str] = None
     sub_symbol: Optional[str] = None
     charter_capital_billion: Optional[float] = None
     ownership_pct: Optional[float] = None
     relationship_type: Optional[str] = None
-    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

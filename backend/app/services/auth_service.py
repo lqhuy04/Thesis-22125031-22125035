@@ -14,13 +14,13 @@ class AuthService:
     @staticmethod
     async def signup(email: str, phone_number: str, password: str):
         # Check if user exists
-        existing = supabase.table("user").select("*").eq("email", email).execute()
+        existing = supabase.table("User").select("*").eq("email", email).execute()
         if existing.data:
             raise ValueError("User already exists")
         
         # Create user
         hashed_pwd = hash_password(password)
-        new_user = supabase.table("user").insert({
+        new_user = supabase.table("User").insert({
             "email": email,
             "phone_number": phone_number,
             "hash_password": hashed_pwd
@@ -41,7 +41,7 @@ class AuthService:
     @staticmethod
     async def login(email: str, password: str):
         # Find user
-        user_result = supabase.table("user").select("*").eq("email", email).execute()
+        user_result = supabase.table("User").select("*").eq("email", email).execute()
         if not user_result.data:
             raise ValueError("Invalid credentials")
         
@@ -62,7 +62,7 @@ class AuthService:
     @staticmethod
     async def forgot_password(email: str):
         # Find user
-        user_result = supabase.table("user").select("*").eq("email", email).execute()
+        user_result = supabase.table("User").select("*").eq("email", email).execute()
         if not user_result.data:
             # Don't reveal if user exists or not
             return {"message": "If the email exists, a reset link has been sent"}
@@ -89,7 +89,7 @@ class AuthService:
         
         # Update password
         hashed_pwd = hash_password(new_password)
-        result = supabase.table("user").update({
+        result = supabase.table("User").update({
             "hash_password": hashed_pwd
         }).eq("id", user_id).execute()
         
@@ -117,7 +117,7 @@ class AuthService:
                 raise ValueError("Email not provided by Google")
             
             # Check if user exists
-            user_result = supabase.table("user").select("*").eq("email", email).execute()
+            user_result = supabase.table("User").select("*").eq("email", email).execute()
             
             if user_result.data:
                 # User exists, update their info
@@ -126,10 +126,10 @@ class AuthService:
                     "provider": "google",
                     "avatar_url": avatar_url
                 }
-                supabase.table("user").update(update_data).eq("id", user["id"]).execute()
+                supabase.table("User").update(update_data).eq("id", user["id"]).execute()
             else:
                 # Create new user
-                new_user = supabase.table("user").insert({
+                new_user = supabase.table("User").insert({
                     "email": email,
                     "provider": "google",
                     "avatar_url": avatar_url,
@@ -178,11 +178,11 @@ class AuthService:
                 print(f"No email provided by Facebook, using dummy email: {email}")
             
             # Check if user exists by email first, then by Facebook ID if not found
-            user_result = supabase.table("user").select("*").eq("email", email).execute()
+            user_result = supabase.table("User").select("*").eq("email", email).execute()
             
             # If no user found by email, try to find by Facebook ID
             if not user_result.data:
-                user_result = supabase.table("user").select("*").eq("facebook_id", facebook_id).execute()
+                user_result = supabase.table("User").select("*").eq("facebook_id", facebook_id).execute()
             
             if user_result.data:
                 # User exists, update their info
@@ -192,10 +192,10 @@ class AuthService:
                     "avatar_url": avatar_url,
                     "facebook_id": facebook_id
                 }
-                supabase.table("user").update(update_data).eq("id", user["id"]).execute()
+                supabase.table("User").update(update_data).eq("id", user["id"]).execute()
             else:
                 # Create new user
-                new_user = supabase.table("user").insert({
+                new_user = supabase.table("User").insert({
                     "email": email,
                     "provider": "facebook",
                     "avatar_url": avatar_url,
