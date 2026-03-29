@@ -10,14 +10,13 @@ class NewsBase(BaseModel):
     """Base news schema - matches database structure"""
     title: str = Field(..., description="News article title")
     link: str = Field(..., description="URL to the full article")
-    stock_symbol: Optional[List[str]] = Field(None, description="Associated stock ticker symbol")
     description: Optional[str] = Field(None, description="News article summary/description")
-    summary: Optional[str] = Field(None, description="AI-generated short summary")
     time: Optional[datetime] = Field(None, description="Publication time")
     image_url: Optional[str] = Field(None, description="URL to article image")
     content: Optional[str] = Field(None, description="Article content text")
     source: Optional[str] = Field(None, description="News source website")
     sentiment: Optional[str] = Field(None, description="Sentiment label: positive, neutral, negative")
+    summary: Optional[str] = Field(None, description="AI-generated short summary")
 
 
 class NewsCreate(NewsBase):
@@ -33,18 +32,9 @@ class NewsResponse(NewsBase):
         from_attributes = True
 
 
-class NewsListData(BaseModel):
-    """Paginated news data"""
-    items: list[NewsResponse]
-    total: int
-    page: int
-    page_size: int
-    total_pages: int
-
-
 class NewsListResponse(BaseModel):
     """Standardized API response for news list"""
-    data: NewsListData
+    data: list[NewsResponse]
     errorCode: int = Field(default=0, description="Error code (0 = success)")
     errorDesc: str = Field(default="", description="Error description")
     requestId: str = Field(default="", description="Unique request ID")
