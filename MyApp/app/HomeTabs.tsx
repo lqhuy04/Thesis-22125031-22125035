@@ -4,6 +4,7 @@ import Home from "./Home";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/ThemeContext";
 import Profile from "./Profile";
+import Search from "./Search";
 
 const Tab = createBottomTabNavigator();
 
@@ -32,8 +33,21 @@ const HomeTabs = () => {
       }}
     >
       <Tab.Screen
-        name="Search"
+        name="Home"
         component={() => <Home />}
+        options={{
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name="home-outline"
+              size={20}
+              color={theme.base.primary}
+            />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Search"
+        component={() => <Search />}
         options={{
           tabBarIcon: ({ color, focused }) => (
             <Ionicons

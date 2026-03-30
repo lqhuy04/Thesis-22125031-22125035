@@ -295,11 +295,7 @@ async def get_index_overview():
         return create_response(
             {
                 "success": True,
-                "data": {
-                    "data": cached_rows,
-                    "totalRecord": len(cached_rows),
-                    "date": today_str,
-                },
+                "data": cached_rows,
             },
             request_id,
         )
@@ -362,11 +358,7 @@ async def get_index_overview():
     return create_response(
         {
             "success": True,
-            "data": {
-                "data": merged_rows,
-                "totalRecord": len(merged_rows),
-                "date": today_str,
-            },
+            "data": merged_rows,
         },
         request_id,
     )
