@@ -14,6 +14,8 @@ import logging
 import requests
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+import threading
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,10 @@ class SSIMarketDataService:
         # Per (symbol, interval) in-memory cooldown to avoid redundant sync on repeated calls.
         self._last_sync_at: Dict[tuple, datetime] = {}
         self._sync_cooldown_seconds = 120
+        self._daily_price_cache: Dict[str, Dict[str, Any]] = {}
+        self._daily_price_cache_ttl_seconds = 60
+        self._top_stocks_refresh_lock = threading.Lock()
+        self._top_stocks_refresh_running = False
     
     @property
     def config(self):
@@ -602,6 +608,37 @@ class SSIMarketDataService:
             "price_change": _first_number(change_keys),
             "price_change_percent": _first_number(change_percent_keys),
         }
+
+    def _get_prices_from_market_snapshots(self, symbols: list[str]) -> Dict[str, Dict[str, Optional[float]]]:
+        """Fetch symbol price snapshots from SSI SECURITIES endpoint by market."""
+        target_symbols = {s.upper() for s in symbols if s}
+        if not target_symbols:
+            return {}
+
+        snapshot_prices: Dict[str, Dict[str, Optional[float]]] = {}
+
+        for market in ["HOSE", "HNX", "UPCOM"]:
+            params = {
+                "market": market,
+                "pageIndex": 1,
+                "pageSize": 1000,
+            }
+            response = self._make_get_request(SSIEndpoints.SECURITIES, params)
+            if response.get("status") != "Success":
+                continue
+
+            for sec in response.get("data", []) or []:
+                symbol = str(sec.get("Symbol") or "").upper().strip()
+                if not symbol or symbol not in target_symbols:
+                    continue
+
+                parsed = self._extract_price_change_fields(sec)
+                if parsed.get("current_price") is None and parsed.get("price_change_percent") is None:
+                    continue
+
+                snapshot_prices[symbol] = parsed
+
+        return snapshot_prices
     
     def _fetch_prices_parallel(self, securities: list, date_str: str, max_workers: int = 10) -> None:
         """
@@ -645,6 +682,75 @@ class SSIMarketDataService:
                 except Exception as e:
                     symbol = future_to_symbol[future]
                     logger.error(f"Failed to process price for {symbol}: {str(e)}")
+
+    def _get_daily_price_with_retry(self, symbol: str, date_str: str, retries: int = 3, throttle_seconds: float = 1.05) -> Dict[str, Any]:
+        """Get daily price with simple retry/backoff to handle SSI rate limits."""
+        for attempt in range(retries):
+            price_data = self._get_daily_price(symbol, date_str)
+            if price_data and price_data.get("current_price") is not None:
+                return price_data
+
+            if attempt < retries - 1:
+                time.sleep(throttle_seconds)
+
+        return price_data if "price_data" in locals() else {}
+
+    def _get_cached_daily_price(self, symbol: str) -> Optional[Dict[str, Any]]:
+        """Return cached daily price when still fresh."""
+        from datetime import datetime
+
+        cached = self._daily_price_cache.get(symbol.upper())
+        if not cached:
+            return None
+
+        cached_at = cached.get("cached_at")
+        if not cached_at:
+            return None
+
+        age = (datetime.now() - cached_at).total_seconds()
+        if age > self._daily_price_cache_ttl_seconds:
+            return None
+
+        return cached.get("data")
+
+    def _set_cached_daily_price(self, symbol: str, price_data: Dict[str, Any]) -> None:
+        """Store daily price in short-lived cache."""
+        from datetime import datetime
+
+        self._daily_price_cache[symbol.upper()] = {
+            "cached_at": datetime.now(),
+            "data": price_data,
+        }
+
+    def _refresh_missing_top_stock_prices_async(self, symbols: list[str], date_str: str) -> None:
+        """Refresh missing symbol prices in background so later requests can return complete data."""
+        symbols = [s.upper() for s in symbols if s]
+        if not symbols:
+            return
+
+        with self._top_stocks_refresh_lock:
+            if self._top_stocks_refresh_running:
+                return
+            self._top_stocks_refresh_running = True
+
+        def _worker():
+            try:
+                for i, symbol in enumerate(symbols):
+                    if self._get_cached_daily_price(symbol) is not None:
+                        continue
+
+                    price_data = self._get_daily_price_with_retry(symbol, date_str, retries=2, throttle_seconds=1.05)
+                    if price_data and price_data.get("current_price") is not None:
+                        self._set_cached_daily_price(symbol, price_data)
+
+                    if i < len(symbols) - 1:
+                        time.sleep(1.05)
+            finally:
+                with self._top_stocks_refresh_lock:
+                    self._top_stocks_refresh_running = False
+
+        thread = threading.Thread(target=_worker, daemon=True)
+        thread.start()
 
     def search_securities(
         self,
@@ -870,7 +976,7 @@ class SSIMarketDataService:
         try:
             if not self._ensure_token():
                 return {"success": False, "error": "Failed to get access token"}
-            
+
             from datetime import datetime
             today_str = datetime.now().strftime("%d/%m/%Y")
             
@@ -889,8 +995,52 @@ class SSIMarketDataService:
                 if symbol
             ]
 
-            if results:
-                self._fetch_prices_parallel(results, today_str, max_workers=min(15, len(results)))
+            symbol_to_item = {item["symbol"]: item for item in results}
+
+            # 1) Use short-lived in-memory cache first.
+            missing_symbols = []
+            for symbol, item in symbol_to_item.items():
+                cached = self._get_cached_daily_price(symbol)
+                if cached and cached.get("current_price") is not None:
+                    item.update({
+                        "current_price": cached.get("current_price"),
+                        "price_change": cached.get("price_change"),
+                        "price_change_percent": cached.get("price_change_percent"),
+                    })
+                else:
+                    missing_symbols.append(symbol)
+
+            # 2) Fast SSI market snapshot fetch (3 calls total: HOSE/HNX/UPCOM).
+            snapshot_prices = self._get_prices_from_market_snapshots(missing_symbols)
+            for symbol in list(missing_symbols):
+                snapshot = snapshot_prices.get(symbol)
+                if not snapshot:
+                    continue
+                symbol_to_item[symbol].update({
+                    "current_price": snapshot.get("current_price"),
+                    "price_change": snapshot.get("price_change"),
+                    "price_change_percent": snapshot.get("price_change_percent"),
+                })
+                if symbol_to_item[symbol].get("current_price") is not None:
+                    self._set_cached_daily_price(symbol, snapshot)
+
+            # 3) Return fast with available data, refresh missing symbols in background.
+            remaining_symbols = [s for s in missing_symbols if symbol_to_item[s].get("current_price") is None]
+
+            # Guarantee at least one resolved price on cold start when snapshots contain no price fields.
+            if remaining_symbols:
+                first_symbol = remaining_symbols[0]
+                first_price = self._get_daily_price_with_retry(first_symbol, today_str, retries=1, throttle_seconds=1.05)
+                if first_price and first_price.get("current_price") is not None:
+                    symbol_to_item[first_symbol].update({
+                        "current_price": first_price.get("current_price"),
+                        "price_change": first_price.get("price_change"),
+                        "price_change_percent": first_price.get("price_change_percent"),
+                    })
+                    self._set_cached_daily_price(first_symbol, first_price)
+                    remaining_symbols = remaining_symbols[1:]
+
+            self._refresh_missing_top_stock_prices_async(remaining_symbols, today_str)
             
             return {
                 "success": True,

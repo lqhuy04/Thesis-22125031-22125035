@@ -37,6 +37,9 @@ _index_overview_cache = {
 }
 _index_overview_cache_ttl_seconds = 60
 
+_today_highlights_cache: dict = {}
+_today_highlights_cache_ttl_seconds = 45
+
 
 def create_response(result: dict, request_id: str) -> MarketDataResponse:
     """Helper function to create standardized response"""
@@ -439,6 +442,7 @@ async def get_today_highlights(
     """
     request_id = str(uuid.uuid4())
     service = get_ssi_service()
+    today_str = datetime.now().strftime("%d/%m/%Y")
 
     default_major_symbols = [
         "VNM", "FPT", "VCB", "VIC", "VHM",
@@ -450,28 +454,55 @@ async def get_today_highlights(
         symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
 
     symbol_list = symbol_list[:stock_limit]
+
+    cache_key = (tuple(symbol_list), news_limit, today_str)
+    cached_item = _today_highlights_cache.get(cache_key)
+    if cached_item:
+        cached_at = cached_item.get("cached_at")
+        if cached_at and (datetime.now() - cached_at).total_seconds() < _today_highlights_cache_ttl_seconds:
+            cached_data = cached_item.get("data", {})
+            cached_stocks = cached_data.get("major_stocks", [])
+            cache_is_complete = bool(cached_stocks) and all(
+                stock.get("current_price") is not None for stock in cached_stocks
+            )
+            if cache_is_complete:
+                return create_response({"success": True, "data": cached_data}, request_id)
+
     major_result = service.get_top_stocks(symbol_list)
 
     if not major_result.get("success"):
         return create_response(major_result, request_id)
 
     major_stocks = major_result.get("data", [])
+    symbols_for_news = [item.get("symbol", "") for item in major_stocks if item.get("symbol")]
+    batched_news = await NewsDBService.get_latest_news_for_symbols(symbols_for_news, limit=news_limit)
 
-    async def _attach_latest_news(item: dict) -> dict:
+    enriched_major_stocks = []
+    for item in major_stocks:
         symbol = item.get("symbol", "")
-        latest_news = await NewsDBService.get_latest_news(symbol, limit=news_limit)
+        latest_news = batched_news.get(symbol, [])
         item_with_news = dict(item)
         item_with_news["latest_news"] = [news.model_dump() for news in latest_news]
-        return item_with_news
+        enriched_major_stocks.append(item_with_news)
 
-    enriched_major_stocks = await asyncio.gather(*[_attach_latest_news(item) for item in major_stocks])
+    payload_data = {
+        "major_stocks": enriched_major_stocks,
+    }
+
+    # Cache only complete payloads to avoid serving stale partial results.
+    is_complete = bool(enriched_major_stocks) and all(
+        item.get("current_price") is not None for item in enriched_major_stocks
+    )
+    if is_complete:
+        _today_highlights_cache[cache_key] = {
+            "cached_at": datetime.now(),
+            "data": payload_data,
+        }
 
     return create_response(
         {
             "success": True,
-            "data": {
-                "major_stocks": enriched_major_stocks,
-            },
+            "data": payload_data,
         },
         request_id,
     )

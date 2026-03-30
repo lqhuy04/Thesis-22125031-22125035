@@ -96,6 +96,73 @@ class NewsDBService:
             return []
 
     @staticmethod
+    def _get_latest_news_for_symbols_sync(symbols: List[str], limit: int = 2) -> Dict[str, List[NewsResponse]]:
+        """Batch fetch latest news per symbol to avoid N+1 database queries."""
+        try:
+            symbols_upper = [s.strip().upper() for s in symbols if s and s.strip()]
+            result_map: Dict[str, List[NewsResponse]] = {s: [] for s in symbols_upper}
+            if not symbols_upper:
+                return result_map
+
+            # Resolve symbol -> stock_id
+            stocks_result = (
+                supabase.table("Stock")
+                .select("id, stock_symbol")
+                .in_("stock_symbol", symbols_upper)
+                .execute()
+            )
+            if not stocks_result.data:
+                return result_map
+
+            symbol_to_stock_id: Dict[str, str] = {}
+            stock_id_to_symbol: Dict[str, str] = {}
+            for row in stocks_result.data:
+                symbol = str(row.get("stock_symbol") or "").upper().strip()
+                stock_id = str(row.get("id") or "").strip()
+                if symbol and stock_id:
+                    symbol_to_stock_id[symbol] = stock_id
+                    stock_id_to_symbol[stock_id] = symbol
+
+            stock_ids = list(stock_id_to_symbol.keys())
+            if not stock_ids:
+                return result_map
+
+            links_result = (
+                supabase.table("Article_Stock")
+                .select("stock_id, Article(*)")
+                .in_("stock_id", stock_ids)
+                .execute()
+            )
+            if not links_result.data:
+                return result_map
+
+            grouped: Dict[str, List[NewsResponse]] = {s: [] for s in symbols_upper}
+            for row in links_result.data:
+                stock_id = str(row.get("stock_id") or "").strip()
+                symbol = stock_id_to_symbol.get(stock_id)
+                article = row.get("Article")
+                if not symbol or not article:
+                    continue
+                try:
+                    grouped[symbol].append(NewsResponse(**article))
+                except Exception:
+                    continue
+
+            for symbol in symbols_upper:
+                items = grouped.get(symbol, [])
+                items.sort(key=lambda item: item.time or datetime.min, reverse=True)
+                result_map[symbol] = items[: max(0, limit)]
+
+            return result_map
+        except Exception as e:
+            print(f"Error getting latest news for symbols: {e}")
+            return {s.strip().upper(): [] for s in symbols if s and s.strip()}
+
+    async def get_latest_news_for_symbols(symbols: List[str], limit: int = 2) -> Dict[str, List[NewsResponse]]:
+        """Async wrapper for batch latest news retrieval by symbol list."""
+        return await asyncio.to_thread(NewsDBService._get_latest_news_for_symbols_sync, symbols, limit)
+
+    @staticmethod
     def _get_macro_news_sync(min_symbols: int = 3, limit: int = 50) -> List[NewsResponse]:
         """Get news items linked to at least `min_symbols` distinct stock symbols."""
         try:
