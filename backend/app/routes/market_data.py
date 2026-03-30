@@ -5,22 +5,21 @@ FastAPI routes for SSI FC Data API integration
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 import uuid
+import asyncio
+from datetime import datetime, timedelta
 
 from app.services.ssi_service import get_ssi_service, SSIMarketDataService
+from app.services.news_db_service import NewsDBService
 from app.models.market_data_schemas import (
     SecuritiesListRequest,
     SecuritiesDetailsRequest,
-    IndexComponentsRequest,
-    IndexListRequest,
     DailyOHLCRequest,
     IntradayOHLCRequest,
-    DailyIndexRequest,
     DailyStockPriceRequest,
     StockPriceByTimeFrameRequest,
     MarketDataResponse,
     SSIApiStatus,
     MarketEnum,
-    ExchangeEnum,
     ResolutionEnum,
     TimeFrameEnum,
     SecurityItem,
@@ -29,6 +28,14 @@ from app.models.market_data_schemas import (
 from app.config import settings
 
 router = APIRouter(prefix="/api", tags=["Market Data"])
+
+# Short-lived cache to avoid repeated slow SSI index calls.
+_index_overview_cache = {
+    "cached_at": None,
+    "date": "",
+    "rows": [],
+}
+_index_overview_cache_ttl_seconds = 60
 
 
 def create_response(result: dict, request_id: str) -> MarketDataResponse:
@@ -207,44 +214,6 @@ async def get_securities_details(
     return create_response(result, request_id)
 
 
-@router.get("/index/components/{index_code}", response_model=MarketDataResponse)
-async def get_index_components(
-    index_code: str,
-    page_index: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(100, ge=1, le=1000, description="Items per page")
-):
-    """
-    Get components of a specific index
-    
-    - **index_code**: Index code (e.g., VN30, VN100, HNX30)
-    - **page_index**: Page number for pagination (default: 1)
-    - **page_size**: Number of items per page (default: 100, max: 1000)
-    """
-    request_id = str(uuid.uuid4())
-    service = get_ssi_service()
-    result = service.get_index_components(index_code.lower(), page_index, page_size)
-    return create_response(result, request_id)
-
-
-@router.get("/index/list", response_model=MarketDataResponse)
-async def get_index_list(
-    exchange: ExchangeEnum = Query(..., description="Exchange code (hose, hnx)"),
-    page_index: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(100, ge=1, le=1000, description="Items per page")
-):
-    """
-    Get list of indices for an exchange
-    
-    - **exchange**: Exchange code (hose, hnx)
-    - **page_index**: Page number for pagination (default: 1)
-    - **page_size**: Number of items per page (default: 100, max: 1000)
-    """
-    request_id = str(uuid.uuid4())
-    service = get_ssi_service()
-    result = service.get_index_list(exchange.value, page_index, page_size)
-    return create_response(result, request_id)
-
-
 @router.get("/ohlc/daily/{symbol}", response_model=MarketDataResponse)
 async def get_daily_ohlc(
     symbol: str,
@@ -301,33 +270,103 @@ async def get_intraday_ohlc(
     return create_response(result, request_id)
 
 
-@router.get("/index/daily/{index_id}", response_model=MarketDataResponse)
-async def get_daily_index(
-    index_id: str,
-    from_date: str = Query(..., description="Start date (DD/MM/YYYY)"),
-    to_date: str = Query(..., description="End date (DD/MM/YYYY)"),
-    page_index: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(100, ge=1, le=1000, description="Items per page"),
-    order_by: Optional[str] = Query("", description="Field to order by"),
-    order: Optional[str] = Query("", description="Sort order (asc/desc)")
-):
+@router.get("/index", response_model=MarketDataResponse)
+async def get_index_overview():
     """
-    Get daily index data
-    
-    - **index_id**: Index ID (e.g., VN100, VN30, HNX30)
-    - **from_date**: Start date in format DD/MM/YYYY
-    - **to_date**: End date in format DD/MM/YYYY
-    - **page_index**: Page number for pagination (default: 1)
-    - **page_size**: Number of items per page (default: 100, max: 1000)
-    - **order_by**: Field to order by (optional)
-    - **order**: Sort order - asc or desc (optional)
+    Get index overview for major indices.
+
+    This endpoint returns full index rows, including fields like:
+    Advances, Declines, NoChanges, TotalVol, TotalVal, etc.
     """
     request_id = str(uuid.uuid4())
     service = get_ssi_service()
-    result = service.get_daily_index(
-        request_id, index_id, from_date, to_date, page_index, page_size, order_by or "", order or ""
+    today_str = datetime.now().strftime("%d/%m/%Y")
+
+    cached_at = _index_overview_cache.get("cached_at")
+    if (
+        cached_at
+        and _index_overview_cache.get("date") == today_str
+        and (datetime.now() - cached_at).total_seconds() < _index_overview_cache_ttl_seconds
+    ):
+        cached_rows = _index_overview_cache.get("rows", [])
+        return create_response(
+            {
+                "success": True,
+                "data": {
+                    "data": cached_rows,
+                    "totalRecord": len(cached_rows),
+                    "date": today_str,
+                },
+            },
+            request_id,
+        )
+
+    # Fixed set requested by product: VNINDEX, VN30, HNINDEX.
+    # Some SSI identifiers differ, so we try aliases per logical index.
+    target_indices = {
+        "VNINDEX": ["VNINDEX"],
+        "VN30": ["VN30"],
+        "HNINDEX": ["HNINDEX", "HNXINDEX"],
+    }
+
+    async def _fetch_index_with_fallback(logical_name: str, candidates: list[str]) -> Optional[dict]:
+        # SSI DailyIndex allows pageSize in {10, 20, 50, 100, 1000}
+        # and enforces roughly 1 request per second.
+        for days_back in range(0, 1):
+            target_date = (datetime.now() - timedelta(days=days_back)).strftime("%d/%m/%Y")
+
+            for candidate in candidates:
+                local_request_id = str(uuid.uuid4())
+                result = await asyncio.to_thread(
+                    service.get_daily_index,
+                    local_request_id,
+                    candidate,
+                    target_date,
+                    target_date,
+                    1,
+                    10,
+                    "",
+                    "",
+                )
+
+                # Respect SSI quota limit to avoid "maximum admitted 1 per 1s".
+                await asyncio.sleep(1.05)
+
+                if not result.get("success"):
+                    continue
+
+                payload = result.get("data", [])
+                rows = payload if isinstance(payload, list) else (payload.get("data", []) if isinstance(payload, dict) else [])
+                if not rows:
+                    continue
+
+                row = dict(rows[0])
+                row["IndexId"] = logical_name
+                return row
+
+        return None
+
+    merged_rows = []
+    for name, aliases in target_indices.items():
+        row = await _fetch_index_with_fallback(name, aliases)
+        if row:
+            merged_rows.append(row)
+
+    _index_overview_cache["cached_at"] = datetime.now()
+    _index_overview_cache["date"] = today_str
+    _index_overview_cache["rows"] = merged_rows
+
+    return create_response(
+        {
+            "success": True,
+            "data": {
+                "data": merged_rows,
+                "totalRecord": len(merged_rows),
+                "date": today_str,
+            },
+        },
+        request_id,
     )
-    return create_response(result, request_id)
 
 
 @router.get("/stock-price/daily/{symbol}", response_model=MarketDataResponse)
@@ -383,6 +422,59 @@ async def get_stock_price_by_timeframe(
         market=market.lower()
     )
     return create_response(result, request_id)
+
+
+@router.get("/today-highlights", response_model=MarketDataResponse)
+async def get_today_highlights(
+    symbols: Optional[str] = Query(None, description="Comma-separated major symbols (e.g., VNM,FPT,VCB,SSI)"),
+    stock_limit: int = Query(10, ge=1, le=30, description="Number of major stocks to return"),
+    news_limit: int = Query(2, ge=1, le=10, description="Latest news count per symbol")
+):
+    """
+    📌 Tiêu điểm hôm nay
+
+    Returns:
+    - Major stocks snapshot (default 10)
+    - Latest news for each symbol (default 2)
+    """
+    request_id = str(uuid.uuid4())
+    service = get_ssi_service()
+
+    default_major_symbols = [
+        "VNM", "FPT", "VCB", "VIC", "VHM",
+        "SSI", "MBB", "HPG", "TCB", "ACB",
+    ]
+
+    symbol_list = default_major_symbols
+    if symbols:
+        symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+
+    symbol_list = symbol_list[:stock_limit]
+    major_result = service.get_top_stocks(symbol_list)
+
+    if not major_result.get("success"):
+        return create_response(major_result, request_id)
+
+    major_stocks = major_result.get("data", [])
+
+    async def _attach_latest_news(item: dict) -> dict:
+        symbol = item.get("symbol", "")
+        latest_news = await NewsDBService.get_latest_news(symbol, limit=news_limit)
+        item_with_news = dict(item)
+        item_with_news["latest_news"] = [news.model_dump() for news in latest_news]
+        return item_with_news
+
+    enriched_major_stocks = await asyncio.gather(*[_attach_latest_news(item) for item in major_stocks])
+
+    return create_response(
+        {
+            "success": True,
+            "data": {
+                "major_stocks": enriched_major_stocks,
+            },
+        },
+        request_id,
+    )
 
 @router.get("/historical-chart/{symbol}", response_model=MarketDataResponse)
 async def get_latest_historical_chart_data(

@@ -2,7 +2,7 @@
 News data models and schemas
 """
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import datetime
 
 
@@ -35,6 +35,15 @@ class NewsResponse(NewsBase):
 class NewsListResponse(BaseModel):
     """Standardized API response for news list"""
     data: list[NewsResponse]
+    errorCode: int = Field(default=0, description="Error code (0 = success)")
+    errorDesc: str = Field(default="", description="Error description")
+    requestId: str = Field(default="", description="Unique request ID")
+    result: bool = Field(default=True, description="Success flag")
+
+
+class NewsCategoriesResponse(BaseModel):
+    """Standardized API response for grouped news by categories."""
+    data: Dict[str, list[NewsResponse]]
     errorCode: int = Field(default=0, description="Error code (0 = success)")
     errorDesc: str = Field(default="", description="Error description")
     requestId: str = Field(default="", description="Unique request ID")

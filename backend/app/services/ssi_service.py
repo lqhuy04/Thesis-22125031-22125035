@@ -443,7 +443,15 @@ class SSIMarketDataService:
                 "order": order
             }
             response = self._make_get_request(SSIEndpoints.DAILY_INDEX, params)
-            return {"success": True, "data": response}
+            if not self._is_api_success(response):
+                return {
+                    "success": False,
+                    "error": response.get("message") or "SSI Daily Index request failed",
+                    "data": response,
+                }
+
+            # Keep only SSI inner `data` for the API's standardized wrapper.
+            return {"success": True, "data": response.get("data", [])}
         except Exception as e:
             logger.error(f"Error getting daily index: {str(e)}")
             return {"success": False, "error": str(e)}
@@ -498,7 +506,7 @@ class SSIMarketDataService:
             Dict with: current_price, price_change, price_change_percent
         """
         try:
-            from datetime import datetime, timedelta
+            from datetime import datetime, timedelta, time
             
             # Get last 7 days to ensure we have at least 2 trading days
             today = datetime.strptime(date_str, "%d/%m/%Y")
@@ -554,9 +562,46 @@ class SSIMarketDataService:
         if value is None:
             return None
         try:
+            if isinstance(value, str):
+                normalized = value.strip().replace("%", "").replace(" ", "")
+                if not normalized:
+                    return None
+                # Handle common locale formats: 1,234.56 or 1,23
+                if "," in normalized and "." in normalized:
+                    normalized = normalized.replace(",", "")
+                elif "," in normalized:
+                    normalized = normalized.replace(",", ".")
+                value = normalized
             return float(value)
         except (ValueError, TypeError):
             return None
+
+    def _extract_price_change_fields(self, security: Dict[str, Any]) -> Dict[str, Optional[float]]:
+        """Extract current/change fields from SSI security payload using common key variants."""
+        current_price_keys = ["MatchedPrice", "CurrentPrice", "Close", "Last", "Price"]
+        change_keys = ["Change", "PriceChange", "Delta"]
+        change_percent_keys = [
+            "RatioChange",
+            "ChangePc",
+            "PriceChangePercent",
+            "PercentChange",
+            "PctChange",
+            "ChangePercent",
+        ]
+
+        def _first_number(keys: list[str]) -> Optional[float]:
+            for key in keys:
+                if key in security:
+                    parsed = self._parse_number(security.get(key))
+                    if parsed is not None:
+                        return parsed
+            return None
+
+        return {
+            "current_price": _first_number(current_price_keys),
+            "price_change": _first_number(change_keys),
+            "price_change_percent": _first_number(change_percent_keys),
+        }
     
     def _fetch_prices_parallel(self, securities: list, date_str: str, max_workers: int = 10) -> None:
         """
@@ -832,16 +877,20 @@ class SSIMarketDataService:
             # Default popular Vietnamese stocks
             if not symbols:
                 symbols = ['VNM', 'FPT', 'VCB', 'VIC', 'VHM']
-            
-            results = []
-            for symbol in symbols:
-                price_data = self._get_daily_price(symbol.upper(), today_str)
-                results.append({
+
+            results = [
+                {
                     "symbol": symbol.upper(),
-                    "current_price": price_data.get("current_price"),
-                    "price_change": price_data.get("price_change"),
-                    "price_change_percent": price_data.get("price_change_percent")
-                })
+                    "current_price": None,
+                    "price_change": None,
+                    "price_change_percent": None,
+                }
+                for symbol in symbols
+                if symbol
+            ]
+
+            if results:
+                self._fetch_prices_parallel(results, today_str, max_workers=min(15, len(results)))
             
             return {
                 "success": True,
@@ -849,6 +898,101 @@ class SSIMarketDataService:
             }
         except Exception as e:
             logger.error(f"Error getting top stocks: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    def get_today_market_movers(self, limit: int = 5) -> Dict[str, Any]:
+        """Get top gainers and top decliners across HOSE, HNX, and UPCOM."""
+        try:
+            if not self._ensure_token():
+                return {"success": False, "error": "Failed to get access token"}
+
+            from datetime import datetime
+            today_str = datetime.now().strftime("%d/%m/%Y")
+
+            all_securities = []
+            seen_symbols = set()
+            markets_to_search = ["HOSE", "HNX", "UPCOM"]
+
+            for market in markets_to_search:
+                params = {
+                    "market": market,
+                    "pageIndex": 1,
+                    "pageSize": 1000,
+                }
+                response = self._make_get_request(SSIEndpoints.SECURITIES, params)
+                if response.get("status") != "Success":
+                    continue
+
+                for sec in response.get("data", []) or []:
+                    symbol = (sec.get("Symbol") or "").upper().strip()
+                    name = sec.get("StockName") or ""
+
+                    if not symbol:
+                        continue
+
+                    if symbol in seen_symbols:
+                        continue
+
+                    # Keep only stocks, exclude warrants/funds.
+                    if "CQ " in name or name.startswith("CQ") or name.startswith("QUY") or "Chứng quyền" in name:
+                        continue
+
+                    parsed = self._extract_price_change_fields(sec)
+                    all_securities.append(
+                        {
+                            "symbol": symbol,
+                            "name": name,
+                            "market": market,
+                            "current_price": parsed.get("current_price"),
+                            "price_change": parsed.get("price_change"),
+                            "price_change_percent": parsed.get("price_change_percent"),
+                        }
+                    )
+                    seen_symbols.add(symbol)
+
+            if not all_securities:
+                return {
+                    "success": True,
+                    "data": {"top_gainers": [], "top_decliners": []},
+                }
+
+            # Fallback: If SSI securities payload does not include change fields,
+            # calculate them from daily OHLC so movers are still available.
+            missing_change_items = [
+                item for item in all_securities if item.get("price_change_percent") is None
+            ]
+            if missing_change_items:
+                self._fetch_prices_parallel(missing_change_items, today_str, max_workers=15)
+
+            all_securities = [
+                item for item in all_securities if item.get("price_change_percent") is not None
+            ]
+
+            if not all_securities:
+                return {
+                    "success": True,
+                    "data": {"top_gainers": [], "top_decliners": []},
+                }
+
+            gainers_sorted = sorted(
+                [item for item in all_securities if (item.get("price_change_percent") or 0) > 0],
+                key=lambda item: item.get("price_change_percent") or 0,
+                reverse=True,
+            )
+            decliners_sorted = sorted(
+                [item for item in all_securities if (item.get("price_change_percent") or 0) < 0],
+                key=lambda item: item.get("price_change_percent") or 0,
+            )
+
+            return {
+                "success": True,
+                "data": {
+                    "top_gainers": gainers_sorted[: max(0, limit)],
+                    "top_decliners": decliners_sorted[: max(0, limit)],
+                },
+            }
+        except Exception as e:
+            logger.error(f"Error getting today market movers: {str(e)}")
             return {"success": False, "error": str(e)}
 
     def _round_time_to_interval(self, time_str: str, interval_minutes: int) -> str:
@@ -1820,10 +1964,21 @@ class SSIMarketDataService:
             if not config:
                 return {"success": False, "error": f"Invalid timeframe: {timeframe}"}
             
-            # Calculate date range
-            from_date_obj = today - timedelta(days=config["days"])
-            from_date = from_date_obj.strftime("%d/%m/%Y")
-            to_date = today.strftime("%d/%m/%Y")
+            # Calculate date range.
+            # For 1D:
+            # - before 09:15 -> return previous day
+            # - from 09:15 until midnight -> return current day
+            if timeframe == "1D":
+                if (today.hour, today.minute) < (9, 15):
+                    target_day = today - timedelta(days=1)
+                else:
+                    target_day = today
+                from_date = target_day.strftime("%d/%m/%Y")
+                to_date = target_day.strftime("%d/%m/%Y")
+            else:
+                from_date_obj = today - timedelta(days=config["days"])
+                from_date = from_date_obj.strftime("%d/%m/%Y")
+                to_date = today.strftime("%d/%m/%Y")
             
             # Get data based on timeframe
             if config["use_intraday"]:
