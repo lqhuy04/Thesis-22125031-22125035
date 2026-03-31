@@ -283,13 +283,19 @@ async def get_index_overview():
     """
     request_id = str(uuid.uuid4())
     service = get_ssi_service()
-    today_str = datetime.now().strftime("%d/%m/%Y")
+    now = datetime.now()
+    # Match 1D behavior: before 09:15 use previous day, otherwise use current day.
+    if (now.hour, now.minute) < (9, 15):
+        target_day = now - timedelta(days=1)
+    else:
+        target_day = now
+    target_date_str = target_day.strftime("%d/%m/%Y")
 
     cached_at = _index_overview_cache.get("cached_at")
     if (
         cached_at
-        and _index_overview_cache.get("date") == today_str
-        and (datetime.now() - cached_at).total_seconds() < _index_overview_cache_ttl_seconds
+        and _index_overview_cache.get("date") == target_date_str
+        and (now - cached_at).total_seconds() < _index_overview_cache_ttl_seconds
     ):
         cached_rows = _index_overview_cache.get("rows", [])
         return create_response(
@@ -311,37 +317,34 @@ async def get_index_overview():
     async def _fetch_index_with_fallback(logical_name: str, candidates: list[str]) -> Optional[dict]:
         # SSI DailyIndex allows pageSize in {10, 20, 50, 100, 1000}
         # and enforces roughly 1 request per second.
-        for days_back in range(0, 1):
-            target_date = (datetime.now() - timedelta(days=days_back)).strftime("%d/%m/%Y")
+        for candidate in candidates:
+            local_request_id = str(uuid.uuid4())
+            result = await asyncio.to_thread(
+                service.get_daily_index,
+                local_request_id,
+                candidate,
+                target_date_str,
+                target_date_str,
+                1,
+                10,
+                "",
+                "",
+            )
 
-            for candidate in candidates:
-                local_request_id = str(uuid.uuid4())
-                result = await asyncio.to_thread(
-                    service.get_daily_index,
-                    local_request_id,
-                    candidate,
-                    target_date,
-                    target_date,
-                    1,
-                    10,
-                    "",
-                    "",
-                )
+            # Respect SSI quota limit to avoid "maximum admitted 1 per 1s".
+            await asyncio.sleep(1.05)
 
-                # Respect SSI quota limit to avoid "maximum admitted 1 per 1s".
-                await asyncio.sleep(1.05)
+            if not result.get("success"):
+                continue
 
-                if not result.get("success"):
-                    continue
+            payload = result.get("data", [])
+            rows = payload if isinstance(payload, list) else (payload.get("data", []) if isinstance(payload, dict) else [])
+            if not rows:
+                continue
 
-                payload = result.get("data", [])
-                rows = payload if isinstance(payload, list) else (payload.get("data", []) if isinstance(payload, dict) else [])
-                if not rows:
-                    continue
-
-                row = dict(rows[0])
-                row["IndexId"] = logical_name
-                return row
+            row = dict(rows[0])
+            row["IndexId"] = logical_name
+            return row
 
         return None
 
@@ -351,8 +354,8 @@ async def get_index_overview():
         if row:
             merged_rows.append(row)
 
-    _index_overview_cache["cached_at"] = datetime.now()
-    _index_overview_cache["date"] = today_str
+    _index_overview_cache["cached_at"] = now
+    _index_overview_cache["date"] = target_date_str
     _index_overview_cache["rows"] = merged_rows
 
     return create_response(
