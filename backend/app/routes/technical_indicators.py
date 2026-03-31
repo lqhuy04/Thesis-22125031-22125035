@@ -188,9 +188,9 @@ async def get_technical_indicators(
             "sma_20", "sma_50",
             "bb_upper", "bb_middle", "bb_lower",
             "volume",
-            "macd", "macd_signal", "macd_histogram",
+            "macd", "DIF", "DEA",
             "rsi_14",
-            "stoch_k", "stoch_d",
+            "stoch_k", "stoch_d", "stoch_j",
         }
 
         def _prune_latest(indicators: Dict[str, Any]) -> Dict[str, Any]:
@@ -207,16 +207,45 @@ async def get_technical_indicators(
                     "date": point.get("date"),
                     "time": point.get("time"),
                     "indicators": {
-                        key: value
-                        for key, value in (point.get("indicators", {}) or {}).items()
-                        if key in allowed_indicators
+                        "sma_20": (point.get("indicators", {}) or {}).get("sma_20"),
+                        "sma_50": (point.get("indicators", {}) or {}).get("sma_50"),
+                        "bb_upper": (point.get("indicators", {}) or {}).get("bb_upper"),
+                        "bb_middle": (point.get("indicators", {}) or {}).get("bb_middle"),
+                        "bb_lower": (point.get("indicators", {}) or {}).get("bb_lower"),
+                        "volume": (point.get("indicators", {}) or {}).get("volume"),
+                        "macd": (point.get("indicators", {}) or {}).get("macd_histogram"),
+                        "DIF": (point.get("indicators", {}) or {}).get("macd"),
+                        "DEA": (point.get("indicators", {}) or {}).get("macd_signal"),
+                        "rsi_14": (point.get("indicators", {}) or {}).get("rsi_14"),
+                        "stoch_k": (point.get("indicators", {}) or {}).get("stoch_k"),
+                        "stoch_d": (point.get("indicators", {}) or {}).get("stoch_d"),
+                        "stoch_j": (
+                            (3 * (point.get("indicators", {}) or {}).get("stoch_k")
+                             - 2 * (point.get("indicators", {}) or {}).get("stoch_d"))
+                            if (point.get("indicators", {}) or {}).get("stoch_k") is not None
+                            and (point.get("indicators", {}) or {}).get("stoch_d") is not None
+                            else None
+                        ),
                     }
                 }
                 for point in points
             ]
 
+            normalized = [
+                {
+                    "date": point.get("date"),
+                    "time": point.get("time"),
+                    "indicators": {
+                        key: value
+                        for key, value in (point.get("indicators", {}) or {}).items()
+                        if key in allowed_indicators
+                    }
+                }
+                for point in normalized
+            ]
+
             # Fill leading MACD nulls with the first available values.
-            macd_fields = ["macd", "macd_signal", "macd_histogram"]
+            macd_fields = ["macd", "DIF", "DEA"]
             first_idx = None
             for idx, point in enumerate(normalized):
                 indicators = point.get("indicators", {})
@@ -303,9 +332,9 @@ async def get_specific_indicator(
     - sma_10, sma_20, sma_50
     - ema_12, ema_26, ema_50
     - rsi_14
-    - macd, macd_signal, macd_histogram
+    - macd, DIF, DEA, macd_signal, macd_histogram
     - bb_upper, bb_middle, bb_lower
-    - stoch_k, stoch_d
+    - stoch_k, stoch_d, stoch_j, J
     - atr_14
     - adx_14
     - cci_14
@@ -347,9 +376,20 @@ async def get_specific_indicator(
             )
         
         indicators = TechnicalIndicatorsService.calculate_all_indicators(df)
+
+        indicator_aliases = {
+            "macd": "macd_histogram",
+            "DIF": "macd",
+            "DEA": "macd_signal",
+            "J": "stoch_j",
+            "stoch_j": "stoch_j",
+            "kdj_j": "stoch_j",
+        }
+        requested_indicator = indicator_name.strip()
+        internal_indicator = indicator_aliases.get(requested_indicator, requested_indicator)
         
         # Check if indicator exists
-        if indicator_name not in indicators:
+        if internal_indicator != "stoch_j" and internal_indicator not in indicators:
             raise HTTPException(
                 status_code=400,
                 detail=f"Invalid indicator name: {indicator_name}. Use /api/technical-indicators/{symbol} to see all available indicators."
@@ -360,7 +400,13 @@ async def get_specific_indicator(
             {
                 "date": point.get("date"),
                 "time": point.get("time"),
-                "value": point.get("indicators", {}).get(indicator_name)
+                "value": (
+                    (3 * point.get("indicators", {}).get("stoch_k") - 2 * point.get("indicators", {}).get("stoch_d"))
+                    if internal_indicator == "stoch_j"
+                    and point.get("indicators", {}).get("stoch_k") is not None
+                    and point.get("indicators", {}).get("stoch_d") is not None
+                    else point.get("indicators", {}).get(internal_indicator)
+                )
             }
             for point in series_points
         ]
@@ -369,7 +415,7 @@ async def get_specific_indicator(
             "data": {
                 "symbol": symbol.upper(),
                 "timeframe": timeframe,
-                "indicator": indicator_name,
+                "indicator": requested_indicator,
                 "from_date": indicator_series[0].get("date") if indicator_series else None,
                 "to_date": indicator_series[-1].get("date") if indicator_series else None,
                 "series": indicator_series
@@ -454,10 +500,16 @@ async def get_indicators_summary(
                 },
                 "momentum": {
                     "rsi_14": latest.get('rsi_14'),
-                    "macd": latest.get('macd'),
-                    "macd_signal": latest.get('macd_signal'),
+                    "macd": latest.get('macd_histogram'),
+                    "DIF": latest.get('macd'),
+                    "DEA": latest.get('macd_signal'),
                     "stoch_k": latest.get('stoch_k'),
-                    "stoch_d": latest.get('stoch_d')
+                    "stoch_d": latest.get('stoch_d'),
+                    "stoch_j": (
+                        3 * latest.get('stoch_k') - 2 * latest.get('stoch_d')
+                        if latest.get('stoch_k') is not None and latest.get('stoch_d') is not None
+                        else None
+                    )
                 },
                 "volatility": {
                     "bb_upper": latest.get('bb_upper'),
