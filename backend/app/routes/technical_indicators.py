@@ -50,10 +50,6 @@ async def get_technical_indicators(
     - Bollinger Bands (Upper, Middle, Lower)
     - ATR (14) - Average True Range
     
-    **Volume Indicators:**
-    - OBV - On Balance Volume
-    - MFI (14) - Money Flow Index
-    
     **Directional Indicators:**
     - ADX (14) - Average Directional Index
     - Aroon (Up, Down)
@@ -119,7 +115,6 @@ async def get_technical_indicators(
         required_indicators = {
             "sma_20", "sma_50",
             "bb_upper", "bb_middle", "bb_lower",
-            "volume",
             "macd", "macd_signal", "macd_histogram",
             "rsi_14",
             "stoch_k", "stoch_d",
@@ -187,7 +182,6 @@ async def get_technical_indicators(
         allowed_indicators = {
             "sma_20", "sma_50",
             "bb_upper", "bb_middle", "bb_lower",
-            "volume",
             "macd", "DIF", "DEA",
             "rsi_14",
             "stoch_k", "stoch_d", "stoch_j",
@@ -212,7 +206,6 @@ async def get_technical_indicators(
                         "bb_upper": (point.get("indicators", {}) or {}).get("bb_upper"),
                         "bb_middle": (point.get("indicators", {}) or {}).get("bb_middle"),
                         "bb_lower": (point.get("indicators", {}) or {}).get("bb_lower"),
-                        "volume": (point.get("indicators", {}) or {}).get("volume"),
                         "macd": (point.get("indicators", {}) or {}).get("macd_histogram"),
                         "DIF": (point.get("indicators", {}) or {}).get("macd"),
                         "DEA": (point.get("indicators", {}) or {}).get("macd_signal"),
@@ -339,8 +332,6 @@ async def get_specific_indicator(
     - adx_14
     - cci_14
     - willr_14
-    - mfi_14
-    - obv
     - sar
     - roc_10
     - mom_10
@@ -453,7 +444,6 @@ async def get_indicators_summary(
     - MACD with trend direction
     - Moving averages (SMA 20, 50)
     - Bollinger Bands position
-    - Volume indicators
     - Trend strength (ADX)
     """
     request_id = str(uuid.uuid4())
@@ -516,10 +506,6 @@ async def get_indicators_summary(
                     "bb_middle": latest.get('bb_middle'),
                     "bb_lower": latest.get('bb_lower'),
                     "atr_14": latest.get('atr_14')
-                },
-                "volume": {
-                    "obv": latest.get('obv'),
-                    "mfi_14": latest.get('mfi_14')
                 },
                 "trend_strength": {
                     "adx_14": latest.get('adx_14')
