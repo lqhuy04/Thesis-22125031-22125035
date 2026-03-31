@@ -31,7 +31,6 @@ class NewsResponse(NewsBase):
     class Config:
         from_attributes = True
 
-
 class NewsListResponse(BaseModel):
     """Standardized API response for news list"""
     data: list[NewsResponse]
@@ -39,11 +38,16 @@ class NewsListResponse(BaseModel):
     errorDesc: str = Field(default="", description="Error description")
     requestId: str = Field(default="", description="Unique request ID")
     result: bool = Field(default=True, description="Success flag")
-
+    
+class CategoryNewsItem(BaseModel):
+    """A single category with its latest news articles."""
+    category_id: str
+    category_name: str
+    news: List[NewsResponse]
 
 class NewsCategoriesResponse(BaseModel):
     """Standardized API response for grouped news by categories."""
-    data: Dict[str, list[NewsResponse]]
+    data: List[CategoryNewsItem]  # Changed from Dict[str, list[NewsResponse]]
     errorCode: int = Field(default=0, description="Error code (0 = success)")
     errorDesc: str = Field(default="", description="Error description")
     requestId: str = Field(default="", description="Unique request ID")

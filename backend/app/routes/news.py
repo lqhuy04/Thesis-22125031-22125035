@@ -3,7 +3,7 @@ News Routes
 API endpoints for financial news
 """
 from fastapi import APIRouter, Query
-from app.models.news_schemas import NewsListResponse, NewsCategoriesResponse
+from app.models.news_schemas import NewsListResponse, CategoryNewsItem, NewsCategoriesResponse
 from app.services.news_db_service import NewsDBService
 from typing import Optional
 from uuid import uuid4
@@ -34,32 +34,29 @@ async def get_news_by_category(
     )
 
 
+# Router
 @router.get("/categories", response_model=NewsCategoriesResponse)
 async def get_news_categories(
-    categories: Optional[str] = Query(None, description="Comma-separated categories (e.g., Bất động sản,Ngân hàng,Xăng dầu)"),
-    limit_per_category: int = Query(50, ge=1, le=500, description="Maximum articles per category")
+    top_n: int = Query(3, ge=1, le=20, description="Number of top categories to return"),
+    limit_per_category: int = Query(3, ge=1, le=50, description="Maximum articles per category")
 ):
     """
-    Get grouped news by categories.
+    Get top categories by stock count, each with their latest news.
 
-    Example response shape:
-    data: {
-      "Bất động sản": [...],
-      "Ngân hàng": [...],
-      "Xăng dầu": [...]
-    }
+    Example response:
+    data: [
+      {"category_id": "1", "category_name": "Bất động sản", "news": [...]},
+      {"category_id": "2", "category_name": "Ngân hàng",    "news": [...]},
+      {"category_id": "3", "category_name": "Xăng dầu",     "news": [...]}
+    ]
     """
-    default_categories = ["Bất động sản", "Ngân hàng", "Xăng dầu"]
-    category_list = default_categories
-    if categories:
-        category_list = [item.strip() for item in categories.split(",") if item.strip()]
-    grouped = await NewsDBService.get_news_grouped_by_categories(
-        categories=category_list,
+    grouped = await NewsDBService.get_news_grouped_by_top_categories(
+        top_n=top_n,
         limit_per_category=limit_per_category,
     )
 
     return NewsCategoriesResponse(
-        data=grouped,
+        data=[CategoryNewsItem(**item) for item in grouped],
         errorCode=0,
         errorDesc="",
         requestId=str(uuid4()),
@@ -67,13 +64,13 @@ async def get_news_categories(
     )
 
 
-@router.get("/category/{category}", response_model=NewsListResponse)
+@router.get("/category/{category_id}", response_model=NewsListResponse)
 async def get_news_single_category(
-    category: str,
+    category_id: str,
     limit: int = Query(100, ge=1, le=500, description="Maximum number of articles")
 ):
-    """Get news list for one category phrase."""
-    articles = await NewsDBService.get_news_by_category(category=category, limit=limit)
+    """Get news list for one category by ID."""
+    articles = await NewsDBService.get_news_by_category_id(category_id=category_id, limit=limit)
     return NewsListResponse(
         data=articles,
         errorCode=0,

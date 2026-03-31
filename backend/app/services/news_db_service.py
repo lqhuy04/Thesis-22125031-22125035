@@ -236,220 +236,198 @@ class NewsDBService:
         return await asyncio.to_thread(NewsDBService._get_macro_news_sync, min_symbols, limit)
 
     @staticmethod
-    def _get_news_by_categories_sync(categories: List[str], limit: int = 100) -> List[NewsResponse]:
+    def _get_news_by_category_id_sync(category_id: str, limit: int = 100) -> List[NewsResponse]:
         """
-        Get news linked to symbols whose BI_Profile.industry_name matches provided categories.
-
-        Matching is case-insensitive substring against industry_name.
+        Get news for a specific category by ID.
+        Category(id) -> Category_Stock(stock_id) -> Article_Stock(article_id) -> Article
         """
         try:
-            normalized_categories = [c.strip().lower() for c in categories if c and c.strip()]
-            if not normalized_categories:
-                return []
-
-            category_keywords = {
-                category: NewsDBService._build_category_keywords(category)
-                for category in normalized_categories
-            }
-
             limit = max(1, limit)
 
-            # Load stock + profile once, then filter in Python to avoid brittle embedded filters.
-            stocks_result = (
-                supabase.table("Stock")
-                .select("id, BI_Profile(industry_name)")
+            # Step 1: Get all stock_ids linked to this category
+            category_stock_result = (
+                supabase.table("Category_Stock")
+                .select("stock_id")
+                .eq("category_id", category_id)
                 .execute()
             )
-
-            if not stocks_result.data:
+            if not category_stock_result.data:
                 return []
 
-            matched_stock_ids: set[str] = set()
-            for row in stocks_result.data:
-                stock_id = row.get("id")
-                profiles = row.get("BI_Profile") or []
-                industry_name = ""
-                if profiles and isinstance(profiles, list):
-                    industry_name = str((profiles[0] or {}).get("industry_name") or "")
-                industry_name_lower = industry_name.lower()
-
-                if not stock_id or not industry_name_lower:
-                    continue
-
-                is_match = False
-                for category in normalized_categories:
-                    keywords = category_keywords.get(category, [])
-                    if any(keyword in industry_name_lower for keyword in keywords):
-                        is_match = True
-                        break
-
-                if is_match:
-                    matched_stock_ids.add(str(stock_id))
-
-            if not matched_stock_ids:
+            stock_ids = list({
+                str(row["stock_id"])
+                for row in category_stock_result.data
+                if row.get("stock_id")
+            })
+            if not stock_ids:
                 return []
 
+            # Step 2: Get all article_ids linked to these stocks
             links_result = (
                 supabase.table("Article_Stock")
-                .select("article_id, stock_id")
-                .in_("stock_id", list(matched_stock_ids))
+                .select("article_id")
+                .in_("stock_id", stock_ids)
                 .execute()
             )
-
             if not links_result.data:
                 return []
 
-            matched_article_ids = list({str(row.get("article_id")) for row in links_result.data if row.get("article_id")})
-            if not matched_article_ids:
+            article_ids = list({
+                str(row["article_id"])
+                for row in links_result.data
+                if row.get("article_id")
+            })
+            if not article_ids:
                 return []
 
-            article_rows = (
+            # Step 3: Fetch articles, sorted by time desc
+            articles_result = (
                 supabase.table("Article")
                 .select("*")
-                .in_("id", matched_article_ids)
+                .in_("id", article_ids)
+                .order("time", desc=True)
+                .limit(limit)
                 .execute()
             )
-
-            if not article_rows.data:
+            if not articles_result.data:
                 return []
 
             articles: List[NewsResponse] = []
-            for item in article_rows.data:
+            for item in articles_result.data:
                 try:
                     articles.append(NewsResponse(**item))
                 except Exception:
                     continue
 
-            articles.sort(key=lambda item: item.time or datetime.min, reverse=True)
-            return articles[:limit]
+            return articles
 
         except Exception as e:
-            print(f"Error getting news by categories: {e}")
+            print(f"Error getting news by category_id={category_id}: {e}")
             import traceback
             traceback.print_exc()
             return []
 
-    async def get_news_by_categories(categories: List[str], limit: int = 100) -> List[NewsResponse]:
-        """Async wrapper to fetch news by industry categories of symbols."""
-        return await asyncio.to_thread(NewsDBService._get_news_by_categories_sync, categories, limit)
-
-    async def get_news_by_category(category: str, limit: int = 100) -> List[NewsResponse]:
-        """Get news list for a single category phrase."""
-        return await NewsDBService.get_news_by_categories([category], limit=limit)
+    async def get_news_by_category_id(category_id: str, limit: int = 100) -> List[NewsResponse]:
+        """Async wrapper to fetch news by category ID."""
+        return await asyncio.to_thread(
+            NewsDBService._get_news_by_category_id_sync,
+            category_id,
+            limit,
+        )
 
     @staticmethod
-    def _get_news_grouped_by_categories_sync(categories: List[str], limit_per_category: int = 100) -> Dict[str, List[NewsResponse]]:
-        """Get grouped news mapping: category -> list of related news."""
+    def _get_news_grouped_by_top_categories_sync(
+        top_n: int = 3,
+        limit_per_category: int = 3
+    ) -> List[Dict]:
+        """Get top N categories by stock count, with latest news for each."""
         try:
-            original_categories = [c.strip() for c in categories if c and c.strip()]
-            grouped: Dict[str, List[NewsResponse]] = {category: [] for category in original_categories}
-            if not original_categories:
-                return grouped
+            # Step 1: Get all Category_Stock links to count stocks per category
+            category_stock_result = (
+                supabase.table("Category_Stock")
+                .select("category_id, stock_id")
+                .execute()
+            )
+            if not category_stock_result.data:
+                return []
 
-            limit_per_category = max(1, limit_per_category)
+            # Count stocks per category
+            category_stock_count: Dict[str, set] = {}
+            for row in category_stock_result.data:
+                cat_id = str(row.get("category_id") or "")
+                stock_id = str(row.get("stock_id") or "")
+                if cat_id and stock_id:
+                    category_stock_count.setdefault(cat_id, set()).add(stock_id)
 
-            category_to_keywords = {
-                category: NewsDBService._build_category_keywords(category)
-                for category in original_categories
+            # Pick top N categories by stock count
+            top_category_ids = sorted(
+                category_stock_count.keys(),
+                key=lambda cid: len(category_stock_count[cid]),
+                reverse=True
+            )[:top_n]
+
+            if not top_category_ids:
+                return []
+
+            # Step 2: Fetch category names
+            categories_result = (
+                supabase.table("Category")
+                .select("id, category_name")
+                .in_("id", top_category_ids)
+                .execute()
+            )
+            category_map = {
+                str(row["id"]): row["category_name"]
+                for row in (categories_result.data or [])
+                if row.get("id") and row.get("category_name")
             }
 
-            stocks_result = (
-                supabase.table("Stock")
-                .select("id, BI_Profile(industry_name)")
-                .execute()
-            )
-            if not stocks_result.data:
-                return grouped
+            # Step 3: For each top category, get stock_ids -> article_ids -> latest articles
+            result = []
+            for cat_id in top_category_ids:
+                cat_name = category_map.get(cat_id, "")
+                stock_ids = list(category_stock_count[cat_id])
 
-            category_to_stock_ids: Dict[str, set] = {category: set() for category in original_categories}
-            all_stock_ids: set[str] = set()
-
-            for row in stocks_result.data:
-                stock_id = row.get("id")
-                profiles = row.get("BI_Profile") or []
-                industry_name = ""
-                if profiles and isinstance(profiles, list):
-                    industry_name = str((profiles[0] or {}).get("industry_name") or "")
-                industry_name_lower = industry_name.lower()
-
-                if not stock_id or not industry_name_lower:
+                # Get article_ids linked to these stocks
+                links_result = (
+                    supabase.table("Article_Stock")
+                    .select("article_id")
+                    .in_("stock_id", stock_ids)
+                    .execute()
+                )
+                if not links_result.data:
+                    result.append({
+                        "category_id": cat_id,
+                        "category_name": cat_name,
+                        "news": []
+                    })
                     continue
 
-                stock_id_str = str(stock_id)
-                for category in original_categories:
-                    keywords = category_to_keywords.get(category, [])
-                    if any(keyword in industry_name_lower for keyword in keywords):
-                        category_to_stock_ids[category].add(stock_id_str)
-                        all_stock_ids.add(stock_id_str)
+                article_ids = list({
+                    str(row["article_id"])
+                    for row in links_result.data
+                    if row.get("article_id")
+                })
 
-            if not all_stock_ids:
-                return grouped
+                # Fetch latest N articles
+                articles_result = (
+                    supabase.table("Article")
+                    .select("*")
+                    .in_("id", article_ids)
+                    .order("time", desc=True)
+                    .limit(limit_per_category)
+                    .execute()
+                )
 
-            links_result = (
-                supabase.table("Article_Stock")
-                .select("article_id, stock_id")
-                .in_("stock_id", list(all_stock_ids))
-                .execute()
-            )
-            if not links_result.data:
-                return grouped
+                news_items = []
+                for item in (articles_result.data or []):
+                    try:
+                        news_items.append(NewsResponse(**item))
+                    except Exception:
+                        continue
 
-            category_to_article_ids: Dict[str, set] = {category: set() for category in original_categories}
-            all_article_ids: set[str] = set()
+                result.append({
+                    "category_id": cat_id,
+                    "category_name": cat_name,
+                    "news": news_items
+                })
 
-            for row in links_result.data:
-                article_id = row.get("article_id")
-                stock_id = row.get("stock_id")
-                if not article_id or not stock_id:
-                    continue
-                article_id_str = str(article_id)
-                stock_id_str = str(stock_id)
+            return result
 
-                for category in original_categories:
-                    if stock_id_str in category_to_stock_ids[category]:
-                        category_to_article_ids[category].add(article_id_str)
-                        all_article_ids.add(article_id_str)
-
-            if not all_article_ids:
-                return grouped
-
-            article_rows = (
-                supabase.table("Article")
-                .select("*")
-                .in_("id", list(all_article_ids))
-                .execute()
-            )
-            if not article_rows.data:
-                return grouped
-
-            article_map: Dict[str, NewsResponse] = {}
-            for item in article_rows.data:
-                try:
-                    news_item = NewsResponse(**item)
-                    article_map[str(news_item.id)] = news_item
-                except Exception:
-                    continue
-
-            for category in original_categories:
-                articles = [
-                    article_map[article_id]
-                    for article_id in category_to_article_ids[category]
-                    if article_id in article_map
-                ]
-                articles.sort(key=lambda item: item.time or datetime.min, reverse=True)
-                grouped[category] = articles[:limit_per_category]
-
-            return grouped
         except Exception as e:
-            print(f"Error getting grouped news by categories: {e}")
+            print(f"Error getting news by top categories: {e}")
             import traceback
             traceback.print_exc()
-            return {c.strip(): [] for c in categories if c and c.strip()}
+            return []
 
-    async def get_news_grouped_by_categories(categories: List[str], limit_per_category: int = 100) -> Dict[str, List[NewsResponse]]:
-        """Async wrapper for grouped category news."""
+
+    async def get_news_grouped_by_top_categories(
+        top_n: int = 3,
+        limit_per_category: int = 3
+    ) -> List[Dict]:
+        """Async wrapper."""
         return await asyncio.to_thread(
-            NewsDBService._get_news_grouped_by_categories_sync,
-            categories,
+            NewsDBService._get_news_grouped_by_top_categories_sync,
+            top_n,
             limit_per_category,
         )

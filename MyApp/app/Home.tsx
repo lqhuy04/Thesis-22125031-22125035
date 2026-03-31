@@ -120,10 +120,13 @@ const Home = () => {
                 <Text typography="bodySmall" color={theme.base.warning}>
                   {item.NoChanges} mã
                 </Text>
-                <MaterialIcons
-                  name="arrow-drop-up"
-                  size={28}
-                  color={theme.base.warning}
+                <View
+                  style={{
+                    width: 6,
+                    height: 2,
+                    backgroundColor: theme.base.warning,
+                    marginLeft: 8,
+                  }}
                 />
               </View>
 
@@ -132,7 +135,7 @@ const Home = () => {
                   {item.Declines} mã
                 </Text>
                 <MaterialIcons
-                  name="arrow-drop-up"
+                  name="arrow-drop-down"
                   size={28}
                   color={theme.base.error}
                 />
@@ -141,6 +144,8 @@ const Home = () => {
           </View>
         );
       })}
+
+      <Text typography="titleLarge">Tin tức Kinh tế - Vĩ mô</Text>
     </SafeAreaView>
   );
 };
