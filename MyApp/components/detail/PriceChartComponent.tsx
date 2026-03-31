@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { fetchPriceData, fetchStockData, PriceData, StockData } from "@/helpers/DetailHelpers";
+import {
+  fetchPriceData,
+  fetchStockData,
+  PriceData,
+  StockData,
+} from "@/helpers/DetailHelpers";
 import { ActivityIndicator, TouchableOpacity, View, Image } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import PriceLineGraph from "../ui/PriceLineChart";
 import PriceCandleChart from "../ui/PriceCandleChart";
 import { Images } from "@/constants/Images";
+import DetailHeader from "../ui/DetailHeader";
+import { SearchStockItem } from "@/helpers/SearchHelper";
 
 interface Props {
-  stockSymbol: string;
+  stockItem: SearchStockItem;
 }
 
-const PriceChartComponent = ({ stockSymbol }: Props) => {
+const PriceChartComponent = ({ stockItem }: Props) => {
   const { theme } = useTheme();
   const [chartType, setChartType] = useState<"Line" | "Candlestick">("Line");
   const [loading, setLoading] = useState<boolean>(false);
@@ -21,23 +28,22 @@ const PriceChartComponent = ({ stockSymbol }: Props) => {
   const [priceData, setPriceData] = useState<PriceData | null>(null);
 
   useEffect(() => {
-    fetchPriceData(stockSymbol).then((res) => {
-      if (res.status) {
-        setPriceData(res.data);
+    fetchPriceData(stockItem.symbol).then((res) => {
+      if (res?.status) {
+        setPriceData(res?.data);
       }
     });
-  }, [stockSymbol]);
-  
+  }, [stockItem.symbol]);
 
   useEffect(() => {
     setLoading(true);
-    fetchStockData(stockSymbol, option).then((stockRes) => {
+    fetchStockData(stockItem.symbol, option).then((stockRes) => {
       setLoading(false);
       if (stockRes?.status) {
         setData(stockRes.data);
       }
     });
-  }, [stockSymbol, option]);
+  }, [stockItem.symbol, option]);
 
   return (
     <View style={{ marginTop: 12 }}>
@@ -54,47 +60,53 @@ const PriceChartComponent = ({ stockSymbol }: Props) => {
           </View>
         ) : (
           <View>
+            <DetailHeader item={stockItem} priceData={priceData} />
+
             <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginHorizontal: 12,
-          marginBottom: 12,
-          backgroundColor: theme.background.surface,
-          paddingVertical: 8,
-          paddingHorizontal: 12,
-          borderRadius: 4,
-          borderWidth: 1,
-          borderColor: theme.base.primary,
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text typography="bodyMedium">Sàn</Text>
-          <Text typography="labelLarge" color={theme.base.error}>
-            {priceData?.floor_price}
-          </Text>
-        </View>
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          <Text typography="bodyMedium">Tham chiếu</Text>
-          <Text typography="labelLarge" color={theme.base.warning}>
-            {priceData?.reference_price}
-          </Text>
-        </View>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: "flex-end",
-            alignItems: "flex-end",
-          }}
-        >
-          <Text typography="bodyMedium">Trần</Text>
-          <Text typography="labelLarge" color={theme.base.success}>
-            {priceData?.ceiling_price}
-          </Text>
-        </View>
-      </View>
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginHorizontal: 12,
+                marginVertical: 12,
+                backgroundColor: theme.background.surface,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 4,
+                borderWidth: 1,
+                borderColor: theme.base.primary,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text typography="bodyMedium">Sàn</Text>
+                <Text typography="labelLarge" color={theme.base.error}>
+                  {priceData?.floor_price}
+                </Text>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <Text typography="bodyMedium">Tham chiếu</Text>
+                <Text typography="labelLarge" color={theme.base.warning}>
+                  {priceData?.reference_price}
+                </Text>
+              </View>
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "flex-end",
+                  alignItems: "flex-end",
+                }}
+              >
+                <Text typography="bodyMedium">Trần</Text>
+                <Text typography="labelLarge" color={theme.base.success}>
+                  {priceData?.ceiling_price}
+                </Text>
+              </View>
+            </View>
 
             {chartType === "Line" ? (
               <PriceLineGraph

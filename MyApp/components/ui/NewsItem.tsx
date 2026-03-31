@@ -5,7 +5,6 @@ import { View, Image, TouchableOpacity } from "react-native";
 import { Text } from "./Text";
 import { router } from "expo-router";
 
-
 interface NewsItemProps {
   newItem: New;
 }
@@ -23,14 +22,11 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
         flexDirection: "row",
         alignItems: "center",
       }}
-
       onPress={() => {
-        router.push(
-          {
-            pathname: '/NewDetail',
-            params: {data: JSON.stringify(newItem)},
-          }
-        );
+        router.push({
+          pathname: "/NewDetail",
+          params: { data: JSON.stringify(newItem) },
+        });
       }}
     >
       <Image
@@ -52,6 +48,16 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
         </Text>
         <Text typography="bodyMedium" numberOfLines={2}>
           {newItem.description}
+        </Text>
+
+        <Text
+          typography="bodyMedium"
+          numberOfLines={2}
+          color={theme.text.primary + "80"}
+        >
+          {newItem.source}
+          {" • "}
+          {newItem.time.slice(0, 10)}
         </Text>
       </View>
     </TouchableOpacity>

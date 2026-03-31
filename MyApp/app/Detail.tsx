@@ -1,7 +1,6 @@
 import IntroductionSection from "@/components/detail/IntroductionSection";
 import NewsSection from "@/components/detail/NewsSection";
 import BoardSection from "@/components/detail/BoardSection";
-import DetailHeader from "@/components/ui/DetailHeader";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { useTheme } from "@/hooks/ThemeContext";
@@ -102,10 +101,10 @@ const Detail = () => {
   const renderHeaderContent = useCallback(() => {
     return (
       <View>
-        <PriceChartComponent stockSymbol={stockItem.symbol} />
+        <PriceChartComponent stockItem={stockItem} />
       </View>
     );
-  }, [stockItem.symbol]);
+  }, [stockItem]);
 
   return (
     <SafeAreaView
@@ -115,8 +114,6 @@ const Detail = () => {
       }}
     >
       <ScreenHeader title={t("detail.screenTitle")} />
-
-      <DetailHeader item={stockItem} />
 
       <TabView
         tabs={TABS}

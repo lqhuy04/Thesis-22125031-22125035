@@ -1,26 +1,17 @@
 import { useTheme } from "@/hooks/ThemeContext";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { View, Image } from "react-native";
 import { Text } from "./Text";
 import { SearchStockItem } from "@/helpers/SearchHelper";
-import { fetchPriceData, PriceData } from "@/helpers/DetailHelpers";
+import { PriceData } from "@/helpers/DetailHelpers";
 
 interface SearchResultItemProps {
   item: SearchStockItem;
+  priceData: PriceData | null;
 }
 
-const SearchResultItem = ({ item }: SearchResultItemProps) => {
+const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
   const { theme } = useTheme();
-
-  const [priceData, setPriceData] = useState<PriceData | null>(null);
-
-  useEffect(() => {
-    fetchPriceData(item.symbol).then((res) => {
-      if (res.status) {
-        setPriceData(res.data);
-      }
-    });
-  }, [item.symbol]);
 
   return (
     <View>
@@ -93,8 +84,6 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
           ) : null}
         </View>
       </View>
-
-      
     </View>
   );
 };

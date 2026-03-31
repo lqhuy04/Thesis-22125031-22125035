@@ -32,7 +32,7 @@ export const fetchNews = async (
     if (errorCode === 0) {
       return {
         status: true,
-        data: data?.items as New[],
+        data: data as New[],
       };
     }
 
