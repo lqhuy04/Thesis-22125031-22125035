@@ -1,0 +1,142 @@
+import React, { useEffect, useState } from "react";
+import { View } from "react-native";
+import { Text } from "../ui/Text";
+import { getMarketIndices, MarketIndex } from "@/helpers/MarketHelpers";
+import { useTheme } from "@/hooks/ThemeContext";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
+const MarketIndicesSection = () => {
+  const { theme } = useTheme();
+  const [indices, setIndices] = useState<MarketIndex[]>([]);
+
+  useEffect(() => {
+    getMarketIndices().then((result) => {
+      if (result.status) {
+        setIndices(result.data);
+      }
+    });
+  }, []);
+
+  return (
+    <View>
+      <Text typography="titleLarge">Thị trường hôm nay</Text>
+
+      {indices.map((item, index) => {
+        return (
+          <View
+            key={item.IndexId}
+            style={{
+              marginTop: 12,
+              borderRadius: 8,
+              backgroundColor: theme.background.surface,
+              padding: 12,
+            }}
+          >
+            <Text typography="bodyMedium">{item.IndexName}</Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginTop: 4,
+              }}
+            >
+              <Text typography="titleLarge">{item.IndexValue}</Text>
+              <View
+                style={{
+                  borderRadius: 4,
+                  paddingVertical: 1,
+                  paddingHorizontal: 4,
+                  backgroundColor:
+                    Number(item.Change) > 0
+                      ? theme.base.success + "33"
+                      : theme.base.error + "33",
+                  marginLeft: 8,
+                }}
+              >
+                <Text
+                  typography="labelLarge"
+                  color={
+                    item.Change.startsWith("-")
+                      ? theme.base.error
+                      : theme.base.success
+                  }
+                >
+                  {(Number(item.Change) * 100).toFixed(2)}
+                </Text>
+              </View>
+              <Text
+                typography="labelLarge"
+                color={
+                  item.Change.startsWith("-")
+                    ? theme.base.error
+                    : theme.base.success
+                }
+                style={{
+                  marginLeft: 8,
+                }}
+              >
+                {item.RatioChange}%
+              </Text>
+            </View>
+
+            <Text
+              typography="bodySmall"
+              color={theme.text.primary + "80"}
+              style={{ marginTop: 4 }}
+            >
+              {(Number(item.TotalVol) / 1000000).toFixed(0)} triệu cổ phiếu -{" "}
+              {(Number(item.TotalVal) / 1000000000).toFixed(2)} tỷ đồng
+            </Text>
+
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text typography="bodySmall" color={theme.base.success}>
+                  {item.Advances} mã
+                </Text>
+                <MaterialIcons
+                  name="arrow-drop-up"
+                  size={28}
+                  color={theme.base.success}
+                />
+              </View>
+
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text typography="bodySmall" color={theme.base.warning}>
+                  {item.NoChanges} mã
+                </Text>
+                <View
+                  style={{
+                    width: 6,
+                    height: 2,
+                    backgroundColor: theme.base.warning,
+                    marginLeft: 8,
+                  }}
+                />
+              </View>
+
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text typography="bodySmall" color={theme.base.error}>
+                  {item.Declines} mã
+                </Text>
+                <MaterialIcons
+                  name="arrow-drop-down"
+                  size={28}
+                  color={theme.base.error}
+                />
+              </View>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
+export default MarketIndicesSection;

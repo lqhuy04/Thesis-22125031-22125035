@@ -17,7 +17,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
       style={{
         borderRadius: 4,
         padding: 12,
-        backgroundColor: theme.background.surface,
+        backgroundColor: theme.base.primary + "12",
         marginTop: 16,
         flexDirection: "row",
         alignItems: "center",
@@ -42,17 +42,17 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
         <Text
           typography="titleMedium"
           style={{ marginBottom: 4 }}
-          numberOfLines={1}
+          numberOfLines={2}
         >
           {newItem.title}
         </Text>
-        <Text typography="bodyMedium" numberOfLines={2}>
+        <Text typography="bodyMedium" numberOfLines={1}>
           {newItem.description}
         </Text>
 
         <Text
           typography="bodyMedium"
-          numberOfLines={2}
+          numberOfLines={1}
           color={theme.text.primary + "80"}
         >
           {newItem.source}

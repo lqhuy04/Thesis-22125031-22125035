@@ -1,4 +1,5 @@
 import { sendMessage } from "./api/ApiClients";
+import { New } from "./DetailHelpers";
 
 export type MarketIndex = {
   IndexId: string;
@@ -43,6 +44,68 @@ export const getMarketIndices = async (): Promise<{
         data: [],
       };
     }
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+};
+
+export const getMacroEcomNews = async (): Promise<{
+  status: boolean;
+  data: New[];
+}> => {
+  try {
+    const result = await sendMessage(`api/news/macro-economic`);
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as New[],
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+};
+
+export type CategoryNews = {
+  category_id: string;
+  category_name: string;
+  news: New[];
+};
+
+export const getCategoriesNews = async (): Promise<{
+  status: boolean;
+  data: CategoryNews[];
+}> => {
+  try {
+    const result = await sendMessage(`api/news/categories`);
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as CategoryNews[],
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+    };
   } catch (error) {
     console.error(error);
     return {

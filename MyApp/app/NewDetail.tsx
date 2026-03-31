@@ -16,7 +16,7 @@ const NewDetal = () => {
   return (
     <SafeAreaView>
       <View style={{ marginHorizontal: 12 }}>
-        <ScreenHeader title="Article Detail" />
+        <ScreenHeader title="Chi tiết bài viết" />
       </View>
 
       <ScrollView>
