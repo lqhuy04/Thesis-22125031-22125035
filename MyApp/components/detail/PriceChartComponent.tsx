@@ -159,6 +159,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
           alignItems: "center",
           justifyContent: "space-between",
           marginHorizontal: 8,
+          marginBottom: 12,
         }}
       >
         <View
