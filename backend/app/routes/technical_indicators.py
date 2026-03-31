@@ -4,7 +4,10 @@ API endpoints for technical analysis indicators using TA-Lib
 """
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, Dict, Any
+from datetime import datetime, timedelta
+import math
 import uuid
+import pandas as pd
 from app.services.technical_indicators_service import TechnicalIndicatorsService
 from app.models.base_schemas import success_response, error_response
 
@@ -16,11 +19,11 @@ router = APIRouter(prefix="/api/technical-indicators", tags=["Technical Indicato
             description="Calculate top 20 technical indicators for a stock symbol using TA-Lib")
 async def get_technical_indicators(
     symbol: str,
-    from_date: str = Query(..., description="Start date (DD/MM/YYYY)", example="01/01/2024"),
-    to_date: str = Query(..., description="End date (DD/MM/YYYY)", example="31/12/2024"),
-    timeframe: str = Query("1D", description="Timeframe: '1D' for daily, 'intraday' for intraday data"),
-    resolution: Optional[int] = Query(None, description="Intraday resolution in minutes (1, 5, 15, 30, 60). Required when timeframe='intraday'"),
-    include_history: bool = Query(False, description="Include full historical data for all indicators")
+    timeframe: str = Query("1D", description="Timeframe: 1D, 1W, 1M, 1Y, 5Y"),
+    from_date: Optional[str] = Query(None, description="Start date (DD/MM/YYYY) - optional, inferred by timeframe"),
+    to_date: Optional[str] = Query(None, description="End date (DD/MM/YYYY) - optional, inferred by timeframe"),
+    include_history: bool = Query(True, description="Include full historical data for all indicators"),
+    backfill_days: Optional[int] = Query(None, ge=0, le=10, description="Backfill previous days for 1D timeframe to stabilize indicators (auto if omitted)")
 ):
     """
     Calculate comprehensive technical indicators for a stock
@@ -59,19 +62,17 @@ async def get_technical_indicators(
     
     ### Parameters:
     - **symbol**: Stock symbol (e.g., VNM, FPT, VCB)
-    - **from_date**: Start date in DD/MM/YYYY format
-    - **to_date**: End date in DD/MM/YYYY format
-    - **timeframe**: '1D' for daily (default), 'intraday' for intraday data
-    - **resolution**: Intraday resolution in minutes (1, 5, 15, 30, 60). Required when timeframe='intraday'
+    - **timeframe**: 1D, 1W, 1M, 1Y, 5Y (default: 1D)
+    - **from_date**: Optional start date (DD/MM/YYYY). If omitted, inferred from timeframe
+    - **to_date**: Optional end date (DD/MM/YYYY). If omitted, inferred from timeframe
     - **include_history**: If true, returns full time series data. If false (default), returns only latest values
     
     ### Timeframe Examples:
     - Daily: `timeframe=1D` (default)
-    - 1-minute: `timeframe=intraday&resolution=1`
-    - 5-minute: `timeframe=intraday&resolution=5`
-    - 15-minute: `timeframe=intraday&resolution=15`
-    - 30-minute: `timeframe=intraday&resolution=30`
-    - 1-hour: `timeframe=intraday&resolution=60`
+    - Weekly: `timeframe=1W`
+    - Monthly: `timeframe=1M`
+    - Yearly: `timeframe=1Y`
+    - 5 Years: `timeframe=5Y`
     
     ### Response:
     Returns all indicator values with trading signals and interpretations
@@ -86,26 +87,20 @@ async def get_technical_indicators(
                 detail="Invalid symbol format"
             )
         
-        # Validate timeframe and resolution
-        if timeframe.lower() == 'intraday' and not resolution:
+        # Validate timeframe
+        if timeframe not in {"1D", "1W", "1M", "1Y", "5Y"}:
             raise HTTPException(
                 status_code=400,
-                detail="Resolution is required when timeframe is 'intraday'. Valid values: 1, 5, 15, 30, 60 (minutes)"
+                detail="Invalid timeframe. Valid values: 1D, 1W, 1M, 1Y, 5Y"
             )
         
-        if resolution and resolution not in [1, 5, 15, 30, 60]:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid resolution. Valid values: 1, 5, 15, 30, 60 (minutes)"
-            )
-        
-        # Fetch OHLC data
+        # Fetch OHLC data for the requested timeframe
         df = await TechnicalIndicatorsService.fetch_ohlc_data(
             symbol=symbol.upper(),
             from_date=from_date,
             to_date=to_date,
             timeframe=timeframe,
-            resolution=resolution
+            resolution=None
         )
         
         if df.empty:
@@ -114,36 +109,157 @@ async def get_technical_indicators(
                 detail=f"No OHLC data found for symbol: {symbol}"
             )
         
-        # Calculate all indicators
-        indicators = TechnicalIndicatorsService.calculate_all_indicators(df)
+        # Optionally backfill 1D with previous days for indicator calculation only
+        df_for_calc = df
+        target_day_str = None
+        auto_backfill_days = 0
+        required_points_for_indicators = 50
+        backfill_from = None
+        backfill_to = None
+        required_indicators = {
+            "sma_20", "sma_50",
+            "bb_upper", "bb_middle", "bb_lower",
+            "volume",
+            "macd", "macd_signal", "macd_histogram",
+            "rsi_14",
+            "stoch_k", "stoch_d",
+        }
+
+        if timeframe == "1D" and len(df) < 50:
+            now = datetime.now()
+            target_day = now - timedelta(days=1) if (now.hour, now.minute) < (9, 15) else now
+            target_day_str = target_day.strftime("%d/%m/%Y")
+
+            # 09:15-11:15 (9 points) + 13:00-14:45 (8 points) -> 17 points/day
+            expected_points_per_day = 17
+            day_points = len(df[df["date"] == target_day_str])
+            points_per_day = day_points if day_points > 0 else expected_points_per_day
+
+            if backfill_days is None:
+                missing = max(0, required_points_for_indicators - day_points)
+                auto_backfill_days = math.ceil(missing / points_per_day) if points_per_day else 0
+            else:
+                auto_backfill_days = backfill_days
+
+            if auto_backfill_days > 0:
+                max_backfill_days = 10
+                while True:
+                    backfill_from = (target_day - timedelta(days=auto_backfill_days)).strftime("%d/%m/%Y")
+                    backfill_to = target_day.strftime("%d/%m/%Y")
+
+                    df_for_calc = await TechnicalIndicatorsService.fetch_ohlc_data(
+                        symbol=symbol.upper(),
+                        from_date=backfill_from,
+                        to_date=backfill_to,
+                        timeframe="intraday",
+                        resolution=15
+                    )
+
+                    if len(df_for_calc) >= required_points_for_indicators:
+                        indicators_for_calc = TechnicalIndicatorsService.calculate_all_indicators(df_for_calc)
+                        series_points = TechnicalIndicatorsService.build_series_points(df_for_calc, indicators_for_calc)
+                        series_points = [
+                            point for point in series_points
+                            if point.get("date") == target_day_str
+                        ]
+                        if series_points:
+                            first_indicators = series_points[0].get("indicators", {})
+                            if all(first_indicators.get(key) is not None for key in required_indicators):
+                                break
+
+                    if auto_backfill_days >= max_backfill_days:
+                        break
+
+                    auto_backfill_days += 1
+
+        # Calculate indicators for series (requested interval) and for latest (optional backfill)
+        indicators_for_series = TechnicalIndicatorsService.calculate_all_indicators(df)
+        indicators_for_latest = indicators_for_series
+        indicators_for_calc = None
+        if df_for_calc is not df:
+            indicators_for_calc = TechnicalIndicatorsService.calculate_all_indicators(df_for_calc)
+            indicators_for_latest = indicators_for_calc
         
         # Prepare response based on include_history flag
+        latest_indicators = TechnicalIndicatorsService.get_latest_indicator_values(indicators_for_latest)
+        signals = TechnicalIndicatorsService.generate_signals(latest_indicators)
+
+        allowed_indicators = {
+            "sma_20", "sma_50",
+            "bb_upper", "bb_middle", "bb_lower",
+            "volume",
+            "macd", "macd_signal", "macd_histogram",
+            "rsi_14",
+            "stoch_k", "stoch_d",
+        }
+
+        def _prune_latest(indicators: Dict[str, Any]) -> Dict[str, Any]:
+            return {
+                key: value
+                for key, value in indicators.items()
+                if key in allowed_indicators
+            }
+
+        def _normalize_series(points: list) -> list:
+            # Keep only date/time + indicators to match frontend needs.
+            normalized = [
+                {
+                    "date": point.get("date"),
+                    "time": point.get("time"),
+                    "indicators": {
+                        key: value
+                        for key, value in (point.get("indicators", {}) or {}).items()
+                        if key in allowed_indicators
+                    }
+                }
+                for point in points
+            ]
+
+            # Fill leading MACD nulls with the first available values.
+            macd_fields = ["macd", "macd_signal", "macd_histogram"]
+            first_idx = None
+            for idx, point in enumerate(normalized):
+                indicators = point.get("indicators", {})
+                if all(indicators.get(field) is not None for field in macd_fields):
+                    first_idx = idx
+                    break
+
+            if first_idx is not None:
+                first_vals = normalized[first_idx]["indicators"]
+                for point in normalized[:first_idx]:
+                    for field in macd_fields:
+                        point["indicators"][field] = first_vals.get(field)
+
+            return normalized
+
         if include_history:
-            # Return full historical data
+            if indicators_for_calc is not None and target_day_str:
+                series_points = TechnicalIndicatorsService.build_series_points(df_for_calc, indicators_for_calc)
+                series_points = [
+                    point for point in series_points
+                    if point.get("date") == target_day_str
+                ]
+                if not series_points:
+                    series_points = TechnicalIndicatorsService.build_series_points(df, indicators_for_series)
+            else:
+                series_points = TechnicalIndicatorsService.build_series_points(df, indicators_for_series)
+            series_points = _normalize_series(series_points)
             response_data = {
                 "symbol": symbol.upper(),
                 "timeframe": timeframe,
-                "resolution": f"{resolution}min" if resolution else "daily",
-                "from_date": from_date,
-                "to_date": to_date,
-                "data_points": len(df),
-                "indicators": indicators
+                "from_date": series_points[0].get("date") if series_points else None,
+                "to_date": series_points[-1].get("date") if series_points else None,
+                "data_points": len(series_points),
+                "series": series_points,
+                "signals": signals
             }
         else:
-            # Return only latest values
-            latest_indicators = TechnicalIndicatorsService.get_latest_indicator_values(indicators)
-            signals = TechnicalIndicatorsService.generate_signals(latest_indicators)
-            
             response_data = {
                 "symbol": symbol.upper(),
                 "timeframe": timeframe,
-                "resolution": f"{resolution}min" if resolution else "daily",
-                "from_date": from_date,
-                "to_date": to_date,
+                "from_date": df['date'].iloc[0] if not df.empty else None,
+                "to_date": df['date'].iloc[-1] if not df.empty else None,
                 "data_points": len(df),
-                "latest_date": latest_indicators.get('dates'),
-                "latest_close": latest_indicators.get('close_prices'),
-                "indicators": latest_indicators,
                 "signals": signals
             }
         
@@ -176,10 +292,9 @@ async def get_technical_indicators(
 async def get_specific_indicator(
     symbol: str,
     indicator_name: str,
-    from_date: str = Query(..., description="Start date (DD/MM/YYYY)"),
-    to_date: str = Query(..., description="End date (DD/MM/YYYY)"),
-    timeframe: str = Query("1D", description="Timeframe: '1D' for daily, 'intraday' for intraday data"),
-    resolution: Optional[int] = Query(None, description="Intraday resolution in minutes (1, 5, 15, 30, 60)")
+    timeframe: str = Query("1D", description="Timeframe: 1D, 1W, 1M, 1Y, 5Y"),
+    from_date: Optional[str] = Query(None, description="Start date (DD/MM/YYYY) - optional"),
+    to_date: Optional[str] = Query(None, description="End date (DD/MM/YYYY) - optional")
 ):
     """
     Get a specific technical indicator
@@ -209,11 +324,11 @@ async def get_specific_indicator(
     request_id = str(uuid.uuid4())
     
     try:
-        # Validate timeframe and resolution
-        if timeframe.lower() == 'intraday' and not resolution:
+        # Validate timeframe
+        if timeframe not in {"1D", "1W", "1M", "1Y", "5Y"}:
             raise HTTPException(
                 status_code=400,
-                detail="Resolution is required when timeframe is 'intraday'"
+                detail="Invalid timeframe. Valid values: 1D, 1W, 1M, 1Y, 5Y"
             )
         
         # Fetch and calculate indicators
@@ -222,7 +337,7 @@ async def get_specific_indicator(
             from_date=from_date,
             to_date=to_date,
             timeframe=timeframe,
-            resolution=resolution
+            resolution=None
         )
         
         if df.empty:
@@ -240,14 +355,24 @@ async def get_specific_indicator(
                 detail=f"Invalid indicator name: {indicator_name}. Use /api/technical-indicators/{symbol} to see all available indicators."
             )
         
+        series_points = TechnicalIndicatorsService.build_series_points(df, indicators)
+        indicator_series = [
+            {
+                "date": point.get("date"),
+                "time": point.get("time"),
+                "value": point.get("indicators", {}).get(indicator_name)
+            }
+            for point in series_points
+        ]
+
         return {
             "data": {
                 "symbol": symbol.upper(),
                 "timeframe": timeframe,
-                "resolution": f"{resolution}min" if resolution else "daily",
                 "indicator": indicator_name,
-                "dates": indicators['dates'],
-                "values": indicators[indicator_name]
+                "from_date": indicator_series[0].get("date") if indicator_series else None,
+                "to_date": indicator_series[-1].get("date") if indicator_series else None,
+                "series": indicator_series
             },
             "errorCode": 0,
             "errorDesc": "",
@@ -270,10 +395,9 @@ async def get_specific_indicator(
             description="Get a quick summary of key technical indicators with trading signals")
 async def get_indicators_summary(
     symbol: str,
-    from_date: str = Query(..., description="Start date (DD/MM/YYYY)"),
-    to_date: str = Query(..., description="End date (DD/MM/YYYY)"),
-    timeframe: str = Query("1D", description="Timeframe: '1D' for daily, 'intraday' for intraday data"),
-    resolution: Optional[int] = Query(None, description="Intraday resolution in minutes (1, 5, 15, 30, 60)")
+    timeframe: str = Query("1D", description="Timeframe: 1D, 1W, 1M, 1Y, 5Y"),
+    from_date: Optional[str] = Query(None, description="Start date (DD/MM/YYYY) - optional"),
+    to_date: Optional[str] = Query(None, description="End date (DD/MM/YYYY) - optional")
 ):
     """
     Get a concise summary of key technical indicators
@@ -289,11 +413,11 @@ async def get_indicators_summary(
     request_id = str(uuid.uuid4())
     
     try:
-        # Validate timeframe and resolution
-        if timeframe.lower() == 'intraday' and not resolution:
+        # Validate timeframe
+        if timeframe not in {"1D", "1W", "1M", "1Y", "5Y"}:
             raise HTTPException(
                 status_code=400,
-                detail="Resolution is required when timeframe is 'intraday'"
+                detail="Invalid timeframe. Valid values: 1D, 1W, 1M, 1Y, 5Y"
             )
         
         # Fetch and calculate indicators
@@ -302,7 +426,7 @@ async def get_indicators_summary(
             from_date=from_date,
             to_date=to_date,
             timeframe=timeframe,
-            resolution=resolution
+            resolution=None
         )
         
         if df.empty:
@@ -319,7 +443,6 @@ async def get_indicators_summary(
         summary = {
             "symbol": symbol.upper(),
             "timeframe": timeframe,
-            "resolution": f"{resolution}min" if resolution else "daily",
             "date": latest.get('dates'),
             "close_price": latest.get('close_prices'),
             "key_indicators": {

@@ -2,6 +2,7 @@
 Technical Indicators Service
 Calculates technical analysis indicators using TA-Lib
 """
+import asyncio
 import talib
 import numpy as np
 import pandas as pd
@@ -11,12 +12,14 @@ from app.services.ssi_service import get_ssi_service
 
 class TechnicalIndicatorsService:
     """Service for calculating technical indicators"""
+
+    _SUPPORTED_TIMEFRAMES = {"1D", "1W", "1M", "1Y", "5Y"}
     
     @staticmethod
     async def fetch_ohlc_data(
         symbol: str,
-        from_date: str,
-        to_date: str,
+        from_date: Optional[str],
+        to_date: Optional[str],
         timeframe: str = "1D",
         resolution: Optional[int] = None,
         page_size: int = 1000
@@ -28,7 +31,7 @@ class TechnicalIndicatorsService:
             symbol: Stock symbol
             from_date: Start date (DD/MM/YYYY)
             to_date: End date (DD/MM/YYYY)
-            timeframe: Timeframe for data ('1D' for daily, 'intraday' for intraday)
+            timeframe: Timeframe for data (1D, 1W, 1M, 1Y, 5Y or 'intraday')
             resolution: Resolution in minutes for intraday (1, 5, 15, 30, 60)
             page_size: Number of records to fetch
             
@@ -37,29 +40,71 @@ class TechnicalIndicatorsService:
         """
         try:
             service = get_ssi_service()
+            max_retries = 3
+            retry_delay = 1.2
             
-            # Determine if intraday or daily
-            if timeframe.lower() == 'intraday' and resolution:
-                # Fetch intraday data
-                result = service.get_intraday_ohlc(
-                    symbol.lower(),
-                    from_date,
-                    to_date,
-                    page_index=1,
-                    page_size=page_size,
-                    ascending=True,
-                    resolution=resolution
-                )
-            else:
-                # Fetch daily data (default)
-                result = service.get_daily_ohlc(
-                    symbol.lower(),
-                    from_date,
-                    to_date,
-                    page_index=1,
-                    page_size=page_size,
-                    ascending=True
-                )
+            # Determine if timeframe-based or intraday/daily (with retry on rate limits)
+            for attempt in range(max_retries + 1):
+                if timeframe in TechnicalIndicatorsService._SUPPORTED_TIMEFRAMES:
+                    result = service.get_stock_prices_by_timeframe(
+                        symbol=symbol.upper(),
+                        timeframe=timeframe,
+                        market="hose"
+                    )
+                elif timeframe.lower() == 'daily':
+                    result = service.get_daily_ohlc(
+                        symbol.lower(),
+                        from_date or "",
+                        to_date or "",
+                        page_index=1,
+                        page_size=page_size,
+                        ascending=True
+                    )
+                elif timeframe.lower() == 'intraday' and resolution:
+                    # Prefer DB-backed 15m data when available for stable intervals
+                    if resolution == 15 and from_date and to_date:
+                        data = service._get_and_sync_15m_data(
+                            symbol=symbol.upper(),
+                            from_date_str=from_date,
+                            to_date_str=to_date
+                        )
+                        result = {
+                            "success": True,
+                            "data": {
+                                "data": data,
+                                "totalRecord": len(data)
+                            }
+                        }
+                    else:
+                        # Fetch intraday data
+                        result = service.get_intraday_ohlc(
+                            symbol.lower(),
+                            from_date or "",
+                            to_date or "",
+                            page_index=1,
+                            page_size=page_size,
+                            ascending=True,
+                            resolution=resolution
+                        )
+                else:
+                    # Fetch daily data (default)
+                    result = service.get_daily_ohlc(
+                        symbol.lower(),
+                        from_date or "",
+                        to_date or "",
+                        page_index=1,
+                        page_size=page_size,
+                        ascending=True
+                    )
+
+                if result.get("success"):
+                    break
+
+                error_msg = result.get("error", "")
+                if "quota exceeded" in error_msg.lower() and attempt < max_retries:
+                    await asyncio.sleep(retry_delay * (attempt + 1))
+                    continue
+                break
             
             # Check if API call was successful
             if not result.get("success"):
@@ -100,10 +145,11 @@ class TechnicalIndicatorsService:
                 # Date columns (in priority order)
                 'tradingDate': 'date',
                 'TradingDate': 'date',
-                'time': 'date',
-                'Time': 'date',
                 'date': 'date',
                 'Date': 'date',
+                # Time columns (keep separate for chart tooltips)
+                'Time': 'time',
+                'time': 'time',
                 # OHLC columns
                 'openPrice': 'open',
                 'open': 'open',
@@ -170,11 +216,96 @@ class TechnicalIndicatorsService:
             # Sort by date
             df = df.sort_values('date')
             df = df.reset_index(drop=True)
+
+            # Aggregate intraday data to fixed minute buckets when requested
+            if timeframe.lower() == 'intraday' and resolution and resolution > 1:
+                df = TechnicalIndicatorsService._aggregate_intraday_df(df, resolution)
             
             return df
             
         except Exception as e:
             raise ValueError(f"Error fetching OHLC data: {str(e)}")
+
+    @staticmethod
+    def _aggregate_intraday_df(df: pd.DataFrame, resolution: int) -> pd.DataFrame:
+        """
+        Aggregate intraday OHLC rows into fixed minute buckets.
+
+        Args:
+            df: DataFrame with date, time, open, high, low, close, volume
+            resolution: bucket size in minutes (e.g., 15)
+        """
+        if df.empty or 'date' not in df.columns or 'time' not in df.columns:
+            return df
+
+        # Build datetime column for bucketing
+        dt = pd.to_datetime(
+            df['date'].astype(str) + ' ' + df['time'].astype(str),
+            format='%d/%m/%Y %H:%M:%S',
+            errors='coerce'
+        )
+        df = df.assign(_dt=dt)
+        df = df.dropna(subset=['_dt'])
+        if df.empty:
+            return df
+
+        # Floor to bucket
+        df['_bucket'] = df['_dt'].dt.floor(f'{resolution}min')
+
+        # Aggregate OHLCV per bucket
+        agg = df.groupby('_bucket', as_index=False).agg(
+            open=('open', 'first'),
+            high=('high', 'max'),
+            low=('low', 'min'),
+            close=('close', 'last'),
+            volume=('volume', 'sum')
+        )
+
+        agg['date'] = agg['_bucket'].dt.strftime('%d/%m/%Y')
+        agg['time'] = agg['_bucket'].dt.strftime('%H:%M:%S')
+        agg = agg.drop(columns=['_bucket'])
+
+        # Keep column order consistent
+        return agg[['date', 'time', 'open', 'high', 'low', 'close', 'volume']]
+
+    @staticmethod
+    def _aggregate_daily_df(df: pd.DataFrame, mode: str) -> pd.DataFrame:
+        """
+        Aggregate daily OHLC rows into weekly or monthly buckets.
+
+        Args:
+            df: DataFrame with date, open, high, low, close, volume
+            mode: "week" or "month"
+        """
+        if df.empty or 'date' not in df.columns:
+            return df
+
+        dt = pd.to_datetime(df['date'].astype(str), format='%d/%m/%Y', errors='coerce')
+        df = df.assign(_dt=dt)
+        df = df.dropna(subset=['_dt'])
+        if df.empty:
+            return df
+
+        if mode == "week":
+            df['_bucket'] = df['_dt'].dt.to_period('W-FRI').dt.end_time
+        elif mode == "month":
+            df['_bucket'] = df['_dt'].dt.to_period('M').dt.end_time
+        else:
+            return df
+
+        agg = df.groupby('_bucket', as_index=False).agg(
+            open=('open', 'first'),
+            high=('high', 'max'),
+            low=('low', 'min'),
+            close=('close', 'last'),
+            volume=('volume', 'sum')
+        )
+
+        agg['date'] = agg['_bucket'].dt.strftime('%d/%m/%Y')
+        agg['time'] = '14:45:00'
+        agg = agg.drop(columns=['_bucket'])
+
+        return agg[['date', 'time', 'open', 'high', 'low', 'close', 'volume']]
     
     @staticmethod
     def calculate_all_indicators(df: pd.DataFrame) -> Dict[str, Any]:
@@ -187,8 +318,12 @@ class TechnicalIndicatorsService:
         Returns:
             Dictionary containing all calculated indicators
         """
-        if df.empty or len(df) < 50:
-            raise ValueError("Insufficient data for indicator calculation (minimum 50 data points required)")
+        if df.empty:
+            raise ValueError("Insufficient data for indicator calculation (no data points)")
+
+        # If we don't have enough data for the full indicator set, return core indicators only.
+        if len(df) < 50:
+            return TechnicalIndicatorsService.calculate_core_indicators(df)
         
         # Extract price arrays and convert to float64 (required by TA-Lib)
         # TA-Lib requires numpy arrays of type float64 (double)
@@ -346,11 +481,72 @@ class TechnicalIndicatorsService:
             # Add metadata
             indicators['dates'] = df['date'].tolist()
             indicators['close_prices'] = close_prices.tolist()
+            indicators['volume'] = volume.tolist()
             
             return indicators
             
         except Exception as e:
             raise ValueError(f"Error calculating indicators: {str(e)}")
+
+    @staticmethod
+    def calculate_core_indicators(df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Calculate core indicators for short datasets.
+
+        Core set: RSI, MACD, EMA, Volume.
+        """
+        # Extract price arrays and convert to float64 (required by TA-Lib)
+        open_prices = np.array(df['open'].values, dtype=np.float64)
+        high_prices = np.array(df['high'].values, dtype=np.float64)
+        low_prices = np.array(df['low'].values, dtype=np.float64)
+        close_prices = np.array(df['close'].values, dtype=np.float64)
+        volume = np.array(df['volume'].values, dtype=np.float64)
+
+        indicators: Dict[str, Any] = {}
+        data_len = len(df)
+
+        def _none_series() -> List[Optional[float]]:
+            return [None] * data_len
+
+        try:
+            # EMA (12, 26)
+            indicators['ema_12'] = (
+                talib.EMA(close_prices, timeperiod=12).tolist() if data_len >= 12 else _none_series()
+            )
+            indicators['ema_26'] = (
+                talib.EMA(close_prices, timeperiod=26).tolist() if data_len >= 26 else _none_series()
+            )
+
+            # RSI (14)
+            indicators['rsi_14'] = (
+                talib.RSI(close_prices, timeperiod=14).tolist() if data_len >= 14 else _none_series()
+            )
+
+            # MACD (12, 26, 9)
+            if data_len >= 26:
+                macd, macd_signal, macd_hist = talib.MACD(
+                    close_prices,
+                    fastperiod=12,
+                    slowperiod=26,
+                    signalperiod=9
+                )
+                indicators['macd'] = macd.tolist()
+                indicators['macd_signal'] = macd_signal.tolist()
+                indicators['macd_histogram'] = macd_hist.tolist()
+            else:
+                indicators['macd'] = _none_series()
+                indicators['macd_signal'] = _none_series()
+                indicators['macd_histogram'] = _none_series()
+
+            # Add metadata
+            indicators['dates'] = df['date'].tolist()
+            indicators['close_prices'] = close_prices.tolist()
+            indicators['volume'] = volume.tolist()
+
+            return indicators
+
+        except Exception as e:
+            raise ValueError(f"Error calculating core indicators: {str(e)}")
     
     @staticmethod
     def get_latest_indicator_values(indicators: Dict[str, Any]) -> Dict[str, Optional[float]]:
@@ -380,6 +576,46 @@ class TechnicalIndicatorsService:
                 latest_values[key] = None
         
         return latest_values
+
+    @staticmethod
+    def build_series_points(df: pd.DataFrame, indicators: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Build chart-friendly series points aligned by index.
+
+        Each point contains OHLCV, date/time, and indicator values.
+        """
+        indicator_keys = [
+            key for key in indicators.keys()
+            if key not in {"dates", "close_prices"}
+        ]
+
+        points: List[Dict[str, Any]] = []
+        for idx in range(len(df)):
+            point = {
+                "date": df.at[idx, "date"],
+                "time": df.at[idx, "time"] if "time" in df.columns else None,
+                "open": float(df.at[idx, "open"]),
+                "high": float(df.at[idx, "high"]),
+                "low": float(df.at[idx, "low"]),
+                "close": float(df.at[idx, "close"]),
+                "volume": float(df.at[idx, "volume"]),
+                "indicators": {}
+            }
+
+            for key in indicator_keys:
+                values = indicators.get(key)
+                if isinstance(values, list) and idx < len(values):
+                    val = values[idx]
+                    if val is None or (isinstance(val, float) and np.isnan(val)):
+                        point["indicators"][key] = None
+                    else:
+                        point["indicators"][key] = round(val, 4) if isinstance(val, (int, float)) else val
+                else:
+                    point["indicators"][key] = None
+
+            points.append(point)
+
+        return points
     
     @staticmethod
     def generate_signals(indicators: Dict[str, Any]) -> Dict[str, str]:
