@@ -1,5 +1,54 @@
 import { sendMessage } from "./api/ApiClients";
 
+export function parseDateTime(dateString: string, timeString: string): number {
+  // ---- Parse date ----
+  const dateParts = dateString.split("/");
+
+  if (dateParts.length !== 3) {
+    throw new Error("Invalid date format. Expected dd/mm/yyyy");
+  }
+
+  const day = parseInt(dateParts[0], 10);
+  const month = parseInt(dateParts[1], 10) - 1;
+  const year = parseInt(dateParts[2], 10);
+
+  // ---- Parse time ----
+  const timeParts = timeString.split(":");
+
+  if (timeParts.length !== 3) {
+    throw new Error("Invalid time format. Expected hh:mm:ss");
+  }
+
+  const hours = parseInt(timeParts[0], 10);
+  const minutes = parseInt(timeParts[1], 10);
+  const seconds = parseInt(timeParts[2], 10);
+
+  const date = new Date(year, month, day, hours, minutes, seconds);
+
+  // ---- Validate date ----
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month ||
+    date.getDate() !== day
+  ) {
+    throw new Error("Invalid date");
+  }
+
+  // ---- Validate time ----
+  if (
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    seconds < 0 ||
+    seconds > 59
+  ) {
+    throw new Error("Invalid time");
+  }
+
+  return date.getTime(); // ✅ return timestamp
+}
+
 export type Content = {
   type: "text" | "image";
   url?: string;
@@ -216,6 +265,59 @@ export const fetchPriceData = async (
     return {
       status: false,
       data: null,
+    };
+  }
+};
+
+//------------------------------------------------------------
+export type TechnicalIndicators = {
+  sma_20: number;
+  sma_50: number;
+  bb_upper: number;
+  bb_middle: number;
+  bb_lower: number;
+  volume: number;
+  macd: number;
+  DIF: number;
+  DEA: number;
+  rsi_14: number;
+  stoch_k: number;
+  stoch_d: number;
+  stoch_j: number;
+};
+
+export type TechnicalIndicatorData = {
+  date: string;
+  time: string;
+  indicators: TechnicalIndicators;
+};
+
+export const getTechnicalIndicators = async (
+  symbol: string,
+): Promise<{
+  status: boolean;
+  data: TechnicalIndicatorData[];
+}> => {
+  try {
+    const result = await sendMessage(`api/technical-indicators/${symbol}`);
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data?.series as TechnicalIndicatorData[],
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
     };
   }
 };

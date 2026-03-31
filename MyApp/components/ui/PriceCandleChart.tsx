@@ -1,4 +1,4 @@
-import { StockData } from "@/helpers/DetailHelpers";
+import { parseDateTime, StockData } from "@/helpers/DetailHelpers";
 import React, { useMemo } from "react";
 import { View, Dimensions } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
@@ -13,55 +13,6 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 import Svg, { Line } from "react-native-svg";
-
-function parseDateTime(dateString: string, timeString: string): number {
-  // ---- Parse date ----
-  const dateParts = dateString.split("/");
-
-  if (dateParts.length !== 3) {
-    throw new Error("Invalid date format. Expected dd/mm/yyyy");
-  }
-
-  const day = parseInt(dateParts[0], 10);
-  const month = parseInt(dateParts[1], 10) - 1;
-  const year = parseInt(dateParts[2], 10);
-
-  // ---- Parse time ----
-  const timeParts = timeString.split(":");
-
-  if (timeParts.length !== 3) {
-    throw new Error("Invalid time format. Expected hh:mm:ss");
-  }
-
-  const hours = parseInt(timeParts[0], 10);
-  const minutes = parseInt(timeParts[1], 10);
-  const seconds = parseInt(timeParts[2], 10);
-
-  const date = new Date(year, month, day, hours, minutes, seconds);
-
-  // ---- Validate date ----
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month ||
-    date.getDate() !== day
-  ) {
-    throw new Error("Invalid date");
-  }
-
-  // ---- Validate time ----
-  if (
-    hours < 0 ||
-    hours > 23 ||
-    minutes < 0 ||
-    minutes > 59 ||
-    seconds < 0 ||
-    seconds > 59
-  ) {
-    throw new Error("Invalid time");
-  }
-
-  return date.getTime(); // ✅ return timestamp
-}
 
 function formatTimestamp(timestamp: number): string {
   const date = new Date(timestamp);

@@ -35,7 +35,6 @@ const RiskAppetite = () => {
     setLoading(true);
     getRiskAppetite().then((res) => {
       if (res.status && res.data) {
-        console.log(res.data);
         setExperience(res.data.experience);
         setExpectation(res.data.expectation);
         setPeriod(res.data.period);

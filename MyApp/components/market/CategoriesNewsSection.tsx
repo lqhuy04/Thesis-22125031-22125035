@@ -54,7 +54,6 @@ const CategoriesNewsSection = () => {
           flexDirection: "row",
           alignItems: "center",
           flexWrap: "wrap",
-          marginTop: 12,
         }}
       >
         {categoryArticles.map((item, index) => {
@@ -82,6 +81,7 @@ const CategoriesNewsSection = () => {
                     : theme.border.default,
                 marginHorizontal: 4,
                 alignItems: "center",
+                marginTop: 12,
               }}
               onPress={() => {
                 setChosenIndex(index);

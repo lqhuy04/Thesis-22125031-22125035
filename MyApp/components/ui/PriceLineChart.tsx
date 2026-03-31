@@ -1,344 +1,175 @@
 import React, { useMemo } from "react";
-import { StockData } from "@/helpers/DetailHelpers";
-import { CartesianChart, Line, Area, useChartPressState } from "victory-native";
 import { View, Dimensions } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { LineChart, useLineChart } from "react-native-wagmi-charts";
+import { Text } from "./Text";
+import Animated, { useAnimatedReaction } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import {
-  Rect,
-  Line as SkiaLine,
-  Circle,
-  RoundedRect,
-  Text as SkiaText,
-  useFont,
-  vec,
-  LinearGradient,
-  DashPathEffect,
-} from "@shopify/react-native-skia";
-import { useDerivedValue } from "react-native-reanimated";
+  parseDateTime,
+  StockData,
+  TechnicalIndicatorData,
+} from "@/helpers/DetailHelpers";
 
-interface Props {
-  data: StockData[];
-  option: "1D" | "1W" | "1M" | "1Y" | "5Y";
-  referencePrice: number;
-}
+const AnimatedView = Animated.createAnimatedComponent(View);
 
-const PriceLineGraph = ({ data, option, referencePrice }: Props) => {
-  const screenWidth = Dimensions.get("window").width;
-  const chartData = useMemo(() => {
-    return data.map((item, index) => {
-      return {
-        x: index,
-        y: Number(item?.Close) / 1000,
-        date: item?.TradingDate,
-        time: item?.Time,
-      };
-    });
-  }, [data]);
+const LineTooltip = () => {
   const { theme } = useTheme();
-  const { state, isActive } = useChartPressState({ x: 0, y: { y: 0 } });
+  const { currentIndex, data } = useLineChart();
 
-  //-----------------------------------------------------------------
-  const fontPriceSize = 11;
+  const [point, setPoint] = React.useState<{
+    value: number;
+    time: number;
+  } | null>(null);
 
-  const fontPrice = useFont(
-    require("@/assets/fonts/Roboto-SemiBold.ttf"),
-    fontPriceSize,
+  useAnimatedReaction(
+    () => Math.round(currentIndex.value),
+    (index) => {
+      if (index === -1) {
+        scheduleOnRN(setPoint, null);
+        return;
+      }
+
+      const item = data?.[index];
+      if (!item) return;
+
+      scheduleOnRN(setPoint, {
+        value: item.value,
+        time: item.timestamp,
+      });
+    },
+    [data],
   );
 
-  const tooltipText = useDerivedValue(
-    () => `${(state.y.y.value.value * 1000).toFixed(0)} VND`,
-  );
-
-  const textPrice = tooltipText; // string hoặc SkiaValue
-  const textPriceWidth = fontPrice?.measureText(textPrice.value).width ?? 0;
-
-  const fontDateSize = 10;
-
-  //-----------------------------------------------------------------
-  const toolTipY = useDerivedValue(() => {
-    if (state.y.y.position.value > 200) {
-      return state.y.y.position.value - 48;
-    } else {
-      return state.y.y.position.value + 6;
-    }
-  });
-
-  const toolTipPriceTextY = useDerivedValue(() => {
-    if (state.y.y.position.value > 200) {
-      return (
-        state.y.y.position.value -
-        48 +
-        42 / 2 +
-        (fontPrice?.getSize() ?? 0) / 2 -
-        10
-      );
-    } else {
-      return (
-        state.y.y.position.value +
-        6 +
-        42 / 2 +
-        (fontPrice?.getSize() ?? 0) / 2 -
-        10
-      );
-    }
-  });
-
-  const toolTipDateTextY = useDerivedValue(() => {
-    if (state.y.y.position.value > 200) {
-      return (
-        state.y.y.position.value -
-        48 +
-        42 / 2 +
-        (fontDate?.getSize() ?? 0) / 2 +
-        10
-      );
-    } else {
-      return (
-        state.y.y.position.value +
-        6 +
-        42 / 2 +
-        (fontDate?.getSize() ?? 0) / 2 +
-        10
-      );
-    }
-  });
-  const times = useMemo(() => chartData.map((d) => d.time), [chartData]);
-
-  const dates = useMemo(() => chartData.map((d) => d.date), [chartData]);
-  const fontDate = useFont(
-    require("@/assets/fonts/Roboto-Medium.ttf"),
-    fontDateSize,
-  );
-
-  const tooltipDateText = useDerivedValue(() => {
-    const index = Math.round(state.x.value.value);
-    if (index < 0 || index >= dates.length) return "";
-    return `${dates[index]} ${times[index]}`;
-  });
-
-  const textDate = tooltipDateText;
-  const textDateWidth = fontDate?.measureText(textDate.value).width ?? 0;
-
-  //-----------------------------------------------------------------
-  const lineP1 = useDerivedValue(() =>
-    vec(state.x.position.value, state.y.y.position.value),
-  );
-  const lineP2 = useDerivedValue(() => vec(state.x.position.value, 300));
-
-  //-----------------------------------------------------------------
-  const dashedLineP1 = useDerivedValue(() => vec(0, state.y.y.position.value));
-  const dashedLineP2 = useDerivedValue(() =>
-    vec(screenWidth, state.y.y.position.value),
-  );
-
-  //-----------------------------------------------------------------
-  const linearGradientX = useDerivedValue(() => state.x.position.value - 12);
-  const linearGradientY = useDerivedValue(() => state.y.y.position.value);
-
-  //-----------------------------------------------------------------
-  const horizontalLines = 5;
-
-  const xTicks = 8;
+  if (!point) return null;
 
   return (
-    <View>
-      {data.length !== 0 ? (
-        <View style={{ height: 300 }}>
-          <CartesianChart
-            key={option}
-            data={chartData}
-            xKey="x"
-            yKeys={["y"]}
-            axisOptions={{
-              lineColor: "transparent",
-            }}
-            frame={{
-              lineWidth: 0,
-              lineColor: "transparent",
-            }}
-            chartPressState={state}
-          >
-            {({ points, chartBounds, yScale, xScale }) => {
-              const referenceY = yScale(referencePrice / 1000);
-              return (
-                <>
-                  {/* Area */}
-                  <Area
-                    points={points.y}
-                    y0={chartBounds.bottom}
-                    color={theme.background.bg}
-                    curveType="monotoneX"
-                  >
-                    <LinearGradient
-                      start={vec(chartBounds.bottom, chartBounds.top)}
-                      end={vec(chartBounds.bottom, chartBounds.bottom)}
-                      colors={[theme.background.bg, theme.base.primary + "16"]}
-                    />
-                  </Area>
-
-                  {/* Line */}
-                  <Line
-                    points={points.y}
-                    color={theme.base.primaryHover}
-                    strokeWidth={2}
-                    animate={{ type: "timing", duration: 300 }}
-                    curveType="monotoneX"
-                  />
-
-                  {Array.from({ length: horizontalLines }).map((_, i) => {
-                    if (i === 0) {
-                      return null;
-                    }
-
-                    const domain = yScale.domain();
-                    const value =
-                      domain[0] -
-                      ((domain[0] - domain[1]) * i) / horizontalLines;
-                    const y = yScale(value);
-                    const label = `${value.toFixed(2).toLocaleString()}K`;
-
-                    return (
-                      <SkiaText
-                        key={i}
-                        x={chartBounds.left + 6}
-                        y={y + 6}
-                        text={label}
-                        font={fontPrice}
-                        color={theme.text.primary}
-                      />
-                    );
-                  })}
-
-                  {Array.from({ length: xTicks - 1 }).map((_, i) => {
-                    const domain = xScale.domain(); // [0, data.length - 1]
-                    const value =
-                      1 + ((domain[1] - domain[0]) * i) / (xTicks - 1);
-
-                    const index = Math.round(value);
-                    if (index < 0 || index >= chartData.length) return null;
-
-                    const x = xScale(value);
-                    const label =
-                      option === "1D"
-                        ? chartData[index].time.substring(0, 5)
-                        : chartData[index].date.substring(0, 5);
-
-                    const textWidth = fontDate?.measureText(label).width ?? 0;
-                    return (
-                      <SkiaText
-                        key={i}
-                        x={x - textWidth / 2}
-                        y={chartBounds.top + 280}
-                        text={label}
-                        font={fontPrice}
-                        color={theme.text.primary}
-                      />
-                    );
-                  })}
-
-                  <SkiaLine
-                    p1={vec(chartBounds.left, referenceY)}
-                    p2={vec(chartBounds.right, referenceY)}
-                    color={theme.base.warning}
-                    strokeWidth={1}
-                  >
-                    <DashPathEffect intervals={[6, 4]} />
-                  </SkiaLine>
-
-                  {/* Interactive circle point */}
-                  {isActive && (
-                    <>
-                      <SkiaLine
-                        p1={dashedLineP1}
-                        p2={dashedLineP2}
-                        color={theme.base.primary}
-                        strokeWidth={1}
-                      >
-                        <DashPathEffect intervals={[6, 4]} />
-                      </SkiaLine>
-                      {/* Linear Gradient*/}
-                      <Rect
-                        x={linearGradientX}
-                        y={linearGradientY}
-                        width={24}
-                        height={300}
-                      >
-                        <LinearGradient
-                          start={vec(0, chartBounds.top)}
-                          end={vec(0, chartBounds.bottom)}
-                          colors={[
-                            theme.base.primary + "00",
-                            theme.base.primary + "39",
-                          ]}
-                        />
-                      </Rect>
-                      {/* Vertical Line */}
-                      <SkiaLine
-                        p1={lineP1}
-                        p2={lineP2}
-                        color={theme.background.bg}
-                        strokeWidth={2}
-                      />
-                      {/* Outer glow circle */}
-                      <Circle
-                        cx={state.x.position}
-                        cy={state.y.y.position}
-                        r={12}
-                        color={theme.base.primary + "30"}
-                      />
-                      {/* Center circle */}
-                      <Circle
-                        cx={state.x.position}
-                        cy={state.y.y.position}
-                        r={4}
-                        color={theme.text.onPrimary}
-                      />
-
-                      {/* Tooltip */}
-                      <RoundedRect
-                        x={chartBounds.left - 4 + screenWidth / 2 - 127 / 2}
-                        y={toolTipY}
-                        width={127}
-                        height={42}
-                        r={4}
-                        color={theme.base.primary}
-                      />
-                      <SkiaText
-                        x={
-                          chartBounds.left -
-                          4 +
-                          screenWidth / 2 -
-                          127 / 2 +
-                          (127 - textPriceWidth) / 2
-                        }
-                        y={toolTipPriceTextY}
-                        text={textPrice}
-                        font={fontPrice}
-                        color={theme.text.onPrimary}
-                      />
-                      <SkiaText
-                        x={
-                          chartBounds.left -
-                          4 +
-                          screenWidth / 2 -
-                          127 / 2 +
-                          (127 - textDateWidth) / 2
-                        }
-                        y={toolTipDateTextY}
-                        text={textDate}
-                        font={fontDate}
-                        color={theme.text.onPrimary}
-                      />
-                    </>
-                  )}
-                </>
-              );
-            }}
-          </CartesianChart>
-        </View>
-      ) : null}
-    </View>
+    <AnimatedView
+      style={{
+        position: "absolute",
+        top: 0,
+        alignSelf: "center",
+        padding: 8,
+        borderRadius: 8,
+        backgroundColor: theme.background.surface,
+        borderWidth: 1,
+        borderColor: theme.border.default,
+      }}
+    >
+      <Text color={theme.text.primary}>
+        {point.value.toLocaleString("vi-VN")}
+      </Text>
+      <Text color={theme.text.secondary}>
+        {new Date(point.time).toLocaleString("vi-VN")}
+      </Text>
+    </AnimatedView>
   );
 };
 
-export default PriceLineGraph;
+interface Props {
+  data: StockData[];
+  technicalIndicatorData: TechnicalIndicatorData[];
+}
+
+const PriceLineChart = ({ data, technicalIndicatorData }: Props) => {
+  const { theme } = useTheme();
+  const screenWidth = Dimensions.get("window").width;
+
+  const priceData = useMemo(() => {
+    return data.map((item) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(item.Close),
+    }));
+  }, [data]);
+
+  const ma20Data = useMemo(() => {
+    return data.map((item, index) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(technicalIndicatorData[index]?.indicators.sma_20),
+    }));
+  }, [data, technicalIndicatorData]);
+
+  const ma50Data = useMemo(() => {
+    return data.map((item, index) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(technicalIndicatorData[index]?.indicators.sma_50),
+    }));
+  }, [data, technicalIndicatorData]);
+
+  const bbUpperData = useMemo(() => {
+    return data.map((item, index) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(technicalIndicatorData[index]?.indicators.bb_upper),
+    }));
+  }, [data, technicalIndicatorData]);
+
+  const bbMiddleData = useMemo(() => {
+    return data.map((item, index) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(technicalIndicatorData[index]?.indicators.bb_middle),
+    }));
+  }, [data, technicalIndicatorData]);
+
+  const bbLowerData = useMemo(() => {
+    return data.map((item, index) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(technicalIndicatorData[index]?.indicators.bb_lower),
+    }));
+  }, [data, technicalIndicatorData]);
+
+  const chartData = useMemo(() => {
+    return {
+      price: priceData,
+      ma20: ma20Data,
+      ma50: ma50Data,
+      bbUpper: bbUpperData,
+      bbMiddle: bbMiddleData,
+      bbLower: bbLowerData,
+    };
+  }, [priceData, ma20Data, ma50Data, bbUpperData, bbMiddleData, bbLowerData]);
+
+  return (
+    data.length !== 0 && (
+      <View>
+        <LineChart.Provider data={chartData}>
+          <LineChart.Group>
+            <LineChart id="price" width={screenWidth} height={300}>
+              {/* Line */}
+              <LineChart.Path color={theme.base.primary} width={2}>
+                <LineChart.Gradient />
+              </LineChart.Path>
+
+              {/* Crosshair */}
+              <LineChart.CursorCrosshair color={theme.base.primary} />
+
+              {/* Tooltip */}
+              <LineTooltip />
+            </LineChart>
+
+            <LineChart id="ma20" width={screenWidth} height={300}>
+              <LineChart.Path color={theme.base.warning} width={1} />
+            </LineChart>
+
+            <LineChart id="ma50" width={screenWidth} height={300}>
+              <LineChart.Path color={theme.base.success} width={1} />
+            </LineChart>
+
+            {/* <LineChart id="bbUpper" width={screenWidth} height={300}>
+              <LineChart.Path color={"red"} width={1} />
+            </LineChart>
+
+            <LineChart id="bbMiddle" width={screenWidth} height={300}>
+              <LineChart.Path color={"red"} width={1} />
+            </LineChart>
+
+            <LineChart id="bbLower" width={screenWidth} height={300}>
+              <LineChart.Path color={"red"} width={1} />
+            </LineChart> */}
+          </LineChart.Group>
+        </LineChart.Provider>
+      </View>
+    )
+  );
+};
+
+export default PriceLineChart;

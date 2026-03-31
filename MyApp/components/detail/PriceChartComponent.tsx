@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   fetchPriceData,
   fetchStockData,
+  getTechnicalIndicators,
   PriceData,
   StockData,
+  TechnicalIndicatorData,
 } from "@/helpers/DetailHelpers";
 import { ActivityIndicator, TouchableOpacity, View, Image } from "react-native";
 import { Text } from "../ui/Text";
@@ -13,6 +15,9 @@ import PriceCandleChart from "../ui/PriceCandleChart";
 import { Images } from "@/constants/Images";
 import DetailHeader from "../ui/DetailHeader";
 import { SearchStockItem } from "@/helpers/SearchHelper";
+import VolumeBarChart from "../ui/VolumeChart";
+import RSIChart from "../ui/RSIChart";
+import KDJChart from "../ui/KDJChart";
 
 interface Props {
   stockItem: SearchStockItem;
@@ -23,9 +28,24 @@ const PriceChartComponent = ({ stockItem }: Props) => {
   const [chartType, setChartType] = useState<"Line" | "Candlestick">("Line");
   const [loading, setLoading] = useState<boolean>(false);
   const [option, setOption] = useState<"1D" | "1W" | "1M" | "1Y" | "5Y">("1D");
-  const [data, setData] = useState<StockData[]>([]);
 
+  const [data, setData] = useState<StockData[]>([]);
   const [priceData, setPriceData] = useState<PriceData | null>(null);
+  const [technicalIndicatorData, setTechnicalIndicatorData] = useState<
+    TechnicalIndicatorData[]
+  >([]);
+
+  const volumeData = useMemo(() => {
+    if (Array.isArray(data)) {
+      return data.map((item) => ({
+        date: item.TradingDate,
+        time: item.Time,
+        volume: Number(item.Volume),
+        positive: Number(item.Close) >= Number(item.Open),
+      }));
+    }
+    return [];
+  }, [data]);
 
   useEffect(() => {
     fetchPriceData(stockItem.symbol).then((res) => {
@@ -44,6 +64,14 @@ const PriceChartComponent = ({ stockItem }: Props) => {
       }
     });
   }, [stockItem.symbol, option]);
+
+  useEffect(() => {
+    getTechnicalIndicators(stockItem.symbol).then((res) => {
+      if (res?.status) {
+        setTechnicalIndicatorData(res.data);
+      }
+    });
+  }, [stockItem.symbol]);
 
   return (
     <View style={{ marginTop: 12 }}>
@@ -111,12 +139,17 @@ const PriceChartComponent = ({ stockItem }: Props) => {
             {chartType === "Line" ? (
               <PriceLineGraph
                 data={data}
-                option={option}
-                referencePrice={priceData?.reference_price ?? 0}
+                technicalIndicatorData={technicalIndicatorData}
               />
             ) : (
               <PriceCandleChart data={data} />
             )}
+
+            <VolumeBarChart data={volumeData} />
+
+            <RSIChart technicalIndicatorData={technicalIndicatorData} />
+
+            <KDJChart technicalIndicatorData={technicalIndicatorData} />
 
             <TouchableOpacity
               onPress={() => {
