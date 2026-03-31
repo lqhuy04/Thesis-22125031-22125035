@@ -4,6 +4,7 @@ import { View } from "react-native";
 import NewsComponent from "../ui/NewsComponent";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
+import { router } from "expo-router";
 
 const CategoriesNewsSection = () => {
   const { theme } = useTheme();
@@ -29,7 +30,21 @@ const CategoriesNewsSection = () => {
         }}
       >
         <Text typography="titleLarge">{"Tin tức theo nhóm ngành"}</Text>
-        <Text typography="titleLarge" color={theme.base.primary}>
+        <Text
+          typography="titleLarge"
+          color={theme.base.primary}
+          onPress={() => {
+            router.push({
+              pathname: "/AllNews",
+              params: {
+                data: JSON.stringify({
+                  title: categoryArticles[chosenIndex].category_name,
+                  category_id: categoryArticles[chosenIndex].category_id,
+                }),
+              },
+            });
+          }}
+        >
           Xem tất cả
         </Text>
       </View>

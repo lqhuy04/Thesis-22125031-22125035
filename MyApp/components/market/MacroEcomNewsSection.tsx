@@ -5,6 +5,7 @@ import { View } from "react-native";
 import NewsComponent from "../ui/NewsComponent";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
+import { router } from "expo-router";
 
 const MacroEcomNewsSection = () => {
   const { theme } = useTheme();
@@ -28,7 +29,20 @@ const MacroEcomNewsSection = () => {
         }}
       >
         <Text typography="titleLarge">{"Tin tức kinh tế - vĩ mô"}</Text>
-        <Text typography="titleLarge" color={theme.base.primary}>
+        <Text
+          typography="titleLarge"
+          color={theme.base.primary}
+          onPress={() => {
+            router.push({
+              pathname: "/AllNews",
+              params: {
+                data: JSON.stringify({
+                  title: "Tin tức kinh tế - vĩ mô",
+                }),
+              },
+            });
+          }}
+        >
           Xem tất cả
         </Text>
       </View>

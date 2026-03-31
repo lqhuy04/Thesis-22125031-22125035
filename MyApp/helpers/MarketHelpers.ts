@@ -114,3 +114,33 @@ export const getCategoriesNews = async (): Promise<{
     };
   }
 };
+
+export const getNewsByCategoryId = async (
+  category_id: string,
+): Promise<{
+  status: boolean;
+  data: New[];
+}> => {
+  try {
+    const result = await sendMessage(`api/news/category/${category_id}`);
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as New[],
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+};
