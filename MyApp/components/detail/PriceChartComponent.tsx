@@ -32,6 +32,8 @@ const PriceChartComponent = ({ stockItem }: Props) => {
   const [technicalIndicatorMode1, setTechnicalIndicatorMode1] = useState<
     "MA" | "BOLL" | null
   >(null);
+  const [technicalIndicatorMode2, setTechnicalIndicatorMode2] =
+    useState<boolean>(false);
 
   const [data, setData] = useState<StockData[]>([]);
   const [priceData, setPriceData] = useState<PriceData | null>(null);
@@ -166,7 +168,9 @@ const PriceChartComponent = ({ stockItem }: Props) => {
               technicalIndicatorMode1={technicalIndicatorMode1}
             />
 
-            <VolumeBarChart data={volumeData} />
+            {technicalIndicatorMode2 ? (
+              <VolumeBarChart data={volumeData} />
+            ) : null}
 
             {/* <RSIChart technicalIndicatorData={technicalIndicatorData} />
 
@@ -254,6 +258,23 @@ const PriceChartComponent = ({ stockItem }: Props) => {
           <Text typography="labelLarge">BOLL</Text>
         </TouchableOpacity>
       </View>
+
+      <TouchableOpacity
+        onPress={() => {
+          setTechnicalIndicatorMode2((prev) => !prev);
+        }}
+        style={{
+          height: 24,
+          backgroundColor: theme.background.surface,
+          borderRadius: 4,
+          borderWidth: 1,
+          borderColor: theme.border.default,
+          alignItems: "center",
+          padding: 2,
+        }}
+      >
+        <Text typography="labelLarge">VOL</Text>
+      </TouchableOpacity>
 
       <View
         style={{

@@ -124,39 +124,41 @@ const PriceLineChart = ({
     }));
   }, [data, technicalIndicatorData]);
 
+  const chartMAData = useMemo(() => {
+    return {
+      price: priceData,
+      ma20: ma20Data,
+      ma50: ma50Data,
+    };
+  }, [ma20Data, ma50Data, priceData]);
+
+  const chartBOLLData = useMemo(() => {
+    return {
+      price: priceData,
+      bbUpper: bbUpperData,
+      bbMiddle: bbMiddleData,
+      bbLower: bbLowerData,
+    };
+  }, [bbUpperData, bbMiddleData, bbLowerData, priceData]);
+
   const chartData = useMemo(() => {
-    if (technicalIndicatorMode1 === "MA") {
-      return {
-        price: priceData,
-        ma20: ma20Data,
-        ma50: ma50Data,
-      };
-    } else if (technicalIndicatorMode1 === "BOLL") {
-      return {
-        price: priceData,
-        bbUpper: bbUpperData,
-        bbMiddle: bbMiddleData,
-        bbLower: bbLowerData,
-      };
-    } else {
-      return {
-        price: priceData,
-      };
-    }
-  }, [
-    technicalIndicatorMode1,
-    priceData,
-    ma20Data,
-    ma50Data,
-    bbUpperData,
-    bbMiddleData,
-    bbLowerData,
-  ]);
+    return {
+      price: priceData,
+    };
+  }, [priceData]);
 
   return (
     data.length !== 0 && (
       <View>
-        <LineChart.Provider data={chartData}>
+        <LineChart.Provider
+          data={
+            technicalIndicatorMode1 === "MA"
+              ? chartMAData
+              : technicalIndicatorMode1 === "BOLL"
+                ? chartBOLLData
+                : chartData
+          }
+        >
           <LineChart.Group>
             {showPriceLine ? (
               <LineChart id="price" width={screenWidth} height={300}>
@@ -173,25 +175,35 @@ const PriceLineChart = ({
               </LineChart>
             ) : null}
 
-            <LineChart id="ma20" width={screenWidth} height={300}>
-              <LineChart.Path color={theme.base.warning} width={1} />
-            </LineChart>
+            {technicalIndicatorMode1 === "MA" ? (
+              <LineChart id="ma20" width={screenWidth} height={300}>
+                <LineChart.Path color={theme.base.warning} width={1} />
+              </LineChart>
+            ) : null}
 
-            <LineChart id="ma50" width={screenWidth} height={300}>
-              <LineChart.Path color={theme.base.success} width={1} />
-            </LineChart>
+            {technicalIndicatorMode1 === "MA" ? (
+              <LineChart id="ma50" width={screenWidth} height={300}>
+                <LineChart.Path color={theme.base.success} width={1} />
+              </LineChart>
+            ) : null}
 
-            <LineChart id="bbUpper" width={screenWidth} height={300}>
-              <LineChart.Path color={"red"} width={1} />
-            </LineChart>
+            {technicalIndicatorMode1 === "BOLL" ? (
+              <LineChart id="bbUpper" width={screenWidth} height={300}>
+                <LineChart.Path color={"red"} width={1} />
+              </LineChart>
+            ) : null}
 
-            <LineChart id="bbMiddle" width={screenWidth} height={300}>
-              <LineChart.Path color={"red"} width={1} />
-            </LineChart>
+            {technicalIndicatorMode1 === "BOLL" ? (
+              <LineChart id="bbMiddle" width={screenWidth} height={300}>
+                <LineChart.Path color={"red"} width={1} />
+              </LineChart>
+            ) : null}
 
-            <LineChart id="bbLower" width={screenWidth} height={300}>
-              <LineChart.Path color={"red"} width={1} />
-            </LineChart>
+            {technicalIndicatorMode1 === "BOLL" ? (
+              <LineChart id="bbLower" width={screenWidth} height={300}>
+                <LineChart.Path color={"red"} width={1} />
+              </LineChart>
+            ) : null}
           </LineChart.Group>
         </LineChart.Provider>
       </View>
