@@ -3,6 +3,7 @@ import { View, Dimensions } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { LineChart } from "react-native-wagmi-charts";
 import { parseDateTime, TechnicalIndicatorData } from "@/helpers/DetailHelpers";
+import { Text } from "./Text";
 
 interface Props {
   technicalIndicatorData: TechnicalIndicatorData[];
@@ -28,6 +29,18 @@ const RSIChart = ({ technicalIndicatorData }: Props) => {
             <LineChart.Path color={theme.base.warning} width={2} />
           </LineChart>
         </LineChart.Provider>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            position: "absolute",
+          }}
+        >
+          <Text color={theme.base.warning} style={{ marginHorizontal: 12 }}>
+            {`RSI(14): ${(technicalIndicatorData.at(-1)?.indicators?.rsi_14 || 0).toFixed(2)}`}
+          </Text>
+        </View>
       </View>
     )
   );

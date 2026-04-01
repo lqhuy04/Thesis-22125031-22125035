@@ -198,10 +198,11 @@ const CandleTooltip = () => {
 };
 
 interface Props {
+  height: number;
   data: StockData[];
 }
 
-const PriceCandleChart = ({ data }: Props) => {
+const PriceCandleChart = ({ height, data }: Props) => {
   const { theme } = useTheme();
 
   const chartData = useMemo(() => {
@@ -222,7 +223,7 @@ const PriceCandleChart = ({ data }: Props) => {
     data.length !== 0 && (
       <View>
         <CandlestickChart.Provider data={chartData}>
-          <CandlestickChart width={screenWidth} height={300}>
+          <CandlestickChart width={screenWidth} height={height}>
             <LastOpenLine />
 
             <CandlestickChart.Candles
