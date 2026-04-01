@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
+import { View, Dimensions } from "react-native";
 import { CartesianChart, Bar } from "victory-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { Text } from "./Text";

@@ -46,41 +46,6 @@ const PriceChartComponent = ({ stockItem }: Props) => {
     TechnicalIndicatorData[]
   >([]);
 
-  const candlestick_line_ratio = useMemo(() => {
-    const maxHighValue = Math.max(...data.map((d) => Number(d?.High)));
-    const minLowValue = Math.min(...data.map((d) => Number(d?.Low)));
-    const minMA20Value = Math.min(
-      ...technicalIndicatorData.map((d) => Number(d?.indicators?.sma_20)),
-    );
-    const minMA50Value = Math.min(
-      ...technicalIndicatorData.map((d) => Number(d?.indicators?.sma_50)),
-    );
-
-    const candleStickRange = maxHighValue - minLowValue;
-
-    if (technicalIndicatorMode1 === "BOLL") {
-      const maxBBUpperValue = Math.max(
-        ...technicalIndicatorData.map((d) => Number(d?.indicators?.bb_upper)),
-      );
-      const minBBLowerValue = Math.min(
-        ...technicalIndicatorData.map((d) => Number(d?.indicators?.bb_lower)),
-      );
-
-      const maxLineValue = Math.max(maxHighValue, maxBBUpperValue);
-      const minLineValue = Math.min(minLowValue, minBBLowerValue);
-
-      const lineRange = maxLineValue - minLineValue;
-
-      return candleStickRange / lineRange;
-    }
-
-    const maxLineValue = maxHighValue;
-    const minLineValue = Math.min(minLowValue, minMA20Value, minMA50Value);
-    const lineRange = maxLineValue - minLineValue;
-
-    return candleStickRange / lineRange;
-  }, [data, technicalIndicatorData, technicalIndicatorMode1]);
-
   const volumeData = useMemo(() => {
     if (Array.isArray(data)) {
       return data.map((item) => ({
