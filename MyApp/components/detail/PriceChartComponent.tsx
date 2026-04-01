@@ -18,6 +18,7 @@ import { SearchStockItem } from "@/helpers/SearchHelper";
 import VolumeBarChart from "../ui/VolumeChart";
 import RSIChart from "../ui/RSIChart";
 import KDJChart from "../ui/KDJChart";
+import { set } from "react-hook-form";
 
 interface Props {
   stockItem: SearchStockItem;
@@ -28,6 +29,9 @@ const PriceChartComponent = ({ stockItem }: Props) => {
   const [chartType, setChartType] = useState<"Line" | "Candlestick">("Line");
   const [loading, setLoading] = useState<boolean>(false);
   const [option, setOption] = useState<"1D" | "1W" | "1M" | "1Y" | "5Y">("1D");
+  const [technicalIndicatorMode1, setTechnicalIndicatorMode1] = useState<
+    "MA" | "BOLL" | null
+  >(null);
 
   const [data, setData] = useState<StockData[]>([]);
   const [priceData, setPriceData] = useState<PriceData | null>(null);
@@ -136,54 +140,119 @@ const PriceChartComponent = ({ stockItem }: Props) => {
               </View>
             </View>
 
-            {chartType === "Line" ? (
-              <PriceLineGraph
-                data={data}
-                technicalIndicatorData={technicalIndicatorData}
-              />
-            ) : (
-              <PriceCandleChart data={data} />
-            )}
+            {/* <View>
+              {chartType === "Candlestick" ? (
+                <PriceCandleChart data={data} />
+              ) : null}
+              <View
+                style={
+                  chartType === "Candlestick"
+                    ? { position: "absolute", zIndex: 1 }
+                    : undefined
+                }
+              >
+                <PriceLineGraph
+                  data={data}
+                  technicalIndicatorData={technicalIndicatorData}
+                  showPriceLine={chartType === "Line"}
+                />
+              </View>
+            </View> */}
+
+            <PriceLineGraph
+              data={data}
+              technicalIndicatorData={technicalIndicatorData}
+              showPriceLine={chartType === "Line"}
+              technicalIndicatorMode1={technicalIndicatorMode1}
+            />
 
             <VolumeBarChart data={volumeData} />
 
-            <RSIChart technicalIndicatorData={technicalIndicatorData} />
+            {/* <RSIChart technicalIndicatorData={technicalIndicatorData} />
 
-            <KDJChart technicalIndicatorData={technicalIndicatorData} />
-
-            <TouchableOpacity
-              onPress={() => {
-                if (chartType === "Line") {
-                  setChartType("Candlestick");
-                } else {
-                  setChartType("Line");
-                }
-              }}
-              style={{
-                height: 24,
-                width: 24,
-                backgroundColor: theme.background.surface,
-                position: "absolute",
-                bottom: 270,
-                right: 12,
-                borderRadius: 4,
-                borderWidth: 1,
-                borderColor: theme.border.default,
-                alignItems: "center",
-                padding: 2,
-              }}
-            >
-              <Image
-                source={
-                  chartType === "Line"
-                    ? Images.ic_candlesticks_chart
-                    : Images.ic_line_graph
-                }
-                style={{ width: 18, height: 18 }}
-              />
-            </TouchableOpacity>
+            <KDJChart technicalIndicatorData={technicalIndicatorData} /> */}
           </View>
         )}
+      </View>
+
+      <TouchableOpacity
+        onPress={() => {
+          if (chartType === "Line") {
+            setChartType("Candlestick");
+          } else {
+            setChartType("Line");
+          }
+        }}
+        style={{
+          height: 24,
+          width: 24,
+          backgroundColor: theme.background.surface,
+          borderRadius: 4,
+          borderWidth: 1,
+          borderColor: theme.border.default,
+          alignItems: "center",
+          padding: 2,
+          marginHorizontal: 12,
+        }}
+      >
+        <Image
+          source={
+            chartType === "Line"
+              ? Images.ic_candlesticks_chart
+              : Images.ic_line_graph
+          }
+          style={{ width: 18, height: 18 }}
+        />
+      </TouchableOpacity>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginHorizontal: 12,
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => {
+            if (technicalIndicatorMode1 === "MA") {
+              setTechnicalIndicatorMode1(null);
+            } else {
+              setTechnicalIndicatorMode1("MA");
+            }
+          }}
+          style={{
+            height: 24,
+            backgroundColor: theme.background.surface,
+            borderRadius: 4,
+            borderWidth: 1,
+            borderColor: theme.border.default,
+            alignItems: "center",
+            padding: 2,
+          }}
+        >
+          <Text typography="labelLarge">MA</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            if (technicalIndicatorMode1 === "BOLL") {
+              setTechnicalIndicatorMode1(null);
+            } else {
+              setTechnicalIndicatorMode1("BOLL");
+            }
+          }}
+          style={{
+            height: 24,
+            backgroundColor: theme.background.surface,
+            borderRadius: 4,
+            borderWidth: 1,
+            borderColor: theme.border.default,
+            alignItems: "center",
+            padding: 2,
+          }}
+        >
+          <Text typography="labelLarge">BOLL</Text>
+        </TouchableOpacity>
       </View>
 
       <View

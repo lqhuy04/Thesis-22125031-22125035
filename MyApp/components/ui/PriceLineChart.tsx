@@ -69,9 +69,16 @@ const LineTooltip = () => {
 interface Props {
   data: StockData[];
   technicalIndicatorData: TechnicalIndicatorData[];
+  showPriceLine: boolean;
+  technicalIndicatorMode1: "MA" | "BOLL" | null;
 }
 
-const PriceLineChart = ({ data, technicalIndicatorData }: Props) => {
+const PriceLineChart = ({
+  data,
+  technicalIndicatorData,
+  showPriceLine,
+  technicalIndicatorMode1,
+}: Props) => {
   const { theme } = useTheme();
   const screenWidth = Dimensions.get("window").width;
 
@@ -118,33 +125,53 @@ const PriceLineChart = ({ data, technicalIndicatorData }: Props) => {
   }, [data, technicalIndicatorData]);
 
   const chartData = useMemo(() => {
-    return {
-      price: priceData,
-      ma20: ma20Data,
-      ma50: ma50Data,
-      bbUpper: bbUpperData,
-      bbMiddle: bbMiddleData,
-      bbLower: bbLowerData,
-    };
-  }, [priceData, ma20Data, ma50Data, bbUpperData, bbMiddleData, bbLowerData]);
+    if (technicalIndicatorMode1 === "MA") {
+      return {
+        price: priceData,
+        ma20: ma20Data,
+        ma50: ma50Data,
+      };
+    } else if (technicalIndicatorMode1 === "BOLL") {
+      return {
+        price: priceData,
+        bbUpper: bbUpperData,
+        bbMiddle: bbMiddleData,
+        bbLower: bbLowerData,
+      };
+    } else {
+      return {
+        price: priceData,
+      };
+    }
+  }, [
+    technicalIndicatorMode1,
+    priceData,
+    ma20Data,
+    ma50Data,
+    bbUpperData,
+    bbMiddleData,
+    bbLowerData,
+  ]);
 
   return (
     data.length !== 0 && (
       <View>
         <LineChart.Provider data={chartData}>
           <LineChart.Group>
-            <LineChart id="price" width={screenWidth} height={300}>
-              {/* Line */}
-              <LineChart.Path color={theme.base.primary} width={2}>
-                <LineChart.Gradient />
-              </LineChart.Path>
+            {showPriceLine ? (
+              <LineChart id="price" width={screenWidth} height={300}>
+                {/* Line */}
+                <LineChart.Path color={theme.base.primary} width={2}>
+                  <LineChart.Gradient />
+                </LineChart.Path>
 
-              {/* Crosshair */}
-              <LineChart.CursorCrosshair color={theme.base.primary} />
+                {/* Crosshair */}
+                <LineChart.CursorCrosshair color={theme.base.primary} />
 
-              {/* Tooltip */}
-              <LineTooltip />
-            </LineChart>
+                {/* Tooltip */}
+                <LineTooltip />
+              </LineChart>
+            ) : null}
 
             <LineChart id="ma20" width={screenWidth} height={300}>
               <LineChart.Path color={theme.base.warning} width={1} />
@@ -154,7 +181,7 @@ const PriceLineChart = ({ data, technicalIndicatorData }: Props) => {
               <LineChart.Path color={theme.base.success} width={1} />
             </LineChart>
 
-            {/* <LineChart id="bbUpper" width={screenWidth} height={300}>
+            <LineChart id="bbUpper" width={screenWidth} height={300}>
               <LineChart.Path color={"red"} width={1} />
             </LineChart>
 
@@ -164,7 +191,7 @@ const PriceLineChart = ({ data, technicalIndicatorData }: Props) => {
 
             <LineChart id="bbLower" width={screenWidth} height={300}>
               <LineChart.Path color={"red"} width={1} />
-            </LineChart> */}
+            </LineChart>
           </LineChart.Group>
         </LineChart.Provider>
       </View>
