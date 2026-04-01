@@ -10,8 +10,7 @@ import {
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
-import PriceLineGraph from "../ui/PriceLineChart";
-import PriceCandleChart from "../ui/PriceCandleChart";
+
 import DetailHeader from "../ui/DetailHeader";
 import { SearchStockItem } from "@/helpers/SearchHelper";
 import VolumeBarChart from "../ui/VolumeChart";
@@ -20,6 +19,8 @@ import KDJChart from "../ui/KDJChart";
 import MACDChart from "../ui/MACDChart";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Entypo from "@expo/vector-icons/Entypo";
+import PriceLineGraph from "../ui/PriceLineChart";
+import PriceCandleStickChart from "../ui/PriceCandleChart";
 
 interface Props {
   stockItem: SearchStockItem;
@@ -185,8 +186,6 @@ const PriceChartComponent = ({ stockItem }: Props) => {
               <PriceLineGraph
                 data={data}
                 technicalIndicatorData={technicalIndicatorData}
-                candleStickMode={chartType === "Candlestick"}
-                technicalIndicatorMode1={technicalIndicatorMode1}
                 height={
                   technicalIndicatorMode2 && technicalIndicatorMode3
                     ? 160
@@ -194,19 +193,23 @@ const PriceChartComponent = ({ stockItem }: Props) => {
                       ? 200
                       : 300
                 }
+                candleStickMode={chartType === "Candlestick"}
+                technicalIndicatorMode1={technicalIndicatorMode1}
               />
 
               {chartType === "Candlestick" ? (
-                <View style={{ position: "absolute", zIndex: 0 }}>
-                  <PriceCandleChart
+                <View style={{ position: "absolute", top: 14, zIndex: 0 }}>
+                  <PriceCandleStickChart
                     data={data}
+                    technicalIndicatorData={technicalIndicatorData}
                     height={
                       technicalIndicatorMode2 && technicalIndicatorMode3
-                        ? (160 - 48) * candlestick_line_ratio
+                        ? 160 - 68
                         : technicalIndicatorMode2 || technicalIndicatorMode3
-                          ? (200 - 48) * candlestick_line_ratio
-                          : (300 - 48) * candlestick_line_ratio
+                          ? 200 - 68
+                          : 300 - 68
                     }
+                    technicalIndicatorMode1={technicalIndicatorMode1}
                   />
                 </View>
               ) : null}

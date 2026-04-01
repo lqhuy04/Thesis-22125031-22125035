@@ -74,7 +74,7 @@ interface Props {
   technicalIndicatorMode1: "MA" | "BOLL" | null;
 }
 
-const PriceLineChart = ({
+const PriceLineGraph = ({
   height,
   data,
   technicalIndicatorData,
@@ -279,4 +279,4 @@ const PriceLineChart = ({
   ) : null;
 };
 
-export default PriceLineChart;
+export default PriceLineGraph;

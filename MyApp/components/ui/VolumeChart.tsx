@@ -76,7 +76,7 @@ const VolumeBarChart = ({ data }: Props) => {
             )}
           </CartesianChart>
         </View>
-        <View style={{ height: 80, marginTop: -80 }}>
+        <View style={{ height: 60, marginTop: -60 }}>
           <CartesianChart
             data={chartDataNegative}
             xKey="time"
@@ -109,7 +109,7 @@ const VolumeBarChart = ({ data }: Props) => {
 
 const styles = StyleSheet.create({
   container: {
-    height: 80,
+    height: 60,
   },
 });
 

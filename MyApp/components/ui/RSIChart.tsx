@@ -22,7 +22,7 @@ const RSIChart = ({ technicalIndicatorData }: Props) => {
 
   return (
     technicalIndicatorData.length !== 0 && (
-      <View>
+      <View style={{ marginBottom: -48 }}>
         <LineChart.Provider data={chartData}>
           <LineChart width={screenWidth} height={100}>
             {/* Line */}

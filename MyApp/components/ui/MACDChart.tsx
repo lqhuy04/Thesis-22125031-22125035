@@ -22,7 +22,7 @@ const MACDChart = ({ data }: Props) => {
     return data.map((item) => ({
       date: item.date,
       time: item.time,
-      macd: item.indicators.macd >= 0 ? item.indicators.macd : 0,
+      macd: item.indicators.macd > 0 ? item.indicators.macd : 0,
     }));
   }, [data]);
 
@@ -30,7 +30,7 @@ const MACDChart = ({ data }: Props) => {
     return data.map((item) => ({
       date: item.date,
       time: item.time,
-      macd: item.indicators.macd < 0 ? -item.indicators.macd : 0,
+      macd: item.indicators.macd <= 0 ? -item.indicators.macd : 0,
     }));
   }, [data]);
 
@@ -56,7 +56,7 @@ const MACDChart = ({ data }: Props) => {
   }, [DEAChartData, DIFChartData]);
 
   return (
-    <View style={{ marginBottom: -32 }}>
+    <View style={{ marginBottom: -48 }}>
       <View
         style={{
           flexDirection: "row",
@@ -77,7 +77,7 @@ const MACDChart = ({ data }: Props) => {
       </View>
 
       <View>
-        <View style={{ height: 40 }}>
+        <View style={{ height: 30 }}>
           <CartesianChart
             data={chartDataPositive}
             xKey="time"
@@ -104,7 +104,7 @@ const MACDChart = ({ data }: Props) => {
         </View>
         <View
           style={{
-            height: 40,
+            height: 30,
             transform: [{ scaleY: -1 }],
             marginTop: -16,
           }}
@@ -134,7 +134,7 @@ const MACDChart = ({ data }: Props) => {
             )}
           </CartesianChart>
         </View>
-        <View style={{ marginTop: -96 }}>
+        <View style={{ marginTop: -74 }}>
           <LineChart.Provider data={DIF_DEA_ChartData}>
             <LineChart.Group>
               <LineChart id="DIF" width={screenWidth} height={128}>
