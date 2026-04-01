@@ -37,11 +37,14 @@ async def get_news_by_category(
 # Router
 @router.get("/categories", response_model=NewsCategoriesResponse)
 async def get_news_categories(
-    top_n: int = Query(3, ge=1, le=20, description="Number of top categories to return"),
+    categories: str = Query(
+        "Bất động sản,Ngân hàng,Xăng dầu",
+        description="Comma-separated category names (default: Bất động sản,Ngân hàng,Xăng dầu)",
+    ),
     limit_per_category: int = Query(3, ge=1, le=50, description="Maximum articles per category")
 ):
     """
-    Get top categories by stock count, each with their latest news.
+    Get latest news grouped by selected categories.
 
     Example response:
     data: [
@@ -50,8 +53,9 @@ async def get_news_categories(
       {"category_id": "3", "category_name": "Xăng dầu",     "news": [...]}
     ]
     """
-    grouped = await NewsDBService.get_news_grouped_by_top_categories(
-        top_n=top_n,
+    category_list = [item.strip() for item in categories.split(",") if item.strip()]
+    grouped = await NewsDBService.get_news_grouped_by_category_names(
+        categories=category_list,
         limit_per_category=limit_per_category,
     )
 
@@ -69,7 +73,7 @@ async def get_news_single_category(
     category_id: str,
     limit: int = Query(100, ge=1, le=500, description="Maximum number of articles")
 ):
-    """Get news list for one category by ID."""
+    """Get news list for one category by category ID or category name."""
     articles = await NewsDBService.get_news_by_category_id(category_id=category_id, limit=limit)
     return NewsListResponse(
         data=articles,
@@ -101,9 +105,30 @@ async def get_macro_economic_news(
     )
 
 
+@router.get("/all", response_model=NewsListResponse)
+async def get_all_news(
+    limit: Optional[int] = Query(None, ge=1, le=500, description="Optional maximum number of latest articles")
+):
+    """
+    Lấy tất cả tin tức tài chính, sắp xếp theo thời gian mới nhất.
+
+    - **limit**: Giới hạn số bài viết trả về (optional)
+    """
+    articles = await NewsDBService.get_news(limit=limit)
+
+    return NewsListResponse(
+        data=articles,
+        errorCode=0,
+        errorDesc="",
+        requestId=str(uuid4()),
+        result=True
+    )
+
+
 @router.get("/{stock_symbol}", response_model=NewsListResponse)
 async def get_news(
     stock_symbol: str,
+    limit: Optional[int] = Query(None, ge=1, le=500, description="Optional maximum number of latest articles"),
 ):
     """
     Lấy tất cả tin tức tài chính liên quan đến một mã chứng khoán cụ thể.
@@ -112,7 +137,8 @@ async def get_news(
     """
     # Gọi service để lấy danh sách articles
     articles = await NewsDBService.get_news(
-        stock_symbol=stock_symbol.upper()
+        stock_symbol=stock_symbol.upper(),
+        limit=limit,
     )
     
     # Giả định NewsListData nhận vào một list các items

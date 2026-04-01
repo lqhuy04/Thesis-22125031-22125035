@@ -9,6 +9,7 @@ from app.models.news_schemas import NewsCreate, NewsResponse
 from typing import Optional, List, Dict
 from datetime import datetime
 import re
+import unicodedata
 
 settings = get_settings()
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
@@ -30,7 +31,78 @@ class NewsDBService:
         return list(dict.fromkeys(keywords))
 
     @staticmethod
-    def _get_news_sync(stock_symbol: Optional[str] = None) -> List[NewsResponse]:
+    def _normalize_text(value: str) -> str:
+        """Normalize text for case-insensitive and accent-insensitive matching."""
+        base = str(value or "").strip().lower()
+        if not base:
+            return ""
+        normalized = unicodedata.normalize("NFD", base)
+        no_accents = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+        return no_accents
+
+    @staticmethod
+    def _resolve_category_ids(
+        category_input: str,
+        allow_token_substring: bool = False,
+    ) -> List[str]:
+        """Resolve category IDs from either category id or category name.
+
+        - Strict mode: exact id/name and full-phrase substring (accent-insensitive).
+        - Loose mode: additionally allows token-based substring matching.
+        """
+        raw_value = str(category_input or "").strip()
+        if not raw_value:
+            return []
+
+        categories_result = (
+            supabase.table("Category")
+            .select("id, category_name")
+            .execute()
+        )
+        if not categories_result.data:
+            return []
+
+        wanted_raw = raw_value.lower()
+        wanted_norm = NewsDBService._normalize_text(raw_value)
+        wanted_keywords = [
+            NewsDBService._normalize_text(keyword)
+            for keyword in NewsDBService._build_category_keywords(raw_value)
+            if NewsDBService._normalize_text(keyword)
+        ]
+        matched_ids: List[str] = []
+
+        for row in categories_result.data:
+            cat_id = str(row.get("id") or "").strip()
+            cat_name = str(row.get("category_name") or "").strip()
+            if not cat_id:
+                continue
+
+            if cat_id.lower() == wanted_raw:
+                matched_ids.append(cat_id)
+                continue
+
+            if cat_name.lower() == wanted_raw:
+                matched_ids.append(cat_id)
+                continue
+
+            cat_name_norm = NewsDBService._normalize_text(cat_name)
+            if cat_name_norm == wanted_norm:
+                matched_ids.append(cat_id)
+                continue
+
+            # Strict phrase-level matching to avoid noisy matches like "hang" -> "cang hang khong".
+            if wanted_norm and wanted_norm in cat_name_norm:
+                matched_ids.append(cat_id)
+                continue
+
+            if allow_token_substring and any(keyword in cat_name_norm for keyword in wanted_keywords):
+                matched_ids.append(cat_id)
+
+        # Deduplicate while preserving order.
+        return list(dict.fromkeys(matched_ids))
+
+    @staticmethod
+    def _get_news_sync(stock_symbol: Optional[str] = None, limit: Optional[int] = None) -> List[NewsResponse]:
         try:
             if stock_symbol:
                 # Bước 1: Lấy stock_id từ bảng Stock theo symbol
@@ -57,14 +129,32 @@ class NewsDBService:
                 if not result.data:
                     return []
 
-                return [
-                    NewsResponse(**item["Article"])
-                    for item in result.data
-                    if item.get("Article")
-                ]
+                articles = []
+                seen_ids = set()
+                for item in result.data:
+                    article = item.get("Article")
+                    if not article:
+                        continue
+                    article_id = str(article.get("id") or "")
+                    if article_id and article_id in seen_ids:
+                        continue
+                    if article_id:
+                        seen_ids.add(article_id)
+                    try:
+                        articles.append(NewsResponse(**article))
+                    except Exception:
+                        continue
+
+                articles.sort(key=lambda item: item.time or datetime.min, reverse=True)
+                if limit is not None:
+                    return articles[: max(1, limit)]
+                return articles
 
             else:
-                result = supabase.table("Article").select("*").execute()
+                query = supabase.table("Article").select("*").order("time", desc=True)
+                if limit is not None:
+                    query = query.limit(max(1, limit))
+                result = query.execute()
                 return [NewsResponse(**item) for item in result.data] if result.data else []
 
         except Exception as e:
@@ -73,9 +163,279 @@ class NewsDBService:
             traceback.print_exc()
             return []
 
-    async def get_news(stock_symbol: Optional[str] = None) -> List[NewsResponse]:
+    async def get_news(stock_symbol: Optional[str] = None, limit: Optional[int] = None) -> List[NewsResponse]:
         """Async wrapper for fetching news using thread pool to avoid blocking event loop."""
-        return await asyncio.to_thread(NewsDBService._get_news_sync, stock_symbol)
+        return await asyncio.to_thread(NewsDBService._get_news_sync, stock_symbol, limit)
+
+    @staticmethod
+    def _get_news_by_categories_sync(categories: List[str], limit: int = 100) -> List[NewsResponse]:
+        """Get news by category names, sorted by latest publication time."""
+        try:
+            limit = max(1, limit)
+            requested_categories = [str(c or "").strip() for c in categories if str(c or "").strip()]
+            if not requested_categories:
+                return []
+
+            requested_keywords: List[str] = []
+            for category in requested_categories:
+                for keyword in NewsDBService._build_category_keywords(category):
+                    keyword_norm = NewsDBService._normalize_text(keyword)
+                    if keyword_norm:
+                        requested_keywords.append(keyword_norm)
+            requested_keywords = list(dict.fromkeys(requested_keywords))
+
+            stock_ids_set = set()
+
+            # Priority 1: match by BI_Profile.industry_name substring (map by stock industry).
+            stock_profile_result = (
+                supabase.table("Stock")
+                .select("id, BI_Profile(industry_name)")
+                .execute()
+            )
+
+            for stock_row in (stock_profile_result.data or []):
+                stock_id = str(stock_row.get("id") or "").strip()
+                if not stock_id:
+                    continue
+
+                profiles = stock_row.get("BI_Profile") or []
+                if not isinstance(profiles, list):
+                    continue
+
+                matched = False
+                for profile in profiles:
+                    industry_name = str((profile or {}).get("industry_name") or "").strip()
+                    if not industry_name:
+                        continue
+                    industry_norm = NewsDBService._normalize_text(industry_name)
+                    if any(keyword in industry_norm for keyword in requested_keywords):
+                        matched = True
+                        break
+
+                if matched:
+                    stock_ids_set.add(stock_id)
+
+            # Priority 2 (fallback/extension): resolve categories and include mapped stocks.
+            matched_category_ids = set()
+            for category in requested_categories:
+                resolved_ids = NewsDBService._resolve_category_ids(
+                    category,
+                    allow_token_substring=True,
+                )
+                for resolved_id in resolved_ids:
+                    matched_category_ids.add(resolved_id)
+
+            if matched_category_ids:
+                category_stock_result = (
+                    supabase.table("Category_Stock")
+                    .select("stock_id")
+                    .in_("category_id", list(matched_category_ids))
+                    .execute()
+                )
+                for row in (category_stock_result.data or []):
+                    stock_id = str(row.get("stock_id") or "").strip()
+                    if stock_id:
+                        stock_ids_set.add(stock_id)
+
+            stock_ids = list(stock_ids_set)
+            if not stock_ids:
+                return []
+
+            links_result = (
+                supabase.table("Article_Stock")
+                .select("article_id")
+                .in_("stock_id", stock_ids)
+                .execute()
+            )
+            if not links_result.data:
+                return []
+
+            article_ids = list({
+                str(row.get("article_id") or "").strip()
+                for row in links_result.data
+                if row.get("article_id")
+            })
+            if not article_ids:
+                return []
+
+            articles_result = (
+                supabase.table("Article")
+                .select("*")
+                .in_("id", article_ids)
+                .order("time", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            if not articles_result.data:
+                return []
+
+            articles: List[NewsResponse] = []
+            for item in articles_result.data:
+                try:
+                    articles.append(NewsResponse(**item))
+                except Exception:
+                    continue
+
+            return articles
+        except Exception as e:
+            print(f"Error getting news by categories: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    async def get_news_by_categories(categories: List[str], limit: int = 100) -> List[NewsResponse]:
+        """Async wrapper to fetch news by category names."""
+        return await asyncio.to_thread(
+            NewsDBService._get_news_by_categories_sync,
+            categories,
+            limit,
+        )
+
+    @staticmethod
+    def _get_news_grouped_by_category_names_sync(
+        categories: List[str],
+        limit_per_category: int = 3,
+    ) -> List[Dict]:
+        """Get latest news grouped by input keywords.
+
+        Pipeline per keyword:
+        1) Find categories whose names contain the keyword (accent-insensitive substring).
+        2) Map to stocks via Category_Stock.
+        3) Fetch latest related news via Article_Stock -> Article.
+        """
+        try:
+            limit_per_category = max(1, limit_per_category)
+            requested_keywords = [str(c or "").strip() for c in categories if str(c or "").strip()]
+            if not requested_keywords:
+                return []
+
+            categories_result = (
+                supabase.table("Category")
+                .select("id, category_name")
+                .execute()
+            )
+            category_rows = categories_result.data or []
+            if not category_rows:
+                return []
+
+            result: List[Dict] = []
+            for keyword in requested_keywords:
+                keyword_norm = NewsDBService._normalize_text(keyword)
+                keyword_tokens = [
+                    token
+                    for token in re.split(r"\s+", keyword_norm)
+                    if len(token) >= 2
+                ]
+
+                matched_category_ids: List[str] = []
+                for row in category_rows:
+                    category_id = str(row.get("id") or "").strip()
+                    category_name = str(row.get("category_name") or "").strip()
+                    if not category_id or not category_name:
+                        continue
+
+                    category_name_norm = NewsDBService._normalize_text(category_name)
+                    phrase_match = bool(keyword_norm and keyword_norm in category_name_norm)
+                    token_match = bool(keyword_tokens and all(token in category_name_norm for token in keyword_tokens))
+                    if phrase_match or token_match:
+                        matched_category_ids.append(category_id)
+
+                matched_category_ids = list(dict.fromkeys(matched_category_ids))
+                if not matched_category_ids:
+                    result.append(
+                        {
+                            "category_id": keyword,
+                            "category_name": keyword,
+                            "news": [],
+                        }
+                    )
+                    continue
+
+                category_stock_result = (
+                    supabase.table("Category_Stock")
+                    .select("stock_id")
+                    .in_("category_id", matched_category_ids)
+                    .execute()
+                )
+                stock_ids = list({
+                    str(row.get("stock_id") or "").strip()
+                    for row in (category_stock_result.data or [])
+                    if row.get("stock_id")
+                })
+
+                if not stock_ids:
+                    result.append(
+                        {
+                            "category_id": keyword,
+                            "category_name": keyword,
+                            "news": [],
+                        }
+                    )
+                    continue
+
+                links_result = (
+                    supabase.table("Article_Stock")
+                    .select("article_id")
+                    .in_("stock_id", stock_ids)
+                    .execute()
+                )
+                article_ids = list({
+                    str(row.get("article_id") or "").strip()
+                    for row in (links_result.data or [])
+                    if row.get("article_id")
+                })
+
+                if not article_ids:
+                    result.append(
+                        {
+                            "category_id": keyword,
+                            "category_name": keyword,
+                            "news": [],
+                        }
+                    )
+                    continue
+
+                articles_result = (
+                    supabase.table("Article")
+                    .select("*")
+                    .in_("id", article_ids)
+                    .order("time", desc=True)
+                    .limit(limit_per_category)
+                    .execute()
+                )
+
+                news_items: List[NewsResponse] = []
+                for item in (articles_result.data or []):
+                    try:
+                        news_items.append(NewsResponse(**item))
+                    except Exception:
+                        continue
+
+                result.append(
+                    {
+                        "category_id": keyword,
+                        "category_name": keyword,
+                        "news": news_items,
+                    }
+                )
+
+            return result
+        except Exception as e:
+            print(f"Error getting grouped news by category names: {e}")
+            import traceback
+            traceback.print_exc()
+            return []
+
+    async def get_news_grouped_by_category_names(
+        categories: List[str],
+        limit_per_category: int = 3,
+    ) -> List[Dict]:
+        """Async wrapper to fetch grouped news for explicit category names."""
+        return await asyncio.to_thread(
+            NewsDBService._get_news_grouped_by_category_names_sync,
+            categories,
+            limit_per_category,
+        )
 
     async def get_latest_news(stock_symbol: str, limit: int = 2) -> List[NewsResponse]:
         """Get latest N news items for a stock symbol."""
@@ -244,11 +604,18 @@ class NewsDBService:
         try:
             limit = max(1, limit)
 
+            resolved_ids = NewsDBService._resolve_category_ids(
+                category_id,
+                allow_token_substring=False,
+            )
+            if not resolved_ids:
+                return []
+
             # Step 1: Get all stock_ids linked to this category
             category_stock_result = (
                 supabase.table("Category_Stock")
                 .select("stock_id")
-                .eq("category_id", category_id)
+                .in_("category_id", resolved_ids)
                 .execute()
             )
             if not category_stock_result.data:
