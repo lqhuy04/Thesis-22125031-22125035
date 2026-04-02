@@ -22,6 +22,7 @@ import { SearchStockItem } from "@/helpers/SearchHelper";
 import TradingViewChart from "../tradingView/TradingViewChart";
 import { PriceData, VolumeData } from "../tradingView/utils";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 interface Props {
   stockItem: SearchStockItem;
@@ -186,6 +187,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
           flexDirection: "row",
           alignItems: "center",
           marginVertical: 8,
+          marginHorizontal: 12,
         }}
       >
         {/* Chart type toggle */}
@@ -231,6 +233,35 @@ const PriceChartComponent = ({ stockItem }: Props) => {
           <Text style={{ fontSize: 12, color: "black", fontWeight: "500" }}>
             {selectedLabel}
           </Text>
+        </TouchableOpacity>
+
+        <View style={{ flex: 1 }} />
+
+        <TouchableOpacity
+          onPress={() => {
+            router.push({
+              pathname: "/TradingViewScreen",
+              params: {
+                data: JSON.stringify({
+                  symbol: stockItem.symbol,
+                }),
+              },
+            });
+          }}
+          style={[
+            styles.iconBtn,
+            {
+              backgroundColor: theme.background.surface,
+              borderColor: theme.border.default,
+              marginHorizontal: 8,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 4,
+              paddingHorizontal: 8,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons name="arrow-expand" size={18} color="black" />
         </TouchableOpacity>
       </View>
 
