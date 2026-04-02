@@ -1,4 +1,8 @@
-import { parseDateTime, StockData } from "@/helpers/DetailHelpers";
+import {
+  parseDateTime,
+  StockData,
+  TechnicalIndicatorData,
+} from "@/helpers/DetailHelpers";
 import React, { useMemo } from "react";
 import { View, Dimensions } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
@@ -198,11 +202,77 @@ const CandleTooltip = () => {
 };
 
 interface Props {
+  height: number;
   data: StockData[];
+  technicalIndicatorData: TechnicalIndicatorData[];
+  technicalIndicatorMode1: "MA" | "BOLL" | null;
 }
 
-const PriceCandleChart = ({ data }: Props) => {
+const PriceCandleStickChart = ({
+  height,
+  data,
+  technicalIndicatorData,
+  technicalIndicatorMode1,
+}: Props) => {
   const { theme } = useTheme();
+
+  const ma20Data = useMemo(() => {
+    return data.map((item, index) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(technicalIndicatorData[index]?.indicators.sma_20),
+    }));
+  }, [data, technicalIndicatorData]);
+
+  const ma50Data = useMemo(() => {
+    return data.map((item, index) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(technicalIndicatorData[index]?.indicators.sma_50),
+    }));
+  }, [data, technicalIndicatorData]);
+
+  const bbUpperData = useMemo(() => {
+    return data.map((item, index) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(technicalIndicatorData[index]?.indicators.bb_upper),
+    }));
+  }, [data, technicalIndicatorData]);
+
+  const bbLowerData = useMemo(() => {
+    return data.map((item, index) => ({
+      timestamp: parseDateTime(item.TradingDate, item.Time),
+      value: Number(technicalIndicatorData[index]?.indicators.bb_lower),
+    }));
+  }, [data, technicalIndicatorData]);
+
+  const minValue = useMemo(() => {
+    const minPrice = Math.min(...data.map((item) => Number(item.Low)));
+    const minBBLower = Math.min(...bbLowerData.map((item) => item.value));
+    const minMA20 = Math.min(...ma20Data.map((item) => item.value));
+    const minMA50 = Math.min(...ma50Data.map((item) => item.value));
+
+    if (technicalIndicatorMode1 === "MA") {
+      return Math.min(minPrice, minMA20, minMA50);
+    } else if (technicalIndicatorMode1 === "BOLL") {
+      return Math.min(minPrice, minBBLower);
+    } else {
+      return minPrice;
+    }
+  }, [bbLowerData, data, ma20Data, ma50Data, technicalIndicatorMode1]);
+
+  const maxValue = useMemo(() => {
+    const maxPrice = Math.max(...data.map((item) => Number(item.High)));
+    const maxBBUpper = Math.max(...bbUpperData.map((item) => item.value));
+    const maxMA20 = Math.max(...ma20Data.map((item) => item.value));
+    const maxMA50 = Math.max(...ma50Data.map((item) => item.value));
+
+    if (technicalIndicatorMode1 === "MA") {
+      return Math.max(maxPrice, maxMA20, maxMA50);
+    } else if (technicalIndicatorMode1 === "BOLL") {
+      return Math.max(maxPrice, maxBBUpper);
+    } else {
+      return maxPrice;
+    }
+  }, [bbUpperData, data, ma20Data, ma50Data, technicalIndicatorMode1]);
 
   const chartData = useMemo(() => {
     return data.map((item, _) => {
@@ -221,8 +291,11 @@ const PriceCandleChart = ({ data }: Props) => {
   return (
     data.length !== 0 && (
       <View>
-        <CandlestickChart.Provider data={chartData}>
-          <CandlestickChart width={screenWidth} height={300}>
+        <CandlestickChart.Provider
+          data={chartData}
+          valueRangeY={[minValue, maxValue]}
+        >
+          <CandlestickChart width={screenWidth} height={height}>
             <LastOpenLine />
 
             <CandlestickChart.Candles
@@ -247,4 +320,4 @@ const PriceCandleChart = ({ data }: Props) => {
   );
 };
 
-export default PriceCandleChart;
+export default PriceCandleStickChart;

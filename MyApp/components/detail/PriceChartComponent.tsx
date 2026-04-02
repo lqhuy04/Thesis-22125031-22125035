@@ -7,18 +7,20 @@ import {
   StockData,
   TechnicalIndicatorData,
 } from "@/helpers/DetailHelpers";
-import { ActivityIndicator, TouchableOpacity, View, Image } from "react-native";
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
-import PriceLineGraph from "../ui/PriceLineChart";
-import PriceCandleChart from "../ui/PriceCandleChart";
-import { Images } from "@/constants/Images";
+
 import DetailHeader from "../ui/DetailHeader";
 import { SearchStockItem } from "@/helpers/SearchHelper";
 import VolumeBarChart from "../ui/VolumeChart";
 import RSIChart from "../ui/RSIChart";
 import KDJChart from "../ui/KDJChart";
-import { set } from "react-hook-form";
+import MACDChart from "../ui/MACDChart";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import Entypo from "@expo/vector-icons/Entypo";
+import PriceLineGraph from "../ui/PriceLineChart";
+import PriceCandleStickChart from "../ui/PriceCandleChart";
 
 interface Props {
   stockItem: SearchStockItem;
@@ -34,6 +36,9 @@ const PriceChartComponent = ({ stockItem }: Props) => {
   >(null);
   const [technicalIndicatorMode2, setTechnicalIndicatorMode2] =
     useState<boolean>(false);
+  const [technicalIndicatorMode3, setTechnicalIndicatorMode3] = useState<
+    "MACD" | "RSI" | "KDJ" | null
+  >(null);
 
   const [data, setData] = useState<StockData[]>([]);
   const [priceData, setPriceData] = useState<PriceData | null>(null);
@@ -142,80 +147,122 @@ const PriceChartComponent = ({ stockItem }: Props) => {
               </View>
             </View>
 
-            {/* <View>
-              {chartType === "Candlestick" ? (
-                <PriceCandleChart data={data} />
-              ) : null}
-              <View
-                style={
-                  chartType === "Candlestick"
-                    ? { position: "absolute", zIndex: 1 }
-                    : undefined
+            <View style={{ marginBottom: -48 }}>
+              <PriceLineGraph
+                data={data}
+                technicalIndicatorData={technicalIndicatorData}
+                height={
+                  technicalIndicatorMode2 && technicalIndicatorMode3
+                    ? 160
+                    : technicalIndicatorMode2 || technicalIndicatorMode3
+                      ? 200
+                      : 300
                 }
-              >
-                <PriceLineGraph
-                  data={data}
-                  technicalIndicatorData={technicalIndicatorData}
-                  showPriceLine={chartType === "Line"}
-                />
-              </View>
-            </View> */}
+                candleStickMode={chartType === "Candlestick"}
+                technicalIndicatorMode1={technicalIndicatorMode1}
+              />
 
-            <PriceLineGraph
-              data={data}
-              technicalIndicatorData={technicalIndicatorData}
-              showPriceLine={chartType === "Line"}
-              technicalIndicatorMode1={technicalIndicatorMode1}
-            />
+              {chartType === "Candlestick" ? (
+                <View style={{ position: "absolute", top: 14, zIndex: 0 }}>
+                  <PriceCandleStickChart
+                    data={data}
+                    technicalIndicatorData={technicalIndicatorData}
+                    height={
+                      technicalIndicatorMode2 && technicalIndicatorMode3
+                        ? 160 - 68
+                        : technicalIndicatorMode2 || technicalIndicatorMode3
+                          ? 200 - 68
+                          : 300 - 68
+                    }
+                    technicalIndicatorMode1={technicalIndicatorMode1}
+                  />
+                </View>
+              ) : null}
+            </View>
 
             {technicalIndicatorMode2 ? (
-              <VolumeBarChart data={volumeData} />
+              <View
+                style={{
+                  height: 1,
+                  width: "100%",
+                  backgroundColor: theme.border.default,
+                  marginVertical: 2,
+                }}
+              />
             ) : null}
 
-            {/* <RSIChart technicalIndicatorData={technicalIndicatorData} />
+            {technicalIndicatorMode2 ? (
+              <View>
+                <VolumeBarChart data={volumeData} />
+              </View>
+            ) : null}
 
-            <KDJChart technicalIndicatorData={technicalIndicatorData} /> */}
+            {technicalIndicatorMode3 != null ? (
+              <View
+                style={{
+                  height: 1,
+                  width: "100%",
+                  backgroundColor: theme.border.default,
+                  marginVertical: 2,
+                }}
+              />
+            ) : null}
+
+            {technicalIndicatorMode3 === "MACD" ? (
+              <MACDChart data={technicalIndicatorData} />
+            ) : null}
+            {technicalIndicatorMode3 === "RSI" ? (
+              <RSIChart technicalIndicatorData={technicalIndicatorData} />
+            ) : null}
+            {technicalIndicatorMode3 === "KDJ" ? (
+              <KDJChart technicalIndicatorData={technicalIndicatorData} />
+            ) : null}
           </View>
         )}
       </View>
-
-      <TouchableOpacity
-        onPress={() => {
-          if (chartType === "Line") {
-            setChartType("Candlestick");
-          } else {
-            setChartType("Line");
-          }
-        }}
-        style={{
-          height: 24,
-          width: 24,
-          backgroundColor: theme.background.surface,
-          borderRadius: 4,
-          borderWidth: 1,
-          borderColor: theme.border.default,
-          alignItems: "center",
-          padding: 2,
-          marginHorizontal: 12,
-        }}
-      >
-        <Image
-          source={
-            chartType === "Line"
-              ? Images.ic_candlesticks_chart
-              : Images.ic_line_graph
-          }
-          style={{ width: 18, height: 18 }}
-        />
-      </TouchableOpacity>
 
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           marginHorizontal: 12,
+          marginVertical: 12,
         }}
       >
+        <TouchableOpacity
+          onPress={() => {
+            if (chartType === "Line") {
+              setChartType("Candlestick");
+            } else {
+              setChartType("Line");
+            }
+          }}
+          style={{
+            backgroundColor: theme.background.surface,
+            borderRadius: 2,
+            borderWidth: 1,
+            borderColor: theme.border.default,
+            alignItems: "center",
+            padding: 4,
+            marginRight: 8,
+          }}
+        >
+          {chartType === "Line" ? (
+            <Entypo name="line-graph" size={18} color="black" />
+          ) : (
+            <MaterialIcons name={"candlestick-chart"} size={18} color="black" />
+          )}
+        </TouchableOpacity>
+
+        <View
+          style={{
+            height: 24,
+            width: 1,
+            backgroundColor: theme.text.primary,
+            marginRight: 12,
+          }}
+        />
+
         <TouchableOpacity
           onPress={() => {
             if (technicalIndicatorMode1 === "MA") {
@@ -232,6 +279,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
             borderColor: theme.border.default,
             alignItems: "center",
             padding: 2,
+            marginRight: 8,
           }}
         >
           <Text typography="labelLarge">MA</Text>
@@ -253,30 +301,98 @@ const PriceChartComponent = ({ stockItem }: Props) => {
             borderColor: theme.border.default,
             alignItems: "center",
             padding: 2,
+            marginRight: 8,
           }}
         >
           <Text typography="labelLarge">BOLL</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            setTechnicalIndicatorMode2((prev) => !prev);
+          }}
+          style={{
+            height: 24,
+            backgroundColor: theme.background.surface,
+            borderRadius: 4,
+            borderWidth: 1,
+            borderColor: theme.border.default,
+            alignItems: "center",
+            padding: 2,
+            marginRight: 8,
+          }}
+        >
+          <Text typography="labelLarge">VOL</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            if (technicalIndicatorMode3 !== "MACD") {
+              setTechnicalIndicatorMode3("MACD");
+            } else {
+              setTechnicalIndicatorMode3(null);
+            }
+          }}
+          style={{
+            height: 24,
+            backgroundColor: theme.background.surface,
+            borderRadius: 4,
+            borderWidth: 1,
+            borderColor: theme.border.default,
+            alignItems: "center",
+            padding: 2,
+            marginRight: 8,
+          }}
+        >
+          <Text typography="labelLarge">MACD</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            if (technicalIndicatorMode3 !== "RSI") {
+              setTechnicalIndicatorMode3("RSI");
+            } else {
+              setTechnicalIndicatorMode3(null);
+            }
+          }}
+          style={{
+            height: 24,
+            backgroundColor: theme.background.surface,
+            borderRadius: 4,
+            borderWidth: 1,
+            borderColor: theme.border.default,
+            alignItems: "center",
+            padding: 2,
+            marginRight: 8,
+          }}
+        >
+          <Text typography="labelLarge">RSI</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            if (technicalIndicatorMode3 !== "KDJ") {
+              setTechnicalIndicatorMode3("KDJ");
+            } else {
+              setTechnicalIndicatorMode3(null);
+            }
+          }}
+          style={{
+            height: 24,
+            backgroundColor: theme.background.surface,
+            borderRadius: 4,
+            borderWidth: 1,
+            borderColor: theme.border.default,
+            alignItems: "center",
+            padding: 2,
+            marginRight: 8,
+          }}
+        >
+          <Text typography="labelLarge">KDJ</Text>
+        </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
-        onPress={() => {
-          setTechnicalIndicatorMode2((prev) => !prev);
-        }}
-        style={{
-          height: 24,
-          backgroundColor: theme.background.surface,
-          borderRadius: 4,
-          borderWidth: 1,
-          borderColor: theme.border.default,
-          alignItems: "center",
-          padding: 2,
-        }}
-      >
-        <Text typography="labelLarge">VOL</Text>
-      </TouchableOpacity>
-
-      <View
+      {/* <View
         style={{
           flexDirection: "row",
           alignItems: "center",
@@ -395,7 +511,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
             5Y
           </Text>
         </View>
-      </View>
+      </View> */}
     </View>
   );
 };

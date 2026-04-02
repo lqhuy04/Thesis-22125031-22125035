@@ -3,6 +3,7 @@ import { View, Dimensions } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { LineChart } from "react-native-wagmi-charts";
 import { parseDateTime, TechnicalIndicatorData } from "@/helpers/DetailHelpers";
+import { Text } from "./Text";
 
 interface Props {
   technicalIndicatorData: TechnicalIndicatorData[];
@@ -43,7 +44,7 @@ const KDJChart = ({ technicalIndicatorData }: Props) => {
 
   return (
     technicalIndicatorData.length !== 0 && (
-      <View>
+      <View style={{ marginBottom: -48 }}>
         <LineChart.Provider data={chartData}>
           <LineChart.Group>
             <LineChart id="stochK" width={screenWidth} height={100}>
@@ -59,6 +60,26 @@ const KDJChart = ({ technicalIndicatorData }: Props) => {
             </LineChart>
           </LineChart.Group>
         </LineChart.Provider>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            position: "absolute",
+          }}
+        >
+          <Text color={theme.base.warning} style={{ marginHorizontal: 12 }}>
+            {`K: ${(technicalIndicatorData.at(-1)?.indicators?.stoch_k || 0).toFixed(2)}`}
+          </Text>
+
+          <Text color={theme.base.success} style={{ marginHorizontal: 12 }}>
+            {`D: ${(technicalIndicatorData.at(-1)?.indicators?.stoch_d || 0).toFixed(2)}`}
+          </Text>
+
+          <Text color={theme.base.primary} style={{ marginHorizontal: 12 }}>
+            {`J: ${(technicalIndicatorData.at(-1)?.indicators?.stoch_j || 0).toFixed(2)}`}
+          </Text>
+        </View>
       </View>
     )
   );
