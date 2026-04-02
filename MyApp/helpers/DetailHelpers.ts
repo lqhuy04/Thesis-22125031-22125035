@@ -145,41 +145,42 @@ export const fetchFundamentalAnalysisIndexes = async (
 };
 
 //------------------------------------------------------------
-export type StockData = {
+export type StockPriceData = {
   Symbol: string;
   TradingDate: string;
   Time: string;
-  Open: string;
-  High: string;
-  Low: string;
-  Close: string;
-  Volume: string;
+  Open: number;
+  High: number;
+  Low: number;
+  Close: number;
+  Volume: number;
 };
 
-export const fetchStockData = async (
+export const fetchStockDataByTimeFrame = async (
   symbol: string,
-  timeframe: "1D" | "1W" | "1M" | "1Y" | "5Y",
+  timeframe: "15m" | "1h" | "1d",
 ): Promise<{
   status: boolean;
-  data: StockData[];
+  data: StockPriceData[];
 }> => {
   try {
     const result = await sendMessage(
-      `api/stock-price/${symbol}?timeframe=${timeframe}`,
+      `api/stock-price-v2/${symbol}?interval=${timeframe}`,
     );
 
     const { errorCode, data } = result || {};
+
     if (errorCode === 0) {
       return {
         status: true,
-        data: data?.data as StockData[],
+        data: data?.data as StockPriceData[],
+      };
+    } else {
+      return {
+        status: false,
+        data: [],
       };
     }
-
-    return {
-      status: false,
-      data: [],
-    };
   } catch (error) {
     console.error(error);
     return {
@@ -188,6 +189,50 @@ export const fetchStockData = async (
     };
   }
 };
+
+// export type StockData = {
+//   Symbol: string;
+//   TradingDate: string;
+//   Time: string;
+//   Open: string;
+//   High: string;
+//   Low: string;
+//   Close: string;
+//   Volume: string;
+// };
+
+// export const fetchStockData = async (
+//   symbol: string,
+//   timeframe: "1D" | "1W" | "1M" | "1Y" | "5Y",
+// ): Promise<{
+//   status: boolean;
+//   data: StockData[];
+// }> => {
+//   try {
+//     const result = await sendMessage(
+//       `api/stock-price/${symbol}?timeframe=${timeframe}`,
+//     );
+
+//     const { errorCode, data } = result || {};
+//     if (errorCode === 0) {
+//       return {
+//         status: true,
+//         data: data?.data as StockData[],
+//       };
+//     }
+
+//     return {
+//       status: false,
+//       data: [],
+//     };
+//   } catch (error) {
+//     console.error(error);
+//     return {
+//       status: false,
+//       data: [],
+//     };
+//   }
+// };
 
 //------------------------------------------------------------
 export type AnalysisData = {
@@ -229,7 +274,7 @@ export const getAnalysis = async (
 };
 
 //------------------------------------------------------------
-export type PriceData = {
+export type CurrentPriceData = {
   symbol: string;
   current_price: number;
   price_change: number;
@@ -239,11 +284,11 @@ export type PriceData = {
   floor_price: number;
 };
 
-export const fetchPriceData = async (
+export const fetchCurrentPriceData = async (
   symbol: string,
 ): Promise<{
   status: boolean;
-  data: PriceData | null;
+  data: CurrentPriceData | null;
 }> => {
   try {
     const result = await sendMessage(`api/price/${symbol}`);
@@ -252,7 +297,7 @@ export const fetchPriceData = async (
     if (errorCode === 0) {
       return {
         status: true,
-        data: data as PriceData,
+        data: data as CurrentPriceData,
       };
     }
 

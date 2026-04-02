@@ -3,11 +3,11 @@ import React from "react";
 import { View, Image } from "react-native";
 import { Text } from "./Text";
 import { SearchStockItem } from "@/helpers/SearchHelper";
-import { PriceData } from "@/helpers/DetailHelpers";
+import { CurrentPriceData } from "@/helpers/DetailHelpers";
 
 interface SearchResultItemProps {
   item: SearchStockItem;
-  priceData: PriceData | null;
+  priceData: CurrentPriceData | null;
 }
 
 const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
@@ -82,6 +82,52 @@ const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
               {priceData?.current_price}
             </Text>
           ) : null}
+        </View>
+      </View>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginHorizontal: 12,
+          marginVertical: 12,
+          backgroundColor: theme.background.surface,
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+          borderRadius: 4,
+          borderWidth: 1,
+          borderColor: theme.base.primary,
+        }}
+      >
+        <View style={{ flex: 1 }}>
+          <Text typography="bodyMedium">Sàn</Text>
+          <Text typography="labelLarge" color={theme.base.error}>
+            {priceData?.floor_price}
+          </Text>
+        </View>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Text typography="bodyMedium">Tham chiếu</Text>
+          <Text typography="labelLarge" color={theme.base.warning}>
+            {priceData?.reference_price}
+          </Text>
+        </View>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "flex-end",
+            alignItems: "flex-end",
+          }}
+        >
+          <Text typography="bodyMedium">Trần</Text>
+          <Text typography="labelLarge" color={theme.base.success}>
+            {priceData?.ceiling_price}
+          </Text>
         </View>
       </View>
     </View>

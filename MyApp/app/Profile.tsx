@@ -1,6 +1,5 @@
 import { useTheme } from "@/hooks/ThemeContext";
 import React from "react";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
@@ -11,7 +10,7 @@ const Profile = () => {
   const { theme } = useTheme();
 
   return (
-    <SafeAreaView
+    <View
       style={{
         flex: 1,
         backgroundColor: theme.background.bg,
@@ -69,7 +68,7 @@ const Profile = () => {
           <Text typography="titleSmall">Đăng xuất</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

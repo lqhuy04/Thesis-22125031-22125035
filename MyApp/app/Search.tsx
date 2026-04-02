@@ -4,7 +4,6 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { SearchBar } from "@/components/ui/SearchBar";
 import SearchResultItem from "@/components/ui/SearchResultItem";
 import { SearchStockItem, searchStocks } from "@/helpers/SearchHelper";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 const Search = () => {
   const { theme } = useTheme();
@@ -19,13 +18,13 @@ const Search = () => {
       setLoading(false);
     });
   };
+
   return (
-    <SafeAreaView
+    <View
       style={{
         padding: 12,
         backgroundColor: theme.background.bg,
         flex: 1,
-        paddingTop: 12,
       }}
     >
       <SearchBar value={text} onChange={setText} onSearchPress={onSearch} />
@@ -47,7 +46,7 @@ const Search = () => {
           renderItem={({ item }) => <SearchResultItem item={item} />}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

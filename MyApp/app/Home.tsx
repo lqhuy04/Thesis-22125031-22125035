@@ -1,6 +1,5 @@
 import React from "react";
 import { useTheme } from "@/hooks/ThemeContext";
-import { SafeAreaView } from "react-native-safe-area-context";
 import MarketIndicesSection from "@/components/market/MarketIndicesSection";
 import MacroEcomNewsSection from "@/components/market/MacroEcomNewsSection";
 import { ScrollView } from "react-native";
@@ -10,22 +9,15 @@ const Home = () => {
   const { theme } = useTheme();
 
   return (
-    <SafeAreaView
-      style={{
-        paddingHorizontal: 12,
-        backgroundColor: theme.background.bg,
-        flex: 1,
-        paddingTop: 12,
-      }}
+    <ScrollView
+      style={{ padding: 12, backgroundColor: theme.background.bg, flex: 1 }}
     >
-      <ScrollView style={{ flex: 1 }}>
-        <MarketIndicesSection />
+      <MarketIndicesSection />
 
-        <MacroEcomNewsSection />
+      <MacroEcomNewsSection />
 
-        <CategoriesNewsSection />
-      </ScrollView>
-    </SafeAreaView>
+      <CategoriesNewsSection />
+    </ScrollView>
   );
 };
 
