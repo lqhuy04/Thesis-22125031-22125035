@@ -3,7 +3,7 @@ Market Data Routes
 FastAPI routes for SSI FC Data API integration
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
-from typing import Optional
+from typing import Optional, Any
 import uuid
 import asyncio
 from datetime import datetime, timedelta
@@ -39,6 +39,46 @@ _index_overview_cache_ttl_seconds = 60
 
 _today_highlights_cache: dict = {}
 _today_highlights_cache_ttl_seconds = 45
+
+
+def _to_number(value: Any) -> Any:
+    """Convert numeric-like strings to int/float while preserving non-numeric values."""
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        raw = value.strip()
+        if raw == "":
+            return value
+        try:
+            num = float(raw)
+            return int(num) if num.is_integer() else num
+        except ValueError:
+            return value
+    return value
+
+
+def _coerce_ohlcv_payload_numbers(result: dict) -> dict:
+    """Ensure Open/High/Low/Close/Volume are numeric in successful payload rows."""
+    if not result.get("success"):
+        return result
+
+    data_wrapper = result.get("data")
+    if not isinstance(data_wrapper, dict):
+        return result
+
+    rows = data_wrapper.get("data")
+    if not isinstance(rows, list):
+        return result
+
+    numeric_keys = ("Open", "High", "Low", "Close", "Volume")
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        for key in numeric_keys:
+            if key in row:
+                row[key] = _to_number(row.get(key))
+
+    return result
 
 
 def create_response(result: dict, request_id: str) -> MarketDataResponse:
@@ -502,7 +542,7 @@ async def get_today_highlights(
         request_id,
     )
 
-@router.get("/historical-chart/{symbol}", response_model=MarketDataResponse)
+@router.get("/stock-price-v2/{symbol}", response_model=MarketDataResponse)
 async def get_latest_historical_chart_data(
     symbol: str,
     interval: str = Query("15m", description="Interval: 15m, 1h, or 1d")
@@ -514,7 +554,7 @@ async def get_latest_historical_chart_data(
     - **interval**: 15m, 1h, 1d (defaults to 15m)
     - Returns latest **1000** records (fixed)
     
-    **Example:** `/api/historical-chart/VNM?interval=1h`
+    **Example:** `/api/stock-price-v2/VNM?interval=1h`
     """
     request_id = str(uuid.uuid4())
     service = get_ssi_service()
@@ -523,4 +563,5 @@ async def get_latest_historical_chart_data(
         interval=interval.lower(),
         limit=1000
     )
+    result = _coerce_ohlcv_payload_numbers(result)
     return create_response(result, request_id)
