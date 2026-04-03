@@ -9,7 +9,7 @@ import uuid
 import pandas as pd
 from app.services.technical_indicators_service import TechnicalIndicatorsService
 from app.models.base_schemas import success_response, error_response
-from app.services.price_db_service import PriceDBService
+from app.services.market_service import MarketService
 
 router = APIRouter(prefix="/api/technical-indicators", tags=["Technical Indicators"])
 
@@ -30,7 +30,7 @@ async def get_technical_indicators(
 
         normalized_limit = 1000
 
-        current_rows = PriceDBService.get_latest_prices(
+        current_rows = MarketService.get_latest_prices(
             symbol=symbol,
             limit=normalized_limit,
             interval=interval,

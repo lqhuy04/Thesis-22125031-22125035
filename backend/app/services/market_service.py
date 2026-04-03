@@ -6,11 +6,54 @@ from supabase import create_client, Client
 from app.config import settings
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from app.services.ssi_service import get_ssi_service
+from datetime import date
+
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
-class PriceDBService:
+class MarketService:
     """Service for stock price database operations with different intervals"""
+
+    @staticmethod
+    def search_stock_by_symbol(symbol: str) -> Dict[str, Any]:
+        try:
+            print('search_stock_by_symbol', symbol)
+            query = supabase.table("BI_Profile") \
+                .select("stock_id, symbol, company_name, exchange") \
+                .eq("symbol", symbol.upper())
+            
+            result = query.execute()
+            data = result.data if result.data else []
+
+            if not data:
+                return {"data": [], "securities": None}
+
+            stock = data[0]  # ✅ Get the first matching record
+
+            ssi_service = get_ssi_service()
+            today = date.today().strftime("%d/%m/%Y")
+            result = ssi_service.get_daily_stock_price(
+                symbol=stock['symbol'],  # ✅ Index into the dict, not the list
+                from_date=today,
+                to_date=today,
+                market=stock['exchange'].lower()
+            )
+            
+            filtered=[]
+            if result["success"] and result["data"]["data"]:
+                filtered = [
+                    record for record in result["data"]["data"]
+                    if record.get("Symbol", "").upper() == symbol.upper()
+                ]
+            
+            return {
+                "data": stock,        # ✅ String keys
+                "securities": filtered
+            }
+        except Exception as e:
+            print(f"Error search stock: {e}")
+            return []
     
     @staticmethod
     def get_latest_trading_time(symbol: str, interval: str = "15m") -> Optional[datetime]:

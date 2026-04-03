@@ -7,7 +7,6 @@ import talib
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Optional, Any
-from app.services.ssi_service import get_ssi_service
 import math
 
 
