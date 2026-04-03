@@ -3,14 +3,9 @@ Financial Analysis Routes
 API endpoints for financial metrics and fundamental analysis
 """
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, List
-from app.models.financial_schemas import (
-    FinancialRatiosSchema,
-    FinancialAnalysisResponse
-)
-from app.models.base_schemas import success_response, error_response
-from app.services.financial_db_service import FinancialDBService
-from datetime import datetime
+
+from app.models.base_schemas import success_response
+from app.services.fundamental_analysis_service import FundamentalAnalysisService
 import uuid
 
 router = APIRouter(prefix="/api/fundamental-analysis", tags=["Fundamental Metrics"])
@@ -18,7 +13,7 @@ router = APIRouter(prefix="/api/fundamental-analysis", tags=["Fundamental Metric
 @router.get("/{symbol}/balance-sheets", summary="Get Balance Sheets")
 async def get_balance_sheets(symbol: str):
     try:
-        data = await FinancialDBService.get_balance_sheets(symbol)
+        data = await FundamentalAnalysisService.get_balance_sheets(symbol)
         return success_response(data=data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -26,7 +21,7 @@ async def get_balance_sheets(symbol: str):
 @router.get("/{symbol}/cash-flows", summary="Get Cash Flows")
 async def get_cash_flows(symbol: str):
     try:
-        data = await FinancialDBService.get_cash_flows(symbol)
+        data = await FundamentalAnalysisService.get_cash_flows(symbol)
         return success_response(data=data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -34,7 +29,7 @@ async def get_cash_flows(symbol: str):
 @router.get("/{symbol}/financial-indicators", summary="Get Financial Indicators")
 async def get_financial_indicators(symbol: str):
     try:
-        data = await FinancialDBService.get_financial_indicators(symbol)
+        data = await FundamentalAnalysisService.get_indicators(symbol)
         return success_response(data=data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -42,7 +37,7 @@ async def get_financial_indicators(symbol: str):
 @router.get("/{symbol}/income-statements", summary="Get Income Statements")
 async def get_income_statements(symbol: str):
     try:
-        data = await FinancialDBService.get_income_statements(symbol)
+        data = await FundamentalAnalysisService.get_income_statements(symbol)
         return success_response(data=data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -61,7 +56,7 @@ async def get_fundamental_summary(symbol: str):
                 detail="Invalid symbol format"
             )
 
-        summary_data = await FinancialDBService.get_fundamental_summary(symbol.upper())
+        summary_data = await FundamentalAnalysisService.get_summary(symbol.upper())
 
         if not summary_data:
             raise HTTPException(

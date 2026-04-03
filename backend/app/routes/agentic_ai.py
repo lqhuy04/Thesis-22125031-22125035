@@ -6,7 +6,6 @@ Uses the AgenticAI workflow (Fundamental, Technical, News, RiskAppetite → Summ
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional
 from app.models.base_schemas import success_response, error_response
-from app.services.financial_db_service import FinancialDBService
 from app.services.ssi_service import SSIService
 from app.services.agentic_ai_service import AgenticAIService
 from datetime import datetime, timedelta

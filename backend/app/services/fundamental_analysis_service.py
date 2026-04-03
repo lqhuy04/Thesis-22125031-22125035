@@ -5,15 +5,14 @@ Handles database operations for financial metrics
 from supabase import create_client, Client
 from app.config import settings
 from typing import Optional, List, Dict
-from datetime import datetime
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
-class FinancialDBService:
+class FundamentalAnalysisService:
     """Service for financial metrics database operations"""
 
     @staticmethod
-    async def get_fundamental_summary(symbol: str) -> Optional[Dict]:
+    async def get_summary(symbol: str) -> Optional[Dict]:
         """
         Get AI-generated fundamental summary for a specific symbol.
 
@@ -73,7 +72,7 @@ class FinancialDBService:
             raise ValueError(f"Failed to fetch cash flows: {str(e)}")
 
     @staticmethod
-    async def get_financial_indicators(symbol: str ) -> List[Dict]:
+    async def get_indicators(symbol: str ) -> List[Dict]:
         """
         Get financial indicators for a specific symbol
         """
