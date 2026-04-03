@@ -1434,7 +1434,7 @@ class SSIMarketDataService:
             if records:
                 PriceDBService.insert_prices(records)
 
-    def _format_db_to_ssi(self, symbol: str, db_prices: list) -> list:
+    def _format_db_to_ssi(self, db_prices: list) -> list:
         from datetime import datetime
         formatted = []
         for r in db_prices:
@@ -1445,7 +1445,6 @@ class SSIMarketDataService:
                 t_dt = datetime.strptime(t_str[:19], "%Y-%m-%dT%H:%M:%S")
                 
             formatted.append({
-                "Symbol": symbol.upper(),
                 "TradingDate": t_dt.strftime("%d/%m/%Y"),
                 "Time": t_dt.strftime("%H:%M:%S"),
                 "Open": str(r["open"]),
@@ -1464,7 +1463,7 @@ class SSIMarketDataService:
         start_obj = datetime.strptime(from_date_str, "%d/%m/%Y")
         end_obj = datetime.strptime(to_date_str, "%d/%m/%Y") + timedelta(days=1, seconds=-1)
         db_prices = PriceDBService.get_prices(symbol, start_obj, end_obj)
-        return self._format_db_to_ssi(symbol, db_prices)
+        return self._format_db_to_ssi(db_prices)
 
     def _ssi_item_to_db_record(self, symbol: str, item: Dict[str, Any], default_time: str = "14:45:00") -> Optional[Dict[str, Any]]:
         """Convert SSI candle format into DB row format."""
@@ -2006,30 +2005,7 @@ class SSIMarketDataService:
                 interval=interval,
             )
 
-            # Fast path: if DB already has 1000 rows and latest row is today, return immediately.
-            if self._is_records_full_and_latest_today(current_rows, target_limit=normalized_limit):
-                formatted = self._format_db_to_ssi(symbol, current_rows)
-                return {
-                    "success": True,
-                    "data": {
-                        "data": formatted,
-                        "totalRecord": len(formatted),
-                        "interval": interval,
-                    }
-                }
-
-            # Sync only the requested interval for lower latency.
-            if not self._should_skip_sync(symbol=symbol, interval=interval):
-                self._sync_latest_interval_records(symbol=symbol, limit=normalized_limit, interval=interval)
-                self._mark_synced_now(symbol=symbol, interval=interval)
-
-            db_records = PriceDBService.get_latest_prices(
-                symbol=symbol,
-                limit=normalized_limit,
-                interval=interval,
-            )
-            formatted = self._format_db_to_ssi(symbol, db_records)
-
+            formatted = self._format_db_to_ssi(current_rows)
             return {
                 "success": True,
                 "data": {
