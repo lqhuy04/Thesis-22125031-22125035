@@ -163,7 +163,7 @@ class SSIMarketDataService:
 
         # Retry once on auth failure by refreshing token.
         if self._is_auth_error(payload):
-            token_result = self.get_access_token()
+            token_result = self._get_access_token()
             if token_result.get("success") and self._access_token:
                 retry_headers = self._headers.copy()
                 retry_headers["Authorization"] = f"{self._config.auth_type} {self._access_token}"
@@ -175,14 +175,14 @@ class SSIMarketDataService:
     def _ensure_token(self) -> bool:
         """Ensure we have a valid access token"""
         if not self._access_token:
-            result = self.get_access_token()
+            result = self._get_access_token()
             if result.get("success") and result.get("data", {}).get("data", {}).get("accessToken"):
                 self._access_token = result["data"]["data"]["accessToken"]
                 return True
             return False
         return True
     
-    def get_access_token(self) -> Dict[str, Any]:
+    def _get_access_token(self) -> Dict[str, Any]:
         """Get access token from SSI API"""
         try:
             data = {
@@ -963,188 +963,6 @@ class SSIMarketDataService:
             logger.warning(f"Error detecting market for {symbol}: {str(e)}")
             return "HOSE"
 
-    def get_top_stocks(self, symbols: list = None) -> Dict[str, Any]:
-        """
-        Get price data for top/featured stocks (for home page display)
-        
-        Args:
-            symbols: List of stock symbols. Default: ['VNM', 'FPT', 'VCB', 'VIC', 'VHM']
-        
-        Returns:
-            List of stocks with current_price, price_change, price_change_percent
-        """
-        try:
-            if not self._ensure_token():
-                return {"success": False, "error": "Failed to get access token"}
-
-            from datetime import datetime
-            today_str = datetime.now().strftime("%d/%m/%Y")
-            
-            # Default popular Vietnamese stocks
-            if not symbols:
-                symbols = ['VNM', 'FPT', 'VCB', 'VIC', 'VHM']
-
-            results = [
-                {
-                    "symbol": symbol.upper(),
-                    "current_price": None,
-                    "price_change": None,
-                    "price_change_percent": None,
-                }
-                for symbol in symbols
-                if symbol
-            ]
-
-            symbol_to_item = {item["symbol"]: item for item in results}
-
-            # 1) Use short-lived in-memory cache first.
-            missing_symbols = []
-            for symbol, item in symbol_to_item.items():
-                cached = self._get_cached_daily_price(symbol)
-                if cached and cached.get("current_price") is not None:
-                    item.update({
-                        "current_price": cached.get("current_price"),
-                        "price_change": cached.get("price_change"),
-                        "price_change_percent": cached.get("price_change_percent"),
-                    })
-                else:
-                    missing_symbols.append(symbol)
-
-            # 2) Fast SSI market snapshot fetch (3 calls total: HOSE/HNX/UPCOM).
-            snapshot_prices = self._get_prices_from_market_snapshots(missing_symbols)
-            for symbol in list(missing_symbols):
-                snapshot = snapshot_prices.get(symbol)
-                if not snapshot:
-                    continue
-                symbol_to_item[symbol].update({
-                    "current_price": snapshot.get("current_price"),
-                    "price_change": snapshot.get("price_change"),
-                    "price_change_percent": snapshot.get("price_change_percent"),
-                })
-                if symbol_to_item[symbol].get("current_price") is not None:
-                    self._set_cached_daily_price(symbol, snapshot)
-
-            # 3) Return fast with available data, refresh missing symbols in background.
-            remaining_symbols = [s for s in missing_symbols if symbol_to_item[s].get("current_price") is None]
-
-            # Guarantee at least one resolved price on cold start when snapshots contain no price fields.
-            if remaining_symbols:
-                first_symbol = remaining_symbols[0]
-                first_price = self._get_daily_price_with_retry(first_symbol, today_str, retries=1, throttle_seconds=1.05)
-                if first_price and first_price.get("current_price") is not None:
-                    symbol_to_item[first_symbol].update({
-                        "current_price": first_price.get("current_price"),
-                        "price_change": first_price.get("price_change"),
-                        "price_change_percent": first_price.get("price_change_percent"),
-                    })
-                    self._set_cached_daily_price(first_symbol, first_price)
-                    remaining_symbols = remaining_symbols[1:]
-
-            self._refresh_missing_top_stock_prices_async(remaining_symbols, today_str)
-            
-            return {
-                "success": True,
-                "data": results
-            }
-        except Exception as e:
-            logger.error(f"Error getting top stocks: {str(e)}")
-            return {"success": False, "error": str(e)}
-
-    def get_today_market_movers(self, limit: int = 5) -> Dict[str, Any]:
-        """Get top gainers and top decliners across HOSE, HNX, and UPCOM."""
-        try:
-            if not self._ensure_token():
-                return {"success": False, "error": "Failed to get access token"}
-
-            from datetime import datetime
-            today_str = datetime.now().strftime("%d/%m/%Y")
-
-            all_securities = []
-            seen_symbols = set()
-            markets_to_search = ["HOSE", "HNX", "UPCOM"]
-
-            for market in markets_to_search:
-                params = {
-                    "market": market,
-                    "pageIndex": 1,
-                    "pageSize": 1000,
-                }
-                response = self._make_get_request(SSIEndpoints.SECURITIES, params)
-                if response.get("status") != "Success":
-                    continue
-
-                for sec in response.get("data", []) or []:
-                    symbol = (sec.get("Symbol") or "").upper().strip()
-                    name = sec.get("StockName") or ""
-
-                    if not symbol:
-                        continue
-
-                    if symbol in seen_symbols:
-                        continue
-
-                    # Keep only stocks, exclude warrants/funds.
-                    if "CQ " in name or name.startswith("CQ") or name.startswith("QUY") or "Chứng quyền" in name:
-                        continue
-
-                    parsed = self._extract_price_change_fields(sec)
-                    all_securities.append(
-                        {
-                            "symbol": symbol,
-                            "name": name,
-                            "market": market,
-                            "current_price": parsed.get("current_price"),
-                            "price_change": parsed.get("price_change"),
-                            "price_change_percent": parsed.get("price_change_percent"),
-                        }
-                    )
-                    seen_symbols.add(symbol)
-
-            if not all_securities:
-                return {
-                    "success": True,
-                    "data": {"top_gainers": [], "top_decliners": []},
-                }
-
-            # Fallback: If SSI securities payload does not include change fields,
-            # calculate them from daily OHLC so movers are still available.
-            missing_change_items = [
-                item for item in all_securities if item.get("price_change_percent") is None
-            ]
-            if missing_change_items:
-                self._fetch_prices_parallel(missing_change_items, today_str, max_workers=15)
-
-            all_securities = [
-                item for item in all_securities if item.get("price_change_percent") is not None
-            ]
-
-            if not all_securities:
-                return {
-                    "success": True,
-                    "data": {"top_gainers": [], "top_decliners": []},
-                }
-
-            gainers_sorted = sorted(
-                [item for item in all_securities if (item.get("price_change_percent") or 0) > 0],
-                key=lambda item: item.get("price_change_percent") or 0,
-                reverse=True,
-            )
-            decliners_sorted = sorted(
-                [item for item in all_securities if (item.get("price_change_percent") or 0) < 0],
-                key=lambda item: item.get("price_change_percent") or 0,
-            )
-
-            return {
-                "success": True,
-                "data": {
-                    "top_gainers": gainers_sorted[: max(0, limit)],
-                    "top_decliners": decliners_sorted[: max(0, limit)],
-                },
-            }
-        except Exception as e:
-            logger.error(f"Error getting today market movers: {str(e)}")
-            return {"success": False, "error": str(e)}
-
     def _round_time_to_interval(self, time_str: str, interval_minutes: int) -> str:
         """
         Round time to nearest interval within market sessions.
@@ -1533,7 +1351,7 @@ class SSIMarketDataService:
                     break
                 # Refresh token once and retry current page.
                 if attempt == 0:
-                    self.get_access_token()
+                    self._get_access_token()
 
             if not response.get("success"):
                 logger.warning(
@@ -1781,7 +1599,7 @@ class SSIMarketDataService:
             )
             if not intraday_source_data:
                 # Defensive retry: refresh token and retry a narrower recent window.
-                self.get_access_token()
+                self._get_access_token()
                 intraday_source_data = self._fetch_intraday_data_in_chunks(
                     symbol=symbol,
                     from_obj=max(now - timedelta(days=45), intraday_start_15m),
@@ -2024,37 +1842,3 @@ def get_ssi_service() -> SSIMarketDataService:
     if _ssi_service is None:
         _ssi_service = SSIMarketDataService()
     return _ssi_service
-
-
-class SSIService:
-    """Async wrapper for SSI Market Data Service"""
-    
-    @staticmethod
-    async def get_historical_price(symbol: str, from_date: str, to_date: str, page_size: int = 100) -> Dict[str, Any]:
-        """
-        Get historical price data for a stock (async wrapper)
-        
-        Args:
-            symbol: Stock symbol (e.g., 'VNM', 'FPT')
-            from_date: Start date in format 'DD/MM/YYYY'
-            to_date: End date in format 'DD/MM/YYYY'
-            page_size: Number of records to return
-            
-        Returns:
-            Dict with price data
-        """
-        service = get_ssi_service()
-        result = service.get_daily_ohlc(
-            symbol=symbol,
-            from_date=from_date,
-            to_date=to_date,
-            page_size=page_size,
-            ascending=False  # Latest first
-        )
-        
-        if result.get("success"):
-            response_data = result.get("data", {})
-            if response_data.get("status") == "Success":
-                return {"data": response_data.get("data", [])}
-        
-        return {"data": []}

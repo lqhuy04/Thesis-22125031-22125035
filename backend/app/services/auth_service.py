@@ -2,7 +2,7 @@ from supabase import create_client, Client
 from app.config import settings
 from app.utils.password import hash_password, verify_password
 from app.utils.token import create_access_token, create_reset_token
-from app.services.email_service import send_reset_email
+from app.utils.email import send_reset_email
 import httpx
 import google.auth.transport.requests
 import google.oauth2.id_token
