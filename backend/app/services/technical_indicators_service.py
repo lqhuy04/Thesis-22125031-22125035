@@ -32,7 +32,7 @@ class TechnicalIndicatorsService:
     @staticmethod
     def calculate_all_indicators(df: pd.DataFrame) -> Dict[str, Any]:
         """
-        Calculate top 20 technical indicators
+        Calculate technical indicators
         
         Args:
             df: DataFrame with OHLC data
@@ -43,9 +43,8 @@ class TechnicalIndicatorsService:
         if df.empty:
             raise ValueError("Insufficient data for indicator calculation (no data points)")
 
-        # If we don't have enough data for the full indicator set, return core indicators only.
         if len(df) < 50:
-            return TechnicalIndicatorsService.calculate_core_indicators(df)
+            raise ValueError("Insufficient data for indicator calculation (no data points)")
         
         # Extract price arrays and convert to float64 (required by TA-Lib)
         # TA-Lib requires numpy arrays of type float64 (double)

@@ -190,50 +190,6 @@ export const fetchStockDataByTimeFrame = async (
   }
 };
 
-// export type StockData = {
-//   Symbol: string;
-//   TradingDate: string;
-//   Time: string;
-//   Open: string;
-//   High: string;
-//   Low: string;
-//   Close: string;
-//   Volume: string;
-// };
-
-// export const fetchStockData = async (
-//   symbol: string,
-//   timeframe: "1D" | "1W" | "1M" | "1Y" | "5Y",
-// ): Promise<{
-//   status: boolean;
-//   data: StockData[];
-// }> => {
-//   try {
-//     const result = await sendMessage(
-//       `api/stock-price/${symbol}?timeframe=${timeframe}`,
-//     );
-
-//     const { errorCode, data } = result || {};
-//     if (errorCode === 0) {
-//       return {
-//         status: true,
-//         data: data?.data as StockData[],
-//       };
-//     }
-
-//     return {
-//       status: false,
-//       data: [],
-//     };
-//   } catch (error) {
-//     console.error(error);
-//     return {
-//       status: false,
-//       data: [],
-//     };
-//   }
-// };
-
 //------------------------------------------------------------
 export type AnalysisData = {
   symbol: string;

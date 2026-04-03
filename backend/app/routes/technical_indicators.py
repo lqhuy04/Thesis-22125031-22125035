@@ -3,8 +3,7 @@ Technical Indicators Routes
 API endpoints for technical analysis indicators using TA-Lib
 """
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime
 import math
 import uuid
 import pandas as pd
@@ -16,7 +15,7 @@ router = APIRouter(prefix="/api/technical-indicators", tags=["Technical Indicato
 
 @router.get("/{symbol}",
             summary="Calculate Technical Indicators",
-            description="Calculate top 20 technical indicators for a stock symbol using TA-Lib")
+            description="Calculate technical indicators for a stock symbol using TA-Lib")
 async def get_technical_indicators(
     symbol: str,
     interval: str = Query("1d", description="Interval: 15m, 1h, 1d"),
@@ -39,7 +38,7 @@ async def get_technical_indicators(
 
         if not current_rows:
             return {
-                "data": {},
+                "data": [],
                 "errorCode": 0,
                 "errorDesc": "",
                 "requestId": request_id,
