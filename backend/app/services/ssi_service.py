@@ -32,7 +32,7 @@ class SSIEndpoints:
     DAILY_STOCK_PRICE = "api/v2/Market/DailyStockPrice"
 
 
-class SSIMarketDataService:
+class SSIService:
     """Service class for SSI Market Data API operations"""
     
     def __init__(self):
@@ -433,11 +433,11 @@ class SSIMarketDataService:
 
 
 # Singleton instance
-_ssi_service: Optional[SSIMarketDataService] = None
+_ssi_service: Optional[SSIService] = None
 
-def get_ssi_service() -> SSIMarketDataService:
+def get_ssi_service() -> SSIService:
     """Get or create the SSI Market Data Service singleton"""
     global _ssi_service
     if _ssi_service is None:
-        _ssi_service = SSIMarketDataService()
+        _ssi_service = SSIService()
     return _ssi_service
