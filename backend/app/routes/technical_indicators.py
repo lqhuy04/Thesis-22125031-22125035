@@ -4,11 +4,9 @@ API endpoints for technical analysis indicators using TA-Lib
 """
 from fastapi import APIRouter, HTTPException, Query
 from datetime import datetime
-import math
 import uuid
 import pandas as pd
 from app.services.technical_indicators_service import TechnicalIndicatorsService
-from app.models.base_schemas import success_response, error_response
 from app.services.market_service import MarketService
 
 router = APIRouter(prefix="/api/technical-indicators", tags=["Technical Indicators"])
@@ -18,21 +16,18 @@ router = APIRouter(prefix="/api/technical-indicators", tags=["Technical Indicato
             description="Calculate technical indicators for a stock symbol using TA-Lib")
 async def get_technical_indicators(
     symbol: str,
-    interval: str = Query("1d", description="Interval: 15m, 1h, 1d"),
+    interval: str = Query("15m", description="Interval: 1m, 5m, 15m, 30m, 1h"),
 ):
     request_id = str(uuid.uuid4())
     try:
         symbol = symbol.upper()
         interval = interval.lower()
 
-        if interval not in {"15m", "1h", "1d"}:
+        if interval not in {"1m", "5m", "15m", "30m", "1h"}:
             return {"success": False, "error": f"Unsupported interval: {interval}"}
 
-        normalized_limit = 1000
-
-        current_rows = MarketService.get_latest_prices(
+        current_rows = MarketService.get_stock_price_by_interval(
             symbol=symbol,
-            limit=normalized_limit,
             interval=interval,
         )
 
@@ -44,7 +39,7 @@ async def get_technical_indicators(
                 "requestId": request_id,
                 "result": False
             }
-
+        
         # Convert to DataFrame để tính indicators
         df = pd.DataFrame(current_rows)
 
@@ -70,6 +65,9 @@ async def get_technical_indicators(
             for key, values in indicators.items():
                 record[key] = values[i] if i < len(values) else None
             records.append(record)
+        
+        indicators_limit = 1000
+        records = records[-indicators_limit:] if len(records) > indicators_limit else records
 
         return {
             "data": records,

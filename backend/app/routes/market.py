@@ -39,7 +39,7 @@ async def get_latest_historical_chart_data(
     **Example:** `/api/stock-price/VNM?interval=1h`
     """
     request_id = str(uuid.uuid4())
-    result = MarketService.get_stock_price_by_interval(symbol, limit=1000, interval=interval)
+    result = MarketService.get_stock_price_by_interval(symbol, interval=interval)
     return {
         "data": result,
         "errorCode": 0 if result else 500001,
@@ -60,7 +60,6 @@ async def update_price_data_for_symbol_with_time_interval(symbol: str, interval:
     """
     request_id = str(uuid.uuid4())
     result = MarketService.update_price_data_for_symbol_with_time_interval(symbol, interval=interval)
-    
     return {
         "data": result,
         "errorCode": 0 if result else 500001,
