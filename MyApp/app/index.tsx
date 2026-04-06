@@ -31,5 +31,5 @@ export default function Index() {
   // }
 
   // return <Redirect href="/Authentication" />;
-  return <Redirect href="/HomeTabs" />;
+  return <Redirect href="/Home" />;
 }

@@ -30,7 +30,7 @@ export const getMarketIndices = async (): Promise<{
   data: MarketIndex[];
 }> => {
   try {
-    const result = await sendMessage("api/index");
+    const result = await sendMessage("api/market-index");
     const { errorCode, data } = result || {};
 
     if (errorCode === 0) {

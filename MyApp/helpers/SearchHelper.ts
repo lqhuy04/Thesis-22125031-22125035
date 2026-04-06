@@ -1,12 +1,10 @@
 import { sendMessage } from "./api/ApiClients";
 
 export type SearchStockItem = {
+  stock_id: string;
   symbol: string;
-  name: string;
-  market: string;
-  current_price: number | null;
-  price_change: number | null;
-  price_change_percent: number | null;
+  company_name: string;
+  exchange: string;
 };
 
 export const searchStocks = async (

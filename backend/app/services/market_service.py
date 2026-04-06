@@ -337,28 +337,36 @@ class MarketService:
             return []
         
     @staticmethod
-    def search_stock_by_symbol(symbol: str) -> Dict[str, Any]:
+    def search_stock(keyword: str) -> List[Dict[str, Any]]:
         try:
+            keyword = keyword.strip()
+
+            if not keyword:
+                return []
+
             query = supabase.table("BI_Profile") \
                 .select("stock_id, symbol, company_name, exchange") \
-                .eq("symbol", symbol.upper())
-            
+                .or_(
+                    f"symbol.ilike.%{keyword}%,company_name.ilike.%{keyword}%"
+                )
+
             result = query.execute()
             data = result.data if result.data else []
 
-            if len(data) == 0:
-                return {}
+            return [
+                {
+                    "stock_id": stock["stock_id"],
+                    "symbol": stock["symbol"],
+                    "company_name": stock["company_name"],
+                    "exchange": stock["exchange"],
+                }
+                for stock in data
+                if len(stock["symbol"]) <= 3   # ✅ filter tại đây
+            ]
 
-            stock = data[0]  # ✅ Get the first matching record
-            
-            return {
-                "stock_id": stock['stock_id'],
-                "symbol": stock['symbol'],
-                "company_name": stock['company_name'],
-            }
         except Exception as e:
             print(f"Error search stock: {e}")
-            return {}
+            return []
         
     @staticmethod
     def get_current_stock_price(symbol: str) -> Dict[str, Any]:
@@ -401,12 +409,12 @@ class MarketService:
                 "symbol": stock['symbol'],
                 "company_name": stock['company_name'],
                 "exchange": stock['exchange'],
-                "PriceChange": price['PriceChange'],
-                "PerPriceChange": price['PerPriceChange'],
-                "CeilingPrice": price['CeilingPrice'],
-                "FloorPrice": price['FloorPrice'],
-                "RefPrice": price['RefPrice'],
-                "CurrentPrice": price['ClosePrice']
+                "PriceChange": float(price['PriceChange']),
+                "PerPriceChange": float(price['PerPriceChange']),
+                "CeilingPrice": float(price['CeilingPrice']),
+                "FloorPrice": float(price['FloorPrice']),
+                "RefPrice": float(price['RefPrice']),
+                "CurrentPrice": float(price['ClosePrice'])
             }
         except Exception as e:
             print(f"Error fetching current stock price for {symbol}: {e}")

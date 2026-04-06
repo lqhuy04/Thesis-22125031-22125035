@@ -13,6 +13,7 @@ type Props = {
 };
 
 const TradingViewChart = ({ prices, volumes, timeframe, chartType }: Props) => {
+  console.log("TradingViewChart data:", prices.length, volumes.length);
   const webViewRef = useRef<WebView>(null);
   const isChartReady = useRef(false);
 

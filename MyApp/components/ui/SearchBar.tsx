@@ -34,7 +34,7 @@ export const SearchBar = ({
         onChangeText={onChange}
         autoCapitalize="none"
         returnKeyType="search"
-        placeholder={t("home.search")}
+        placeholder={"Tìm kiếm theo mã chứng khoán, tên công ty..."}
         onBlur={onSearchPress}
       />
 

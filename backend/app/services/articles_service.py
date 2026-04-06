@@ -31,8 +31,13 @@ class ArticlesService:
             return []
 
     @staticmethod
-    def get_articles_by_stock_id(stock_id: str, limit: Optional[int] = None) -> List[ArticlesResponse]:
+    def get_articles_by_stock_symbol(stock_symbol: str, limit: Optional[int] = None) -> List[ArticlesResponse]:
         try:
+            stock = supabase.table("Stock").select("id").eq("stock_symbol", stock_symbol).execute()
+            stock_id = stock.data[0]["id"] if stock.data else None
+            if not stock_id:
+                return []
+            
             result = (
                 supabase.table("Article_Stock")
                 .select("Article(*)")

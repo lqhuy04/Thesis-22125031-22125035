@@ -29,15 +29,25 @@ interface Props {
 }
 
 const enum TIMEFRAME {
-  "15M" = 1,
-  "1H" = 2,
-  "1D" = 3,
+  ONE_MINUTE = 1,
+  FIVE_MINUTES = 2,
+  FIFTEEN_MINUTES = 3,
+  THIRTY_MINUTES = 4,
+  ONE_HOUR = 5,
+  ONE_DAY = 6,
+  ONE_WEEK = 7,
+  ONE_MONTH = 8,
 }
 
 const TIMEFRAME_OPTIONS = [
-  { label: "15 Phút", value: TIMEFRAME["15M"] },
-  { label: "1 Giờ", value: TIMEFRAME["1H"] },
-  { label: "1 Ngày", value: TIMEFRAME["1D"] },
+  { label: "1 Phút", value: TIMEFRAME.ONE_MINUTE },
+  { label: "5 Phút", value: TIMEFRAME.FIVE_MINUTES },
+  { label: "15 Phút", value: TIMEFRAME.FIFTEEN_MINUTES },
+  { label: "30 Phút", value: TIMEFRAME.THIRTY_MINUTES },
+  { label: "1 Giờ", value: TIMEFRAME.ONE_HOUR },
+  { label: "1 Ngày", value: TIMEFRAME.ONE_DAY },
+  { label: "1 Tuần", value: TIMEFRAME.ONE_WEEK },
+  { label: "1 Tháng", value: TIMEFRAME.ONE_MONTH },
 ];
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -45,42 +55,68 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const PriceChartComponent = ({ stockItem }: Props) => {
   const { theme } = useTheme();
   const [chartType, setChartType] = useState<"candle" | "area">("area");
-  const [timeFrame, setTimeFrame] = useState<TIMEFRAME>(TIMEFRAME["1D"]);
+  const [timeFrame, setTimeFrame] = useState<TIMEFRAME>(
+    TIMEFRAME.FIFTEEN_MINUTES,
+  );
   const [showTimeframeSheet, setShowTimeframeSheet] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
+  const [priceTimeframe1mData, setPriceTimeframe1mData] = useState<
+    StockPriceData[]
+  >([]);
+
+  const [priceTimeframe5mData, setPriceTimeframe5mData] = useState<
+    StockPriceData[]
+  >([]);
+
   const [priceTimeframe15mData, setPriceTimeframe15mData] = useState<
     StockPriceData[]
   >([]);
+
+  const [priceTimeframe30mData, setPriceTimeframe30mData] = useState<
+    StockPriceData[]
+  >([]);
+
   const [priceTimeframe1hData, setPriceTimeframe1hData] = useState<
     StockPriceData[]
   >([]);
+
   const [priceTimeframe1dData, setPriceTimeframe1dData] = useState<
     StockPriceData[]
   >([]);
-  const [priceData, setCurrentPriceData] = useState<CurrentPriceData | null>(
-    null,
-  );
 
-  useEffect(() => {
-    fetchCurrentPriceData(stockItem.symbol).then((res) => {
-      if (res?.status) setCurrentPriceData(res?.data);
-    });
-  }, [stockItem.symbol]);
+  const [priceTimeframe1wData, setPriceTimeframe1wData] = useState<
+    StockPriceData[]
+  >([]);
+
+  const [priceTimeframe1MData, setPriceTimeframe1MData] = useState<
+    StockPriceData[]
+  >([]);
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [res15m, res1h, res1d] = await Promise.all([
-          fetchStockDataByTimeFrame(stockItem.symbol, "15m"),
-          fetchStockDataByTimeFrame(stockItem.symbol, "1h"),
-          fetchStockDataByTimeFrame(stockItem.symbol, "1d"),
-        ]);
+        const [res1m, res5m, res15m, res30m, res1h, res1d, res1w, res1M] =
+          await Promise.all([
+            fetchStockDataByTimeFrame(stockItem.symbol, "1m"),
+            fetchStockDataByTimeFrame(stockItem.symbol, "5m"),
+            fetchStockDataByTimeFrame(stockItem.symbol, "15m"),
+            fetchStockDataByTimeFrame(stockItem.symbol, "30m"),
+            fetchStockDataByTimeFrame(stockItem.symbol, "1h"),
+            fetchStockDataByTimeFrame(stockItem.symbol, "1d"),
+            fetchStockDataByTimeFrame(stockItem.symbol, "1w"),
+            fetchStockDataByTimeFrame(stockItem.symbol, "1M"),
+          ]);
+        if (res1m?.status) setPriceTimeframe1mData(res1m.data);
+        if (res5m?.status) setPriceTimeframe5mData(res5m.data);
         if (res15m?.status) setPriceTimeframe15mData(res15m.data);
+        if (res30m?.status) setPriceTimeframe30mData(res30m.data);
         if (res1h?.status) setPriceTimeframe1hData(res1h.data);
         if (res1d?.status) setPriceTimeframe1dData(res1d.data);
+        if (res1w?.status) setPriceTimeframe1wData(res1w.data);
+        if (res1M?.status) setPriceTimeframe1MData(res1M.data);
       } catch (error) {
         console.error("Fetch error:", error);
       }
@@ -88,47 +124,71 @@ const PriceChartComponent = ({ stockItem }: Props) => {
     fetchAll();
   }, [stockItem.symbol]);
 
-  const chartPriceData: PriceData[] = useMemo(() => {
-    return (
-      timeFrame === 1
-        ? priceTimeframe15mData
-        : timeFrame === 2
-          ? priceTimeframe1hData
-          : priceTimeframe1dData
-    ).map((item) => ({
-      time: parseDateTime(item.TradingDate, item.Time) / 1000,
-      open: item.Open,
-      high: item.High,
-      low: item.Low,
-      close: item.Close,
-    }));
+  const displayData = useMemo(() => {
+    return timeFrame === TIMEFRAME.ONE_MINUTE
+      ? priceTimeframe1mData
+      : timeFrame === TIMEFRAME.FIVE_MINUTES
+        ? priceTimeframe5mData
+        : timeFrame === TIMEFRAME.FIFTEEN_MINUTES
+          ? priceTimeframe15mData
+          : timeFrame === TIMEFRAME.THIRTY_MINUTES
+            ? priceTimeframe30mData
+            : timeFrame === TIMEFRAME.ONE_HOUR
+              ? priceTimeframe1hData
+              : timeFrame === TIMEFRAME.ONE_DAY
+                ? priceTimeframe1dData
+                : timeFrame === TIMEFRAME.ONE_WEEK
+                  ? priceTimeframe1wData
+                  : timeFrame === TIMEFRAME.ONE_MONTH
+                    ? priceTimeframe1MData
+                    : [];
   }, [
-    priceTimeframe15mData,
-    priceTimeframe1dData,
-    priceTimeframe1hData,
     timeFrame,
+    priceTimeframe1mData,
+    priceTimeframe5mData,
+    priceTimeframe15mData,
+    priceTimeframe30mData,
+    priceTimeframe1hData,
+    priceTimeframe1dData,
+    priceTimeframe1wData,
+    priceTimeframe1MData,
   ]);
 
+  const chartPriceData: PriceData[] = useMemo(() => {
+    console.log("Display data length:", displayData?.length);
+    if (
+      displayData != null &&
+      Array.isArray(displayData) &&
+      displayData.length > 0
+    ) {
+      return displayData.map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        open: item.Open,
+        high: item.High,
+        low: item.Low,
+        close: item.Close,
+      }));
+    } else {
+      return [];
+    }
+  }, [displayData]);
+
   const chartVolumeData: VolumeData[] = useMemo(() => {
-    return (
-      timeFrame === 1
-        ? priceTimeframe15mData
-        : timeFrame === 2
-          ? priceTimeframe1hData
-          : priceTimeframe1dData
-    ).map((item) => ({
-      time: parseDateTime(item.TradingDate, item.Time) / 1000,
-      value: item.Volume,
-      color: item.Close >= item.Open ? theme.base.success : theme.base.error,
-    }));
-  }, [
-    priceTimeframe15mData,
-    priceTimeframe1dData,
-    priceTimeframe1hData,
-    theme.base.error,
-    theme.base.success,
-    timeFrame,
-  ]);
+    console.log("Display data length:", displayData?.length);
+    if (
+      displayData != null &&
+      Array.isArray(displayData) &&
+      displayData.length > 0
+    ) {
+      return displayData.map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        value: item.Volume,
+        color: item.Close >= item.Open ? theme.base.success : theme.base.error,
+      }));
+    } else {
+      return [];
+    }
+  }, [displayData, theme.base.error, theme.base.success]);
 
   const openSheet = () => {
     setShowTimeframeSheet(true);
@@ -173,7 +233,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
 
   return (
     <View style={{ marginTop: 12 }}>
-      <DetailHeader item={stockItem} priceData={priceData} />
+      <DetailHeader symbol={stockItem.symbol} />
 
       <TradingViewChart
         prices={chartPriceData}

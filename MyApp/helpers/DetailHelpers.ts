@@ -1,5 +1,22 @@
 import { sendMessage } from "./api/ApiClients";
 
+function parseTradingTime(tradingTime: string): { date: string; time: string } {
+  const date = new Date(tradingTime);
+
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const year = date.getUTCFullYear();
+
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+
+  return {
+    date: `${day}/${month}/${year}`, // "30/03/2026"
+    time: `${hours}:${minutes}:${seconds}`, // "10:30:00"
+  };
+}
+
 export function parseDateTime(dateString: string, timeString: string): number {
   // ---- Parse date ----
   const dateParts = dateString.split("/");
@@ -75,7 +92,7 @@ export const fetchNews = async (
   data: New[];
 }> => {
   try {
-    const result = await sendMessage(`api/news/${symbol}`);
+    const result = await sendMessage(`api/articles/stock/${symbol}?limit=10`);
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
@@ -146,7 +163,7 @@ export const fetchFundamentalAnalysisIndexes = async (
 
 //------------------------------------------------------------
 export type StockPriceData = {
-  Symbol: string;
+  symbol: string;
   TradingDate: string;
   Time: string;
   Open: number;
@@ -158,14 +175,14 @@ export type StockPriceData = {
 
 export const fetchStockDataByTimeFrame = async (
   symbol: string,
-  timeframe: "15m" | "1h" | "1d",
+  timeframe: "1m" | "5m" | "15m" | "30m" | "1h" | "1d" | "1w" | "1M",
 ): Promise<{
   status: boolean;
   data: StockPriceData[];
 }> => {
   try {
     const result = await sendMessage(
-      `api/stock-price-v2/${symbol}?interval=${timeframe}`,
+      `api/price/${symbol}?interval=${timeframe}`,
     );
 
     const { errorCode, data } = result || {};
@@ -173,7 +190,19 @@ export const fetchStockDataByTimeFrame = async (
     if (errorCode === 0) {
       return {
         status: true,
-        data: data?.data as StockPriceData[],
+        data: data?.data?.map((item: any) => {
+          const { date, time } = parseTradingTime(item?.trading_time);
+          return {
+            symbol: item?.symbol,
+            TradingDate: date,
+            Time: time,
+            Open: item?.open,
+            High: item?.high,
+            Low: item?.low,
+            Close: item?.close,
+            Volume: item?.volume,
+          };
+        }) as StockPriceData[],
       };
     } else {
       return {
@@ -231,13 +260,16 @@ export const getAnalysis = async (
 
 //------------------------------------------------------------
 export type CurrentPriceData = {
+  stock_id: string;
   symbol: string;
-  current_price: number;
-  price_change: number;
-  price_change_percent: number;
-  reference_price: number;
-  ceiling_price: number;
-  floor_price: number;
+  company_name: string;
+  exchange: string;
+  PriceChange: number;
+  PerPriceChange: number;
+  CeilingPrice: number;
+  FloorPrice: number;
+  RefPrice: number;
+  CurrentPrice: number;
 };
 
 export const fetchCurrentPriceData = async (
@@ -247,7 +279,7 @@ export const fetchCurrentPriceData = async (
   data: CurrentPriceData | null;
 }> => {
   try {
-    const result = await sendMessage(`api/price/${symbol}`);
+    const result = await sendMessage(`api/current-price/${symbol}`);
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {

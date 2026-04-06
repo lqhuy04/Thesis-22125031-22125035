@@ -47,44 +47,8 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
           {item.symbol}
         </Text>
         <Text typography="bodyMedium" color={theme.text.primary}>
-          {item.name}
+          {item.company_name}
         </Text>
-      </View>
-
-      <View style={{ alignItems: "flex-end" }}>
-        {item.current_price != null ? (
-          <Text
-            typography="labelLarge"
-            color={
-              item.price_change_percent != null &&
-              item.price_change_percent >= 0
-                ? theme.base.success
-                : theme.base.error
-            }
-          >
-            {item.price_change_percent != null && item.price_change_percent >= 0
-              ? "+"
-              : ""}
-            {item.price_change_percent}%
-          </Text>
-        ) : null}
-        {item.current_price != null ? (
-          <Text typography="titleSmall" color={theme.text.primary}>
-            {item.current_price}
-            <Text
-              typography="titleSmall"
-              color={
-                item.price_change_percent != null &&
-                item.price_change_percent >= 0
-                  ? theme.base.success
-                  : theme.base.error
-              }
-            >
-              {" "}
-              {`(${item.price_change != null && item.price_change >= 0 ? "+" : ""}${item.price_change})`}
-            </Text>
-          </Text>
-        ) : null}
       </View>
     </TouchableOpacity>
   );

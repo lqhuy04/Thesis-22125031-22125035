@@ -8,9 +8,14 @@ window.currentTimeframeOption = 3; // Default to UNKNOWN
 
 // Timeframe constants (matching CandleChartOption enum)
 const TIMEFRAME = {
-  FIFTEEN_MINUTES: 1,
-  ONE_HOUR: 2,
-  ONE_DAY: 3,
+  ONE_MINUTE: 1,
+  FIVE_MINUTES: 2,
+  FIFTEEN_MINUTES: 3,
+  THIRTY_MINUTES: 4,
+  ONE_HOUR: 5,
+  ONE_DAY: 6,
+  ONE_WEEK: 7,
+  ONE_MONTH: 8,
 };
 
 // Chart color constants
@@ -117,16 +122,42 @@ const formatMonthYear = (date) => {
 
 const timeFormatter = (time) => {
   const date = new Date(time * 1000);
-  const timeframe = window.currentTimeframeOption || TIMEFRAME.ONE_DAY;
-  // Show time for intraday timeframes (15m and 1h)
-  if (timeframe === TIMEFRAME.FIFTEEN_MINUTES || timeframe === TIMEFRAME.ONE_HOUR) {
+  const tf = window.currentTimeframeOption;
+  if (
+    tf === TIMEFRAME.ONE_MINUTE ||
+    tf === TIMEFRAME.FIVE_MINUTES ||
+    tf === TIMEFRAME.FIFTEEN_MINUTES ||
+    tf === TIMEFRAME.THIRTY_MINUTES ||
+    tf === TIMEFRAME.ONE_HOUR
+  ) {
     return dtfTime.format(date) + " " + formatDate(date);
   }
+  // 1d, 1w, 1month
   return formatDate(date);
 };
 
 const tickMarkFormatter = (time, tickMarkType) => {
   const date = new Date(time * 1000);
+  const tf = window.currentTimeframeOption;
+
+  // 1month: chỉ cần hiện tháng/năm hoặc năm
+  if (tf === TIMEFRAME.ONE_MONTH) {
+    switch (tickMarkType) {
+      case 0: return dtfYear.format(date);
+      default: return formatMonthYear(date);
+    }
+  }
+
+  // 1w, 1d
+  if (tf === TIMEFRAME.ONE_WEEK || tf === TIMEFRAME.ONE_DAY) {
+    switch (tickMarkType) {
+      case 0: return dtfYear.format(date);
+      case 1: return formatMonthYear(date);
+      default: return formatDayMonth(date);
+    }
+  }
+
+  // Intraday: 1m, 5m, 15m, 30m, 1h
   switch (tickMarkType) {
     case 0: return dtfYear.format(date);
     case 1: return formatMonthYear(date);
@@ -139,9 +170,14 @@ const tickMarkFormatter = (time, tickMarkType) => {
 
 const formatDateForTooltip = (timestamp) => {
   const date = new Date(timestamp * 1000);
-  const timeframe = window.currentTimeframeOption || TIMEFRAME.ONE_DAY;
-  // Show time + date for intraday timeframes (15m and 1h)
-  if (timeframe === TIMEFRAME.FIFTEEN_MINUTES || timeframe === TIMEFRAME.ONE_HOUR) {
+  const tf = window.currentTimeframeOption;
+  if (
+    tf === TIMEFRAME.ONE_MINUTE ||
+    tf === TIMEFRAME.FIVE_MINUTES ||
+    tf === TIMEFRAME.FIFTEEN_MINUTES ||
+    tf === TIMEFRAME.THIRTY_MINUTES ||
+    tf === TIMEFRAME.ONE_HOUR
+  ) {
     return dtfTime.format(date) + ", " + formatDate(date);
   }
   return formatDate(date);

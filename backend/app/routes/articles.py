@@ -51,19 +51,19 @@ async def get_macro_articles(
         result=True
     )
 
-@router.get("/stock/{stock_id}", response_model=ArticlesListResponse)
-async def get_articles_by_stock_id(
-    stock_id: str,
+@router.get("/stock/{stock_symbol}", response_model=ArticlesListResponse)
+async def get_articles_by_stock_symbol(
+    stock_symbol: str,
     limit: Optional[int] = Query(None, ge=1, le=500, description="Optional maximum number of latest articles"),
 ):
     """
     Lấy tất cả tin tức tài chính liên quan đến một mã chứng khoán cụ thể.
     
-    - **stock_id**
+    - **stock_symbol**
     """
     # Gọi service để lấy danh sách articles
-    articles = ArticlesService.get_articles_by_stock_id(
-        stock_id=stock_id.upper(),
+    articles = ArticlesService.get_articles_by_stock_symbol(
+        stock_symbol=stock_symbol.upper(),
         limit=limit,
     )
     

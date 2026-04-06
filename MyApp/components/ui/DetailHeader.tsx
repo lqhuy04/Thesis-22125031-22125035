@@ -1,17 +1,26 @@
 import { useTheme } from "@/hooks/ThemeContext";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { View, Image } from "react-native";
 import { Text } from "./Text";
-import { SearchStockItem } from "@/helpers/SearchHelper";
-import { CurrentPriceData } from "@/helpers/DetailHelpers";
+import {
+  CurrentPriceData,
+  fetchCurrentPriceData,
+} from "@/helpers/DetailHelpers";
 
 interface SearchResultItemProps {
-  item: SearchStockItem;
-  priceData: CurrentPriceData | null;
+  symbol: string;
 }
 
-const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
+const SearchResultItem = ({ symbol }: SearchResultItemProps) => {
   const { theme } = useTheme();
+
+  const [data, setData] = useState<CurrentPriceData | null>(null);
+
+  useEffect(() => {
+    fetchCurrentPriceData(symbol).then((res) => {
+      if (res?.status) setData(res?.data);
+    });
+  }, [symbol]);
 
   return (
     <View>
@@ -42,15 +51,15 @@ const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
 
         <View style={{ flex: 1, marginRight: 12 }}>
           <Text typography="titleMedium" color={theme.text.onPrimary}>
-            {item.symbol}
+            {data?.symbol}
           </Text>
           <Text typography="bodyMedium" color={theme.text.onPrimary}>
-            {item.name}
+            {data?.company_name}
           </Text>
         </View>
 
         <View style={{ alignItems: "flex-end" }}>
-          {priceData?.current_price != null ? (
+          {data?.CurrentPrice != null ? (
             <View
               style={{
                 paddingHorizontal: 4,
@@ -63,23 +72,21 @@ const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
               <Text
                 typography="labelLarge"
                 color={
-                  priceData?.price_change_percent != null &&
-                  priceData?.price_change_percent >= 0
+                  data?.PerPriceChange != null && data?.PerPriceChange >= 0
                     ? theme.base.success
                     : theme.base.error
                 }
               >
-                {priceData?.price_change_percent != null &&
-                priceData?.price_change_percent >= 0
+                {data?.PerPriceChange != null && data?.PerPriceChange >= 0
                   ? "+"
                   : ""}
-                {priceData?.price_change_percent}%
+                {data?.PerPriceChange}%
               </Text>
             </View>
           ) : null}
-          {priceData?.current_price != null ? (
+          {data?.CurrentPrice != null ? (
             <Text typography="titleSmall" color={theme.text.onPrimary}>
-              {priceData?.current_price}
+              {data?.CurrentPrice}
             </Text>
           ) : null}
         </View>
@@ -102,7 +109,7 @@ const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
         <View style={{ flex: 1 }}>
           <Text typography="bodyMedium">Sàn</Text>
           <Text typography="labelLarge" color={theme.base.error}>
-            {priceData?.floor_price}
+            {data?.FloorPrice}
           </Text>
         </View>
         <View
@@ -114,7 +121,7 @@ const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
         >
           <Text typography="bodyMedium">Tham chiếu</Text>
           <Text typography="labelLarge" color={theme.base.warning}>
-            {priceData?.reference_price}
+            {data?.RefPrice}
           </Text>
         </View>
         <View
@@ -126,7 +133,7 @@ const SearchResultItem = ({ item, priceData }: SearchResultItemProps) => {
         >
           <Text typography="bodyMedium">Trần</Text>
           <Text typography="labelLarge" color={theme.base.success}>
-            {priceData?.ceiling_price}
+            {data?.CeilingPrice}
           </Text>
         </View>
       </View>
