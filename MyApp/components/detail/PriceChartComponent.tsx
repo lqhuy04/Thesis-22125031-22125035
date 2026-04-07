@@ -98,29 +98,66 @@ const PriceChartComponent = ({ stockItem }: Props) => {
   useEffect(() => {
     const fetchAll = async () => {
       try {
+        const results = await Promise.allSettled([
+          fetchStockDataByTimeFrame(stockItem.symbol, "1m"),
+          fetchStockDataByTimeFrame(stockItem.symbol, "5m"),
+          fetchStockDataByTimeFrame(stockItem.symbol, "15m"),
+          fetchStockDataByTimeFrame(stockItem.symbol, "30m"),
+          fetchStockDataByTimeFrame(stockItem.symbol, "1h"),
+          fetchStockDataByTimeFrame(stockItem.symbol, "1d"),
+          fetchStockDataByTimeFrame(stockItem.symbol, "1w"),
+          fetchStockDataByTimeFrame(stockItem.symbol, "1M"),
+        ]);
+
         const [res1m, res5m, res15m, res30m, res1h, res1d, res1w, res1M] =
-          await Promise.all([
-            fetchStockDataByTimeFrame(stockItem.symbol, "1m"),
-            fetchStockDataByTimeFrame(stockItem.symbol, "5m"),
-            fetchStockDataByTimeFrame(stockItem.symbol, "15m"),
-            fetchStockDataByTimeFrame(stockItem.symbol, "30m"),
-            fetchStockDataByTimeFrame(stockItem.symbol, "1h"),
-            fetchStockDataByTimeFrame(stockItem.symbol, "1d"),
-            fetchStockDataByTimeFrame(stockItem.symbol, "1w"),
-            fetchStockDataByTimeFrame(stockItem.symbol, "1M"),
-          ]);
-        if (res1m?.status) setPriceTimeframe1mData(res1m.data);
-        if (res5m?.status) setPriceTimeframe5mData(res5m.data);
-        if (res15m?.status) setPriceTimeframe15mData(res15m.data);
-        if (res30m?.status) setPriceTimeframe30mData(res30m.data);
-        if (res1h?.status) setPriceTimeframe1hData(res1h.data);
-        if (res1d?.status) setPriceTimeframe1dData(res1d.data);
-        if (res1w?.status) setPriceTimeframe1wData(res1w.data);
-        if (res1M?.status) setPriceTimeframe1MData(res1M.data);
+          results;
+
+        if (res1m.status === "fulfilled" && res1m.value?.status) {
+          console.log("1m data length:", res1m.value.data.length);
+          setPriceTimeframe1mData(res1m.value.data);
+        }
+
+        if (res5m.status === "fulfilled" && res5m.value?.status) {
+          console.log("5m data length:", res5m.value.data.length);
+          setPriceTimeframe5mData(res5m.value.data);
+        }
+
+        if (res15m.status === "fulfilled" && res15m.value?.status) {
+          console.log("15m data length:", res15m.value.data.length);
+          setPriceTimeframe15mData(res15m.value.data);
+        }
+
+        if (res30m.status === "fulfilled" && res30m.value?.status) {
+          console.log("30m data length:", res30m.value.data.length);
+          setPriceTimeframe30mData(res30m.value.data);
+        }
+
+        if (res1h.status === "fulfilled" && res1h.value?.status) {
+          console.log("1h data length:", res1h.value.data.length);
+
+          setPriceTimeframe1hData(res1h.value.data);
+        }
+
+        if (res1d.status === "fulfilled" && res1d.value?.status) {
+          console.log("1d data length:", res1d.value.data.length);
+
+          setPriceTimeframe1dData(res1d.value.data);
+        }
+
+        if (res1w.status === "fulfilled" && res1w.value?.status) {
+          console.log("1w data length:", res1w.value.data.length);
+          setPriceTimeframe1wData(res1w.value.data);
+        }
+
+        if (res1M.status === "fulfilled" && res1M.value?.status) {
+          console.log("1M data length:", res1M.value.data.length);
+          setPriceTimeframe1MData(res1M.value.data);
+        }
       } catch (error) {
-        console.error("Fetch error:", error);
+        console.error("Unexpected error:", error);
       }
     };
+
     fetchAll();
   }, [stockItem.symbol]);
 

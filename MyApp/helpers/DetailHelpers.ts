@@ -188,21 +188,23 @@ export const fetchStockDataByTimeFrame = async (
     const { errorCode, data } = result || {};
 
     if (errorCode === 0) {
+      const result = data?.map((item: any) => {
+        const { date, time } = parseTradingTime(item?.trading_time);
+        return {
+          symbol: item?.symbol,
+          TradingDate: date,
+          Time: time,
+          Open: item?.open,
+          High: item?.high,
+          Low: item?.low,
+          Close: item?.close,
+          Volume: item?.volume,
+        };
+      });
+
       return {
         status: true,
-        data: data?.data?.map((item: any) => {
-          const { date, time } = parseTradingTime(item?.trading_time);
-          return {
-            symbol: item?.symbol,
-            TradingDate: date,
-            Time: time,
-            Open: item?.open,
-            High: item?.high,
-            Low: item?.low,
-            Close: item?.close,
-            Volume: item?.volume,
-          };
-        }) as StockPriceData[],
+        data: result,
       };
     } else {
       return {

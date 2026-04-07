@@ -2,7 +2,6 @@
 Price Database Service
 Handles database operations for historical stock prices (15m, 1h, 1d intervals)
 """
-import asyncio
 import uuid
 from supabase import create_client, Client
 from app.config import settings
@@ -19,6 +18,16 @@ class MarketService:
     
     def __init__(self):
         pass
+    
+    def get_last_trading_day(now):
+        if now.hour < 9 or (now.hour == 9 and now.minute < 15):
+            now = now - timedelta(days=1)
+
+        # Nếu rơi vào cuối tuần thì lùi tiếp
+        while now.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+            now -= timedelta(days=1)
+
+        return now
     
     @staticmethod
     def _get_latest_trading_time(symbol: str, interval: str = "15m") -> Optional[datetime]:
@@ -231,7 +240,7 @@ class MarketService:
             # =========================
             if latest_time is None:
                 all_data: list = []
-                cursor_to = date.today()
+                cursor_to = MarketService.get_last_trading_day(datetime.now())
 
                 while len(all_data) < limit:
                     cursor_from = cursor_to - timedelta(days=30)
@@ -384,7 +393,7 @@ class MarketService:
             stock = data[0]  # ✅ Get the first matching record
 
             ssi_service = get_ssi_service()
-            today = date.today().strftime("%d/%m/%Y")
+            today = MarketService.get_last_trading_day(datetime.now()).strftime("%d/%m/%Y")
             result = ssi_service.get_daily_stock_price(
                 symbol=stock['symbol'],  # ✅ Index into the dict, not the list
                 from_date=today,
@@ -424,7 +433,7 @@ class MarketService:
     def get_market_index(index_id: str) -> List[Dict[str, Any]]:
         try:
             ssi_service = get_ssi_service()
-            today = date.today().strftime("%d/%m/%Y")
+            today = MarketService.get_last_trading_day(datetime.now()).strftime("%d/%m/%Y")
             
             result = ssi_service.get_daily_index(
                 request_id=str(uuid.uuid4()),
