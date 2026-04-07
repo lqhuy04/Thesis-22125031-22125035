@@ -2,18 +2,36 @@ import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { WebView } from "react-native-webview";
 import { WebViewMessageEvent } from "react-native-webview/lib/WebViewTypes";
-import { getWebViewSource, PriceData, VolumeData } from "./utils";
+import {
+  BollData,
+  getWebViewSource,
+  MAData,
+  PriceData,
+  VolumeData,
+} from "./utils";
 import injectedJavaScript from "./trading-view-script";
 
 type Props = {
   prices: PriceData[];
   volumes: VolumeData[];
+  maData: MAData[];
+  bollData: BollData[];
   timeframe: number;
   chartType: "candle" | "area";
+  showVolume: boolean;
+  technicalIndicatorMode1: string | null;
 };
 
-const TradingViewChart = ({ prices, volumes, timeframe, chartType }: Props) => {
-  console.log("TradingViewChart data:", prices.length, volumes.length);
+const TradingViewChart = ({
+  prices,
+  volumes,
+  maData,
+  bollData,
+  timeframe,
+  chartType,
+  showVolume,
+  technicalIndicatorMode1,
+}: Props) => {
   const webViewRef = useRef<WebView>(null);
   const isChartReady = useRef(false);
 
@@ -25,12 +43,18 @@ const TradingViewChart = ({ prices, volumes, timeframe, chartType }: Props) => {
   }, []);
 
   const updateChartData = useCallback(
-    (p: PriceData[], v: VolumeData[], tf: number) => {
+    (
+      p: PriceData[],
+      v: VolumeData[],
+      maData: MAData[],
+      bollData: BollData[],
+      tf: number,
+    ) => {
       const script = /*javascript*/ `
         (function() {
           try {
             if (window.updateChartData) {
-              window.updateChartData(${JSON.stringify(p)}, ${JSON.stringify(v)}, ${tf});
+              window.updateChartData(${JSON.stringify(p)}, ${JSON.stringify(v)}, ${JSON.stringify(maData)}, ${JSON.stringify(bollData)}, ${tf});
             }
           } catch (_e) {}
         })();
@@ -56,6 +80,36 @@ const TradingViewChart = ({ prices, volumes, timeframe, chartType }: Props) => {
     [injectScript],
   );
 
+  const setVolumeVisible = useCallback(
+    (visible: boolean) => {
+      const script = /*javascript*/ `
+        (function() {
+          try {
+            if (window.setVolumeVisible) window.setVolumeVisible(${visible});
+          } catch (_e) {}
+        })();
+        true;
+      `;
+      injectScript(script);
+    },
+    [injectScript],
+  );
+
+  const setTechnicalIndicatorMode1 = useCallback(
+    (mode: string | null) => {
+      const script = /*javascript*/ `
+      (function() {
+        try {
+          if (window.setTechnicalIndicatorMode1) window.setTechnicalIndicatorMode1(${JSON.stringify(mode)});
+        } catch (_e) {}
+      })();
+      true;
+    `;
+      injectScript(script);
+    },
+    [injectScript],
+  );
+
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
       try {
@@ -64,29 +118,51 @@ const TradingViewChart = ({ prices, volumes, timeframe, chartType }: Props) => {
           isChartReady.current = true;
           // Push initial data as soon as chart signals ready
           if (prices.length > 0 && volumes.length > 0) {
-            updateChartData(prices, volumes, timeframe);
+            updateChartData(prices, volumes, maData, bollData, timeframe);
           }
+          // Áp dụng trạng thái volume ngay khi chart ready
+          setVolumeVisible(showVolume);
         }
       } catch (_e) {
         console.error(_e);
       }
     },
-    [prices, updateChartData, timeframe, volumes],
+    [
+      prices,
+      volumes,
+      setVolumeVisible,
+      showVolume,
+      updateChartData,
+      maData,
+      bollData,
+      timeframe,
+    ],
   );
 
   // Update chart whenever data or timeframe changes (after chart is ready)
   useEffect(() => {
     if (!isChartReady.current) return;
     if (prices.length === 0 || volumes.length === 0) return;
-    updateChartData(prices, volumes, timeframe);
-  }, [prices, volumes, timeframe, updateChartData]);
+    updateChartData(prices, volumes, maData, bollData, timeframe);
+  }, [prices, volumes, timeframe, updateChartData, maData, bollData]);
 
   useEffect(() => {
+    if (!isChartReady.current) return;
     switchSeriesType(chartType);
   }, [chartType, switchSeriesType]);
 
+  useEffect(() => {
+    if (!isChartReady.current) return;
+    setVolumeVisible(showVolume);
+  }, [showVolume, setVolumeVisible]);
+
+  useEffect(() => {
+    if (!isChartReady.current) return;
+    setTechnicalIndicatorMode1(technicalIndicatorMode1);
+  }, [technicalIndicatorMode1, setTechnicalIndicatorMode1]);
+
   return (
-    <View style={{ height: 270 }}>
+    <View style={{ height: 300 }}>
       <WebView
         ref={webViewRef}
         source={WEB_VIEW_SOURCE}

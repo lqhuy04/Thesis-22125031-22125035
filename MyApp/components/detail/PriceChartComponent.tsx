@@ -3,8 +3,8 @@ import {
   fetchStockDataByTimeFrame,
   parseDateTime,
   StockPriceData,
-  CurrentPriceData,
-  fetchCurrentPriceData,
+  TechnicalIndicatorData,
+  getTechnicalIndicators,
 } from "@/helpers/DetailHelpers";
 import {
   TouchableOpacity,
@@ -15,12 +15,13 @@ import {
   Pressable,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import DetailHeader from "../ui/DetailHeader";
 import { SearchStockItem } from "@/helpers/SearchHelper";
 import TradingViewChart from "../tradingView/TradingViewChart";
-import { PriceData, VolumeData } from "../tradingView/utils";
+import { BollData, MAData, PriceData, VolumeData } from "../tradingView/utils";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
@@ -54,151 +55,80 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const PriceChartComponent = ({ stockItem }: Props) => {
   const { theme } = useTheme();
-  const [chartType, setChartType] = useState<"candle" | "area">("area");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [chartType, setChartType] = useState<"candle" | "area">("candle");
   const [timeFrame, setTimeFrame] = useState<TIMEFRAME>(
     TIMEFRAME.FIFTEEN_MINUTES,
   );
+  const [showVolume, setShowVolume] = useState<boolean>(false);
+  const [technicalIndicatorMode1, setTechnicalIndicatorMode1] = useState<
+    string | null
+  >(null);
+
   const [showTimeframeSheet, setShowTimeframeSheet] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
 
-  const [priceTimeframe1mData, setPriceTimeframe1mData] = useState<
-    StockPriceData[]
-  >([]);
-
-  const [priceTimeframe5mData, setPriceTimeframe5mData] = useState<
-    StockPriceData[]
-  >([]);
-
-  const [priceTimeframe15mData, setPriceTimeframe15mData] = useState<
-    StockPriceData[]
-  >([]);
-
-  const [priceTimeframe30mData, setPriceTimeframe30mData] = useState<
-    StockPriceData[]
-  >([]);
-
-  const [priceTimeframe1hData, setPriceTimeframe1hData] = useState<
-    StockPriceData[]
-  >([]);
-
-  const [priceTimeframe1dData, setPriceTimeframe1dData] = useState<
-    StockPriceData[]
-  >([]);
-
-  const [priceTimeframe1wData, setPriceTimeframe1wData] = useState<
-    StockPriceData[]
-  >([]);
-
-  const [priceTimeframe1MData, setPriceTimeframe1MData] = useState<
-    StockPriceData[]
+  //------------------------------------------------------------------------
+  const [priceData, setPriceData] = useState<StockPriceData[]>([]);
+  const [technicalIndicatorsData, setTechnicalIndicatorsData] = useState<
+    TechnicalIndicatorData[]
   >([]);
 
   useEffect(() => {
-    const fetchAll = async () => {
+    const fetchData = async () => {
+      setLoading(true);
+
       try {
-        const results = await Promise.allSettled([
-          fetchStockDataByTimeFrame(stockItem.symbol, "1m"),
-          fetchStockDataByTimeFrame(stockItem.symbol, "5m"),
-          fetchStockDataByTimeFrame(stockItem.symbol, "15m"),
-          fetchStockDataByTimeFrame(stockItem.symbol, "30m"),
-          fetchStockDataByTimeFrame(stockItem.symbol, "1h"),
-          fetchStockDataByTimeFrame(stockItem.symbol, "1d"),
-          fetchStockDataByTimeFrame(stockItem.symbol, "1w"),
-          fetchStockDataByTimeFrame(stockItem.symbol, "1M"),
+        const interval =
+          timeFrame === TIMEFRAME.ONE_MINUTE
+            ? "1m"
+            : timeFrame === TIMEFRAME.FIVE_MINUTES
+              ? "5m"
+              : timeFrame === TIMEFRAME.FIFTEEN_MINUTES
+                ? "15m"
+                : timeFrame === TIMEFRAME.THIRTY_MINUTES
+                  ? "30m"
+                  : timeFrame === TIMEFRAME.ONE_HOUR
+                    ? "1h"
+                    : timeFrame === TIMEFRAME.ONE_DAY
+                      ? "1d"
+                      : timeFrame === TIMEFRAME.ONE_WEEK
+                        ? "1w"
+                        : "1d";
+
+        const [indicatorRes, priceRes] = await Promise.all([
+          getTechnicalIndicators(stockItem.symbol, interval),
+          fetchStockDataByTimeFrame(stockItem.symbol, interval),
         ]);
 
-        const [res1m, res5m, res15m, res30m, res1h, res1d, res1w, res1M] =
-          results;
-
-        if (res1m.status === "fulfilled" && res1m.value?.status) {
-          console.log("1m data length:", res1m.value.data.length);
-          setPriceTimeframe1mData(res1m.value.data);
+        if (indicatorRes?.status) {
+          setTechnicalIndicatorsData(indicatorRes.data ?? []);
+        } else {
+          setTechnicalIndicatorsData([]);
         }
 
-        if (res5m.status === "fulfilled" && res5m.value?.status) {
-          console.log("5m data length:", res5m.value.data.length);
-          setPriceTimeframe5mData(res5m.value.data);
-        }
-
-        if (res15m.status === "fulfilled" && res15m.value?.status) {
-          console.log("15m data length:", res15m.value.data.length);
-          setPriceTimeframe15mData(res15m.value.data);
-        }
-
-        if (res30m.status === "fulfilled" && res30m.value?.status) {
-          console.log("30m data length:", res30m.value.data.length);
-          setPriceTimeframe30mData(res30m.value.data);
-        }
-
-        if (res1h.status === "fulfilled" && res1h.value?.status) {
-          console.log("1h data length:", res1h.value.data.length);
-
-          setPriceTimeframe1hData(res1h.value.data);
-        }
-
-        if (res1d.status === "fulfilled" && res1d.value?.status) {
-          console.log("1d data length:", res1d.value.data.length);
-
-          setPriceTimeframe1dData(res1d.value.data);
-        }
-
-        if (res1w.status === "fulfilled" && res1w.value?.status) {
-          console.log("1w data length:", res1w.value.data.length);
-          setPriceTimeframe1wData(res1w.value.data);
-        }
-
-        if (res1M.status === "fulfilled" && res1M.value?.status) {
-          console.log("1M data length:", res1M.value.data.length);
-          setPriceTimeframe1MData(res1M.value.data);
+        if (priceRes?.status) {
+          setPriceData(priceRes.data ?? []);
+        } else {
+          setPriceData([]);
         }
       } catch (error) {
-        console.error("Unexpected error:", error);
+        console.error("Fetch error:", error);
+        setTechnicalIndicatorsData([]);
+        setPriceData([]);
+      } finally {
+        setLoading(false); // ✅ đảm bảo luôn chạy sau cùng
       }
     };
 
-    fetchAll();
-  }, [stockItem.symbol]);
-
-  const displayData = useMemo(() => {
-    return timeFrame === TIMEFRAME.ONE_MINUTE
-      ? priceTimeframe1mData
-      : timeFrame === TIMEFRAME.FIVE_MINUTES
-        ? priceTimeframe5mData
-        : timeFrame === TIMEFRAME.FIFTEEN_MINUTES
-          ? priceTimeframe15mData
-          : timeFrame === TIMEFRAME.THIRTY_MINUTES
-            ? priceTimeframe30mData
-            : timeFrame === TIMEFRAME.ONE_HOUR
-              ? priceTimeframe1hData
-              : timeFrame === TIMEFRAME.ONE_DAY
-                ? priceTimeframe1dData
-                : timeFrame === TIMEFRAME.ONE_WEEK
-                  ? priceTimeframe1wData
-                  : timeFrame === TIMEFRAME.ONE_MONTH
-                    ? priceTimeframe1MData
-                    : [];
-  }, [
-    timeFrame,
-    priceTimeframe1mData,
-    priceTimeframe5mData,
-    priceTimeframe15mData,
-    priceTimeframe30mData,
-    priceTimeframe1hData,
-    priceTimeframe1dData,
-    priceTimeframe1wData,
-    priceTimeframe1MData,
-  ]);
+    fetchData();
+  }, [stockItem.symbol, timeFrame]);
 
   const chartPriceData: PriceData[] = useMemo(() => {
-    console.log("Display data length:", displayData?.length);
-    if (
-      displayData != null &&
-      Array.isArray(displayData) &&
-      displayData.length > 0
-    ) {
-      return displayData.map((item) => ({
+    if (priceData != null && Array.isArray(priceData) && priceData.length > 0) {
+      return priceData.map((item) => ({
         time: parseDateTime(item.TradingDate, item.Time) / 1000,
         open: item.Open,
         high: item.High,
@@ -208,16 +138,44 @@ const PriceChartComponent = ({ stockItem }: Props) => {
     } else {
       return [];
     }
-  }, [displayData]);
+  }, [priceData]);
+
+  const chartMAData: MAData[] = useMemo(() => {
+    if (
+      technicalIndicatorsData != null &&
+      Array.isArray(technicalIndicatorsData) &&
+      technicalIndicatorsData.length > 0
+    ) {
+      return technicalIndicatorsData.map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        ma20: item.sma_20,
+        ma50: item.sma_50,
+      }));
+    } else {
+      return [];
+    }
+  }, [technicalIndicatorsData]);
+
+  const chartBOLLData: BollData[] = useMemo(() => {
+    if (
+      technicalIndicatorsData != null &&
+      Array.isArray(technicalIndicatorsData) &&
+      technicalIndicatorsData.length > 0
+    ) {
+      return technicalIndicatorsData.map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        boll: item.bb_middle,
+        ub: item.bb_upper,
+        lb: item.bb_lower,
+      }));
+    } else {
+      return [];
+    }
+  }, [technicalIndicatorsData]);
 
   const chartVolumeData: VolumeData[] = useMemo(() => {
-    console.log("Display data length:", displayData?.length);
-    if (
-      displayData != null &&
-      Array.isArray(displayData) &&
-      displayData.length > 0
-    ) {
-      return displayData.map((item) => ({
+    if (priceData != null && Array.isArray(priceData) && priceData.length > 0) {
+      return priceData.map((item) => ({
         time: parseDateTime(item.TradingDate, item.Time) / 1000,
         value: item.Volume,
         color: item.Close >= item.Open ? theme.base.success : theme.base.error,
@@ -225,7 +183,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
     } else {
       return [];
     }
-  }, [displayData, theme.base.error, theme.base.success]);
+  }, [priceData, theme.base.error, theme.base.success]);
 
   const openSheet = () => {
     setShowTimeframeSheet(true);
@@ -272,12 +230,28 @@ const PriceChartComponent = ({ stockItem }: Props) => {
     <View style={{ marginTop: 12 }}>
       <DetailHeader symbol={stockItem.symbol} />
 
-      <TradingViewChart
-        prices={chartPriceData}
-        volumes={chartVolumeData}
-        timeframe={timeFrame}
-        chartType={chartType}
-      />
+      {loading ? (
+        <View
+          style={{
+            height: 300,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <ActivityIndicator size="small" color={theme.base.primary} />
+        </View>
+      ) : (
+        <TradingViewChart
+          prices={chartPriceData}
+          volumes={chartVolumeData}
+          maData={chartMAData}
+          bollData={chartBOLLData}
+          timeframe={timeFrame}
+          chartType={chartType}
+          showVolume={showVolume}
+          technicalIndicatorMode1={technicalIndicatorMode1}
+        />
+      )}
 
       <View
         style={{
@@ -332,6 +306,64 @@ const PriceChartComponent = ({ stockItem }: Props) => {
           </Text>
         </TouchableOpacity>
 
+        {/* Chart type toggle */}
+        <TouchableOpacity
+          onPress={() => {
+            if (technicalIndicatorMode1 === "MA") {
+              setTechnicalIndicatorMode1(null);
+            } else {
+              setTechnicalIndicatorMode1("MA");
+            }
+          }}
+          style={[
+            styles.iconBtn,
+            {
+              backgroundColor: theme.background.surface,
+              borderColor: theme.border.default,
+              marginRight: 8,
+            },
+          ]}
+        >
+          {chartType === "area" ? (
+            <MaterialCommunityIcons
+              name="chart-timeline-variant"
+              size={18}
+              color="black"
+            />
+          ) : (
+            <MaterialIcons name="candlestick-chart" size={18} color="black" />
+          )}
+        </TouchableOpacity>
+
+        {/* Chart type toggle */}
+        <TouchableOpacity
+          onPress={() => {
+            if (technicalIndicatorMode1 === "BOLL") {
+              setTechnicalIndicatorMode1(null);
+            } else {
+              setTechnicalIndicatorMode1("BOLL");
+            }
+          }}
+          style={[
+            styles.iconBtn,
+            {
+              backgroundColor: theme.background.surface,
+              borderColor: theme.border.default,
+              marginRight: 8,
+            },
+          ]}
+        >
+          {chartType === "area" ? (
+            <MaterialCommunityIcons
+              name="chart-timeline-variant"
+              size={18}
+              color="black"
+            />
+          ) : (
+            <MaterialIcons name="candlestick-chart" size={18} color="black" />
+          )}
+        </TouchableOpacity>
+
         <View style={{ flex: 1 }} />
 
         <TouchableOpacity
@@ -359,6 +391,29 @@ const PriceChartComponent = ({ stockItem }: Props) => {
           ]}
         >
           <MaterialCommunityIcons name="arrow-expand" size={18} color="black" />
+        </TouchableOpacity>
+
+        {/* Chart type toggle */}
+        <TouchableOpacity
+          onPress={() => setShowVolume((prev) => !prev)}
+          style={[
+            styles.iconBtn,
+            {
+              backgroundColor: theme.background.surface,
+              borderColor: theme.border.default,
+              marginRight: 8,
+            },
+          ]}
+        >
+          {chartType === "area" ? (
+            <MaterialCommunityIcons
+              name="chart-timeline-variant"
+              size={18}
+              color="black"
+            />
+          ) : (
+            <MaterialIcons name="candlestick-chart" size={18} color="black" />
+          )}
         </TouchableOpacity>
       </View>
 

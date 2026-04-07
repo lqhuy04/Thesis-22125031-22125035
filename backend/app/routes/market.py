@@ -41,7 +41,7 @@ async def get_latest_historical_chart_data(
     request_id = str(uuid.uuid4())
     result = MarketService.get_stock_price_by_interval(symbol, interval=interval)
     return {
-        "data": result,
+        "data": result[-1000:],
         "errorCode": 0 if result else 500001,
         "errorDesc": "" if result else "No data found for the specified symbol and interval",
         "requestId": request_id,

@@ -30,6 +30,13 @@ class MarketService:
         return now
     
     @staticmethod
+    def _parse_interval_minutes(interval: str) -> int:
+        """'1m'->1, '5m'->5, '15m'->15, '30m'->30, '1h'->60"""
+        if interval.endswith("h"):
+            return int(interval.replace("h", "")) * 60
+        return int(interval.replace("m", ""))
+    
+    @staticmethod
     def _get_latest_trading_time(symbol: str, interval: str = "15m") -> Optional[datetime]:
         """
         Get the most recent trading time in the database for a given symbol and interval.
@@ -65,60 +72,10 @@ class MarketService:
             return "00:00:00"
     
     @staticmethod
-    def _time_to_minutes(t: str) -> int:
-        h, m, _ = t.split(":")
-        return int(h) * 60 + int(m)
-
-    @staticmethod
-    def _minutes_to_time(m: int) -> str:
-        h = m // 60
-        mm = m % 60
-        return f"{h:02d}:{mm:02d}:00"
-
-    @staticmethod
-    def _build_allowed_times(interval: str) -> set:
-        # Base timeline
-        start = 9 * 60 + 15   # 09:15
-        end = 14 * 60 + 30    # 14:30
-        last = 14 * 60 + 45   # 14:45
-
-        allowed = set()
-
-        if interval == "1m":
-            return None  # không cần filter
-
-        if interval.endswith("m"):
-            step = int(interval.replace("m", ""))
-
-            # special case 30m
-            if step == 30:
-                start = 9 * 60 + 30  # 09:30
-
-            cur = start
-            while cur <= end:
-                allowed.add(cur)
-                cur += step
-
-            # luôn include 14:45 nếu có trong yêu cầu
-            if step in [5, 15]:
-                allowed.add(last)
-
-        elif interval == "1h":
-            cur = 10 * 60  # 10:00
-            while cur <= 14 * 60:
-                allowed.add(cur)
-                cur += 60
-
-        return allowed
-    
-    
-
-    @staticmethod
     def _get_clean_intraday_ohlc(
         symbol: str,
         from_date: str,
         from_time: str,
-        interval: str,
         to_date: Optional[datetime] = None
     ) -> List[Dict[str, Any]]:
 
@@ -150,8 +107,6 @@ class MarketService:
                 "%d/%m/%Y %H:%M:%S"
             )
     
-        allowed = MarketService._build_allowed_times(interval)
-
         filtered = []
         for record in data:
             t = record.get("Time")
@@ -173,15 +128,81 @@ class MarketService:
             if from_dt and record_dt <= from_dt:
                 continue
 
-            # filter theo interval (nếu không phải 1m)
-            if allowed is not None:
-                minutes = MarketService._time_to_minutes(t)
-                if minutes not in allowed:
-                    continue
-
             filtered.append(record)
 
         return filtered
+    
+    @staticmethod
+    def _resample_to_interval(
+        candles_1m: List[Dict[str, Any]],
+        interval: str
+    ) -> List[Dict[str, Any]]:
+        """
+        Aggregate 1m candles into target interval candles.
+        OPEN=first, HIGH=max, LOW=min, CLOSE=last, VOL=sum
+        """
+        if not candles_1m:
+            return []
+
+        interval_minutes = MarketService._parse_interval_minutes(interval)
+        if interval_minutes == 1:
+            return candles_1m
+
+        def get_bucket(dt: datetime) -> Optional[datetime]:
+            if interval_minutes == 30:
+                morning_start = 9 * 60 + 30
+            elif interval_minutes == 60:
+                morning_start = 10 * 60
+            else:
+                morning_start = 9 * 60 + 15
+            
+            SESSION_ANCHORS = [
+                (morning_start, 11 * 60 + 30),
+                (13 * 60,       14 * 60 + 45),
+            ]
+            
+            total_minutes = dt.hour * 60 + dt.minute
+            for session_start, session_end in SESSION_ANCHORS:
+                if session_start <= total_minutes <= session_end:
+                    offset = (total_minutes - session_start) // interval_minutes
+                    bucket_minutes = session_start + offset * interval_minutes
+                    return dt.replace(
+                        hour=bucket_minutes // 60,
+                        minute=bucket_minutes % 60,
+                        second=0,
+                        microsecond=0
+                    )
+            return None
+
+        # Group candles by (symbol, date, bucket)
+        buckets: Dict[tuple, List[Dict]] = {}
+        for c in candles_1m:
+            try:
+                dt = datetime.fromisoformat(c["trading_time"])
+            except Exception:
+                continue
+
+            bucket_dt = get_bucket(dt)
+            if bucket_dt is None:
+                continue
+
+            key = (c["symbol"], bucket_dt)
+            buckets.setdefault(key, []).append(c)
+
+        # Aggregate
+        result = []
+        for (symbol, bucket_dt), group in sorted(buckets.items(), key=lambda x: x[0][1]):
+            result.append({
+                "symbol": symbol,
+                "trading_time": bucket_dt.isoformat(),
+                "open":   group[0]["open"],
+                "high":   max(c["high"]   for c in group),
+                "low":    min(c["low"]    for c in group),
+                "close":  group[-1]["close"],
+                "volume": sum(c["volume"] for c in group),
+            })
+
+        return result
     
     def _ssi_item_to_db_record(item: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Convert SSI candle format into DB row format."""
@@ -224,25 +245,58 @@ class MarketService:
         except Exception as e:
             print(f"Error inserting prices for {interval}: {e}")
             return False
+
+    @staticmethod
+    def _trim_to_limit(symbol: str, interval: str, limit: int = 1050) -> None:
+        """Xóa các record cũ nhất, chỉ giữ lại `limit` record mới nhất."""
+        try:
+            # Lấy trading_time của record thứ `limit` từ mới nhất
+            cutoff_result = supabase.table(f"Stock_Price_{interval}") \
+                .select("trading_time") \
+                .eq("symbol", symbol.upper()) \
+                .order("trading_time", desc=True) \
+                .limit(1) \
+                .offset(limit) \
+                .execute()
+
+            if not cutoff_result.data:
+                return  # Tổng số record <= limit, không cần xóa
+
+            cutoff_time = cutoff_result.data[0]["trading_time"]
+
+            # Xóa tất cả record có trading_time <= cutoff_time
+            supabase.table(f"Stock_Price_{interval}") \
+                .delete() \
+                .eq("symbol", symbol.upper()) \
+                .lte("trading_time", cutoff_time) \
+                .execute()
+
+            print(f"[{symbol}|{interval}] Trimmed records older than {cutoff_time}")
+
+        except Exception as e:
+            print(f"[{symbol}|{interval}] Error trimming records: {e}")
         
+    
         
     @staticmethod
     def update_price_data_for_symbol_with_time_interval(
-        symbol: str, 
-        limit: int = 1050, 
+        symbol: str,
+        limit: int = 1050,
         interval: str = "15m"
     ) -> bool:
         try:
+            interval_minutes = MarketService._parse_interval_minutes(interval)
             latest_time = MarketService._get_latest_trading_time(symbol, interval)
 
             # =========================
-            # CASE 1: chưa có data
+            # CASE 1: chưa có data → fetch đủ 1050 nến interval
             # =========================
             if latest_time is None:
-                all_data: list = []
+                all_1m: List[Dict] = []
                 cursor_to = MarketService.get_last_trading_day(datetime.now())
+                resampled = []
 
-                while len(all_data) < limit:
+                while len(resampled) < limit:
                     cursor_from = cursor_to - timedelta(days=30)
 
                     batch = MarketService._get_clean_intraday_ohlc(
@@ -250,63 +304,74 @@ class MarketService:
                         from_date=cursor_from.strftime("%d/%m/%Y"),
                         to_date=cursor_to.strftime("%d/%m/%Y"),
                         from_time="00:00:00",
-                        interval=interval
                     )
 
                     if not batch:
+                        # Không còn data nữa → dừng, insert những gì có
+                        print(f"[{symbol}|{interval}] No more data available, stopping at {len(resampled)} candles")
                         break
 
-                    # prepend (giữ thứ tự thời gian)
-                    all_data = batch + all_data
+                    # Prepend batch mới vào
+                    all_1m = batch + all_1m
 
-                    print(f"Fetched batch of {len(batch)} records for {symbol} ({interval}) from {cursor_from.strftime("%d/%m/%Y")} to {cursor_to.strftime("%d/%m/%Y")}, total so far: {len(all_data)}")
-                    # lùi tiếp
-                    cursor_to = cursor_from - timedelta(days=1)  # tránh trùng ngày
-                    
-                # lấy đúng limit bản ghi mới nhất
-                result_data = all_data[-limit:] if len(all_data) > limit else all_data
-                
-                
-                upload_data = []
-                for result in result_data:
-                    record = MarketService._ssi_item_to_db_record(result)
-                    if record:
-                        upload_data.append(record)
+                    # Convert & resample toàn bộ để đếm chính xác
+                    candles_1m = [
+                        r for r in (MarketService._ssi_item_to_db_record(x) for x in all_1m)
+                        if r
+                    ]
+                    resampled = MarketService._resample_to_interval(candles_1m, interval)
 
-                if  upload_data:
-                    MarketService._insert_prices(upload_data, interval=interval)
-                    
-                return True
+                    print(
+                        f"[{symbol}|{interval}] 1m={len(all_1m)} → resampled={len(resampled)}/{limit}"
+                        f" | window {cursor_from:%d/%m/%Y}→{cursor_to:%d/%m/%Y}"
+                    )
+
+                    cursor_to = cursor_from - timedelta(days=1)
+
+                # Lấy đúng limit bản ghi mới nhất
+                upload_data = resampled[-limit:] if len(resampled) > limit else resampled
 
             # =========================
-            # CASE 2: đã có data
+            # CASE 2: đã có data → chỉ fetch delta, recalc bucket đang mở
             # =========================
-            formatted_date = latest_time.strftime("%d/%m/%Y")
-            formatted_time = latest_time.strftime("%H:%M:%S")
+            else:
+                # Lùi về đầu bucket hiện tại để recalculate bucket đang mở
+                bucket_start_minute = (latest_time.hour * 60 + latest_time.minute) // interval_minutes * interval_minutes
+                bucket_start = latest_time.replace(
+                    hour=bucket_start_minute // 60,
+                    minute=bucket_start_minute % 60,
+                    second=0,
+                    microsecond=0
+                )
+                # Lấy 1 phút trước bucket_start để filter > bucket_start - 1m
+                from_dt = bucket_start - timedelta(minutes=1)
 
-            result_data = MarketService._get_clean_intraday_ohlc(
-                symbol=symbol,
-                from_date=formatted_date,
-                to_date=date.today().strftime("%d/%m/%Y"),
-                from_time=formatted_time,
-                interval=interval
-            )
-            
-            upload_data = []
-            for result in result_data:
-                record = MarketService._ssi_item_to_db_record(result)
-                if record:
-                    upload_data.append(record)
+                raw_1m = MarketService._get_clean_intraday_ohlc(
+                    symbol=symbol,
+                    from_date=from_dt.strftime("%d/%m/%Y"),
+                    to_date=date.today().strftime("%d/%m/%Y"),
+                    from_time=from_dt.strftime("%H:%M:%S"),
+                )
 
-            if  upload_data:
+                candles_1m = [
+                    r for r in (MarketService._ssi_item_to_db_record(x) for x in raw_1m)
+                    if r
+                ]
+
+                upload_data = MarketService._resample_to_interval(candles_1m, interval)
+
+            if upload_data:
                 MarketService._insert_prices(upload_data, interval=interval)
+                print(f"[{symbol}|{interval}] Inserted {len(upload_data)} candles")
+
+            MarketService._trim_to_limit(symbol, interval, limit)
 
             return True
 
         except Exception as e:
-            print(f"Error fetching current stock price for {symbol}: {e}")
+            print(f"Error updating {symbol} ({interval}): {e}")
             return False
-        
+    
     @staticmethod
     def get_stock_price_by_interval(symbol: str, interval: str = "15m") -> List[Dict[str, Any]]:
         """

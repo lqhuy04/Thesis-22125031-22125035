@@ -29,8 +29,9 @@ const CHART_COLORS = {
 
 // Scale margins configuration
 const SCALE_MARGINS = {
-  main: { top: 0.1, bottom: 0.3 },
-  volume: { top: 0.85, bottom: 0 },
+  main: { top: 0.05, bottom: 0.3 },
+  volume: { top: 0.8, bottom: 0 },
+  mainFull: { top: 0.05, bottom: 0.05 }, // khi ẩn volume
 };
 
 const DEFAULT_ZOOM = {
@@ -365,6 +366,58 @@ const tryInitialize = () => {
     window.mainSeries = window.chart.addSeries(LightweightCharts.CandlestickSeries, createCandlestickOptions());
     window.chart.priceScale("right").applyOptions({ scaleMargins: SCALE_MARGINS.main });
 
+    // MA
+    window.ma20Series = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#D4A017",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      priceScaleId: "right", // share cùng price axis với mainSeries
+    });
+
+    window.ma50Series = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#1B7A1B",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      priceScaleId: "right",
+    });
+
+    // BOLL
+    window.bollSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#D4A017",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      priceScaleId: "right", // share cùng price axis với mainSeries
+    });
+
+    window.ubSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#1B7A1B",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      priceScaleId: "right",
+    });
+
+    window.lbSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#613DE4",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      priceScaleId: "right",
+    });
+
     window.fixedGridPrimitive = createFixedGridPrimitive();
     window.mainSeries.attachPrimitive(window.fixedGridPrimitive);
 
@@ -487,7 +540,6 @@ window.switchSeriesType = (newType) => {
     if (window.cachedPriceData) window.mainSeries.setData(window.cachedPriceData);
   }
 
-  window.chart.priceScale("right").applyOptions({ scaleMargins: SCALE_MARGINS.main });
   window.currentSeriesType = newType;
 
   if (window.fixedGridPrimitive) window.mainSeries.attachPrimitive(window.fixedGridPrimitive);
@@ -496,10 +548,61 @@ window.switchSeriesType = (newType) => {
     window.mainSeries.attachPrimitive(window.highLowPrimitive);
     requestAnimationFrame(() => { if (window.highLowPrimitive) window.highLowPrimitive.requestRedraw(); });
   }
+
+  if (window.ma20Series) window.ma20Series.applyOptions({ priceScaleId: "right" });
+  if (window.ma50Series) window.ma50Series.applyOptions({ priceScaleId: "right" });
+  if (window.bollSeries) window.bollSeries.applyOptions({ priceScaleId: "right" });
+  if (window.ubSeries) window.ubSeries.applyOptions({ priceScaleId: "right" });
+  if (window.lbSeries) window.lbSeries.applyOptions({ priceScaleId: "right" });
+};
+
+window.setVolumeVisible = (visible) => {
+  if (!window.volumeSeries || !window.chart) return;
+  
+  window.volumeSeries.applyOptions({ visible });
+  
+  if (visible) {
+    window.chart.priceScale("right").applyOptions({ scaleMargins: SCALE_MARGINS.main });
+    window.chart.priceScale("volume").applyOptions({ scaleMargins: SCALE_MARGINS.volume });
+  } else {
+    window.chart.priceScale("right").applyOptions({ scaleMargins: SCALE_MARGINS.mainFull });
+    // Co volume scale lại để không chiếm chỗ
+    window.chart.priceScale("volume").applyOptions({ scaleMargins: { top: 1, bottom: 0 } });
+  }
+};
+
+window.setTechnicalIndicatorMode1 = (mode) => {
+  if (!window.ma20Series || !window.ma50Series) return;
+  if (!window.bollSeries || !window.ubSeries || !window.lbSeries) return;
+
+  if (mode === "MA") {
+    window.ma20Series.applyOptions({ visible: true });
+    window.ma50Series.applyOptions({ visible: true });
+
+    window.bollSeries.applyOptions({ visible: false });
+    window.ubSeries.applyOptions({ visible: false });
+    window.lbSeries.applyOptions({ visible: false });
+
+  } else if (mode === "BOLL") {
+    window.ma20Series.applyOptions({ visible: false });
+    window.ma50Series.applyOptions({ visible: false });
+
+    window.bollSeries.applyOptions({ visible: true });
+    window.ubSeries.applyOptions({ visible: true });
+    window.lbSeries.applyOptions({ visible: true });
+
+  } else {
+    // NONE
+    window.ma20Series.applyOptions({ visible: false });
+    window.ma50Series.applyOptions({ visible: false });
+    window.bollSeries.applyOptions({ visible: false });
+    window.ubSeries.applyOptions({ visible: false });
+    window.lbSeries.applyOptions({ visible: false });
+  }
 };
 
 // Set chart data (called once or when timeframe changes)
-window.updateChartData = (priceData, volumeData, timeframeOption) => {
+window.updateChartData = (priceData, volumeData, maData, bollData, timeframeOption) => {
   if (!priceData || !volumeData) return;
 
   const isTimeframeChanged = timeframeOption !== undefined && timeframeOption !== window.currentTimeframeOption;
@@ -523,6 +626,12 @@ window.updateChartData = (priceData, volumeData, timeframeOption) => {
       }
     });
   }
+
+  if (maData && window.ma20Series) window.ma20Series.setData(maData.map((item) => ({ time: item.time, value: item.ma20 })));
+  if (maData && window.ma50Series) window.ma50Series.setData(maData.map((item) => ({ time: item.time, value: item.ma50 })));
+  if (bollData && window.bollSeries) window.bollSeries.setData(bollData.map((item) => ({ time: item.time, value: item.boll })));
+  if (bollData && window.ubSeries) window.ubSeries.setData(bollData.map((item) => ({ time: item.time, value: item.ub })));
+  if (bollData && window.lbSeries) window.lbSeries.setData(bollData.map((item) => ({ time: item.time, value: item.lb })));
 };
 
 if (document.readyState === "loading") {

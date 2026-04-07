@@ -305,42 +305,40 @@ export const fetchCurrentPriceData = async (
 };
 
 //------------------------------------------------------------
-export type TechnicalIndicators = {
+export type TechnicalIndicatorData = {
+  TradingDate: string;
+  Time: string;
   sma_20: number;
   sma_50: number;
+  rsi_14: number;
+  macd: number;
+  macd_signal: number;
+  macd_histogram: number;
   bb_upper: number;
   bb_middle: number;
   bb_lower: number;
-  volume: number;
-  macd: number;
-  DIF: number;
-  DEA: number;
-  rsi_14: number;
-  stoch_k: number;
-  stoch_d: number;
-  stoch_j: number;
-};
-
-export type TechnicalIndicatorData = {
-  date: string;
-  time: string;
-  indicators: TechnicalIndicators;
+  kdj_k: number;
+  kdj_d: number;
+  kdj_j: number;
 };
 
 export const getTechnicalIndicators = async (
   symbol: string,
+  timeframe: "1m" | "5m" | "15m" | "30m" | "1h" | "1d" | "1w" | "1M",
 ): Promise<{
   status: boolean;
   data: TechnicalIndicatorData[];
 }> => {
   try {
-    const result = await sendMessage(`api/technical-indicators/${symbol}`);
+    const result = await sendMessage(
+      `api/technical-indicators/${symbol}?interval=${timeframe}`,
+    );
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
         status: true,
-        data: data?.series as TechnicalIndicatorData[],
+        data: data as TechnicalIndicatorData[],
       };
     }
 
