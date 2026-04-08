@@ -21,7 +21,14 @@ import { useTheme } from "@/hooks/ThemeContext";
 import DetailHeader from "../ui/DetailHeader";
 import { SearchStockItem } from "@/helpers/SearchHelper";
 import TradingViewChart from "../tradingView/TradingViewChart";
-import { BollData, MAData, PriceData, VolumeData } from "../tradingView/utils";
+import {
+  BollData,
+  KDJData,
+  MAData,
+  PriceData,
+  RSIData,
+  VolumeData,
+} from "../tradingView/utils";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 
@@ -62,6 +69,10 @@ const PriceChartComponent = ({ stockItem }: Props) => {
   );
   const [showVolume, setShowVolume] = useState<boolean>(false);
   const [technicalIndicatorMode1, setTechnicalIndicatorMode1] = useState<
+    string | null
+  >(null);
+
+  const [technicalIndicatorMode2, setTechnicalIndicatorMode2] = useState<
     string | null
   >(null);
 
@@ -173,6 +184,38 @@ const PriceChartComponent = ({ stockItem }: Props) => {
     }
   }, [technicalIndicatorsData]);
 
+  const chartRSIData: RSIData[] = useMemo(() => {
+    if (
+      technicalIndicatorsData != null &&
+      Array.isArray(technicalIndicatorsData) &&
+      technicalIndicatorsData.length > 0
+    ) {
+      return technicalIndicatorsData.map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        value: item.rsi_14,
+      }));
+    } else {
+      return [];
+    }
+  }, [technicalIndicatorsData]);
+
+  const chartKDJData: KDJData[] = useMemo(() => {
+    if (
+      technicalIndicatorsData != null &&
+      Array.isArray(technicalIndicatorsData) &&
+      technicalIndicatorsData.length > 0
+    ) {
+      return technicalIndicatorsData.map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        k: item.kdj_k,
+        d: item.kdj_d,
+        j: item.kdj_j,
+      }));
+    } else {
+      return [];
+    }
+  }, [technicalIndicatorsData]);
+
   const chartVolumeData: VolumeData[] = useMemo(() => {
     if (priceData != null && Array.isArray(priceData) && priceData.length > 0) {
       return priceData.map((item) => ({
@@ -246,10 +289,13 @@ const PriceChartComponent = ({ stockItem }: Props) => {
           volumes={chartVolumeData}
           maData={chartMAData}
           bollData={chartBOLLData}
+          rsiData={chartRSIData}
+          kdjData={chartKDJData}
           timeframe={timeFrame}
           chartType={chartType}
           showVolume={showVolume}
           technicalIndicatorMode1={technicalIndicatorMode1}
+          technicalIndicatorMode2={technicalIndicatorMode2}
         />
       )}
 
@@ -342,6 +388,64 @@ const PriceChartComponent = ({ stockItem }: Props) => {
               setTechnicalIndicatorMode1(null);
             } else {
               setTechnicalIndicatorMode1("BOLL");
+            }
+          }}
+          style={[
+            styles.iconBtn,
+            {
+              backgroundColor: theme.background.surface,
+              borderColor: theme.border.default,
+              marginRight: 8,
+            },
+          ]}
+        >
+          {chartType === "area" ? (
+            <MaterialCommunityIcons
+              name="chart-timeline-variant"
+              size={18}
+              color="black"
+            />
+          ) : (
+            <MaterialIcons name="candlestick-chart" size={18} color="black" />
+          )}
+        </TouchableOpacity>
+
+        {/* Chart type toggle */}
+        <TouchableOpacity
+          onPress={() => {
+            if (technicalIndicatorMode2 === "RSI") {
+              setTechnicalIndicatorMode2(null);
+            } else {
+              setTechnicalIndicatorMode2("RSI");
+            }
+          }}
+          style={[
+            styles.iconBtn,
+            {
+              backgroundColor: theme.background.surface,
+              borderColor: theme.border.default,
+              marginRight: 8,
+            },
+          ]}
+        >
+          {chartType === "area" ? (
+            <MaterialCommunityIcons
+              name="chart-timeline-variant"
+              size={18}
+              color="black"
+            />
+          ) : (
+            <MaterialIcons name="candlestick-chart" size={18} color="black" />
+          )}
+        </TouchableOpacity>
+
+        {/* Chart type toggle */}
+        <TouchableOpacity
+          onPress={() => {
+            if (technicalIndicatorMode2 === "KDJ") {
+              setTechnicalIndicatorMode2(null);
+            } else {
+              setTechnicalIndicatorMode2("KDJ");
             }
           }}
           style={[

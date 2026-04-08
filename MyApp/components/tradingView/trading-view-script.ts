@@ -28,17 +28,36 @@ const CHART_COLORS = {
 };
 
 // Scale margins configuration
+//
+// Layout cases (each "slot" is ~20% of chart height):
+//   price only            → main: {top:0.05, bottom:0.05}
+//   price + volume        → main: {top:0.05, bottom:0.30}, volume: {top:0.75, bottom:0}
+//   price + indicator     → main: {top:0.05, bottom:0.30}, indicator: {top:0.75, bottom:0}
+//   price + vol + ind     → main: {top:0.05, bottom:0.50}, volume: {top:0.55, bottom:0.25}, indicator: {top:0.80, bottom:0}
+//
 const SCALE_MARGINS = {
-  main: { top: 0.05, bottom: 0.3 },
-  volume: { top: 0.8, bottom: 0 },
-  mainFull: { top: 0.05, bottom: 0.05 }, // khi ẩn volume
+  // price pane
+  mainFull:          { top: 0.05, bottom: 0.05 }, // no sub-pane
+  mainWithOne:       { top: 0.05, bottom: 0.30 }, // one sub-pane (vol or ind)
+  mainWithTwo:       { top: 0.05, bottom: 0.50 }, // both sub-panes
+ 
+  // volume pane
+  volumeAlone:       { top: 0.75, bottom: 0.00 }, // only sub-pane
+  volumeWithInd:     { top: 0.55, bottom: 0.25 }, // volume above indicator
+ 
+  // indicator pane
+  indicatorAlone:    { top: 0.75, bottom: 0.00 }, // only sub-pane
+  indicatorWithVol:  { top: 0.80, bottom: 0.00 }, // indicator below volume
+ 
+  // collapsed (hidden but still exists)
+  collapsed:         { top: 1.00, bottom: 0.00 },
 };
 
 const DEFAULT_ZOOM = {
   barSpacing: 6,
   rightOffset: 1,
 };
-
+ 
 function binarySearchByTime(data, targetTime) {
   let left = 0;
   let right = data.length - 1;
@@ -51,7 +70,7 @@ function binarySearchByTime(data, targetTime) {
   }
   return -1;
 }
-
+ 
 // Shared formatters
 const volumeFormatter = (value) => {
   if (value == null || isNaN(value)) return "--";
@@ -66,7 +85,12 @@ const priceFormatter = Intl.NumberFormat("vi-VN", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 }).format;
-
+ 
+const indicatorFormatter = (value) => {
+  if (value == null || isNaN(value)) return "--";
+  return value.toFixed(2);
+};
+ 
 // Series configuration factories
 const createCandlestickOptions = () => ({
   priceFormat: { type: "custom", formatter: priceFormatter },
@@ -76,7 +100,7 @@ const createCandlestickOptions = () => ({
   upColor: CHART_COLORS.UP,
   downColor: CHART_COLORS.DOWN,
 });
-
+ 
 const createAreaOptions = () => ({
   priceFormat: { type: "custom", formatter: priceFormatter },
   lineColor: CHART_COLORS.AREA_LINE,
@@ -87,7 +111,7 @@ const createAreaOptions = () => ({
   priceLineVisible: true,
   lastValueVisible: true,
 });
-
+ 
 // Intl.DateTimeFormat instances (cached for performance)
 const dtfTime = new Intl.DateTimeFormat("vi-VN", {
   hour: "2-digit",
@@ -100,14 +124,14 @@ const dtfParts = new Intl.DateTimeFormat("vi-VN", {
   month: "2-digit",
   year: "numeric",
 });
-
+ 
 const getDateParts = (date) => {
   const parts = dtfParts.formatToParts(date);
   const result = {};
   for (const part of parts) result[part.type] = part.value;
   return result;
 };
-
+ 
 const formatDate = (date) => {
   const p = getDateParts(date);
   return p.day + "/" + p.month + "/" + p.year;
@@ -120,7 +144,7 @@ const formatMonthYear = (date) => {
   const p = getDateParts(date);
   return p.month + "/" + p.year;
 };
-
+ 
 const timeFormatter = (time) => {
   const date = new Date(time * 1000);
   const tf = window.currentTimeframeOption;
@@ -136,11 +160,11 @@ const timeFormatter = (time) => {
   // 1d, 1w, 1month
   return formatDate(date);
 };
-
+ 
 const tickMarkFormatter = (time, tickMarkType) => {
   const date = new Date(time * 1000);
   const tf = window.currentTimeframeOption;
-
+ 
   // 1month: chỉ cần hiện tháng/năm hoặc năm
   if (tf === TIMEFRAME.ONE_MONTH) {
     switch (tickMarkType) {
@@ -148,7 +172,7 @@ const tickMarkFormatter = (time, tickMarkType) => {
       default: return formatMonthYear(date);
     }
   }
-
+ 
   // 1w, 1d
   if (tf === TIMEFRAME.ONE_WEEK || tf === TIMEFRAME.ONE_DAY) {
     switch (tickMarkType) {
@@ -157,7 +181,7 @@ const tickMarkFormatter = (time, tickMarkType) => {
       default: return formatDayMonth(date);
     }
   }
-
+ 
   // Intraday: 1m, 5m, 15m, 30m, 1h
   switch (tickMarkType) {
     case 0: return dtfYear.format(date);
@@ -168,7 +192,7 @@ const tickMarkFormatter = (time, tickMarkType) => {
     default: return formatDate(date);
   }
 };
-
+ 
 const formatDateForTooltip = (timestamp) => {
   const date = new Date(timestamp * 1000);
   const tf = window.currentTimeframeOption;
@@ -183,12 +207,12 @@ const formatDateForTooltip = (timestamp) => {
   }
   return formatDate(date);
 };
-
+ 
 const formatPriceForTooltip = (price) => {
   if (price === undefined || price === null) return "--";
   return price.toFixed(2).replace(".", ",");
 };
-
+ 
 function setValueWithPrefixAndColor(element, value, prevValue, suffix = "") {
   if (!element) return;
   if (prevValue !== null) {
@@ -203,13 +227,13 @@ function setValueWithPrefixAndColor(element, value, prevValue, suffix = "") {
     element.style.color = "#333333";
   }
 }
-
+ 
 // Fixed grid primitive (Binance-style)
 const createFixedGridPrimitive = () => {
   const GRID_COLOR = "rgba(0, 0, 0, 0.1)";
   const H_SPACING = 39;
   const V_SPACING = 80;
-
+ 
   const renderer = {
     draw(target) {
       target.useBitmapCoordinateSpace((scope) => {
@@ -217,34 +241,34 @@ const createFixedGridPrimitive = () => {
         const { width, height } = scope.bitmapSize;
         const hR = scope.horizontalPixelRatio;
         const vR = scope.verticalPixelRatio;
-
+ 
         ctx.save();
         ctx.strokeStyle = GRID_COLOR;
         ctx.lineWidth = 1;
-
+ 
         const hStep = H_SPACING * vR;
         for (let y = hStep; y < height; y += hStep) {
           ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
-
+ 
         const vStep = V_SPACING * hR;
         for (let x = vStep; x < width; x += vStep) {
           ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
         }
-
+ 
         ctx.restore();
       });
     },
   };
-
+ 
   const view = { renderer() { return renderer; }, zOrder() { return "bottom"; } };
-
+ 
   return {
     attached() {}, detached() {}, updateAllViews() {},
     paneViews() { return [view]; },
   };
 };
-
+ 
 // High/Low price labels primitive (Binance-style)
 const drawPriceLabel = (ctx, x, y, text, hRatio, vRatio, bitmapWidth) => {
   ctx.save();
@@ -267,10 +291,10 @@ const drawPriceLabel = (ctx, x, y, text, hRatio, vRatio, bitmapWidth) => {
   ctx.fillText(text, textX, by);
   ctx.restore();
 };
-
+ 
 const createHighLowPrimitive = () => {
   let _chart = null, _series = null, _data = null, _requestUpdate = null;
-
+ 
   const renderer = {
     draw(target) {
       if (!_data) return;
@@ -284,9 +308,9 @@ const createHighLowPrimitive = () => {
       });
     },
   };
-
+ 
   const view = { renderer() { return renderer; }, zOrder() { return "top"; } };
-
+ 
   return {
     attached(params) {
       _chart = params.chart; _series = params.series; _requestUpdate = params.requestUpdate;
@@ -322,17 +346,51 @@ const createHighLowPrimitive = () => {
     requestRedraw() { if (_requestUpdate) _requestUpdate(); },
   };
 };
-
+ 
+// ─── Helper: recompute and apply all scale margins based on current state ───
+const applyScaleMargins = () => {
+  if (!window.chart) return;
+  const volOn = window.isVolumeVisible;
+  const indOn = window.currentIndicatorMode2 !== null;
+ 
+  // Price pane
+  let mainMargins;
+  if (volOn && indOn)       mainMargins = SCALE_MARGINS.mainWithTwo;
+  else if (volOn || indOn)  mainMargins = SCALE_MARGINS.mainWithOne;
+  else                      mainMargins = SCALE_MARGINS.mainFull;
+  window.chart.priceScale("right").applyOptions({ scaleMargins: mainMargins });
+ 
+  // Volume pane
+  if (window.volumeSeries) {
+    if (volOn) {
+      const volMargins = indOn ? SCALE_MARGINS.volumeWithInd : SCALE_MARGINS.volumeAlone;
+      window.chart.priceScale("volume").applyOptions({ scaleMargins: volMargins });
+    } else {
+      window.chart.priceScale("volume").applyOptions({ scaleMargins: SCALE_MARGINS.collapsed });
+    }
+  }
+ 
+  // Indicator pane
+  if (window.rsiSeries) {
+    if (indOn) {
+      const indMargins = volOn ? SCALE_MARGINS.indicatorWithVol : SCALE_MARGINS.indicatorAlone;
+      window.chart.priceScale("indicator").applyOptions({ scaleMargins: indMargins });
+    } else {
+      window.chart.priceScale("indicator").applyOptions({ scaleMargins: SCALE_MARGINS.collapsed });
+    }
+  }
+};
+ 
 const tryInitialize = () => {
   const container = document.getElementById("container");
   if (!container || typeof LightweightCharts === "undefined") return;
-
+ 
   const rect = container.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) {
     requestAnimationFrame(tryInitialize);
     return;
   }
-
+ 
   try {
     window.chart = LightweightCharts.createChart(container, {
       localization: { timeFormatter },
@@ -354,19 +412,21 @@ const tryInitialize = () => {
         horzLine: { labelBackgroundColor: "#007AFF" },
       },
     });
-
+ 
+    // ── Volume series ──────────────────────────────────────────────────────
     window.volumeSeries = window.chart.addSeries(LightweightCharts.HistogramSeries, {
       priceFormat: { type: "custom", formatter: volumeFormatter },
       priceScaleId: "volume",
       priceLineVisible: false,
       lastValueVisible: true,
     });
-    window.chart.priceScale("volume").applyOptions({ scaleMargins: SCALE_MARGINS.volume });
-
+    window.chart.priceScale("volume").applyOptions({ scaleMargins: SCALE_MARGINS.volumeAlone });
+ 
+    // ── Main price series ──────────────────────────────────────────────────
     window.mainSeries = window.chart.addSeries(LightweightCharts.CandlestickSeries, createCandlestickOptions());
-    window.chart.priceScale("right").applyOptions({ scaleMargins: SCALE_MARGINS.main });
-
-    // MA
+    window.chart.priceScale("right").applyOptions({ scaleMargins: SCALE_MARGINS.mainWithOne });
+ 
+    // ── MA lines ───────────────────────────────────────────────────────────
     window.ma20Series = window.chart.addSeries(LightweightCharts.LineSeries, {
       visible: false,
       color: "#D4A017",
@@ -374,9 +434,9 @@ const tryInitialize = () => {
       priceLineVisible: false,
       lastValueVisible: false,
       crosshairMarkerVisible: false,
-      priceScaleId: "right", // share cùng price axis với mainSeries
+      priceScaleId: "right",
     });
-
+ 
     window.ma50Series = window.chart.addSeries(LightweightCharts.LineSeries, {
       visible: false,
       color: "#1B7A1B",
@@ -386,8 +446,8 @@ const tryInitialize = () => {
       crosshairMarkerVisible: false,
       priceScaleId: "right",
     });
-
-    // BOLL
+ 
+    // ── BOLL lines ─────────────────────────────────────────────────────────
     window.bollSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
       visible: false,
       color: "#D4A017",
@@ -395,9 +455,9 @@ const tryInitialize = () => {
       priceLineVisible: false,
       lastValueVisible: false,
       crosshairMarkerVisible: false,
-      priceScaleId: "right", // share cùng price axis với mainSeries
+      priceScaleId: "right",
     });
-
+ 
     window.ubSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
       visible: false,
       color: "#1B7A1B",
@@ -407,7 +467,7 @@ const tryInitialize = () => {
       crosshairMarkerVisible: false,
       priceScaleId: "right",
     });
-
+ 
     window.lbSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
       visible: false,
       color: "#613DE4",
@@ -417,20 +477,70 @@ const tryInitialize = () => {
       crosshairMarkerVisible: false,
       priceScaleId: "right",
     });
-
+ 
+    // ── Indicator pane: RSI (single line) ─────────────────────────────────
+    window.rsiSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#FF9F0A",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+      priceScaleId: "indicator",
+      priceFormat: { type: "custom", formatter: indicatorFormatter },
+    });
+ 
+    // ── Indicator pane: KDJ (K, D, J) ─────────────────────────────────────
+    window.kdjKSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#FF9F0A",   // K – orange
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+      priceScaleId: "indicator",
+      priceFormat: { type: "custom", formatter: indicatorFormatter },
+    });
+ 
+    window.kdjDSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#3395FF",   // D – blue
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+      priceScaleId: "indicator",
+      priceFormat: { type: "custom", formatter: indicatorFormatter },
+    });
+ 
+    window.kdjJSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#FF3B30",   // J – red
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+      priceScaleId: "indicator",
+      priceFormat: { type: "custom", formatter: indicatorFormatter },
+    });
+ 
+    // Collapse indicator pane by default (mode2 = null)
+    window.chart.priceScale("indicator").applyOptions({ scaleMargins: SCALE_MARGINS.collapsed });
+ 
+    // ── Primitives ─────────────────────────────────────────────────────────
     window.fixedGridPrimitive = createFixedGridPrimitive();
     window.mainSeries.attachPrimitive(window.fixedGridPrimitive);
-
+ 
     window.highLowPrimitive = createHighLowPrimitive();
     window.mainSeries.attachPrimitive(window.highLowPrimitive);
-
-    // Tooltip
+ 
+    // ── Tooltip ────────────────────────────────────────────────────────────
     const tooltip = document.createElement("div");
     tooltip.className = "tooltip";
     tooltip.innerHTML = ${tooltipHTMLTemplateString};
     container.appendChild(tooltip);
     window.tooltip = tooltip;
-
+ 
     window.chart.subscribeCrosshairMove((param) => {
       if (
         !param.point || !param.time ||
@@ -440,18 +550,18 @@ const tryInitialize = () => {
         tooltip.style.display = "none";
         return;
       }
-
+ 
       const candleData = param.seriesData.get(window.mainSeries);
       if (!candleData) { tooltip.style.display = "none"; return; }
-
+ 
       const volumeData = param.seriesData.get(window.volumeSeries);
-
+ 
       const dateText = tooltip.querySelector(".tooltip-date-text");
       if (dateText) dateText.textContent = formatDateForTooltip(param.time);
-
+ 
       const index = binarySearchByTime(window.cachedPriceData, param.time);
       const prevClosePrice = index > 0 ? window.cachedPriceData[index - 1].close : null;
-
+ 
       const openEl = document.getElementById("tooltip-open");
       const closeEl = document.getElementById("tooltip-close");
       const highEl = document.getElementById("tooltip-high");
@@ -460,11 +570,11 @@ const tryInitialize = () => {
       const changeEl = document.getElementById("tooltip-change");
       const percentageChangeEl = document.getElementById("tooltip-percentage-change");
       const amplitudeEl = document.getElementById("tooltip-amplitude");
-
+ 
       const ohlcData = window.currentSeriesType === "candle"
         ? candleData
         : index >= 0 ? window.cachedPriceData[index] : null;
-
+ 
       if (ohlcData && prevClosePrice) {
         const changeValue = ohlcData.close - prevClosePrice;
         const percentageChangeValue = (changeValue / prevClosePrice) * 100;
@@ -486,13 +596,13 @@ const tryInitialize = () => {
         if (amplitudeEl) amplitudeEl.textContent = "--";
         if (percentageChangeEl) percentageChangeEl.textContent = "--";
       }
-
+ 
       if (volumeEl && volumeData) {
         volumeEl.textContent = volumeFormatter(volumeData.value !== undefined ? volumeData.value : volumeData);
       } else if (volumeEl) {
         volumeEl.textContent = "--";
       }
-
+ 
       // Position tooltip opposite to crosshair side
       const tooltipWidth = tooltip.offsetWidth || 130;
       const priceScaleWidth = 55;
@@ -504,13 +614,13 @@ const tryInitialize = () => {
       tooltip.style.top = "2px";
       tooltip.style.display = "block";
     });
-
+ 
     window.addEventListener("resize", () => {
       if (window.chart && window.innerWidth > 0 && window.innerHeight > 0) {
         window.chart.resize(window.innerWidth, window.innerHeight);
       }
     });
-
+ 
     if (window.ReactNativeWebView) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: "chart-ready" }));
     }
@@ -523,13 +633,13 @@ const tryInitialize = () => {
     }
   }
 };
-
+ 
 // Switch between candlestick and area series
 window.switchSeriesType = (newType) => {
   if (newType === window.currentSeriesType) return;
-
+ 
   window.chart.removeSeries(window.mainSeries);
-
+ 
   if (newType === "area") {
     window.mainSeries = window.chart.addSeries(LightweightCharts.AreaSeries, createAreaOptions());
     if (window.cachedPriceData) {
@@ -539,58 +649,46 @@ window.switchSeriesType = (newType) => {
     window.mainSeries = window.chart.addSeries(LightweightCharts.CandlestickSeries, createCandlestickOptions());
     if (window.cachedPriceData) window.mainSeries.setData(window.cachedPriceData);
   }
-
+ 
   window.currentSeriesType = newType;
-
+ 
   if (window.fixedGridPrimitive) window.mainSeries.attachPrimitive(window.fixedGridPrimitive);
-
+ 
   if (newType === "candle" && window.highLowPrimitive) {
     window.mainSeries.attachPrimitive(window.highLowPrimitive);
     requestAnimationFrame(() => { if (window.highLowPrimitive) window.highLowPrimitive.requestRedraw(); });
   }
-
+ 
   if (window.ma20Series) window.ma20Series.applyOptions({ priceScaleId: "right" });
   if (window.ma50Series) window.ma50Series.applyOptions({ priceScaleId: "right" });
   if (window.bollSeries) window.bollSeries.applyOptions({ priceScaleId: "right" });
   if (window.ubSeries) window.ubSeries.applyOptions({ priceScaleId: "right" });
   if (window.lbSeries) window.lbSeries.applyOptions({ priceScaleId: "right" });
 };
-
+ 
 window.setVolumeVisible = (visible) => {
   if (!window.volumeSeries || !window.chart) return;
-  
+  window.isVolumeVisible = visible;
   window.volumeSeries.applyOptions({ visible });
-  
-  if (visible) {
-    window.chart.priceScale("right").applyOptions({ scaleMargins: SCALE_MARGINS.main });
-    window.chart.priceScale("volume").applyOptions({ scaleMargins: SCALE_MARGINS.volume });
-  } else {
-    window.chart.priceScale("right").applyOptions({ scaleMargins: SCALE_MARGINS.mainFull });
-    // Co volume scale lại để không chiếm chỗ
-    window.chart.priceScale("volume").applyOptions({ scaleMargins: { top: 1, bottom: 0 } });
-  }
+  applyScaleMargins();
 };
-
+ 
 window.setTechnicalIndicatorMode1 = (mode) => {
   if (!window.ma20Series || !window.ma50Series) return;
   if (!window.bollSeries || !window.ubSeries || !window.lbSeries) return;
-
+ 
   if (mode === "MA") {
     window.ma20Series.applyOptions({ visible: true });
     window.ma50Series.applyOptions({ visible: true });
-
     window.bollSeries.applyOptions({ visible: false });
     window.ubSeries.applyOptions({ visible: false });
     window.lbSeries.applyOptions({ visible: false });
-
   } else if (mode === "BOLL") {
     window.ma20Series.applyOptions({ visible: false });
     window.ma50Series.applyOptions({ visible: false });
-
     window.bollSeries.applyOptions({ visible: true });
     window.ubSeries.applyOptions({ visible: true });
     window.lbSeries.applyOptions({ visible: true });
-
   } else {
     // NONE
     window.ma20Series.applyOptions({ visible: false });
@@ -600,24 +698,51 @@ window.setTechnicalIndicatorMode1 = (mode) => {
     window.lbSeries.applyOptions({ visible: false });
   }
 };
-
+ 
+// ── technicalIndicatorMode2: "RSI" | "KDJ" | null ─────────────────────────
+window.setTechnicalIndicatorMode2 = (mode) => {
+  if (!window.rsiSeries || !window.kdjKSeries) return;
+ 
+  window.currentIndicatorMode2 = mode;
+ 
+  if (mode === "RSI") {
+    window.rsiSeries.applyOptions({ visible: true });
+    window.kdjKSeries.applyOptions({ visible: false });
+    window.kdjDSeries.applyOptions({ visible: false });
+    window.kdjJSeries.applyOptions({ visible: false });
+  } else if (mode === "KDJ") {
+    window.rsiSeries.applyOptions({ visible: false });
+    window.kdjKSeries.applyOptions({ visible: true });
+    window.kdjDSeries.applyOptions({ visible: true });
+    window.kdjJSeries.applyOptions({ visible: true });
+  } else {
+    // null – hide all indicator lines
+    window.rsiSeries.applyOptions({ visible: false });
+    window.kdjKSeries.applyOptions({ visible: false });
+    window.kdjDSeries.applyOptions({ visible: false });
+    window.kdjJSeries.applyOptions({ visible: false });
+  }
+ 
+  applyScaleMargins();
+};
+ 
 // Set chart data (called once or when timeframe changes)
-window.updateChartData = (priceData, volumeData, maData, bollData, timeframeOption) => {
+window.updateChartData = (priceData, volumeData, maData, bollData, rsiData, kdjData, timeframeOption) => {
   if (!priceData || !volumeData) return;
-
+ 
   const isTimeframeChanged = timeframeOption !== undefined && timeframeOption !== window.currentTimeframeOption;
   if (timeframeOption !== undefined) window.currentTimeframeOption = timeframeOption;
-
+ 
   window.cachedPriceData = priceData;
   window.cachedVolumeData = volumeData;
-
+ 
   if (window.currentSeriesType === "area") {
     window.mainSeries.setData(priceData.map((item) => ({ time: item.time, value: item.close })));
   } else {
     window.mainSeries.setData(priceData);
   }
   window.volumeSeries.setData(volumeData);
-
+ 
   if (isTimeframeChanged) {
     requestAnimationFrame(() => {
       if (window.chart) {
@@ -626,14 +751,26 @@ window.updateChartData = (priceData, volumeData, maData, bollData, timeframeOpti
       }
     });
   }
-
+ 
   if (maData && window.ma20Series) window.ma20Series.setData(maData.map((item) => ({ time: item.time, value: item.ma20 })));
   if (maData && window.ma50Series) window.ma50Series.setData(maData.map((item) => ({ time: item.time, value: item.ma50 })));
   if (bollData && window.bollSeries) window.bollSeries.setData(bollData.map((item) => ({ time: item.time, value: item.boll })));
   if (bollData && window.ubSeries) window.ubSeries.setData(bollData.map((item) => ({ time: item.time, value: item.ub })));
   if (bollData && window.lbSeries) window.lbSeries.setData(bollData.map((item) => ({ time: item.time, value: item.lb })));
+ 
+  // RSI: [{ time, value }]
+  if (rsiData && window.rsiSeries) {
+    window.rsiSeries.setData(rsiData.map((item) => ({ time: item.time, value: item.value })));
+  }
+ 
+  // KDJ: [{ time, k, d, j }]
+  if (kdjData) {
+    if (window.kdjKSeries) window.kdjKSeries.setData(kdjData.map((item) => ({ time: item.time, value: item.k })));
+    if (window.kdjDSeries) window.kdjDSeries.setData(kdjData.map((item) => ({ time: item.time, value: item.d })));
+    if (window.kdjJSeries) window.kdjJSeries.setData(kdjData.map((item) => ({ time: item.time, value: item.j })));
+  }
 };
-
+ 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", tryInitialize);
 } else {

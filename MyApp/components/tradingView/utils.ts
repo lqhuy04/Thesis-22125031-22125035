@@ -28,6 +28,18 @@ export type BollData = {
   lb: number;
 };
 
+export type RSIData = {
+  time: number;
+  value: number;
+};
+
+export type KDJData = {
+  time: number;
+  k: number;
+  d: number;
+  j: number;
+};
+
 export const getWebViewSource = (): WebViewSource => {
   const source: WebViewSource = {
     html: TradingViewHtml,
