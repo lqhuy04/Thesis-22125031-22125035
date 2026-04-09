@@ -30,18 +30,18 @@ async def get_latest_historical_chart_data(
     interval: str = Query("15m", description="Interval: 15m, 1h, or 1d")
 ):
     """
-    📈 Get exactly the latest 1000 records for a specific interval
+    📈 Get exactly the latest 300 records for a specific interval
     
     This endpoint automatically syncs missing intra-day info and returns the latest available points:
     - **interval**: 15m, 1h, 1d (defaults to 15m)
-    - Returns latest **1000** records (fixed)
+    - Returns latest **300** records (fixed)
     
     **Example:** `/api/stock-price/VNM?interval=1h`
     """
     request_id = str(uuid.uuid4())
     result = MarketService.get_stock_price_by_interval(symbol, interval=interval)
     return {
-        "data": result[-1000:],
+        "data": result[-300:] if result and len(result) > 300 else result,
         "errorCode": 0 if result else 500001,
         "errorDesc": "" if result else "No data found for the specified symbol and interval",
         "requestId": request_id,

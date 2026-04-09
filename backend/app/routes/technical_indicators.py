@@ -66,7 +66,7 @@ async def get_technical_indicators(
                 record[key] = values[i] if i < len(values) else None
             records.append(record)
         
-        indicators_limit = 1000
+        indicators_limit = 300
         records = records[-indicators_limit:] if len(records) > indicators_limit else records
 
         return {

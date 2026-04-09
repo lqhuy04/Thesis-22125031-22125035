@@ -99,10 +99,10 @@ class TechnicalIndicatorsService:
                 low_prices,
                 close_prices,
                 fastk_period=9,
-                slowk_period=1,
-                slowk_matype=0,
+                slowk_period=3,
+                slowk_matype=1,
                 slowd_period=3,
-                slowd_matype=0
+                slowd_matype=1
             )
 
             indicators['kdj_k'] = slowk.tolist()

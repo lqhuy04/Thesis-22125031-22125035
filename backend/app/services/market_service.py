@@ -281,7 +281,7 @@ class MarketService:
     @staticmethod
     def update_price_data_for_symbol_with_time_interval(
         symbol: str,
-        limit: int = 1050,
+        limit: int = 350,
         interval: str = "15m"
     ) -> bool:
         try:
@@ -379,32 +379,14 @@ class MarketService:
         Ordered by trading_time ASC using pagination.
         """
         try:
-            all_data = []
-            page_size = 1000
-            start = 0
-
-            while True:
-                response = supabase.table(f"Stock_Price_{interval}") \
+            response = supabase.table(f"Stock_Price_{interval}") \
                     .select("symbol, trading_time, open, high, low, close, volume") \
                     .eq("symbol", symbol.upper()) \
                     .order("trading_time", desc=False) \
-                    .range(start, start + page_size - 1) \
                     .execute()
-
-                data = response.data or []
-
-                if not data:
-                    break
-
-                all_data.extend(data)
-
-                # Nếu số record trả về < page_size → đã hết data
-                if len(data) < page_size:
-                    break
-
-                start += page_size
-
-            return all_data
+                    
+            result = response.data if response.data else []
+            return result
 
         except Exception as e:
             print(f"Error fetching prices for {symbol} ({interval}): {e}")
