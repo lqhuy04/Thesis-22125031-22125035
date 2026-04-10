@@ -33,6 +33,7 @@ const OVERLAY_INDICATORS: IndicatorOption[] = [
 ];
 
 const SUB_INDICATORS: IndicatorOption[] = [
+  { label: "MACD", value: "MACD" },
   { label: "RSI", value: "RSI" },
   { label: "KDJ", value: "KDJ" },
 ];

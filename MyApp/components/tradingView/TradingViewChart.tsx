@@ -6,6 +6,7 @@ import {
   BollData,
   getWebViewSource,
   KDJData,
+  MACDData,
   MAData,
   PriceData,
   RSIData,
@@ -20,6 +21,7 @@ type Props = {
   volumes: VolumeData[];
   maData: MAData[];
   bollData: BollData[];
+  macdData: MACDData[];
   rsiData: RSIData[];
   kdjData: KDJData[];
   timeframe: number;
@@ -34,6 +36,7 @@ const TradingViewChart = ({
   volumes,
   maData,
   bollData,
+  macdData,
   rsiData,
   kdjData,
   timeframe,
@@ -58,6 +61,7 @@ const TradingViewChart = ({
       v: VolumeData[],
       maData: MAData[],
       bollData: BollData[],
+      macdData: MACDData[],
       rsiData: RSIData[],
       kdjData: KDJData[],
       tf: number,
@@ -71,6 +75,7 @@ const TradingViewChart = ({
                 ${JSON.stringify(v)},
                 ${JSON.stringify(maData)},
                 ${JSON.stringify(bollData)},
+                ${JSON.stringify(macdData)},
                 ${JSON.stringify(rsiData)},
                 ${JSON.stringify(kdjData)},
                 ${tf}
@@ -158,6 +163,7 @@ const TradingViewChart = ({
               volumes,
               maData,
               bollData,
+              macdData,
               rsiData,
               kdjData,
               timeframe,
@@ -174,16 +180,17 @@ const TradingViewChart = ({
     [
       prices,
       volumes,
+      setVolumeVisible,
+      showVolume,
+      setTechnicalIndicatorMode2,
+      technicalIndicatorMode2,
+      updateChartData,
       maData,
       bollData,
+      macdData,
       rsiData,
       kdjData,
       timeframe,
-      showVolume,
-      technicalIndicatorMode2,
-      updateChartData,
-      setVolumeVisible,
-      setTechnicalIndicatorMode2,
     ],
   );
 
@@ -196,6 +203,7 @@ const TradingViewChart = ({
       volumes,
       maData,
       bollData,
+      macdData,
       rsiData,
       kdjData,
       timeframe,
@@ -209,6 +217,7 @@ const TradingViewChart = ({
     rsiData,
     kdjData,
     updateChartData,
+    macdData,
   ]);
 
   useEffect(() => {

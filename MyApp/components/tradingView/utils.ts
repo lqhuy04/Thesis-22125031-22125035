@@ -28,6 +28,13 @@ export type BollData = {
   lb: number;
 };
 
+export type MACDData = {
+  time: number;
+  macd: number;
+  dif: number;
+  dea: number;
+};
+
 export type RSIData = {
   time: number;
   value: number;

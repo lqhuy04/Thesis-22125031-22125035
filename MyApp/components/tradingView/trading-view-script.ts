@@ -477,6 +477,37 @@ const tryInitialize = () => {
       crosshairMarkerVisible: false,
       priceScaleId: "right",
     });
+
+    // ── Indicator pane: MACD (histogram + DIF + DEA lines) ────────────────
+    window.macdHistogramSeries = window.chart.addSeries(LightweightCharts.HistogramSeries, {
+      visible: false,
+      priceScaleId: "indicator",
+      priceLineVisible: false,
+      lastValueVisible: false,
+      priceFormat: { type: "custom", formatter: indicatorFormatter },
+    });
+
+    window.macdDifSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#D4A017",
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+      priceScaleId: "indicator",
+      priceFormat: { type: "custom", formatter: indicatorFormatter },
+    });
+
+    window.macdDeaSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#1B7A1B", 
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: true,
+      crosshairMarkerVisible: true,
+      priceScaleId: "indicator",
+      priceFormat: { type: "custom", formatter: indicatorFormatter },
+    });
  
     // ── Indicator pane: RSI (single line) ─────────────────────────────────
     window.rsiSeries = window.chart.addSeries(LightweightCharts.LineSeries, {
@@ -705,18 +736,36 @@ window.setTechnicalIndicatorMode2 = (mode) => {
  
   window.currentIndicatorMode2 = mode;
  
-  if (mode === "RSI") {
+  if (mode === "MACD") {
+    window.macdHistogramSeries.applyOptions({ visible: true });
+    window.macdDifSeries.applyOptions({ visible: true });
+    window.macdDeaSeries.applyOptions({ visible: true });
+    window.rsiSeries.applyOptions({ visible: false });
+    window.kdjKSeries.applyOptions({ visible: false });
+    window.kdjDSeries.applyOptions({ visible: false });
+    window.kdjJSeries.applyOptions({ visible: false });
+  }
+  else if (mode === "RSI") {
+    window.macdHistogramSeries.applyOptions({ visible: false });
+    window.macdDifSeries.applyOptions({ visible: false });
+    window.macdDeaSeries.applyOptions({ visible: false });
     window.rsiSeries.applyOptions({ visible: true });
     window.kdjKSeries.applyOptions({ visible: false });
     window.kdjDSeries.applyOptions({ visible: false });
     window.kdjJSeries.applyOptions({ visible: false });
   } else if (mode === "KDJ") {
+    window.macdHistogramSeries.applyOptions({ visible: false });
+    window.macdDifSeries.applyOptions({ visible: false });
+    window.macdDeaSeries.applyOptions({ visible: false });
     window.rsiSeries.applyOptions({ visible: false });
     window.kdjKSeries.applyOptions({ visible: true });
     window.kdjDSeries.applyOptions({ visible: true });
     window.kdjJSeries.applyOptions({ visible: true });
   } else {
     // null – hide all indicator lines
+    window.macdHistogramSeries.applyOptions({ visible: false });
+    window.macdDifSeries.applyOptions({ visible: false });
+    window.macdDeaSeries.applyOptions({ visible: false });
     window.rsiSeries.applyOptions({ visible: false });
     window.kdjKSeries.applyOptions({ visible: false });
     window.kdjDSeries.applyOptions({ visible: false });
@@ -727,7 +776,7 @@ window.setTechnicalIndicatorMode2 = (mode) => {
 };
  
 // Set chart data (called once or when timeframe changes)
-window.updateChartData = (priceData, volumeData, maData, bollData, rsiData, kdjData, timeframeOption) => {
+window.updateChartData = (priceData, volumeData, maData, bollData, macdData, rsiData, kdjData, timeframeOption) => {
   if (!priceData || !volumeData) return;
  
   const isTimeframeChanged = timeframeOption !== undefined && timeframeOption !== window.currentTimeframeOption;
@@ -768,6 +817,23 @@ window.updateChartData = (priceData, volumeData, maData, bollData, rsiData, kdjD
     if (window.kdjKSeries) window.kdjKSeries.setData(kdjData.map((item) => ({ time: item.time, value: item.k })));
     if (window.kdjDSeries) window.kdjDSeries.setData(kdjData.map((item) => ({ time: item.time, value: item.d })));
     if (window.kdjJSeries) window.kdjJSeries.setData(kdjData.map((item) => ({ time: item.time, value: item.j })));
+  }
+ 
+  // MACD: [{ time, macd, dif, dea }]
+  if (macdData) {
+    if (window.macdHistogramSeries) {
+      window.macdHistogramSeries.setData(macdData.map((item) => ({
+        time: item.time,
+        value: item.macd,
+        color: item.macd >= 0 ? "#34C759" : "#F63842",
+      })));
+    }
+    if (window.macdDifSeries) {
+      window.macdDifSeries.setData(macdData.map((item) => ({ time: item.time, value: item.dif })));
+    }
+    if (window.macdDeaSeries) {
+      window.macdDeaSeries.setData(macdData.map((item) => ({ time: item.time, value: item.dea })));
+    }
   }
 };
  

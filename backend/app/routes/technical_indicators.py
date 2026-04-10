@@ -16,14 +16,13 @@ router = APIRouter(prefix="/api/technical-indicators", tags=["Technical Indicato
             description="Calculate technical indicators for a stock symbol using TA-Lib")
 async def get_technical_indicators(
     symbol: str,
-    interval: str = Query("15m", description="Interval: 1m, 5m, 15m, 30m, 1h"),
+    interval: str = Query("15m", description="Interval: 1m, 5m, 15m, 30m, 1h, 1d, 1w, 1M"),
 ):
     request_id = str(uuid.uuid4())
     try:
         symbol = symbol.upper()
-        interval = interval.lower()
 
-        if interval not in {"1m", "5m", "15m", "30m", "1h"}:
+        if interval not in {"1m", "5m", "15m", "30m", "1h", "1d", "1w", "1M"}:
             return {"success": False, "error": f"Unsupported interval: {interval}"}
 
         current_rows = MarketService.get_stock_price_by_interval(

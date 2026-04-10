@@ -20,6 +20,7 @@ import TradingViewChart from "../tradingView/TradingViewChart";
 import {
   BollData,
   KDJData,
+  MACDData,
   MAData,
   PriceData,
   RSIData,
@@ -77,7 +78,9 @@ const PriceChartComponent = ({ stockItem }: Props) => {
                       ? "1d"
                       : timeFrame === TIMEFRAME.ONE_WEEK
                         ? "1w"
-                        : "1d";
+                        : timeFrame === TIMEFRAME.ONE_MONTH
+                          ? "1M"
+                          : "15m";
 
         const [indicatorRes, priceRes] = await Promise.all([
           getTechnicalIndicators(stockItem.symbol, interval),
@@ -138,6 +141,20 @@ const PriceChartComponent = ({ stockItem }: Props) => {
     }));
   }, [technicalIndicatorsData]);
 
+  const chartMACDData: MACDData[] = useMemo(() => {
+    if (
+      !Array.isArray(technicalIndicatorsData) ||
+      technicalIndicatorsData.length === 0
+    )
+      return [];
+    return technicalIndicatorsData.map((item) => ({
+      time: parseDateTime(item.TradingDate, item.Time) / 1000,
+      macd: item.macd_histogram,
+      dif: item.macd,
+      dea: item.macd_signal,
+    }));
+  }, [technicalIndicatorsData]);
+
   const chartRSIData: RSIData[] = useMemo(() => {
     if (
       !Array.isArray(technicalIndicatorsData) ||
@@ -195,6 +212,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
           volumes={chartVolumeData}
           maData={chartMAData}
           bollData={chartBOLLData}
+          macdData={chartMACDData}
           rsiData={chartRSIData}
           kdjData={chartKDJData}
           timeframe={timeFrame}
