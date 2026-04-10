@@ -4,13 +4,12 @@ import {
   Animated,
   Pressable,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   Dimensions,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Text } from "../ui/Text";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -26,23 +25,21 @@ export interface IndicatorState {
 interface IndicatorOption {
   label: string;
   value: string;
-  description: string;
 }
 
 const OVERLAY_INDICATORS: IndicatorOption[] = [
-  { label: "MA", value: "MA", description: "Moving Average" },
-  { label: "BOLL", value: "BOLL", description: "Bollinger Bands" },
+  { label: "MA", value: "MA" },
+  { label: "BOLL", value: "BOLL" },
 ];
 
 const SUB_INDICATORS: IndicatorOption[] = [
-  { label: "RSI", value: "RSI", description: "Relative Strength Index" },
-  { label: "KDJ", value: "KDJ", description: "Stochastic Oscillator" },
+  { label: "RSI", value: "RSI" },
+  { label: "KDJ", value: "KDJ" },
 ];
 
 const VOLUME_INDICATOR: IndicatorOption = {
-  label: "Volume",
+  label: "VOL",
   value: "VOLUME",
-  description: "Khối lượng giao dịch",
 };
 
 interface Props {
@@ -90,83 +87,36 @@ const IndicatorBottomSheet = ({
         duration: 220,
         useNativeDriver: true,
       }),
-    ]).start(() => onClose());
+    ]).start(onClose);
   };
 
-  const handleToggleMode1 = (value: string) => {
-    onChangeIndicator({
-      ...indicatorState,
-      mode1: indicatorState.mode1 === value ? null : (value as IndicatorMode1),
-    });
+  const toggle = <T,>(
+    current: T | null,
+    value: T,
+    updater: (val: T | null) => void,
+  ) => {
+    updater(current === value ? null : value);
   };
-
-  const handleToggleVolume = () => {
-    onChangeIndicator({
-      ...indicatorState,
-      volume: !indicatorState.volume,
-    });
-  };
-
-  const handleToggleMode2 = (value: string) => {
-    onChangeIndicator({
-      ...indicatorState,
-      mode2: indicatorState.mode2 === value ? null : (value as IndicatorMode2),
-    });
-  };
-
-  const activeCount =
-    (indicatorState.mode1 ? 1 : 0) + (indicatorState.mode2 ? 1 : 0);
 
   const renderOption = (
     option: IndicatorOption,
     isSelected: boolean,
-    onToggle: (value: string) => void,
+    onPress: () => void,
   ) => (
     <TouchableOpacity
       key={option.value}
-      onPress={() => onToggle(option.value)}
+      onPress={onPress}
       style={[
         styles.optionBtn,
         {
-          borderColor: isSelected
-            ? (theme.base?.primary ?? "#1a56db")
-            : (theme.border?.default ?? "#e5e7eb"),
+          borderColor: isSelected ? theme.base.primary : theme.border.default,
           backgroundColor: isSelected
-            ? `${theme.base?.primary ?? "#1a56db"}18`
-            : (theme.background?.surface ?? "#f9fafb"),
+            ? `${theme.base.primary}18`
+            : theme.background.surface,
         },
       ]}
     >
-      <View style={styles.optionLeft}>
-        <Text
-          style={[
-            styles.optionLabel,
-            {
-              color: isSelected
-                ? (theme.base?.primary ?? "#1a56db")
-                : (theme.text?.primary ?? "#111"),
-            },
-          ]}
-        >
-          {option.label}
-        </Text>
-        <Text
-          style={[
-            styles.optionDesc,
-            { color: theme.text?.secondary ?? "#6b7280" },
-          ]}
-        >
-          {option.description}
-        </Text>
-      </View>
-
-      {isSelected && (
-        <MaterialCommunityIcons
-          name="check-circle"
-          size={20}
-          color={theme.base?.primary ?? "#1a56db"}
-        />
-      )}
+      <Text typography="bodyLarge">{option.label}</Text>
     </TouchableOpacity>
   );
 
@@ -192,106 +142,70 @@ const IndicatorBottomSheet = ({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: theme.background?.surface ?? "#fff" },
+          { backgroundColor: theme.background.surface },
           { transform: [{ translateY: slideAnim }] },
         ]}
       >
-        {/* Handle */}
         <View style={styles.handle} />
 
         {/* Header */}
         <View style={styles.header}>
-          <Text
-            style={[
-              styles.sheetTitle,
-              { color: theme.text?.primary ?? "#111" },
-            ]}
+          <Text typography="titleLarge">Chỉ báo kỹ thuật</Text>
+          <TouchableOpacity
+            onPress={() =>
+              onChangeIndicator({ mode1: null, mode2: null, volume: false })
+            }
           >
-            Chỉ báo kỹ thuật
-          </Text>
-          {activeCount > 0 && (
-            <TouchableOpacity
-              onPress={() =>
-                onChangeIndicator({ mode1: null, mode2: null, volume: false })
-              }
-            >
-              <Text
-                style={[
-                  styles.clearBtn,
-                  { color: theme.base?.primary ?? "#1a56db" },
-                ]}
-              >
-                Xoá tất cả
-              </Text>
-            </TouchableOpacity>
-          )}
+            <Text typography="titleMedium" color={theme.base.primary}>
+              Xoá tất cả
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Overlay indicators */}
-        <Text
-          style={[
-            styles.sectionLabel,
-            { color: theme.text?.secondary ?? "#6b7280" },
-          ]}
-        >
-          TRÊN BIỂU ĐỒ GIÁ
-        </Text>
-        <View style={styles.optionsContainer}>
+        {/* Overlay */}
+        <View style={styles.row}>
           {OVERLAY_INDICATORS.map((opt) =>
-            renderOption(
-              opt,
-              indicatorState.mode1 === opt.value,
-              handleToggleMode1,
+            renderOption(opt, indicatorState.mode1 === opt.value, () =>
+              toggle(indicatorState.mode1, opt.value as IndicatorMode1, (val) =>
+                onChangeIndicator({ ...indicatorState, mode1: val }),
+              ),
             ),
           )}
         </View>
 
-        {/* Volume indicators */}
-        <Text
-          style={[
-            styles.sectionLabel,
-            { color: theme.text?.secondary ?? "#6b7280", marginTop: 16 },
-          ]}
-        >
-          KHỐI LƯỢNG
-        </Text>
+        <View style={styles.divider} />
 
-        <View style={styles.optionsContainer}>
-          {renderOption(
-            VOLUME_INDICATOR,
-            indicatorState.volume,
-            handleToggleVolume,
+        {/* Volume */}
+        <View style={styles.row}>
+          {renderOption(VOLUME_INDICATOR, indicatorState.volume, () =>
+            onChangeIndicator({
+              ...indicatorState,
+              volume: !indicatorState.volume,
+            }),
           )}
         </View>
 
-        {/* Sub-chart indicators */}
-        <Text
-          style={[
-            styles.sectionLabel,
-            { color: theme.text?.secondary ?? "#6b7280", marginTop: 16 },
-          ]}
-        >
-          BIỂU ĐỒ PHỤ
-        </Text>
-        <View style={styles.optionsContainer}>
+        <View style={styles.divider} />
+
+        {/* Sub indicators */}
+        <View style={styles.row}>
           {SUB_INDICATORS.map((opt) =>
-            renderOption(
-              opt,
-              indicatorState.mode2 === opt.value,
-              handleToggleMode2,
+            renderOption(opt, indicatorState.mode2 === opt.value, () =>
+              toggle(indicatorState.mode2, opt.value as IndicatorMode2, (val) =>
+                onChangeIndicator({ ...indicatorState, mode2: val }),
+              ),
             ),
           )}
         </View>
 
-        {/* Done button */}
+        {/* Done */}
         <TouchableOpacity
           onPress={closeSheet}
-          style={[
-            styles.doneBtn,
-            { backgroundColor: theme.base?.primary ?? "#1a56db" },
-          ]}
+          style={[styles.doneBtn, { backgroundColor: theme.base.primary }]}
         >
-          <Text style={styles.doneBtnText}>Xong</Text>
+          <Text typography="titleLarge" color="#F2F4F7">
+            Xong
+          </Text>
         </TouchableOpacity>
       </Animated.View>
     </Modal>
@@ -312,11 +226,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 36,
     paddingTop: 12,
-    elevation: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
   },
   handle: {
     width: 40,
@@ -332,52 +241,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  sheetTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-  },
-  clearBtn: {
-    fontSize: 13,
-    fontWeight: "500",
-  },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  optionsContainer: {
+  row: {
+    flexDirection: "row",
     gap: 8,
   },
   optionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 4,
     borderWidth: 1.5,
   },
-  optionLeft: {
-    gap: 2,
-  },
-  optionLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  optionDesc: {
-    fontSize: 12,
+  divider: {
+    height: 1,
+    marginVertical: 12,
+    backgroundColor: "#e5e7eb",
   },
   doneBtn: {
-    marginTop: 20,
-    paddingVertical: 14,
-    borderRadius: 10,
+    marginTop: 24,
+    paddingVertical: 10,
+    borderRadius: 6,
     alignItems: "center",
-  },
-  doneBtnText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
   },
 });
 

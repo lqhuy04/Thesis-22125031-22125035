@@ -4,12 +4,12 @@ import {
   Animated,
   Pressable,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   Dimensions,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { Text } from "../ui/Text";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -122,14 +122,10 @@ const TimeframeBottomSheet = ({
         {/* Handle */}
         <View style={styles.handle} />
 
-        <Text
-          style={[styles.sheetTitle, { color: theme.text?.primary ?? "#111" }]}
-        >
-          Chọn khung thời gian
-        </Text>
+        <Text typography="titleLarge">Chọn khung thời gian</Text>
 
         <View style={styles.optionsContainer}>
-          {TIMEFRAME_OPTIONS.map((option) => {
+          {TIMEFRAME_OPTIONS.slice(0, 4).map((option) => {
             const isSelected = selectedTimeframe === option.value;
             return (
               <TouchableOpacity
@@ -139,23 +135,46 @@ const TimeframeBottomSheet = ({
                   styles.optionBtn,
                   {
                     backgroundColor: isSelected
-                      ? (theme.base?.primary ?? "#1a56db")
-                      : (theme.background?.surface ?? "#f3f4f6"),
+                      ? theme.base.primary
+                      : theme.background.surface,
                     borderColor: isSelected
-                      ? (theme.base?.primary ?? "#1a56db")
-                      : (theme.border?.default ?? "#e5e7eb"),
+                      ? theme.base.primary
+                      : theme.border.default,
                   },
                 ]}
               >
                 <Text
-                  style={[
-                    styles.optionText,
-                    {
-                      color: isSelected
-                        ? "#fff"
-                        : (theme.text?.primary ?? "#111"),
-                    },
-                  ]}
+                  typography="bodyLarge"
+                  color={isSelected ? theme.text.onPrimary : theme.text.primary}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.optionsContainer}>
+          {TIMEFRAME_OPTIONS.slice(4).map((option) => {
+            const isSelected = selectedTimeframe === option.value;
+            return (
+              <TouchableOpacity
+                key={option.value}
+                onPress={() => handleSelect(option.value)}
+                style={[
+                  styles.optionBtn,
+                  {
+                    backgroundColor: isSelected
+                      ? theme.base.primary
+                      : theme.background.surface,
+                    borderColor: isSelected
+                      ? theme.base.primary
+                      : theme.border.default,
+                  },
+                ]}
+              >
+                <Text
+                  typography="bodyLarge"
+                  color={isSelected ? theme.text.onPrimary : theme.text.primary}
                 >
                   {option.label}
                 </Text>
@@ -203,13 +222,15 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     flexDirection: "row",
-    gap: 10,
+    marginTop: 12,
+    gap: 8,
   },
   optionBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    borderWidth: 1.5,
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
   },
