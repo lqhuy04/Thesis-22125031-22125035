@@ -1,20 +1,24 @@
 from state import AgentState
- 
+from service import database_service
  
 def technical_analysis_agent(state: AgentState) -> AgentState:
     """
     Technical Analysis Agent — xử lý task_c.
     TODO: Thêm logic / tool / LLM call vào đây.
     """
-    print("[Technical Analysis Agent] Đang xử lý...")
+    myTask = state.get("plan", {}).get("technical_analysis_agent", {})
+    print("[Technical Analysis Agent] Đang xử lý task:", myTask)
  
-    # TODO: Thêm logic thực sự, ví dụ:
-    # result = some_tool.run(state["user_input"])
- 
-    result = "Kết quả giả từ Technical Analysis Agent"
+    result = database_service.get_technical_analysis(
+        symbol=myTask.get("symbol", ""),
+        interval=myTask.get("interval", ""),
+        from_date=myTask.get("from_date", ""),  
+        to_date=myTask.get("to_date", ""),
+        indicators=myTask.get("indicators", []),
+    )
  
     return {
         "agent_results": {
-            "technical_analysis_agent": "Kết quả giả từ Technical Analysis Agent",
+            "technical_analysis_agent": result,
         },
     }

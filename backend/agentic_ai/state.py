@@ -13,7 +13,7 @@ class AgentState(TypedDict):
     Mỗi agent đọc và ghi vào đây.
     """
     user_input: str                    # Input gốc từ người dùng
-    plan: list[str]                    # Danh sách sub-task do Orchestrator lên kế hoạch
+    plan: dict[str, Any]               # Danh sách sub-task do Orchestrator lên kế hoạch
     agent_results: Annotated[dict[str, Any], operator.or_]      # Kết quả trả về từ từng sub-agent {agent_name: result}
     final_output: str                  # Output tổng hợp cuối cùng
     error: str | None                  # Ghi nhận lỗi nếu có

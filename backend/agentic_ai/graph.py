@@ -23,17 +23,19 @@ def route_to_agents(state: AgentState) -> list[str]:
     Trả về danh sách tên node sẽ được gọi song song (Send API)
     hoặc tuần tự tuỳ thiết kế.
     """
-    plan = state.get("plan", [])
+    plan = state.get("plan", {})
     print(f"[Router] Routing theo plan: {plan}")
 
     # Map task name → node name trong graph
     task_to_node = {
-        "task_a": "article_agent",
-        "task_b": "fundamental_analysis_agent",
-        "task_c": "technical_analysis_agent",
+        "article_agent": "article_agent",
+        "fundamental_analysis_agent": "fundamental_analysis_agent",
+        "technical_analysis_agent": "technical_analysis_agent",
     }
 
     nodes_to_run = [task_to_node[task] for task in plan if task in task_to_node]
+    
+    print(f"[Router] Các node được chọn để chạy: {nodes_to_run}")
 
     if not nodes_to_run:
         print("[Router] Không tìm thấy agent phù hợp, chuyển thẳng đến aggregator.")
@@ -68,7 +70,6 @@ def build_graph() -> StateGraph:
             "fundamental_analysis_agent": "fundamental_analysis_agent",
             "technical_analysis_agent": "technical_analysis_agent",
             "article_agent": "article_agent",
-            "aggregator": "aggregator",
         },
     )
 

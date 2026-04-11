@@ -1,4 +1,5 @@
 from state import AgentState
+from service import database_service
  
  
 def fundamental_analysis_agent(state: AgentState) -> AgentState:
@@ -6,15 +7,16 @@ def fundamental_analysis_agent(state: AgentState) -> AgentState:
     Fundamental Analysis Agent — xử lý task_b.
     TODO: Thêm logic / tool / LLM call vào đây.
     """
-    print("[Fundamental Analysis Agent] Đang xử lý...")
+    myTask = state.get("plan", {}).get("fundamental_analysis_agent", {})
+    print("[Fundamental Analysis Agent] Đang xử lý task:", myTask)
  
-    # TODO: Thêm logic thực sự, ví dụ:
-    # result = some_tool.run(state["user_input"])
- 
-    result = "Kết quả giả từ Fundamental Analysis Agent"
+    result = database_service.get_fundamental_analysis(
+        symbol=myTask.get("symbol", ""),
+        indicators=myTask.get("indicators", []),
+    )
  
     return {
         "agent_results": {
-            "fundamental_analysis_agent": "Kết quả giả từ Fundamental Analysis Agent",
+            "fundamental_analysis_agent": result,
         },
     }

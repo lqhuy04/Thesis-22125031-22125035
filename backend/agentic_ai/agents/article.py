@@ -1,4 +1,5 @@
 from state import AgentState
+from service import database_service
  
  
 def article_agent(state: AgentState) -> AgentState:
@@ -6,15 +7,18 @@ def article_agent(state: AgentState) -> AgentState:
     Article Agent — xử lý task_a.
     TODO: Thêm logic / tool / LLM call vào đây.
     """
-    print("[Article Agent] Đang xử lý...")
+    
+    myTask = state.get("plan", {}).get("article_agent", {})
+    print("[Article Agent] Đang xử lý task:", myTask)
  
-    # TODO: Thêm logic thực sự, ví dụ:
-    # result = some_tool.run(state["user_input"])
- 
-    result = "Kết quả giả từ Article Agent"
+    result = database_service.get_articles(
+        symbol=myTask.get("symbol", ""),
+        from_date=myTask.get("from_date", ""),
+        to_date=myTask.get("to_date", ""),
+    )
  
     return {
         "agent_results": {
-            "article_agent": "Kết quả giả từ Article Agent",
+            "article_agent": result,
         },
     }

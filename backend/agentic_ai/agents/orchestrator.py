@@ -20,7 +20,24 @@ def orchestrator_agent(state: AgentState) -> AgentState:
     # plan = parse_plan(response)
 
     # Placeholder plan
-    plan = ["task_a", "task_b", "task_c"]  # Giả sử Orchestrator quyết định cần 3 task này
+    plan = {
+        "article_agent": {
+            "symbol" : "VNM",
+            "from_date": "2026-03-11",
+            "to_date": "2026-04-11",
+        },
+        "fundamental_analysis_agent": {
+            "symbol": "VNM",
+            "indicators": ["pe_ratio", "pb_ratio", "roe"],
+        },
+        "technical_analysis_agent": {
+            "symbol": "VNM",
+            "interval": "1d",
+            "from_date": "2026-03-11",
+            "to_date": "2026-04-11",
+            "indicators": ["RSI", "MACD"],
+        },
+    }
 
     print(f"[Orchestrator] Kế hoạch: {plan}")
     return {"plan": plan}
