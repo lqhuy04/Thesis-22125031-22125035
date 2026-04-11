@@ -26,10 +26,9 @@ export default function Index() {
     return <View />;
   }
 
-  // if (isLoggedIn) {
-  //   return <Redirect href="/HomeTabs" />;
-  // }
+  if (isLoggedIn) {
+    return <Redirect href="/Home" />;
+  }
 
-  // return <Redirect href="/Authentication" />;
-  return <Redirect href="/Home" />;
+  return <Redirect href="/Authentication" />;
 }
