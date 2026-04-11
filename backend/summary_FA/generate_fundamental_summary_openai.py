@@ -1,6 +1,6 @@
 import json
 
-from agents.service.openai_fundamental import summarize_fundamental
+from backend.AgenticAI.service.openai_fundamental import summarize_fundamental
 
 
 # Separate OpenAI script: generate and store fundamental summary in DB.
