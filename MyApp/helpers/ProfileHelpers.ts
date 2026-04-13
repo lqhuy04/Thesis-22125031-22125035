@@ -62,6 +62,8 @@ export const getRiskAppetite = async (): Promise<{
     const result = await sendMessage("api/risk-appetite/");
     const { errorCode, data } = result || {};
 
+    console.log("getRiskAppetite result:", data);
+
     if (errorCode === 0) {
       return {
         status: true,

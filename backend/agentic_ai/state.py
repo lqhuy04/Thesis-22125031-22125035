@@ -1,5 +1,5 @@
 """
-state.py — Định nghĩa Shared State dùng chung cho toàn bộ graph
+state.py — Shared State cho toàn bộ LangGraph graph.
 """
 
 from typing import Any, Annotated
@@ -8,12 +8,12 @@ from typing_extensions import TypedDict
 
 
 class AgentState(TypedDict):
-    """
-    Trạng thái chia sẻ giữa tất cả các node trong LangGraph.
-    Mỗi agent đọc và ghi vào đây.
-    """
-    user_input: str                    # Input gốc từ người dùng
-    plan: dict[str, Any]               # Danh sách sub-task do Orchestrator lên kế hoạch
-    agent_results: Annotated[dict[str, Any], operator.or_]      # Kết quả trả về từ từng sub-agent {agent_name: result}
-    final_output: str                  # Output tổng hợp cuối cùng
-    error: str | None                  # Ghi nhận lỗi nếu có
+    user_input: str               # Câu hỏi / yêu cầu gốc từ người dùng
+    risk_appetite: dict           # Khẩu vị rủi ro (truyền riêng để orchestrator dễ xử lý)
+    symbol: str                   # Mã cổ phiếu (truyền riêng để các agent dễ xử lý)
+    plan: dict                    # Kế hoạch do Orchestrator tạo ra {agent_name: params}
+    final_output: str             # Output tổng hợp cuối cùng
+    error: str | None             # Lỗi nếu có
+
+    # Nhiều sub-agent song song ghi → dùng operator.or_ để merge dict
+    agent_results: Annotated[dict[str, Any], operator.or_]

@@ -24,7 +24,7 @@ class RiskAppetiteService:
             Risk appetite record or None
         """
         try:
-            result = supabase.table("risk_appetite") \
+            result = supabase.table("RiskAppetite") \
                 .select("*") \
                 .eq("userid", user_id) \
                 .limit(1) \
@@ -68,7 +68,7 @@ class RiskAppetiteService:
             }
 
             # Check if record already exists
-            existing = supabase.table("risk_appetite") \
+            existing = supabase.table("RiskAppetite") \
                 .select("id") \
                 .eq("userid", user_id) \
                 .limit(1) \
@@ -76,13 +76,13 @@ class RiskAppetiteService:
 
             if existing.data:
                 # Update existing record
-                result = supabase.table("risk_appetite") \
+                result = supabase.table("RiskAppetite") \
                     .update(payload) \
                     .eq("userid", user_id) \
                     .execute()
             else:
                 # Insert new record
-                result = supabase.table("risk_appetite") \
+                result = supabase.table("RiskAppetite") \
                     .insert(payload) \
                     .execute()
             
