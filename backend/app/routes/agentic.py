@@ -9,7 +9,7 @@ from app.models.base_schemas import success_response, error_response
 from app.models.agentic_schemas import StockAnalysisRequest
 from app.services.agentic_service import run_stock_analysis
 
-router = APIRouter(prefix="/agentic", tags=["agentic-ai"])
+router = APIRouter(prefix="/api/agentic", tags=["agentic-ai"])
 
 
 @router.post(

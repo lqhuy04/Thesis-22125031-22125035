@@ -13,6 +13,7 @@ import TabView from "@/components/detail/DetailTabView";
 import PriceChartComponent from "@/components/detail/PriceChartComponent";
 import FinancialIndicatorsSection from "@/components/detail/FinancialIndicatorsSection";
 import FinancialAnalysisSummarySection from "@/components/detail/FinancialAnalysisSummarySection";
+import SummarizeAndRecommendSection from "@/components/detail/SummarizeAndRecommendSection";
 
 const Detail = () => {
   const { t } = useLocalization();
@@ -39,6 +40,7 @@ const Detail = () => {
       ],
     },
     { key: "news", label: "Tin tức" },
+    { key: "summary", label: "Tổng hợp và Gợi ý" },
   ];
 
   const [activeTab, setActiveTab] = useState<string>(TABS[0]?.key ?? "");
@@ -78,6 +80,9 @@ const Detail = () => {
       }
       if (tabKey === "news") {
         return <NewsSection stockSymbol={stockItem.symbol} />;
+      }
+      if (tabKey === "summary") {
+        return <SummarizeAndRecommendSection stockSymbol={stockItem.symbol} />;
       }
       if (
         tabKey === "fundamental-analysis" &&

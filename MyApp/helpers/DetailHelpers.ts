@@ -1,4 +1,5 @@
 import { sendMessage } from "./api/ApiClients";
+import { getRiskAppetite } from "./ProfileHelpers";
 
 function parseTradingTime(tradingTime: string): { date: string; time: string } {
   const date = new Date(tradingTime);
@@ -223,11 +224,10 @@ export const fetchStockDataByTimeFrame = async (
 
 //------------------------------------------------------------
 export type AnalysisData = {
-  symbol: string;
-  fundamental_analysis: string;
-  technical_analysis: string;
-  news_analysis: string;
+  summary: string;
   recommendation: string;
+  reasoning: string;
+  confidence: number;
 };
 
 export const getAnalysis = async (
@@ -237,7 +237,15 @@ export const getAnalysis = async (
   data: AnalysisData | null;
 }> => {
   try {
-    const result = await sendMessage(`api/analysis/${symbol}`);
+    const riskAppetite = await getRiskAppetite();
+
+    const result = await sendMessage("api/agentic/analyze", {
+      method: "POST",
+      body: JSON.stringify({
+        symbol: symbol,
+        risk_appetite: riskAppetite.data,
+      }),
+    });
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {

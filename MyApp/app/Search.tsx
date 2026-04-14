@@ -28,7 +28,12 @@ const Search = () => {
         flex: 1,
       }}
     >
-      <SearchBar value={text} onChange={setText} onSearchPress={onSearch} />
+      <SearchBar
+        value={text}
+        onChange={setText}
+        onSearchPress={onSearch}
+        autoFocus={true}
+      />
 
       {loading ? (
         <View

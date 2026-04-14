@@ -30,7 +30,7 @@ from agentic_ai.state import AgentState
 class InvestmentRecommendation(BaseModel):
     summary: str = Field(description="Phân tích tổng thể đầy đủ về tình hình cổ phiếu từ 3 nguồn tin tức, phân tích cơ bản, kỹ thuật")
 
-    recommendation: Literal["mua", "giữ", "chờ", "bán"] = Field(
+    recommendation: Literal["Mua", "Giữ", "Chờ", "Bán"] = Field(
         description="Hành động đề xuất"
     )
 
@@ -58,7 +58,7 @@ Nhiệm vụ:
 
 - Trả về:
   + summary: tóm tắt tình hình
-  + recommendation: ["mua", "giữ", "chờ", "bán"]
+  + recommendation: ["Mua", "Giữ", "Chờ", "Bán"]
   + reasoning: giải thích logic rõ ràng
   + confidence: từ 0 → 1
 
@@ -72,7 +72,7 @@ I. PHÂN TÍCH TIN TỨC (NEWS SENTIMENT)
   + Tin thị trường chung, không ảnh hưởng trực tiếp
 - Tiêu cực:
   + VN-Index giảm mạnh
-  + Khối ngoại bán ròng
+  + Khối ngoại Bán ròng
   + Áp lực ngành / vĩ mô
 
 Ảnh hưởng:
@@ -96,8 +96,8 @@ II. PHÂN TÍCH KỸ THUẬT (TECHNICAL SIGNALS)
 - MACD < signal → bearish
 - Histogram tăng → động lượng tăng
 - Histogram giảm → động lượng yếu
-- Cắt lên signal → tín hiệu mua sớm
-- Cắt xuống signal → tín hiệu bán
+- Cắt lên signal → tín hiệu Mua sớm
+- Cắt xuống signal → tín hiệu Bán
 
 ────────────────────────
 3. Bollinger Bands:
@@ -122,7 +122,7 @@ MA Cross:
 - MA20 cắt xuống MA50 → Death Cross → bearish mạnh
 
 Khoảng cách:
-- Giá cách xa MA → có thể quá mua / quá bán
+- Giá cách xa MA → có thể quá Mua / quá Bán
 
 ────────────────────────
 5. KDJ (Stochastic Oscillator nâng cao):
@@ -131,12 +131,12 @@ Khoảng cách:
 - K, D, J > 80 → overbought → dễ điều chỉnh
 
 Tín hiệu:
-- K cắt lên D → bullish (mua)
-- K cắt xuống D → bearish (bán)
+- K cắt lên D → bullish (Mua)
+- K cắt xuống D → bearish (Bán)
 
 Đặc biệt:
-- J rất cao (>100) → quá mua mạnh
-- J rất thấp (<0) → quá bán mạnh
+- J rất cao (>100) → quá Mua mạnh
+- J rất thấp (<0) → quá Bán mạnh
 
 ────────────────────────
 6. Price Action:
@@ -150,7 +150,7 @@ Tín hiệu:
 7. Volume:
 - Giá tăng + volume tăng → xác nhận xu hướng
 - Giá tăng + volume giảm → yếu
-- Giá giảm + volume tăng → bán mạnh
+- Giá giảm + volume tăng → Bán mạnh
 - Volume thấp → thiếu xác nhận
 
 ────────────────────────
@@ -197,10 +197,10 @@ IV. KẾT HỢP TÍN HIỆU (SIGNAL FUSION)
 - Trung & dài hạn → Fundamental
 
 Logic:
-- Technical bullish + Fundamental tốt → "mua"
-- Technical yếu + Fundamental tốt → "chờ" hoặc "giữ"
-- Technical xấu + News xấu → "bán"
-- Mixed signals → "chờ"
+- Technical bullish + Fundamental tốt → "Mua"
+- Technical yếu + Fundamental tốt → "Chờ" hoặc "Giữ"
+- Technical xấu + News xấu → "Bán"
+- Mixed signals → "Chờ"
 
 ────────────────────────
 V. KHẨU VỊ RỦI RO (RISK ADAPTATION)
@@ -208,8 +208,8 @@ V. KHẨU VỊ RỦI RO (RISK ADAPTATION)
 Dựa vào risk_appetite:
 
 1. Rủi ro thấp:
-- Tránh "mua" khi chưa rõ xu hướng
-- Ưu tiên "giữ" hoặc "chờ"
+- Tránh "Mua" khi chưa rõ xu hướng
+- Ưu tiên "Giữ" hoặc "Chờ"
 
 2. Kỳ vọng thu nhập thụ động:
 - Ưu tiên cổ phiếu:
@@ -223,22 +223,22 @@ Dựa vào risk_appetite:
 ────────────────────────
 VI. QUY TẮC RA QUYẾT ĐỊNH (FINAL DECISION)
 
-- "mua":
+- "Mua":
   + Technical bullish
   + Không có tin xấu lớn
   + Fundamental ổn
 
-- "giữ":
+- "Giữ":
   + Đang có vị thế
   + Xu hướng chưa rõ
   + Không xấu
 
-- "chờ":
+- "Chờ":
   + Tín hiệu mâu thuẫn
   + Sideway / chưa rõ xu hướng
   + Risk cao
 
-- "bán":
+- "Bán":
   + Technical bearish rõ
   + Tin tức xấu
   + Breakdown
@@ -274,7 +274,7 @@ VIII. QUY TẮC QUAN TRỌNG
 - Không nói chung chung
 - Phải giải thích rõ logic
 - recommendation bắt buộc thuộc enum:
-  ["mua", "giữ", "chờ", "bán"]
+  ["Mua", "Giữ", "Chờ", "Bán"]
 
 - Output CHỈ JSON, không thêm text
 """
@@ -340,7 +340,7 @@ YÊU CẦU:
             "error": str(e),
             "final_output": {
                 "summary": "Không thể phân tích dữ liệu",
-                "recommendation": "chờ",
+                "recommendation": "Chờ",
                 "reasoning": "Lỗi hệ thống khi xử lý dữ liệu",
                 "confidence": 0.0
             }

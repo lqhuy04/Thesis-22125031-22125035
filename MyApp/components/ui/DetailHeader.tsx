@@ -32,7 +32,6 @@ const SearchResultItem = ({ symbol }: SearchResultItemProps) => {
           borderRadius: 4,
           flexDirection: "row",
           alignItems: "center",
-          marginTop: 12,
           marginHorizontal: 12,
         }}
       >

@@ -28,7 +28,7 @@ class InvestmentRecommendation(BaseModel):
     summary: str = Field(
         description="Phân tích tổng thể đầy đủ về tình hình cổ phiếu từ 3 nguồn: tin tức, phân tích cơ bản, kỹ thuật"
     )
-    recommendation: Literal["mua", "giữ", "chờ", "bán"] = Field(
+    recommendation: Literal["Mua", "Giữ", "Chờ", "Bán"] = Field(
         description="Hành động đề xuất"
     )
     reasoning: str = Field(
