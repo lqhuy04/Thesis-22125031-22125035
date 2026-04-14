@@ -38,6 +38,7 @@ const BusinessNewsSection = () => {
               params: {
                 data: JSON.stringify({
                   title: "Doanh nghiệp",
+                  type: "business",
                 }),
               },
             });

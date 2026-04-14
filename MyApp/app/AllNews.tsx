@@ -1,7 +1,12 @@
 import NewsItem from "@/components/ui/NewsItem";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { New } from "@/helpers/DetailHelpers";
-import { getMacroEcomNews, getNewsByCategoryId } from "@/helpers/MarketHelpers";
+import {
+  getAllNews,
+  getBusinessNews,
+  getMacroEcomNews,
+  getNewsByCategoryId,
+} from "@/helpers/MarketHelpers";
 import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { FlatList } from "react-native-gesture-handler";
@@ -10,15 +15,29 @@ import { SafeAreaView } from "react-native-safe-area-context";
 const AllNews = () => {
   const { data } = useLocalSearchParams() || {};
 
-  const { title = "", category_id = "" } = data
-    ? (JSON.parse(data as string) as any)
-    : {};
+  const {
+    title = "",
+    category_id = "",
+    type = "",
+  } = data ? (JSON.parse(data as string) as any) : {};
 
   const [articles, setArticles] = useState<New[]>([]);
 
   useEffect(() => {
-    if (category_id === "") {
+    if (type === "macro") {
       getMacroEcomNews().then((result) => {
+        if (result.status) {
+          setArticles(result.data);
+        }
+      });
+    } else if (type === "business") {
+      getBusinessNews().then((result) => {
+        if (result.status) {
+          setArticles(result.data);
+        }
+      });
+    } else if (type === "all") {
+      getAllNews().then((result) => {
         if (result.status) {
           setArticles(result.data);
         }
@@ -30,7 +49,7 @@ const AllNews = () => {
         }
       });
     }
-  }, [category_id]);
+  }, [category_id, type]);
 
   return (
     <SafeAreaView>

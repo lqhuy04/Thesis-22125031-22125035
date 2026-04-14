@@ -39,6 +39,7 @@ const AllNewsSection = () => {
                 params: {
                   data: JSON.stringify({
                     title: "Toàn cảnh thị trường",
+                    type: "all",
                   }),
                 },
               });

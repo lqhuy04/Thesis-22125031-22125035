@@ -79,6 +79,7 @@ const CategoriesNewsSection = () => {
                 data: JSON.stringify({
                   title: categoryArticles[chosenIndex].category_name,
                   category_id: categoryArticles[chosenIndex].category_id,
+                  type: "category",
                 }),
               },
             });

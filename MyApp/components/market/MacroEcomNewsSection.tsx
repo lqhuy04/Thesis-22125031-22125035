@@ -38,6 +38,7 @@ const MacroEcomNewsSection = () => {
               params: {
                 data: JSON.stringify({
                   title: "Tin tức kinh tế - vĩ mô",
+                  type: "macro",
                 }),
               },
             });
