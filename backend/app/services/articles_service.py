@@ -200,3 +200,63 @@ class ArticlesService:
             import traceback
             traceback.print_exc()
             return []
+        
+    @staticmethod
+    def get_business_articles(limit: Optional[int] = None) -> List[ArticlesResponse]:
+        try:
+            result = (
+                supabase.table("Article")
+                .select("*")
+                .execute()
+            )
+
+            if not result.data:
+                return []
+            
+            # Bước 3: Lấy danh sách article_id từ kết quả trên
+            article_ids = []
+            article_map = {}
+            for item in result.data:
+                article_id = str(item.get("id") or "")
+                if article_id:
+                    article_ids.append(article_id)
+                    article_map[article_id] = item
+
+            if not article_ids:
+                return []
+
+            # Bước 4: Đếm số stock được tag cho mỗi article_id
+            # Chỉ giữ lại article nào chỉ có đúng 1 stock tag
+            count_result = (
+                supabase.table("Article_Stock")
+                .select("article_id")
+                .in_("article_id", article_ids)
+                .execute()
+            )
+
+            from collections import Counter
+            tag_counts = Counter(
+                str(row["article_id"]) for row in count_result.data
+            )
+            exclusive_ids = {aid for aid, count in tag_counts.items() if count == 1}
+
+            # Bước 5: Build response chỉ từ exclusive articles
+            articles = []
+            for article_id, article in article_map.items():
+                if article_id not in exclusive_ids:
+                    continue
+                try:
+                    articles.append(ArticlesResponse(**article))
+                except Exception:
+                    continue
+
+            articles.sort(key=lambda item: item.time or datetime.min, reverse=True)
+            if limit is not None:
+                return articles[: max(1, limit)]
+            return articles
+
+        except Exception as e:
+            print(f"Error getting news: {e}")
+            import traceback
+            traceback.print_exc()
+            return []

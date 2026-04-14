@@ -151,3 +151,35 @@ export const getNewsByCategoryId = async (
     };
   }
 };
+
+export const getBusinessNews = async (
+  limit?: number,
+): Promise<{
+  status: boolean;
+  data: New[];
+}> => {
+  try {
+    const result = await sendMessage(
+      limit ? `api/articles/business?limit=${limit}` : `api/articles/business`,
+    );
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as New[],
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+};

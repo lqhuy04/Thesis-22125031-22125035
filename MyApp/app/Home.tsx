@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AllNewsSection from "@/components/market/AllNewsSection";
+import BusinessNewsSection from "@/components/market/BusinessNewsSection";
 
 const Home = () => {
   const { theme } = useTheme();
@@ -53,9 +54,11 @@ const Home = () => {
       >
         <MarketIndicesSection />
 
-        <MacroEcomNewsSection />
+        <BusinessNewsSection />
 
         <CategoriesNewsSection />
+
+        <MacroEcomNewsSection />
 
         <AllNewsSection />
       </ScrollView>

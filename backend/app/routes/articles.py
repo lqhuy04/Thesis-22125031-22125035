@@ -50,6 +50,24 @@ async def get_macro_articles(
         result=True
     )
 
+@router.get("/business", response_model=ArticlesListResponse)
+async def get_macro_articles(
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
+):
+    """
+    Lấy tin tức "Doanh nghiệp" có tác động lên chỉ 1 mã cổ phiếu.
+
+    - **limit**: Số lượng bài viết tối đa trả về
+    """
+    articles = ArticlesService.get_business_articles(limit=limit)
+    return ArticlesListResponse(
+        data=articles,
+        errorCode=0,
+        errorDesc="",
+        requestId=str(uuid4()),
+        result=True
+    )
+
 @router.get("/stock/{stock_symbol}", response_model=ArticlesListResponse)
 async def get_articles_by_stock_symbol(
     stock_symbol: str,
