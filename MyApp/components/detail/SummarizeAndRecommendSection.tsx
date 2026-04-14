@@ -1,5 +1,5 @@
 import { AnalysisData, getAnalysis } from "@/helpers/DetailHelpers";
-import React, { use, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
