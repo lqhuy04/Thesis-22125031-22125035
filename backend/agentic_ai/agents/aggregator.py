@@ -19,8 +19,8 @@ import json
 from typing import Literal
 from pydantic import BaseModel, Field
 
-from service.openai_service import _get_openai_client
-from state import AgentState
+from agentic_ai.service.openai_service import _get_openai_client
+from agentic_ai.state import AgentState
 
 
 # ─────────────────────────────────────────────────────────────

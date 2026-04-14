@@ -5,12 +5,12 @@ graph.py — Xây dựng LangGraph StateGraph
 
 from langgraph.graph import StateGraph, END
 
-from state import AgentState
-from agents.orchestrator import orchestrator_agent
-from agents.aggregator import aggregator_agent
-from agents.article import article_agent
-from agents.fundamental_analysis import fundamental_analysis_agent
-from agents.technical_analysis import technical_analysis_agent
+from agentic_ai.state import AgentState
+from agentic_ai.agents.orchestrator import orchestrator_agent
+from agentic_ai.agents.aggregator import aggregator_agent
+from agentic_ai.agents.article import article_agent
+from agentic_ai.agents.fundamental_analysis import fundamental_analysis_agent
+from agentic_ai.agents.technical_analysis import technical_analysis_agent
 
 
 # ─── Routing function ────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
-from state import AgentState
-from service import database_service
+from agentic_ai.state import AgentState
+from agentic_ai.service import database_service
  
 def technical_analysis_agent(state: AgentState) -> AgentState:
     """
