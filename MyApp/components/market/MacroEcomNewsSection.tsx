@@ -12,7 +12,7 @@ const MacroEcomNewsSection = () => {
   const [articles, setArticles] = useState<New[]>([]);
 
   useEffect(() => {
-    getMacroEcomNews().then((result) => {
+    getMacroEcomNews(3).then((result) => {
       if (result.status) {
         setArticles(result.data);
       }
@@ -30,7 +30,7 @@ const MacroEcomNewsSection = () => {
       >
         <Text typography="titleLarge">{"Tin tức kinh tế - vĩ mô"}</Text>
         <Text
-          typography="titleLarge"
+          typography="titleMedium"
           color={theme.base.primary}
           onPress={() => {
             router.push({

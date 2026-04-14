@@ -19,8 +19,7 @@ const NewsComponent = ({ articles }: Props) => {
       <TouchableOpacity
         style={{
           padding: 12,
-          backgroundColor: theme.base.primary + "12",
-          borderRadius: 4,
+          backgroundColor: theme.base.primary + "08",
           marginTop: 12,
         }}
         onPress={() => {

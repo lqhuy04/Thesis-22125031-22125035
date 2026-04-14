@@ -20,7 +20,6 @@ async def get_all_articles(
     - **limit**: Giới hạn số bài viết trả về (optional)
     """
 
-    print("limit:", limit)
     articles = ArticlesService.get_articles(limit=limit)
 
     return ArticlesListResponse(

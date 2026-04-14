@@ -53,12 +53,16 @@ export const getMarketIndices = async (): Promise<{
   }
 };
 
-export const getMacroEcomNews = async (): Promise<{
+export const getMacroEcomNews = async (
+  limit?: number,
+): Promise<{
   status: boolean;
   data: New[];
 }> => {
   try {
-    const result = await sendMessage(`api/news/macro-economic`);
+    const result = await sendMessage(
+      limit ? `api/articles/macro?limit=${limit}` : `api/articles/macro`,
+    );
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
@@ -81,24 +85,22 @@ export const getMacroEcomNews = async (): Promise<{
   }
 };
 
-export type CategoryNews = {
-  category_id: string;
-  category_name: string;
-  news: New[];
-};
-
-export const getCategoriesNews = async (): Promise<{
+export const getAllNews = async (
+  limit?: number,
+): Promise<{
   status: boolean;
-  data: CategoryNews[];
+  data: New[];
 }> => {
   try {
-    const result = await sendMessage(`api/news/categories`);
+    const result = await sendMessage(
+      limit ? `api/articles?limit=${limit}` : `api/articles`,
+    );
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
         status: true,
-        data: data as CategoryNews[],
+        data: data as New[],
       };
     }
 
@@ -117,12 +119,17 @@ export const getCategoriesNews = async (): Promise<{
 
 export const getNewsByCategoryId = async (
   category_id: string,
+  limit?: number,
 ): Promise<{
   status: boolean;
   data: New[];
 }> => {
   try {
-    const result = await sendMessage(`api/news/category/${category_id}`);
+    const result = await sendMessage(
+      limit
+        ? `api/articles/category/${category_id}?limit=${limit}`
+        : `api/articles/category/${category_id}`,
+    );
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
