@@ -43,6 +43,10 @@ class Settings(BaseSettings):
 
     GEMINI_API_KEY: str
     OPENAI_API_KEY: str = ""
+
+    # Serper
+    SERPER_API_URL: str = "https://google.serper.dev/search"
+    SERPER_API_KEY: str = ""
     
     class Config:
         env_file = ".env"

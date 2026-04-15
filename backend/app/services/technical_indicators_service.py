@@ -2,11 +2,10 @@
 Technical Indicators Service
 Calculates technical analysis indicators using TA-Lib
 """
-import asyncio
 import talib
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any
 import math
 
 

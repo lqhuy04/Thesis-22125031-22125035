@@ -3,13 +3,10 @@ Company Profile Database Service
 Handles queries for company_profiles, company_leaders, company_subsidiaries.
 """
 from supabase import create_client, Client
-from app.config import get_settings
+from app.config import settings
 from typing import Optional
 
-settings = get_settings()
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-
-
 class CompanyService:
 
     @staticmethod

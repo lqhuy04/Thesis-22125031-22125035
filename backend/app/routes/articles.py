@@ -32,7 +32,7 @@ async def get_all_articles(
 
 @router.get("/macro", response_model=ArticlesListResponse)
 async def get_macro_articles(
-    min_symbols: int = Query(5, ge=5, description="Minimum impacted symbols count"),
+    min_symbols: int = Query(2, ge=2, description="Minimum impacted symbols count"),
     limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
 ):
     """
@@ -51,7 +51,7 @@ async def get_macro_articles(
     )
 
 @router.get("/business", response_model=ArticlesListResponse)
-async def get_macro_articles(
+async def get_business_articles(
     limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
 ):
     """
@@ -109,6 +109,21 @@ async def get_news_single_category(
         requestId=str(uuid4()),
         result=True,
     )
+
+@router.post("/update", response_model=ArticlesListResponse)
+async def update_new_articles(symbol: Optional[str] = ""):
+    """ Update new articles for market or stock """
+
+    result = ArticlesService.updateNewArticles(symbol = symbol)
+
+    return ArticlesListResponse(
+        data=[],
+        errorCode=0 if result else 500001,
+        errorDesc="" if result else "Failed to update new articles",
+        requestId=str(uuid4()),
+        result=result
+    )
+
 
 
 
