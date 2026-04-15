@@ -2,10 +2,10 @@ import { New } from "@/helpers/DetailHelpers";
 import { getMacroEcomNews } from "@/helpers/MarketHelpers";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
-import NewsComponent from "../ui/NewsComponent";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
+import NewsItem from "../ui/NewsItem";
 
 const MacroEcomNewsSection = () => {
   const { theme } = useTheme();
@@ -20,12 +20,13 @@ const MacroEcomNewsSection = () => {
   }, []);
 
   return (
-    <View style={{ marginTop: 12 }}>
+    <View>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+          marginVertical: 12,
         }}
       >
         <Text typography="titleLarge">{"Tin tức kinh tế - vĩ mô"}</Text>
@@ -48,7 +49,9 @@ const MacroEcomNewsSection = () => {
         </Text>
       </View>
 
-      <NewsComponent articles={articles} />
+      {articles.map((item, index) => {
+        return <NewsItem key={index.toString()} newItem={item} />;
+      })}
     </View>
   );
 };

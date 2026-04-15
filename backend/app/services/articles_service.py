@@ -507,7 +507,7 @@ Quy tắc:
                         print(f"Duplicate, skip: {record['link']}")
                         continue
                     
-                    if not record["content"]:
+                    if not record["content"] or len(record["content"]) < 500:
                         print(f"No content, skip: {record['link']}")
                         continue
 

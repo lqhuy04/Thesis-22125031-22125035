@@ -17,8 +17,6 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
       style={{
         padding: 12,
         backgroundColor: theme.base.primary + "08",
-        flexDirection: "row",
-        alignItems: "center",
       }}
       onPress={() => {
         router.push({
@@ -27,37 +25,26 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
         });
       }}
     >
-      <Image
-        source={{ uri: newItem.image_url }}
-        style={{
-          width: 72,
-          height: 72,
-          borderRadius: 4,
-          marginRight: 8,
-        }}
-      />
-      <View style={{ flex: 1 }}>
-        <Text
-          typography="titleMedium"
-          style={{ marginBottom: 4 }}
-          numberOfLines={2}
-        >
-          {newItem.title}
-        </Text>
-        <Text typography="bodyMedium" numberOfLines={1}>
-          {newItem.description}
-        </Text>
+      <Text
+        typography="titleMedium"
+        style={{ marginBottom: 4 }}
+        numberOfLines={2}
+      >
+        {newItem.title}
+      </Text>
+      <Text typography="bodyMedium" numberOfLines={1}>
+        {newItem.description}
+      </Text>
 
-        <Text
-          typography="bodyMedium"
-          numberOfLines={1}
-          color={theme.text.primary + "80"}
-        >
-          {newItem.source}
-          {" • "}
-          {newItem.time.slice(0, 10)}
-        </Text>
-      </View>
+      <Text
+        typography="bodyMedium"
+        numberOfLines={1}
+        color={theme.text.primary + "80"}
+      >
+        {newItem.source}
+        {" • "}
+        {newItem.time.slice(0, 10)}
+      </Text>
     </TouchableOpacity>
   );
 };

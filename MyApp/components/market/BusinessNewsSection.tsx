@@ -3,9 +3,9 @@ import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { New } from "@/helpers/DetailHelpers";
 import { View } from "react-native";
-import NewsComponent from "../ui/NewsComponent";
 import { router } from "expo-router";
 import { getBusinessNews } from "@/helpers/MarketHelpers";
+import NewsItem from "../ui/NewsItem";
 
 const BusinessNewsSection = () => {
   const { theme } = useTheme();
@@ -20,12 +20,13 @@ const BusinessNewsSection = () => {
   }, []);
 
   return (
-    <View style={{ marginTop: 12 }}>
+    <View>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+          marginVertical: 12,
         }}
       >
         <Text typography="titleLarge">{"Doanh nghiệp"}</Text>
@@ -48,7 +49,9 @@ const BusinessNewsSection = () => {
         </Text>
       </View>
 
-      <NewsComponent articles={articles} />
+      {articles.map((item, index) => {
+        return <NewsItem key={index.toString()} newItem={item} />;
+      })}
     </View>
   );
 };

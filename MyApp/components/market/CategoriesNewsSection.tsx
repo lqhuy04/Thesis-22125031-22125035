@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
-import NewsComponent from "../ui/NewsComponent";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
 import { New } from "@/helpers/DetailHelpers";
 import { getNewsByCategoryId } from "@/helpers/MarketHelpers";
+import NewsItem from "../ui/NewsItem";
 
 const CategoriesNewsSection = () => {
   const realEstateId = "afb4b18d-dc88-4ed0-b17b-28792868b460";
@@ -60,12 +60,13 @@ const CategoriesNewsSection = () => {
   }, []);
 
   return categoryArticles.length === 0 ? null : (
-    <View style={{ marginTop: 16 }}>
+    <View>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+          marginVertical: 12,
         }}
       >
         <Text typography="titleLarge">{"Tin tức theo nhóm ngành"}</Text>
@@ -94,6 +95,7 @@ const CategoriesNewsSection = () => {
           flexDirection: "row",
           alignItems: "center",
           flexWrap: "wrap",
+          marginBottom: 12,
         }}
       >
         {categoryArticles.map((item, index) => {
@@ -121,7 +123,6 @@ const CategoriesNewsSection = () => {
                     : theme.border.default,
                 marginHorizontal: 4,
                 alignItems: "center",
-                marginTop: 12,
               }}
               onPress={() => {
                 setChosenIndex(index);
@@ -133,7 +134,9 @@ const CategoriesNewsSection = () => {
         })}
       </View>
 
-      <NewsComponent articles={categoryArticles[chosenIndex].news} />
+      {categoryArticles[chosenIndex].news.map((item, index) => {
+        return <NewsItem key={index.toString()} newItem={item} />;
+      })}
     </View>
   );
 };
