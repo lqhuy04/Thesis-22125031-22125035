@@ -49,7 +49,7 @@ async def get_latest_historical_chart_data(
     }
     
 @router.post("/price/{symbol}", response_model=Any)
-async def update_price_data_for_symbol_with_time_interval(symbol: str, interval: str = Query("15m", description="Interval: 15m, 1h, or 1d")):
+async def update_price_data_for_symbol_with_time_interval(symbol: str):
     """
     🔄 Manually trigger price data update for a stock symbol
     
@@ -59,7 +59,7 @@ async def update_price_data_for_symbol_with_time_interval(symbol: str, interval:
     **Example:** `/api/price/VNM`
     """
     request_id = str(uuid.uuid4())
-    result = MarketService.update_price_data_for_symbol_with_time_interval(symbol, interval=interval)
+    result = MarketService.update_price_data_for_symbol(symbol)
     return {
         "data": result,
         "errorCode": 0 if result else 500001,
