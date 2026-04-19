@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { getMarketIndices, MarketIndex } from "@/helpers/MarketHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
+import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const MarketIndicesSection = () => {
@@ -21,10 +22,16 @@ const MarketIndicesSection = () => {
     <View>
       <Text typography="titleLarge">Thị trường hôm nay</Text>
 
-      {indices.map((item, index) => {
+      {indices.map((item) => {
         return (
-          <View
+          <TouchableOpacity
             key={item.IndexId}
+            onPress={() =>
+              router.push({
+                pathname: "/IndexDetail" as any,
+                params: { data: JSON.stringify(item) },
+              })
+            }
             style={{
               marginTop: 12,
               borderRadius: 8,
@@ -57,21 +64,15 @@ const MarketIndicesSection = () => {
                 <Text
                   typography="labelLarge"
                   color={
-                    item.Change.startsWith("-")
-                      ? theme.base.error
-                      : theme.base.success
+                    item.Change < 0 ? theme.base.error : theme.base.success
                   }
                 >
-                  {(Number(item.Change) * 100).toFixed(2)}
+                  {item.Change}
                 </Text>
               </View>
               <Text
                 typography="labelLarge"
-                color={
-                  item.Change.startsWith("-")
-                    ? theme.base.error
-                    : theme.base.success
-                }
+                color={item.Change < 0 ? theme.base.error : theme.base.success}
                 style={{
                   marginLeft: 8,
                 }}
@@ -132,7 +133,7 @@ const MarketIndicesSection = () => {
                 />
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         );
       })}
     </View>

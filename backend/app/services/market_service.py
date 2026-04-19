@@ -623,6 +623,7 @@ class MarketService:
                 to_date=today,
                 market=stock['exchange'].lower()
             )
+
             
             filtered=[]
             if result["success"] and result["data"]["data"]:
@@ -641,12 +642,14 @@ class MarketService:
                 "symbol": stock['symbol'],
                 "company_name": stock['company_name'],
                 "exchange": stock['exchange'],
-                "PriceChange": float(price['PriceChange']),
-                "PerPriceChange": float(price['PerPriceChange']),
-                "CeilingPrice": float(price['CeilingPrice']),
-                "FloorPrice": float(price['FloorPrice']),
-                "RefPrice": float(price['RefPrice']),
-                "CurrentPrice": float(price['ClosePrice'])
+                "PriceChange": round(float(price['PriceChange']) / 1000, 2),
+                "PerPriceChange": round(float(price['PerPriceChange']), 2),
+                "CeilingPrice": round(float(price['CeilingPrice']) / 1000, 2),
+                "FloorPrice": round(float(price['FloorPrice']) / 1000, 2),
+                "RefPrice": round(float(price['RefPrice']) / 1000, 2),
+                "CurrentPrice": round(float(price['ClosePrice']) / 1000, 2),
+                "TotalMatchVol": float(price['TotalMatchVol']),
+                "TotalMatchVal": float(price['TotalMatchVal']),
             }
         except Exception as e:
             print(f"Error fetching current stock price for {symbol}: {e}")
@@ -664,8 +667,32 @@ class MarketService:
                 to_date=today,
                 index_id=index_id
             )
+            if not (result["success"] and result["data"]):
+                return {}
             
-            return result['data'][0] if result["success"] and result["data"] else {}
+            return {
+                "IndexId": result["data"][0]["IndexId"],
+                "IndexValue": float(result["data"][0]["IndexValue"]),
+                "TradingDate": result["data"][0]["TradingDate"],
+                "Time": result["data"][0]["Time"],
+                "Change": round(float(result["data"][0]["Change"]) * 100, 2) if result["data"][0]["IndexId"] != "HNXIndex" else round(float(result["data"][0]["Change"]), 2),
+                "RatioChange": float(result["data"][0]["RatioChange"]),
+                "TotalTrade": float(result["data"][0]["TotalTrade"]),
+                "TotalMatchVol": float(result["data"][0]["TotalMatchVol"]),
+                "TotalMatchVal": float(result["data"][0]["TotalMatchVal"]),
+                "TypeIndex": result["data"][0]["TypeIndex"],
+                "IndexName": result["data"][0]["IndexName"],
+                "Advances": float(result["data"][0]["Advances"]),
+                "NoChanges": float(result["data"][0]["NoChanges"]),
+                "Declines": float(result["data"][0]["Declines"]),
+                "Ceilings": float(result["data"][0]["Ceilings"]),
+                "Floors": float(result["data"][0]["Floors"]),
+                "TotalDealVol": float(result["data"][0]["TotalDealVol"]),
+                "TotalDealVal": float(result["data"][0]["TotalDealVal"]),
+                "TotalVol": float(result["data"][0]["TotalVol"]),
+                "TotalVal": float(result["data"][0]["TotalVal"]),
+                "TradingSession": result["data"][0]["TradingSession"]
+            }
         except Exception as e:
             print(f"Error fetching market index: {e}")
             return {}

@@ -112,3 +112,15 @@ async def get_market_indices():
         "requestId": request_id,
         "result": bool(vnindex_result and hnxindex_result and vn30_result and vn100_result)
     }
+
+@router.get("/market-index/{index_id}", response_model=Any)
+async def get_market_index_by_id(index_id: str):
+    request_id = str(uuid.uuid4())
+    result = MarketService.get_market_index(index_id=index_id)
+    return {
+        "data": result,
+        "errorCode": 0 if result else 500001,
+        "errorDesc": "" if result else "No data found for the specified index",
+        "requestId": request_id,
+        "result": bool(result)
+    }

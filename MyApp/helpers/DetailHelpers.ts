@@ -1,4 +1,5 @@
 import { sendMessage } from "./api/ApiClients";
+import { MarketIndex } from "./MarketHelpers";
 import { getRiskAppetite } from "./ProfileHelpers";
 
 function parseTradingTime(tradingTime: string): { date: string; time: string } {
@@ -280,6 +281,8 @@ export type CurrentPriceData = {
   FloorPrice: number;
   RefPrice: number;
   CurrentPrice: number;
+  TotalMatchVol: number;
+  TotalMatchVal: number;
 };
 
 export const fetchCurrentPriceData = async (
@@ -296,6 +299,38 @@ export const fetchCurrentPriceData = async (
       return {
         status: true,
         data: data as CurrentPriceData,
+      };
+    }
+
+    return {
+      status: false,
+      data: null,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: null,
+    };
+  }
+};
+
+//------------------------------------------------------------
+
+export const fetchCurrentIndexData = async (
+  symbol: string,
+): Promise<{
+  status: boolean;
+  data: MarketIndex | null;
+}> => {
+  try {
+    const result = await sendMessage(`api/market-index/${symbol}`);
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as MarketIndex,
       };
     }
 

@@ -106,7 +106,7 @@ const Detail = () => {
   const renderHeaderContent = useCallback(() => {
     return (
       <View>
-        <PriceChartComponent stockItem={stockItem} />
+        <PriceChartComponent symbol={stockItem?.symbol} />
       </View>
     );
   }, [stockItem]);

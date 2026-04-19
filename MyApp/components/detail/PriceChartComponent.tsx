@@ -15,7 +15,6 @@ import {
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import DetailHeader from "../ui/DetailHeader";
-import { SearchStockItem } from "@/helpers/SearchHelper";
 import TradingViewChart from "../tradingView/TradingViewChart";
 import {
   BollData,
@@ -35,10 +34,11 @@ import TimeframeBottomSheet, {
 import IndicatorBottomSheet, { IndicatorState } from "./IndicatorBottomsheet";
 
 interface Props {
-  stockItem: SearchStockItem;
+  symbol: string;
+  isMarketIndex?: boolean;
 }
 
-const PriceChartComponent = ({ stockItem }: Props) => {
+const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
   const { theme } = useTheme();
   const [loading, setLoading] = useState<boolean>(false);
   const [chartType, setChartType] = useState<"candle" | "area">("candle");
@@ -83,8 +83,8 @@ const PriceChartComponent = ({ stockItem }: Props) => {
                           : "15m";
 
         const [indicatorRes, priceRes] = await Promise.all([
-          getTechnicalIndicators(stockItem.symbol, interval),
-          fetchStockDataByTimeFrame(stockItem.symbol, interval),
+          getTechnicalIndicators(symbol, interval),
+          fetchStockDataByTimeFrame(symbol, interval),
         ]);
 
         setTechnicalIndicatorsData(
@@ -101,7 +101,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
     };
 
     fetchData();
-  }, [stockItem.symbol, timeFrame]);
+  }, [symbol, timeFrame]);
 
   const chartPriceData: PriceData[] = useMemo(() => {
     if (!Array.isArray(priceData) || priceData.length === 0) return [];
@@ -200,7 +200,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
 
   return (
     <View style={{ marginTop: 12 }}>
-      <DetailHeader symbol={stockItem.symbol} />
+      <DetailHeader symbol={symbol} isMarketIndex={isMarketIndex} />
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -308,7 +308,7 @@ const PriceChartComponent = ({ stockItem }: Props) => {
           onPress={() =>
             router.push({
               pathname: "/TradingViewScreen",
-              params: { data: JSON.stringify({ symbol: stockItem.symbol }) },
+              params: { data: JSON.stringify({ symbol: symbol }) },
             })
           }
           style={[
