@@ -17,7 +17,7 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
       onPress={() => {
         router.push({
           pathname: "/Detail",
-          params: { data: JSON.stringify(item) },
+          params: { data: item.symbol },
         });
       }}
       style={{

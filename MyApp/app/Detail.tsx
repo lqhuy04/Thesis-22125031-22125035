@@ -20,7 +20,7 @@ const Detail = () => {
   const { theme } = useTheme();
 
   const { data } = useLocalSearchParams() || {};
-  const stockItem = data ? JSON.parse(data as string) : null;
+  const stockSymbol = (data as string) ?? "";
 
   const TABS = [
     {
@@ -73,43 +73,41 @@ const Detail = () => {
   const renderContent = useCallback(
     (tabKey: string, subTabKey?: string): React.ReactNode => {
       if (tabKey === "profile" && subTabKey === "introduction") {
-        return <IntroductionSection stockSymbol={stockItem.symbol} />;
+        return <IntroductionSection stockSymbol={stockSymbol} />;
       }
       if (tabKey === "profile" && subTabKey === "board") {
-        return <BoardSection stockSymbol={stockItem.symbol} />;
+        return <BoardSection stockSymbol={stockSymbol} />;
       }
       if (tabKey === "news") {
-        return <NewsSection stockSymbol={stockItem.symbol} />;
+        return <NewsSection stockSymbol={stockSymbol} />;
       }
       if (tabKey === "summary") {
-        return <SummarizeAndRecommendSection stockSymbol={stockItem.symbol} />;
+        return <SummarizeAndRecommendSection stockSymbol={stockSymbol} />;
       }
       if (
         tabKey === "fundamental-analysis" &&
         subTabKey === "fundamental-analysis-info"
       ) {
-        return <FinancialIndicatorsSection stockSymbol={stockItem.symbol} />;
+        return <FinancialIndicatorsSection stockSymbol={stockSymbol} />;
       }
       if (
         tabKey === "fundamental-analysis" &&
         subTabKey === "fundamental-analysis-summary"
       ) {
-        return (
-          <FinancialAnalysisSummarySection stockSymbol={stockItem.symbol} />
-        );
+        return <FinancialAnalysisSummarySection stockSymbol={stockSymbol} />;
       }
       return null;
     },
-    [stockItem?.symbol],
+    [stockSymbol],
   );
 
   const renderHeaderContent = useCallback(() => {
     return (
       <View>
-        <PriceChartComponent symbol={stockItem?.symbol} />
+        <PriceChartComponent symbol={stockSymbol} />
       </View>
     );
-  }, [stockItem]);
+  }, [stockSymbol]);
 
   return (
     <SafeAreaView
