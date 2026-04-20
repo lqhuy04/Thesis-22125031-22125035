@@ -656,21 +656,9 @@ class MarketService:
                 symbol=stock['symbol'],  # ✅ Index into the dict, not the list
                 from_date=today,
                 to_date=today,
-                market=stock['exchange'].lower()
             )
 
-            
-            filtered=[]
-            if result["success"] and result["data"]["data"]:
-                filtered = [
-                    record for record in result["data"]["data"]
-                    if record.get("Symbol", "").upper() == symbol.upper()
-                ]
-                
-            if len(filtered) == 0:
-                return {}
-                
-            price = filtered[0]
+            price = result["data"]["data"][0]
             
             return {
                 "stock_id": stock['stock_id'],

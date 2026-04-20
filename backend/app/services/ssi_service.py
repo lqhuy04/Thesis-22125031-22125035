@@ -400,6 +400,41 @@ class SSIService:
         to_date: str, 
         page_index: int = 1, 
         page_size: int = 100,
+    ) -> Dict[str, Any]:
+        """
+        Get daily stock price data
+        
+        Args:
+            symbol: Stock symbol (e.g., 'VNM', 'FPT')
+            from_date: Start date in format 'DD/MM/YYYY'
+            to_date: End date in format 'DD/MM/YYYY'
+            page_index: Page number for pagination
+            page_size: Number of items per page
+        """
+        try:
+            if not self._ensure_token():
+                return {"success": False, "error": "Failed to get access token"}
+            
+            params = {
+                "symbol": symbol,
+                "fromDate": from_date,
+                "toDate": to_date,
+                "pageIndex": page_index,
+                "pageSize": page_size,
+            }
+            response = self._make_get_request(SSIEndpoints.DAILY_STOCK_PRICE, params)
+            return {"success": True, "data": response}
+        except Exception as e:
+            logger.error(f"Error getting daily stock price: {str(e)}")
+            return {"success": False, "error": str(e)}
+        
+    def get_daily_stock_price_market(
+        self, 
+        symbol: str, 
+        from_date: str, 
+        to_date: str, 
+        page_index: int = 1, 
+        page_size: int = 100,
         market: str = "hose"
     ) -> Dict[str, Any]:
         """
