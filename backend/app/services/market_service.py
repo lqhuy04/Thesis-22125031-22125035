@@ -19,6 +19,41 @@ class MarketService:
     
     def __init__(self):
         pass
+
+    @staticmethod
+    def get_all_symbols() -> List[str]:
+        """Return all stock symbols from DB in ascending order."""
+        try:
+            page_size = 1000
+            offset = 0
+            symbols: List[str] = []
+
+            while True:
+                result = supabase.table("Stock") \
+                    .select("stock_symbol") \
+                    .order("stock_symbol", desc=False) \
+                    .range(offset, offset + page_size - 1) \
+                    .execute()
+
+                data = result.data if result.data else []
+                if not data:
+                    break
+
+                symbols.extend(
+                    row["stock_symbol"]
+                    for row in data
+                    if row.get("stock_symbol")
+                )
+
+                if len(data) < page_size:
+                    break
+
+                offset += page_size
+
+            return symbols
+        except Exception as e:
+            print(f"Error fetching all symbols: {e}")
+            return []
     
     def get_last_trading_day(now):
         if now.hour < 9 or (now.hour == 9 and now.minute < 15):

@@ -10,6 +10,18 @@ from app.services.market_service import MarketService
 
 router = APIRouter(prefix="/api", tags=["Market Data"])
 
+@router.get("/all-symbol", response_model=Any)
+async def get_all_symbols():
+    request_id = str(uuid.uuid4())
+    result = MarketService.get_all_symbols()
+    return {
+        "data": result,
+        "errorCode": 0,
+        "errorDesc": "",
+        "requestId": request_id,
+        "result": True
+    }
+
 @router.get("/search/{symbol}", response_model=Any)
 async def search_stock_by_symbol(
     symbol: str,
