@@ -650,29 +650,33 @@ class MarketService:
 
             stock = data[0]  # ✅ Get the first matching record
 
-            ssi_service = get_ssi_service()
-            today = MarketService.get_last_trading_day(datetime.now()).strftime("%d/%m/%Y")
-            result = ssi_service.get_daily_stock_price(
-                symbol=stock['symbol'],  # ✅ Index into the dict, not the list
-                from_date=today,
-                to_date=today,
-            )
+            ###
 
-            price = result["data"]["data"][0]
+            query2 = supabase.table("Current_Stock_Price") \
+                .select("*") \
+                .eq("symbol", symbol.upper())
+            
+            result2 = query2.execute()
+            data2 = result2.data if result2.data else []
+
+            if len(data2) == 0:
+                return {}
+            
+            price = data2[0]
             
             return {
                 "stock_id": stock['stock_id'],
                 "symbol": stock['symbol'],
                 "company_name": stock['company_name'],
                 "exchange": stock['exchange'],
-                "PriceChange": round(float(price['PriceChange']) / 1000, 2),
-                "PerPriceChange": round(float(price['PerPriceChange']), 2),
-                "CeilingPrice": round(float(price['CeilingPrice']) / 1000, 2),
-                "FloorPrice": round(float(price['FloorPrice']) / 1000, 2),
-                "RefPrice": round(float(price['RefPrice']) / 1000, 2),
-                "CurrentPrice": round(float(price['ClosePrice']) / 1000, 2),
-                "TotalMatchVol": float(price['TotalMatchVol']),
-                "TotalMatchVal": float(price['TotalMatchVal']),
+                "PriceChange": price['price_change'],
+                "PerPriceChange": price['per_price_change'],
+                "CeilingPrice": price['ceiling_price'],
+                "FloorPrice": price['floor_price'], 
+                "RefPrice": price['ref_price'],
+                "CurrentPrice": price['current_price'],
+                "TotalMatchVol": price['total_match_vol'],
+                "TotalMatchVal": price['total_match_val'],
             }
         except Exception as e:
             print(f"Error fetching current stock price for {symbol}: {e}")

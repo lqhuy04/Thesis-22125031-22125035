@@ -7,6 +7,8 @@ import uuid
 import asyncio
 from supabase_auth import Any
 from app.services.market_service import MarketService
+from app.services.ssi_service import get_ssi_service
+
 
 router = APIRouter(prefix="/api", tags=["Market Data"])
 
@@ -129,6 +131,22 @@ async def get_market_indices():
 async def get_market_index_by_id(index_id: str):
     request_id = str(uuid.uuid4())
     result = MarketService.get_market_index(index_id=index_id)
+    return {
+        "data": result,
+        "errorCode": 0 if result else 500001,
+        "errorDesc": "" if result else "No data found for the specified index",
+        "requestId": request_id,
+        "result": bool(result)
+    }
+
+@router.get("/test", response_model=Any)
+async def test():
+    request_id = str(uuid.uuid4())
+    ssi_service = get_ssi_service()
+    result = ssi_service.get_securities_list(
+        market="hose",
+        page_size=1000,
+    )
     return {
         "data": result,
         "errorCode": 0 if result else 500001,
