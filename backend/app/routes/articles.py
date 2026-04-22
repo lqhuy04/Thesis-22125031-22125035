@@ -3,7 +3,7 @@ News Routes
 API endpoints for financial news
 """
 from fastapi import APIRouter, Query
-from app.models.article_schema import ArticlesListResponse
+from app.models.article_schema import ArticlesListResponse, TodayHighlightResponse
 from app.services.articles_service import ArticlesService
 from typing import Optional
 from uuid import uuid4
@@ -67,6 +67,48 @@ async def get_business_articles(
         requestId=str(uuid4()),
         result=True
     )
+
+
+@router.get("/today-highlight", response_model=TodayHighlightResponse)
+async def get_today_highlight_articles():
+    """
+    Lấy 10 mã cổ phiếu có tin mới nhất.
+    Mỗi mã trả về tối đa 2 bài mới nhất chỉ gắn với đúng 1 mã cổ phiếu.
+    """
+    highlights = ArticlesService.get_today_highlight(stock_limit=10, articles_per_stock=2)
+
+    return TodayHighlightResponse(
+        data=highlights,
+        errorCode=0,
+        errorDesc="",
+        requestId=str(uuid4()),
+        result=True,
+    )
+
+
+@router.get("/today-highlight/debug")
+async def get_today_highlight_articles_debug(
+    stock_limit: int = Query(10, ge=1, le=50, description="Maximum number of stocks"),
+    articles_per_stock: int = Query(2, ge=1, le=5, description="Maximum number of articles per stock"),
+):
+    """
+    Debug endpoint for today-highlight selection logic.
+    Returns filtering counters to explain why result size can be below target.
+    """
+    debug_payload = ArticlesService.get_today_highlight(
+        stock_limit=stock_limit,
+        articles_per_stock=articles_per_stock,
+        return_debug=True,
+    )
+
+    return {
+        "data": debug_payload.get("data", []),
+        "debug": debug_payload.get("debug", {}),
+        "errorCode": 0,
+        "errorDesc": "",
+        "requestId": str(uuid4()),
+        "result": True,
+    }
 
 @router.get("/stock/{stock_symbol}", response_model=ArticlesListResponse)
 async def get_articles_by_stock_symbol(

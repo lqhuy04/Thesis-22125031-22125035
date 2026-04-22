@@ -38,3 +38,43 @@ class ArticlesListResponse(BaseModel):
     errorDesc: str = Field(default="", description="Error description")
     requestId: str = Field(default="", description="Unique request ID")
     result: bool = Field(default=True, description="Success flag")
+
+
+class TodayHighlightNewsItem(BaseModel):
+    """One news item in today-highlight response"""
+    id: str = Field(..., description="Unique news identifier")
+    title: str = Field("", description="News title")
+    link: str = Field("", description="News link")
+    stock_symbol: str = Field("", description="Related stock symbol")
+    description: str = Field("", description="News description")
+    time: str = Field("", description="News date string")
+    image_url: str = Field("", description="News image URL")
+    published_at: str = Field("", description="Published timestamp string")
+    content: str = Field("", description="News content")
+    source: str = Field("", description="News source")
+
+
+class TodayHighlightStockItem(BaseModel):
+    """One stock item in today-highlight response"""
+    stock_id: str = Field(..., description="Unique stock identifier")
+    symbol: str = Field("", description="Stock symbol")
+    company_name: str = Field("", description="Company name")
+    exchange: str = Field("", description="Exchange code")
+    PriceChange: float = Field(0.0, description="Price change")
+    PerPriceChange: float = Field(0.0, description="Percent price change")
+    CeilingPrice: float = Field(0.0, description="Ceiling price")
+    FloorPrice: float = Field(0.0, description="Floor price")
+    RefPrice: float = Field(0.0, description="Reference price")
+    CurrentPrice: float = Field(0.0, description="Current price")
+    TotalMatchVol: float = Field(0.0, description="Total matched volume")
+    TotalMatchVal: float = Field(0.0, description="Total matched value")
+    news: List[TodayHighlightNewsItem] = Field(default_factory=list, description="Latest exclusive news")
+
+
+class TodayHighlightResponse(BaseModel):
+    """Standardized API response for today-highlight list"""
+    data: List[TodayHighlightStockItem]
+    errorCode: int = Field(default=0, description="Error code (0 = success)")
+    errorDesc: str = Field(default="", description="Error description")
+    requestId: str = Field(default="", description="Unique request ID")
+    result: bool = Field(default=True, description="Success flag")

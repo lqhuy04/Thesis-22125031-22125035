@@ -277,6 +277,338 @@ class ArticlesService:
             import traceback
             traceback.print_exc()
             return []
+
+    @staticmethod
+    def get_today_highlight(
+        stock_limit: int = 10,
+        articles_per_stock: int = 2,
+        return_debug: bool = False,
+    ) -> List[dict] | dict:
+        """
+        Traverse latest articles, keep only exclusive articles (1 symbol per article),
+        collect latest unique stocks, and return each stock with latest exclusive news.
+        """
+        try:
+            from collections import Counter, defaultdict
+
+            stock_limit = max(1, stock_limit)
+            articles_per_stock = max(1, articles_per_stock)
+
+            debug_info = {
+                "stock_limit": stock_limit,
+                "articles_per_stock": articles_per_stock,
+                "pages_scanned": 0,
+                "articles_scanned": 0,
+                "articles_with_id": 0,
+                "article_stock_links_scanned": 0,
+                "exclusive_article_candidates": 0,
+                "unique_exclusive_stocks_seen": 0,
+                "strict_stocks_count": 0,
+                "fallback_stocks_count": 0,
+                "selected_stocks_count": 0,
+                "returned_stocks_count": 0,
+                "ended_reason": "",
+            }
+
+            def finalize(items: List[dict], ended_reason: Optional[str] = None) -> List[dict] | dict:
+                if ended_reason:
+                    debug_info["ended_reason"] = ended_reason
+                debug_info["returned_stocks_count"] = len(items)
+                if return_debug:
+                    return {"data": items, "debug": debug_info}
+                return items
+
+            def fetch_article_stock_links(article_ids: List[str], batch_size: int = 1000) -> List[dict]:
+                """Fetch all Article_Stock links for article_ids, avoiding default row cap."""
+                all_rows: List[dict] = []
+                start = 0
+                while True:
+                    batch_result = (
+                        supabase.table("Article_Stock")
+                        .select("id, article_id, stock_id")
+                        .in_("article_id", article_ids)
+                        .order("id", desc=False)
+                        .range(start, start + batch_size - 1)
+                        .execute()
+                    )
+                    rows = batch_result.data or []
+                    if not rows:
+                        break
+
+                    all_rows.extend(rows)
+                    if len(rows) < batch_size:
+                        break
+
+                    start += batch_size
+
+                return all_rows
+
+            page_size = 500
+            cursor_time = None
+            cursor_id = None
+
+            stock_to_articles = defaultdict(list)
+            stock_latest_time = {}
+
+            while True:
+                qualified_stock_count = sum(
+                    1 for items in stock_to_articles.values() if len(items) >= articles_per_stock
+                )
+                if qualified_stock_count >= stock_limit:
+                    break
+
+                query = (
+                    supabase.table("Article")
+                    .select("*")
+                    .order("time", desc=True)
+                    .order("id", desc=True)
+                    .limit(page_size)
+                )
+
+                if cursor_time and cursor_id:
+                    query = query.or_(
+                        f"time.lt.{cursor_time},and(time.eq.{cursor_time},id.lt.{cursor_id})"
+                    )
+
+                latest_articles_result = query.execute()
+                debug_info["pages_scanned"] += 1
+
+                article_rows = latest_articles_result.data or []
+                debug_info["articles_scanned"] += len(article_rows)
+                if not article_rows:
+                    debug_info["ended_reason"] = "no_more_articles"
+                    break
+
+                article_ids = [
+                    str(item.get("id"))
+                    for item in article_rows
+                    if item.get("id")
+                ]
+                debug_info["articles_with_id"] += len(article_ids)
+                if not article_ids:
+                    if len(article_rows) < page_size:
+                        debug_info["ended_reason"] = "last_page_without_article_ids"
+                        break
+                    last_row = article_rows[-1]
+                    cursor_time = last_row.get("time")
+                    cursor_id = last_row.get("id")
+                    continue
+
+                links_data = fetch_article_stock_links(article_ids=article_ids)
+                debug_info["article_stock_links_scanned"] += len(links_data)
+                if not links_data:
+                    if len(article_rows) < page_size:
+                        debug_info["ended_reason"] = "last_page_without_links"
+                        break
+                    last_row = article_rows[-1]
+                    cursor_time = last_row.get("time")
+                    cursor_id = last_row.get("id")
+                    continue
+
+                tag_counts = Counter(
+                    str(row.get("article_id"))
+                    for row in links_data
+                    if row.get("article_id")
+                )
+
+                article_to_stock_id = {}
+                for row in links_data:
+                    article_id = str(row.get("article_id") or "")
+                    stock_id = str(row.get("stock_id") or "")
+                    if not article_id or not stock_id:
+                        continue
+                    if tag_counts.get(article_id) != 1:
+                        continue
+                    article_to_stock_id[article_id] = stock_id
+
+                debug_info["exclusive_article_candidates"] += len(article_to_stock_id)
+
+                for article in article_rows:
+                    article_id = str(article.get("id") or "")
+                    stock_id = article_to_stock_id.get(article_id)
+                    if not stock_id:
+                        continue
+
+                    if stock_id not in stock_latest_time:
+                        stock_latest_time[stock_id] = article.get("time")
+
+                    if len(stock_to_articles[stock_id]) < articles_per_stock:
+                        stock_to_articles[stock_id].append(article)
+
+                if len(article_rows) < page_size:
+                    debug_info["ended_reason"] = "reached_last_page"
+                    break
+
+                last_row = article_rows[-1]
+                cursor_time = last_row.get("time")
+                cursor_id = last_row.get("id")
+
+            strict_stock_ids = [
+                stock_id
+                for stock_id, items in stock_to_articles.items()
+                if len(items) >= articles_per_stock
+            ]
+
+            fallback_stock_ids = [
+                stock_id
+                for stock_id, items in stock_to_articles.items()
+                if len(items) > 0 and len(items) < articles_per_stock
+            ]
+
+            debug_info["unique_exclusive_stocks_seen"] = len(stock_to_articles)
+            debug_info["strict_stocks_count"] = len(strict_stock_ids)
+            debug_info["fallback_stocks_count"] = len(fallback_stock_ids)
+
+            if not strict_stock_ids and not fallback_stock_ids:
+                return finalize([], "no_eligible_stocks")
+
+            strict_stock_ids = sorted(
+                strict_stock_ids,
+                key=lambda sid: stock_latest_time.get(sid) or datetime.min,
+                reverse=True,
+            )
+
+            fallback_stock_ids = sorted(
+                fallback_stock_ids,
+                key=lambda sid: stock_latest_time.get(sid) or datetime.min,
+                reverse=True,
+            )
+
+            selected_stock_ids = (strict_stock_ids + fallback_stock_ids)[:stock_limit]
+            debug_info["selected_stocks_count"] = len(selected_stock_ids)
+
+            stock_result = (
+                supabase.table("Stock")
+                .select("id, stock_symbol")
+                .in_("id", selected_stock_ids)
+                .execute()
+            )
+            stock_symbol_map = {
+                str(item.get("id")): item.get("stock_symbol", "")
+                for item in (stock_result.data or [])
+                if item.get("id")
+            }
+
+            selected_symbols = [
+                stock_symbol_map[sid]
+                for sid in selected_stock_ids
+                if stock_symbol_map.get(sid)
+            ]
+
+            if not selected_symbols:
+                return finalize([], "selected_stocks_missing_symbols")
+
+            profile_result = (
+                supabase.table("BI_Profile")
+                .select("stock_id, symbol, company_name, exchange")
+                .in_("symbol", selected_symbols)
+                .execute()
+            )
+            profile_map = {
+                str(item.get("symbol") or ""): item
+                for item in (profile_result.data or [])
+                if item.get("symbol")
+            }
+
+            price_result = (
+                supabase.table("Current_Stock_Price")
+                .select("symbol, price_change, per_price_change, ceiling_price, floor_price, ref_price, current_price, total_match_vol, total_match_val")
+                .in_("symbol", selected_symbols)
+                .execute()
+            )
+            price_map = {
+                str(item.get("symbol") or ""): item
+                for item in (price_result.data or [])
+                if item.get("symbol")
+            }
+
+            def to_float(value) -> float:
+                try:
+                    if value is None or value == "":
+                        return 0.0
+                    return float(value)
+                except Exception:
+                    return 0.0
+
+            def to_str(value) -> str:
+                if value is None:
+                    return ""
+                if hasattr(value, "isoformat"):
+                    return value.isoformat()
+                return str(value)
+
+            def to_news_item(article: dict, stock_symbol: str) -> dict:
+                return {
+                    "id": str(article.get("id") or ""),
+                    "title": str(article.get("title") or ""),
+                    "link": str(article.get("link") or ""),
+                    "stock_symbol": stock_symbol,
+                    "description": str(article.get("description") or ""),
+                    "time": to_str(article.get("time")),
+                    "image_url": str(article.get("image_url") or ""),
+                    "published_at": to_str(article.get("published_at") or article.get("time")),
+                    "content": str(article.get("content") or ""),
+                    "source": str(article.get("source") or ""),
+                }
+
+            highlights = []
+            for stock_id in selected_stock_ids:
+                stock_symbol = stock_symbol_map.get(stock_id, "")
+                if not stock_symbol:
+                    continue
+
+                stock_articles = stock_to_articles.get(stock_id, [])
+                if len(stock_articles) < articles_per_stock:
+                    # Fallback query to fetch up to 2 exclusive latest news for this stock.
+                    fallback_articles = ArticlesService.get_articles_by_stock_symbol(
+                        stock_symbol=stock_symbol,
+                        limit=articles_per_stock,
+                    )
+                    if fallback_articles:
+                        stock_articles = [article.dict() for article in fallback_articles]
+
+                profile = profile_map.get(stock_symbol, {})
+                price = price_map.get(stock_symbol, {})
+
+                if not stock_articles:
+                    continue
+
+                highlights.append(
+                    {
+                        "stock_id": stock_id,
+                        "symbol": stock_symbol,
+                        "company_name": str(profile.get("company_name") or ""),
+                        "exchange": str(profile.get("exchange") or ""),
+                        "PriceChange": to_float(price.get("price_change")),
+                        "PerPriceChange": to_float(price.get("per_price_change")),
+                        "CeilingPrice": to_float(price.get("ceiling_price")),
+                        "FloorPrice": to_float(price.get("floor_price")),
+                        "RefPrice": to_float(price.get("ref_price")),
+                        "CurrentPrice": to_float(price.get("current_price")),
+                        "TotalMatchVol": to_float(price.get("total_match_vol")),
+                        "TotalMatchVal": to_float(price.get("total_match_val")),
+                        "news": [
+                            to_news_item(article=item, stock_symbol=stock_symbol)
+                            for item in stock_articles[:articles_per_stock]
+                        ],
+                    }
+                )
+
+            return finalize(highlights, debug_info.get("ended_reason") or "completed")
+
+        except Exception as e:
+            print(f"Error getting today highlights: {e}")
+            import traceback
+            traceback.print_exc()
+            if return_debug:
+                return {
+                    "data": [],
+                    "debug": {
+                        "error": str(e),
+                        "ended_reason": "exception",
+                    },
+                }
+            return []
         
     # ----------------------------------------------------------------------------------------------------
     @staticmethod
