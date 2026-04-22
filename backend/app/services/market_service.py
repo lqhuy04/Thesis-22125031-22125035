@@ -681,6 +681,97 @@ class MarketService:
         except Exception as e:
             print(f"Error fetching current stock price for {symbol}: {e}")
             return {}
+
+    @staticmethod
+    def _to_float(value: Any) -> float:
+        try:
+            if value is None or value == "":
+                return 0.0
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
+    @staticmethod
+    def get_industry_stocks_movement(
+        industry: str,
+        limit: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        """
+        Get stock movement list for one industry, sorted by TotalMatchVal DESC.
+        Data source is Current_Stock_Price table.
+        Returns all stocks by default, or first `limit` stocks if provided.
+        """
+        try:
+            keyword = (industry or "").strip()
+            if not keyword:
+                return {"items": []}
+
+            profile_result = (
+                supabase.table("BI_Profile")
+                .select("stock_id, symbol, company_name, exchange, industry_name")
+                .ilike("industry_name", f"%{keyword}%")
+                .execute()
+            )
+
+            profiles = profile_result.data if profile_result.data else []
+            profiles = [
+                p for p in profiles
+                if p.get("symbol") and len(str(p.get("symbol"))) <= 3
+            ]
+
+            if not profiles:
+                return {"items": []}
+
+            profile_by_symbol: Dict[str, Dict[str, Any]] = {
+                str(p.get("symbol", "")).upper(): p for p in profiles
+                if p.get("symbol")
+            }
+            symbols = list(profile_by_symbol.keys())
+
+            price_result = (
+                supabase.table("Current_Stock_Price")
+                .select(
+                    "symbol, price_change, per_price_change, ceiling_price, floor_price, "
+                    "ref_price, current_price, total_match_vol, total_match_val"
+                )
+                .in_("symbol", symbols)
+                .execute()
+            )
+
+            prices = price_result.data if price_result.data else []
+
+            items: List[Dict[str, Any]] = []
+            for price in prices:
+                symbol = str(price.get("symbol", "")).upper()
+                profile = profile_by_symbol.get(symbol)
+                if not profile:
+                    continue
+
+                items.append({
+                    "stock_id": profile.get("stock_id"),
+                    "symbol": symbol,
+                    "company_name": profile.get("company_name") or "",
+                    "exchange": profile.get("exchange") or "",
+                    "PriceChange": MarketService._to_float(price.get("price_change")),
+                    "PerPriceChange": MarketService._to_float(price.get("per_price_change")),
+                    "CeilingPrice": MarketService._to_float(price.get("ceiling_price")),
+                    "FloorPrice": MarketService._to_float(price.get("floor_price")),
+                    "RefPrice": MarketService._to_float(price.get("ref_price")),
+                    "CurrentPrice": MarketService._to_float(price.get("current_price")),
+                    "TotalMatchVol": MarketService._to_float(price.get("total_match_vol")),
+                    "TotalMatchVal": MarketService._to_float(price.get("total_match_val")),
+                })
+
+            items.sort(key=lambda x: x.get("TotalMatchVal", 0.0), reverse=True)
+
+            if limit is not None:
+                limit = max(limit, 1)
+                items = items[:limit]
+
+            return {"items": items}
+        except Exception as e:
+            print(f"Error fetching industry stocks movement for {industry}: {e}")
+            return {"items": []}
         
     @staticmethod
     def get_market_index(index_id: str) -> List[Dict[str, Any]]:

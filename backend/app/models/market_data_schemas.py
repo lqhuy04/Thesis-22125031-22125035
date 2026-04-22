@@ -152,3 +152,28 @@ class SecuritySearchResponse(BaseModel):
     errorDesc: str = Field("", description="Error description")
     requestId: str = Field(..., description="Unique request identifier")
     result: bool = Field(..., description="Whether the request was successful")
+
+
+class SectorStockMovementItem(BaseModel):
+    """A stock movement item in an industry group."""
+    stock_id: str = Field(..., description="Stock UUID")
+    symbol: str = Field(..., description="Stock symbol")
+    company_name: str = Field("", description="Company name")
+    exchange: str = Field("", description="Exchange code")
+    PriceChange: float = Field(0.0, description="Price change")
+    PerPriceChange: float = Field(0.0, description="Percent price change")
+    CeilingPrice: float = Field(0.0, description="Ceiling price")
+    FloorPrice: float = Field(0.0, description="Floor price")
+    RefPrice: float = Field(0.0, description="Reference price")
+    CurrentPrice: float = Field(0.0, description="Current price")
+    TotalMatchVol: float = Field(0.0, description="Total matched volume")
+    TotalMatchVal: float = Field(0.0, description="Total matched value")
+
+
+class SectorStockMovementResponse(BaseModel):
+    """Response for industry movement endpoint."""
+    data: List[SectorStockMovementItem] = Field(default=[], description="Industry stock movement list")
+    errorCode: int = Field(0, description="Error code (0 for success)")
+    errorDesc: str = Field("", description="Error description")
+    requestId: str = Field(..., description="Unique request identifier")
+    result: bool = Field(..., description="Whether the request was successful")

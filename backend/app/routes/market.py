@@ -8,6 +8,7 @@ import asyncio
 from supabase_auth import Any
 from app.services.market_service import MarketService
 from app.services.ssi_service import get_ssi_service
+from app.models.market_data_schemas import SectorStockMovementResponse
 
 
 router = APIRouter(prefix="/api", tags=["Market Data"])
@@ -106,6 +107,27 @@ async def get_stock_price(symbol: str):
         "errorDesc": "" if result else "Stock not found or error occurred",
         "requestId": request_id,
         "result": bool(result)
+    }
+
+
+@router.get("/industry-movement", response_model=SectorStockMovementResponse)
+async def get_industry_movement(
+    industry: str = Query(..., description="Industry name, e.g. Bất động sản"),
+    limit: int | None = Query(None, ge=1, description="Max number of stocks to return"),
+):
+    request_id = str(uuid.uuid4())
+    payload = MarketService.get_industry_stocks_movement(
+        industry=industry,
+        limit=limit,
+    )
+
+    has_data = len(payload.get("items", [])) > 0
+    return {
+        "data": payload.get("items", []),
+        "errorCode": 0 if has_data else 500001,
+        "errorDesc": "" if has_data else "No data found for the specified industry",
+        "requestId": request_id,
+        "result": has_data,
     }
 
 @router.get("/market-index", response_model=Any)
