@@ -10,6 +10,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AllNewsSection from "@/components/market/AllNewsSection";
 import BusinessNewsSection from "@/components/market/BusinessNewsSection";
+import IndustryMovementSection from "@/components/market/IndustryMovementSection";
 
 const Home = () => {
   const { theme } = useTheme();
@@ -53,6 +54,8 @@ const Home = () => {
         style={{ padding: 12, backgroundColor: theme.background.bg, flex: 1 }}
       >
         <MarketIndicesSection />
+
+        <IndustryMovementSection />
 
         <BusinessNewsSection />
 

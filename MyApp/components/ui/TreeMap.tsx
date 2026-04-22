@@ -70,7 +70,7 @@ function getFontSize(
   minSize = 6,
   maxSize = 16,
 ): number {
-  const maxByWidth = rectWidth / (text.length * 0.55);
+  const maxByWidth = rectWidth / (text.length * 0.8);
   const maxByHeight = rectHeight * 0.55;
   return Math.min(
     maxSize,
@@ -122,7 +122,7 @@ export const TreeMap: React.FC<Props> = ({
 
   const perColor = useCallback(
     (item: CurrentPriceData) =>
-      item.PerPriceChange > 5
+      item.PerPriceChange > 6
         ? theme.base.primary
         : item.PerPriceChange > 0
           ? theme.base.success
@@ -162,6 +162,7 @@ export const TreeMap: React.FC<Props> = ({
             fontWeight: "bold",
             height: titleHeight,
             lineHeight: titleHeight,
+            fontSize: 16,
             color: theme.text?.primary,
           }}
         >
@@ -208,7 +209,7 @@ export const TreeMap: React.FC<Props> = ({
                   </SvgText>
                   <SvgText
                     x={cx}
-                    y={cy + labelSize / 2 + 2}
+                    y={cy + labelSize / 2}
                     textAnchor="middle"
                     fill="#ffffffdd"
                     fontSize={valueSize}

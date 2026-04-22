@@ -1,5 +1,5 @@
 import { sendMessage } from "./api/ApiClients";
-import { New } from "./DetailHelpers";
+import { CurrentPriceData, New } from "./DetailHelpers";
 
 export type MarketIndex = {
   IndexId: string;
@@ -168,6 +168,41 @@ export const getBusinessNews = async (
       return {
         status: true,
         data: data as New[],
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+};
+
+export const getIndustryMovement = async (
+  industry: string,
+  limit?: number,
+): Promise<{
+  status: boolean;
+  data: CurrentPriceData[];
+}> => {
+  try {
+    const result = await sendMessage(
+      limit
+        ? `api/industry-movement?industry=${industry}&limit=${limit}`
+        : `api/industry-movement?industry=${industry}`,
+    );
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as CurrentPriceData[],
       };
     }
 
