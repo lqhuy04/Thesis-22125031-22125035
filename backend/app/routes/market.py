@@ -8,7 +8,7 @@ import asyncio
 from supabase_auth import Any
 from app.services.market_service import MarketService
 from app.services.ssi_service import get_ssi_service
-from app.models.market_data_schemas import SectorStockMovementResponse
+from app.models.market_data_schemas import SectorStockMovementResponse, IndexImpactResponse
 
 
 router = APIRouter(prefix="/api", tags=["Market Data"])
@@ -159,6 +159,22 @@ async def get_market_index_by_id(index_id: str):
         "errorDesc": "" if result else "No data found for the specified index",
         "requestId": request_id,
         "result": bool(result)
+    }
+
+
+@router.get("/top-impact/{index_id}", response_model=IndexImpactResponse)
+async def get_top_index_impact_stocks(
+    index_id: str,
+    limit: int = Query(10, ge=1, le=100, description="Number of top impacted stocks"),
+):
+    request_id = str(uuid.uuid4())
+    result = MarketService.get_top_index_impact_stocks(index_id=index_id, limit=limit)
+    return {
+        "data": result,
+        "errorCode": 0 if result else 500001,
+        "errorDesc": "" if result else "No impact data found for the specified index",
+        "requestId": request_id,
+        "result": bool(result),
     }
 
 @router.get("/test", response_model=Any)

@@ -177,3 +177,27 @@ class SectorStockMovementResponse(BaseModel):
     errorDesc: str = Field("", description="Error description")
     requestId: str = Field(..., description="Unique request identifier")
     result: bool = Field(..., description="Whether the request was successful")
+
+
+class IndexImpactItem(BaseModel):
+    """A stock with impact score to an index."""
+    stock_id: Optional[str] = Field(None, description="Stock UUID")
+    symbol: str = Field(..., description="Stock symbol")
+    company_name: str = Field("", description="Company name")
+    exchange: str = Field("", description="Exchange code")
+    Weight: float = Field(0.0, description="Component weight in index")
+    PriceChange: float = Field(0.0, description="Price change")
+    PerPriceChange: float = Field(0.0, description="Percent price change")
+    CurrentPrice: float = Field(0.0, description="Current price")
+    TotalMatchVal: float = Field(0.0, description="Total matched value")
+    ImpactScore: float = Field(0.0, description="Weighted impact score")
+    AffectedPoints: float = Field(0.0, description="Estimated points contributed to index move")
+
+
+class IndexImpactResponse(BaseModel):
+    """Response for top index impact endpoint."""
+    data: List[IndexImpactItem] = Field(default=[], description="Top impacted stocks")
+    errorCode: int = Field(0, description="Error code (0 for success)")
+    errorDesc: str = Field("", description="Error description")
+    requestId: str = Field(..., description="Unique request identifier")
+    result: bool = Field(..., description="Whether the request was successful")
