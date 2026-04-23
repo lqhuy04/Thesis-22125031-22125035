@@ -52,6 +52,7 @@ class TodayHighlightNewsItem(BaseModel):
     published_at: str = Field("", description="Published timestamp string")
     content: str = Field("", description="News content")
     source: str = Field("", description="News source")
+    sentiment: str = Field("", description="News sentiment")
 
 
 class TodayHighlightStockItem(BaseModel):

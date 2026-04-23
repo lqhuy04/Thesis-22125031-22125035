@@ -1,7 +1,7 @@
 import { New } from "@/helpers/DetailHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
 import React from "react";
-import { View, Image, TouchableOpacity } from "react-native";
+import { TouchableOpacity } from "react-native";
 import { Text } from "./Text";
 import { router } from "expo-router";
 

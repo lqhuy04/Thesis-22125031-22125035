@@ -85,6 +85,7 @@ export type New = {
   published_at: string;
   content: string;
   source: string;
+  sentiment?: string;
 };
 
 export const fetchNews = async (

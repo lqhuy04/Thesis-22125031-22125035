@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AllNewsSection from "@/components/market/AllNewsSection";
 import BusinessNewsSection from "@/components/market/BusinessNewsSection";
 import IndustryMovementSection from "@/components/market/IndustryMovementSection";
+import TodayHighlightSection from "@/components/market/TodayHighlightSection";
 
 const Home = () => {
   const { theme } = useTheme();
@@ -56,6 +57,8 @@ const Home = () => {
         <MarketIndicesSection />
 
         <IndustryMovementSection />
+
+        <TodayHighlightSection />
 
         <BusinessNewsSection />
 

@@ -218,3 +218,35 @@ export const getIndustryMovement = async (
     };
   }
 };
+
+export type TodayHighlight = CurrentPriceData & {
+  news: New[];
+};
+
+export const getTodayHighlights = async (): Promise<{
+  status: boolean;
+  data: TodayHighlight[];
+}> => {
+  try {
+    const result = await sendMessage(`api/articles/today-highlight`);
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as TodayHighlight[],
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+};

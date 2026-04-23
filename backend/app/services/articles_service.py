@@ -549,6 +549,7 @@ class ArticlesService:
                     "published_at": to_str(article.get("published_at") or article.get("time")),
                     "content": str(article.get("content") or ""),
                     "source": str(article.get("source") or ""),
+                    "sentiment": str(article.get("sentiment") or ""),
                 }
 
             highlights = []
@@ -780,20 +781,18 @@ Quy tắc:
             seen_links: set[str] = set()
             candidates: List[dict] = []
 
-            for page in [1,2,3]:
-                try:
-                    items = search_serper(base_query, "qdr:m", page)
-                except Exception as e:
-                    print(f"Serper error: {e}")
+            try:
+                items = search_serper(base_query, "qdr:m", 1)
+            except Exception as e:
+                print(f"Serper error: {e}")
+
+            for item in items:
+                link = item.get("link", "")
+                if not link or not is_trusted(link) or link in seen_links:
                     continue
 
-                for item in items:
-                    link = item.get("link", "")
-                    if not link or not is_trusted(link) or link in seen_links:
-                        continue
-
-                    seen_links.add(link)
-                    candidates.append(item)
+                seen_links.add(link)
+                candidates.append(item)
                     
 
             print(f"Trusted candidates collected: {len(candidates)}")
@@ -811,7 +810,7 @@ Quy tắc:
             
 
                 record = {
-                    "title": candidate["title"],
+                    "title": article["title"],
                     "link": candidate["link"],
                     "description": candidate["snippet"],
                     "time": parse_date_string(candidate["date"]),
