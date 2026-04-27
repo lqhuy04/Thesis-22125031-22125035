@@ -1,12 +1,42 @@
 import { AnalysisData, getAnalysis } from "@/helpers/DetailHelpers";
-import React, { useEffect, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import Entypo from "@expo/vector-icons/Entypo";
 import { Switch } from "react-native-gesture-handler";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
-import CheckBox from "@react-native-community/checkbox";
+import AntDesign from "@expo/vector-icons/AntDesign";
+
+// Custom cross-platform checkbox — avoids AndroidCheckBox native module error
+const CustomCheckBox = ({
+  value,
+  onValueChange,
+  activeColor,
+  inactiveColor,
+}: {
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+  activeColor: string;
+  inactiveColor: string;
+}) => (
+  <TouchableOpacity
+    onPress={() => onValueChange(!value)}
+    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    style={{
+      width: 18,
+      height: 18,
+      borderRadius: 3,
+      borderWidth: 1.5,
+      borderColor: value ? activeColor : inactiveColor,
+      backgroundColor: value ? activeColor : "transparent",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    {value ? <AntDesign name="check" size={11} color="#fff" /> : null}
+  </TouchableOpacity>
+);
 
 interface Props {
   stockSymbol: string;
@@ -15,7 +45,7 @@ interface Props {
 const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
   const { theme } = useTheme();
   const [data, setData] = useState<AnalysisData | null>(null);
-
+  const [loading, setLoading] = useState<boolean>(false);
   const [width, setWidth] = useState<number>(0);
 
   const [manualMode, setManualMode] = useState<boolean>(false);
@@ -39,7 +69,24 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
       key: "fundamental_analysis_indicators",
       name: "Các chỉ số phân tích cơ bản",
       expanded: false,
-      value: [],
+      value: [
+        { key: "eps", name: "EPS", value: true },
+        { key: "pe_ratio", name: "P/E", value: true },
+        { key: "pb_ratio", name: "P/B", value: true },
+        { key: "revenue_yoy", name: "Tăng trưởng doanh thu", value: true },
+        { key: "profit_yoy", name: "Tăng trưởng lợi nhuận", value: true },
+        { key: "roe", name: "ROE", value: true },
+        { key: "roa", name: "ROA", value: true },
+        { key: "gross_margin", name: "Biên lợi nhuận gộp", value: true },
+        { key: "net_margin", name: "Biên lợi nhuận ròng", value: true },
+        { key: "debt_to_equity", name: "Nợ / Vốn chủ sở hữu", value: true },
+        {
+          key: "current_ratio",
+          name: "Tỷ số thanh toán hiện hành",
+          value: true,
+        },
+        { key: "ev_ebitda", name: "EV/EBITDA", value: false },
+      ],
     },
     {
       key: "price",
@@ -50,7 +97,14 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
       key: "technical_indicators",
       name: "Chỉ số kỹ thuật",
       expanded: false,
-      value: [],
+      value: [
+        { key: "MA", name: "MA (Đường trung bình động)", value: true },
+        { key: "BOLL", name: "BOLL (Bollinger Bands)", value: true },
+        { key: "VOL", name: "VOL (Khối lượng)", value: true },
+        { key: "MACD", name: "MACD", value: true },
+        { key: "RSI", name: "RSI", value: true },
+        { key: "KDJ", name: "KDJ", value: false },
+      ],
     },
     {
       key: "risk_appetite",
@@ -59,16 +113,52 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
     },
   ]);
 
-  // useEffect(() => {
-  //   getAnalysis(stockSymbol).then((res) => {
-  //     if (res.status) {
-  //       setData(res.data);
-  //     }
-  //   });
-  // }, [stockSymbol]);
+  const getAnalysisData = useCallback(() => {
+    setLoading(true);
+    getAnalysis(stockSymbol)
+      .then((res) => {
+        if (res.status) {
+          setData(res.data);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [stockSymbol]);
+
+  const toggleExpanded = (key: string) => {
+    setManualOptions((prev) =>
+      prev.map((o) => (o.key === key ? { ...o, expanded: !o.expanded } : o)),
+    );
+  };
+
+  const toggleSubItem = (
+    parentKey: string,
+    childKey: string,
+    value: boolean,
+  ) => {
+    setManualOptions((prev) =>
+      prev.map((o) => {
+        if (o.key === parentKey && Array.isArray(o.value)) {
+          return {
+            ...o,
+            value: o.value.map((child: any) =>
+              child.key === childKey ? { ...child, value } : child,
+            ),
+          };
+        }
+        return o;
+      }),
+    );
+  };
+
+  const toggleBooleanOption = (key: string, value: boolean) => {
+    setManualOptions((prev) =>
+      prev.map((o) => (o.key === key ? { ...o, value } : o)),
+    );
+  };
 
   return (
     <View>
+      {/* Manual mode toggle */}
       <View
         style={{
           flexDirection: "row",
@@ -91,6 +181,7 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
         />
       </View>
 
+      {/* Manual options */}
       {manualMode ? (
         <View style={{ marginHorizontal: 12 }}>
           <Text typography="titleMedium" style={{ marginBottom: 4 }}>
@@ -98,57 +189,89 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
           </Text>
 
           {manualOptions.map((option, index) => (
-            <View
-              key={option.key}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginTop: index === 0 ? 12 : 0,
-              }}
-            >
-              <Text typography="bodyLarge">{option.name}</Text>
-              {typeof option.value === "boolean" ? (
-                <Switch
-                  value={option.value}
-                  onValueChange={(value) => {
-                    const newOptions = [...manualOptions];
-                    const index = newOptions.findIndex(
-                      (o) => o.key === option.key,
-                    );
-                    if (index !== -1) {
-                      newOptions[index].value = value;
-                      setManualOptions(newOptions);
-                    }
-                  }}
-                  thumbColor={theme.base.primary}
-                  trackColor={{
-                    false: theme.border.default,
-                    true: theme.base.primary + "80",
-                  }}
-                />
-              ) : null}
+            <View key={option.key}>
+              {/* Parent row */}
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginTop: index === 0 ? 12 : 8,
+                }}
+              >
+                <Text typography="bodyLarge">{option.name}</Text>
 
-              {typeof option.value === "object" ? (
-                <TouchableOpacity
-                  onPress={() => {
-                    setManualMode();
-                  }}
-                >
-                  <SimpleLineIcons
-                    name="arrow-down"
-                    size={12}
-                    color="black"
-                    style={{ marginRight: 12 }}
+                {/* Boolean toggle */}
+                {typeof option.value === "boolean" ? (
+                  <Switch
+                    value={option.value}
+                    onValueChange={(value) =>
+                      toggleBooleanOption(option.key, value)
+                    }
+                    thumbColor={theme.base.primary}
+                    trackColor={{
+                      false: theme.border.default,
+                      true: theme.base.primary + "80",
+                    }}
                   />
-                </TouchableOpacity>
-              ) : null}
+                ) : null}
+
+                {/* Array — expand/collapse arrow */}
+                {Array.isArray(option.value) ? (
+                  <TouchableOpacity
+                    onPress={() => toggleExpanded(option.key)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <SimpleLineIcons
+                      name={option.expanded ? "arrow-up" : "arrow-down"}
+                      size={12}
+                      color="black"
+                      style={{ marginRight: 4 }}
+                    />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              {/* Sub-items (shown when expanded) */}
+              {Array.isArray(option.value) && option.expanded
+                ? option.value.map((child: any) => (
+                    <View
+                      key={child.key}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        marginTop: 6,
+                        paddingLeft: 16,
+                      }}
+                    >
+                      <Text typography="bodyMedium" style={{ flex: 1 }}>
+                        {child.name}
+                      </Text>
+                      <CustomCheckBox
+                        value={child.value}
+                        onValueChange={(value) =>
+                          toggleSubItem(option.key, child.key, value)
+                        }
+                        activeColor={theme.base.primary}
+                        inactiveColor={theme.border.default}
+                      />
+                    </View>
+                  ))
+                : null}
             </View>
           ))}
         </View>
       ) : null}
 
-      {data != null ? (
+      {/* Analysis result + loading */}
+      {loading ? (
+        <ActivityIndicator
+          size="large"
+          color={theme.base.primary}
+          style={{ marginVertical: 24 }}
+        />
+      ) : data != null ? (
         <View style={{ marginVertical: 12, marginHorizontal: 12 }}>
           <Text typography="titleLarge" style={{ marginBottom: 4 }}>
             Tóm tắt
@@ -237,6 +360,27 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
           </View>
         </View>
       ) : null}
+
+      {/* Action button — always visible */}
+      <TouchableOpacity
+        onPress={getAnalysisData}
+        disabled={loading}
+        style={{
+          marginHorizontal: 12,
+          marginTop: 8,
+          marginBottom: 16,
+          backgroundColor: loading
+            ? theme.base.primary + "80"
+            : theme.base.primary,
+          borderRadius: 8,
+          paddingVertical: 12,
+          alignItems: "center",
+        }}
+      >
+        <Text typography="titleMedium" style={{ color: "#fff" }}>
+          {data != null ? "Phân tích lại" : "Bắt đầu phân tích"}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
