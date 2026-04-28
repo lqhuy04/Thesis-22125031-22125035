@@ -3,20 +3,23 @@ Portfolio Schemas
 Pydantic models for the flat portfolio table.
 """
 from typing import Optional
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 
 class PortfolioCreateRequest(BaseModel):
-    stock_id: str = Field(..., min_length=1, max_length=64, description="Stock ID or symbol")
-    user_id: str = Field(..., min_length=1, max_length=64, description="Owner user ID")
-    amount: float = Field(..., gt=0, description="Holding amount")
-    avg_price: float = Field(..., gt=0, description="Average buy price")
+    symbol: str = Field(..., min_length=1, max_length=64, description="Stock symbol (e.g. VNM)")
+    # `user_id` is derived from the bearer token; do not include in request body
+    amount: float = Field(..., gt=0, description="Transaction amount")
+    buy_price: float = Field(..., gt=0, description="Buy price per unit")
+    time: Optional[datetime] = Field(None, description="Transaction time (ISO8601). If omitted server will use now")
 
 
 class PortfolioUpdateRequest(BaseModel):
-    amount: Optional[float] = Field(None, gt=0, description="Holding amount")
-    avg_price: Optional[float] = Field(None, gt=0, description="Average buy price")
+    amount: Optional[float] = Field(None, gt=0, description="Transaction amount")
+    buy_price: Optional[float] = Field(None, gt=0, description="Buy price per unit")
+    time: Optional[datetime] = Field(None, description="Transaction time (ISO8601)")
 
 
 class PortfolioData(BaseModel):
@@ -24,4 +27,5 @@ class PortfolioData(BaseModel):
     stock_id: str
     user_id: str
     amount: float
-    avg_price: float
+    buy_price: float
+    time: Optional[datetime] = None
