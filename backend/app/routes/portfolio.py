@@ -10,6 +10,9 @@ from app.models.base_schemas import error_response, success_response
 from app.models.portfolio_schemas import PortfolioCreateRequest, PortfolioUpdateRequest
 from app.services.portfolio_service import PortfolioService
 from app.middleware.auth_middleware import get_current_user
+from pydantic import BaseModel
+from typing import List
+
 
 router = APIRouter(prefix="/api/portfolio", tags=["Portfolio"])
 
@@ -70,19 +73,35 @@ async def update_portfolio_by_id(portfolio_id: str, request: PortfolioUpdateRequ
     except Exception:
         return error_response(error_code=500001, error_desc="Internal server error", request_id=request_id)
 
+class DeletePortfolioRequest(BaseModel):
+    portfolio_ids: List[str]
 
-@router.delete("/{portfolio_id}", summary="Delete Portfolio By ID")
-async def delete_portfolio_by_id(portfolio_id: str):
+@router.delete("", summary="Delete Multiple Portfolios")
+async def delete_portfolios(req: DeletePortfolioRequest):
     request_id = str(uuid.uuid4())
 
     try:
-        deleted = await PortfolioService.delete_portfolio(portfolio_id)
+        deleted = await PortfolioService.delete_portfolios(req.portfolio_ids)
+
         if not deleted:
-            raise HTTPException(status_code=404, detail="Portfolio not found")
-        return success_response(data={"deleted": True}, request_id=request_id)
+            raise HTTPException(status_code=404, detail="Portfolios not found")
+
+        return success_response(
+            data={"deleted": True},
+            request_id=request_id
+        )
+
     except HTTPException:
         raise
     except ValueError as e:
-        return error_response(error_code=500001, error_desc=str(e), request_id=request_id)
+        return error_response(
+            error_code=500001,
+            error_desc=str(e),
+            request_id=request_id
+        )
     except Exception:
-        return error_response(error_code=500001, error_desc="Internal server error", request_id=request_id)
+        return error_response(
+            error_code=500001,
+            error_desc="Internal server error",
+            request_id=request_id
+        )

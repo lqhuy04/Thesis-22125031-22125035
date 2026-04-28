@@ -38,14 +38,14 @@ const Home = () => {
             borderWidth: 1,
             borderColor: theme.border.default,
             borderRadius: 5,
-            paddingVertical: 9.5,
+            paddingVertical: 8.5,
             paddingHorizontal: 12,
             marginTop: 4,
           }}
         >
           <Ionicons
             name="person-outline"
-            size={20}
+            size={18}
             color={theme.text.primary}
           />
         </TouchableOpacity>

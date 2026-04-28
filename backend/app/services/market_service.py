@@ -602,6 +602,22 @@ class MarketService:
         except Exception as e:
             print(f"Error fetching prices for {symbol} ({interval}): {e}")
             return []
+    
+    @staticmethod
+    def get_priority(stock, keyword: str):
+        symbol = stock["symbol"].lower()
+        name = stock["company_name"].lower()
+        kw = keyword.lower()
+
+        if symbol.startswith(kw):
+            return 1
+        if kw in symbol:
+            return 2
+        if name.startswith(kw):
+            return 3
+        if kw in name:
+            return 4
+        return 5
         
     @staticmethod
     def search_stock(keyword: str) -> List[Dict[str, Any]]:
@@ -611,25 +627,28 @@ class MarketService:
             if not keyword:
                 return []
 
-            query = supabase.table("BI_Profile") \
+            result = supabase.table("BI_Profile") \
                 .select("stock_id, symbol, company_name, exchange") \
                 .or_(
                     f"symbol.ilike.%{keyword}%,company_name.ilike.%{keyword}%"
-                )
+                ) \
+                .execute()
 
-            result = query.execute()
             data = result.data if result.data else []
 
-            return [
-                {
-                    "stock_id": stock["stock_id"],
-                    "symbol": stock["symbol"],
-                    "company_name": stock["company_name"],
-                    "exchange": stock["exchange"],
-                }
-                for stock in data
-                if len(stock["symbol"]) <= 3   # ✅ filter tại đây
+            # filter symbol <= 3
+            filtered = [
+                stock for stock in data
+                if len(stock["symbol"]) <= 3
             ]
+
+            # sort theo priority
+            sorted_data = sorted(
+                filtered,
+                key=lambda x: MarketService.get_priority(x, keyword)
+            )
+
+            return sorted_data
 
         except Exception as e:
             print(f"Error search stock: {e}")

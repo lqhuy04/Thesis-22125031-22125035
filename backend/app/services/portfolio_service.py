@@ -62,6 +62,7 @@ class PortfolioService:
                 if sid not in groups:
                     groups[sid] = {"stock_id": sid, "user_id": user_id, "history": [], "id": r.get("id")}
                 groups[sid]["history"].append({
+                    "id": r.get("id"),
                     "amount": PortfolioService._to_float(r.get("amount")),
                     "buy_price": PortfolioService._to_float(r.get("buy_price")),
                     "time": r.get("time"),
@@ -233,15 +234,20 @@ class PortfolioService:
             raise ValueError(f"Failed to update portfolio transaction: {str(e)}")
 
     @staticmethod
-    async def delete_portfolio(portfolio_id: str) -> bool:
+    async def delete_portfolios(portfolio_ids: List[str]) -> bool:
         try:
+            if not portfolio_ids:
+                return False
+
             result = (
                 supabase.table(PortfolioService.TABLE_NAME)
                 .delete()
-                .eq("id", portfolio_id)
+                .in_("id", portfolio_ids)
                 .execute()
             )
+
             return bool(result.data)
+
         except Exception as e:
-            print(f"Error deleting portfolio transaction: {e}")
-            raise ValueError(f"Failed to delete portfolio transaction: {str(e)}")
+            print(f"Error deleting portfolios: {e}")
+            raise ValueError(f"Failed to delete portfolios: {str(e)}")
