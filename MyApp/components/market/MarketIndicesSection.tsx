@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Dimensions, FlatList, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { getMarketIndices, MarketIndex } from "@/helpers/MarketHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
+const { width } = Dimensions.get("window");
+const CARD_WIDTH = width * 0.72;
+const CARD_GAP = 12;
 
 const MarketIndicesSection = () => {
   const { theme } = useTheme();
@@ -22,10 +26,17 @@ const MarketIndicesSection = () => {
     <View>
       <Text typography="titleLarge">Thị trường hôm nay</Text>
 
-      {indices.map((item) => {
-        return (
+      <FlatList
+        data={indices}
+        keyExtractor={(item) => item.IndexId}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={CARD_WIDTH + CARD_GAP}
+        snapToAlignment="start"
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingRight: width - CARD_WIDTH }}
+        renderItem={({ item }) => (
           <TouchableOpacity
-            key={item.IndexId}
             onPress={() =>
               router.push({
                 pathname: "/IndexDetail" as any,
@@ -33,10 +44,15 @@ const MarketIndicesSection = () => {
               })
             }
             style={{
+              width: CARD_WIDTH,
+              marginRight: CARD_GAP,
               marginTop: 12,
               borderRadius: 8,
-              backgroundColor: theme.background.surface,
+              backgroundColor: theme.base.primary + "12",
+              borderWidth: 1,
+              borderColor: theme.base.primary,
               padding: 12,
+              paddingBottom: 6,
             }}
           >
             <Text typography="bodyMedium">{item.IndexName}</Text>
@@ -73,9 +89,7 @@ const MarketIndicesSection = () => {
               <Text
                 typography="labelLarge"
                 color={item.Change < 0 ? theme.base.error : theme.base.success}
-                style={{
-                  marginLeft: 8,
-                }}
+                style={{ marginLeft: 8 }}
               >
                 {item.RatioChange}%
               </Text>
@@ -89,6 +103,46 @@ const MarketIndicesSection = () => {
               {(Number(item.TotalVol) / 1000000).toFixed(0)} triệu cổ phiếu -{" "}
               {(Number(item.TotalVal) / 1000000000).toFixed(2)} tỷ đồng
             </Text>
+
+            {(() => {
+              const adv = Number(item.Advances) || 0;
+              const noChg = Number(item.NoChanges) || 0;
+              const dec = Number(item.Declines) || 0;
+              const total = adv + noChg + dec;
+
+              const advPct = total === 0 ? 33.33 : (adv / total) * 100;
+              const noChgPct = total === 0 ? 33.33 : (noChg / total) * 100;
+              const decPct = total === 0 ? 33.34 : (dec / total) * 100;
+
+              return (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    height: 4,
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    marginTop: 8,
+                    marginBottom: 2,
+                  }}
+                >
+                  <View
+                    style={{
+                      flex: advPct,
+                      backgroundColor: theme.base.success,
+                    }}
+                  />
+                  <View
+                    style={{
+                      flex: noChgPct,
+                      backgroundColor: theme.base.warning,
+                    }}
+                  />
+                  <View
+                    style={{ flex: decPct, backgroundColor: theme.base.error }}
+                  />
+                </View>
+              );
+            })()}
 
             <View
               style={{
@@ -134,8 +188,8 @@ const MarketIndicesSection = () => {
               </View>
             </View>
           </TouchableOpacity>
-        );
-      })}
+        )}
+      />
     </View>
   );
 };

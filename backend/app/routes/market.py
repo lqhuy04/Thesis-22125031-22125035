@@ -134,15 +134,13 @@ async def get_industry_movement(
 async def get_market_indices():
     request_id = str(uuid.uuid4())
     vnindex_result = MarketService.get_market_index(index_id="VNINDEX")
-    await asyncio.sleep(1.05)
-    hnxindex_result = MarketService.get_market_index(index_id="HNXINDEX")
-    await asyncio.sleep(1.05)
+    hnxindex_result = MarketService.get_market_index(index_id="HNXIndex")
+    hnxupcomindex_result = MarketService.get_market_index(index_id="HNXUpcomIndex")
     vn30_result = MarketService.get_market_index(index_id="VN30")
-    await asyncio.sleep(1.05)
     vn100_result = MarketService.get_market_index(index_id="VN100")
 
     return {
-        "data": [ vnindex_result, hnxindex_result, vn30_result, vn100_result ],
+        "data": [ vnindex_result, hnxindex_result,hnxupcomindex_result, vn30_result, vn100_result ],
         "errorCode": 0 if vnindex_result and hnxindex_result and vn30_result and vn100_result else 500001,
         "errorDesc": "" if vnindex_result and hnxindex_result and vn30_result and vn100_result else "No data found for the specified index",
         "requestId": request_id,

@@ -774,42 +774,44 @@ class MarketService:
             return {"items": []}
         
     @staticmethod
-    def get_market_index(index_id: str) -> List[Dict[str, Any]]:
+    def get_market_index(index_id: str) -> Dict[str, Any]:
         try:
-            ssi_service = get_ssi_service()
-            today = MarketService.get_last_trading_day(datetime.now()).strftime("%d/%m/%Y")
-            
-            result = ssi_service.get_daily_index(
-                request_id=str(uuid.uuid4()),
-                from_date=today,
-                to_date=today,
-                index_id=index_id
+            result = (
+                supabase
+                .table("Current_Market_Index")
+                .select("*")
+                .eq("index_id", index_id)
+                .single()
+                .execute()
             )
-            if not (result["success"] and result["data"]):
+
+            if not result.data:
                 return {}
-            
+
+            row = result.data
+
             return {
-                "IndexId": result["data"][0]["IndexId"],
-                "IndexValue": float(result["data"][0]["IndexValue"]),
-                "TradingDate": result["data"][0]["TradingDate"],
-                "Time": result["data"][0]["Time"],
-                "Change": round(float(result["data"][0]["Change"]) * 100, 2) if result["data"][0]["IndexId"] != "HNXIndex" else round(float(result["data"][0]["Change"]), 2),
-                "RatioChange": float(result["data"][0]["RatioChange"]),
-                "TotalTrade": float(result["data"][0]["TotalTrade"]),
-                "TotalMatchVol": float(result["data"][0]["TotalMatchVol"]),
-                "TotalMatchVal": float(result["data"][0]["TotalMatchVal"]),
-                "TypeIndex": result["data"][0]["TypeIndex"],
-                "IndexName": result["data"][0]["IndexName"],
-                "Advances": float(result["data"][0]["Advances"]),
-                "NoChanges": float(result["data"][0]["NoChanges"]),
-                "Declines": float(result["data"][0]["Declines"]),
-                "Ceilings": float(result["data"][0]["Ceilings"]),
-                "Floors": float(result["data"][0]["Floors"]),
-                "TotalDealVol": float(result["data"][0]["TotalDealVol"]),
-                "TotalDealVal": float(result["data"][0]["TotalDealVal"]),
-                "TotalVol": float(result["data"][0]["TotalVol"]),
-                "TotalVal": float(result["data"][0]["TotalVal"]),
-                "TradingSession": result["data"][0]["TradingSession"]
+                "IndexId":        row["index_id"],
+                "IndexValue":     float(row["index_value"] or 0),
+                "TradingDate":    row["trading_date"],
+                "Time":           row["trading_time"],
+                "Change":         float(row["change"] or 0),
+                "RatioChange":    float(row["ratio_change"] or 0),
+                "TotalTrade":     float(row["total_trade"] or 0),
+                "TotalMatchVol":  float(row["total_match_vol"] or 0),
+                "TotalMatchVal":  float(row["total_match_val"] or 0),
+                "TypeIndex":      row["type_index"],
+                "IndexName":      row["index_name"],
+                "Advances":       float(row["advances"] or 0),
+                "NoChanges":      float(row["no_changes"] or 0),
+                "Declines":       float(row["declines"] or 0),
+                "Ceilings":       float(row["ceilings"] or 0),
+                "Floors":         float(row["floors"] or 0),
+                "TotalDealVol":   float(row["total_deal_vol"] or 0),
+                "TotalDealVal":   float(row["total_deal_val"] or 0),
+                "TotalVol":       float(row["total_vol"] or 0),
+                "TotalVal":       float(row["total_val"] or 0),
+                "TradingSession": row["trading_session"],
             }
         except Exception as e:
             print(f"Error fetching market index: {e}")
