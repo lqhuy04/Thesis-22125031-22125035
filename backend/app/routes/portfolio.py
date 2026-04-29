@@ -50,7 +50,7 @@ async def create_portfolio(request: PortfolioCreateRequest, current_user: dict =
 
 
 @router.put("/{portfolio_id}", summary="Update Portfolio By ID")
-async def update_portfolio_by_id(portfolio_id: str, request: PortfolioUpdateRequest, current_user: dict = Depends(get_current_user)):
+async def update_portfolio_by_id(portfolio_id: str, request: PortfolioUpdateRequest):
     request_id = str(uuid.uuid4())
 
     try:
