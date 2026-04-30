@@ -2,7 +2,6 @@
 Price Database Service
 Handles database operations for historical stock prices (15m, 1h, 1d intervals)
 """
-import uuid
 from supabase import create_client, Client
 from app.config import settings
 from typing import Optional, List, Dict, Any
@@ -10,6 +9,9 @@ from datetime import datetime, timedelta
 from app.services.ssi_service import get_ssi_service
 from datetime import date, datetime
 import time
+import pandas as pd
+from datetime import time as dtime
+from typing import List, Dict, Any
 
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
@@ -583,25 +585,161 @@ class MarketService:
             print(f"[{symbol}] ❌ ERROR: {e}")
             return False
     
+    # ──────────────────────────────────────────────────────────────────────────────
+    # Mapping interval → (source_table, resample_rule, cutoff_time)
+    # cutoff_time: cắt dữ liệu intraday đến giờ này (None = lấy hết)
+    # ──────────────────────────────────────────────────────────────────────────────
+    _INTRADAY_INTERVALS = {
+        "1m":  ("Stock_Price_1m",  "1min",  None),
+        "5m":  ("Stock_Price_1m",  "5min",  None),
+        "15m": ("Stock_Price_1m",  "15min", None),
+        "30m": ("Stock_Price_1m",  "30min", None),   # lấy đến 14:30
+        "1h":  ("Stock_Price_1m",  "1h",    None),   # lấy đến 14:00
+    }
+
+    _DAILY_INTERVALS = {
+        "1d": ("Stock_Price_1d", "1D",  None),
+        "1w": ("Stock_Price_1d", "1W",  None),
+        "1mo": ("Stock_Price_1d", "1ME", None),   # pandas: month-end
+    }
+    
+    _ATC_TIME = dtime(14, 45)
+    _ATC_REMAP = {
+        "30m": dtime(14, 30),
+    }
+
+
     @staticmethod
     def get_stock_price_by_interval(symbol: str, interval: str = "15m") -> List[Dict[str, Any]]:
         """
-        Retrieve all prices from the database for a specific symbol and interval.
-        Ordered by trading_time ASC using pagination.
+        Lấy dữ liệu OHLCV theo interval bằng cách aggregate từ dữ liệu gốc.
+
+        Nguồn dữ liệu:
+          - Bảng Stock_Price_1m → interval: 1m, 5m, 15m, 30m, 1h
+          - Bảng Stock_Price_1d → interval: 1d, 1w, 1mo
         """
         try:
-            response = supabase.table(f"Stock_Price_{interval}") \
-                    .select("symbol, trading_time, open, high, low, close, volume") \
-                    .eq("symbol", symbol.upper()) \
-                    .order("trading_time", desc=False) \
-                    .execute()
-                    
-            result = response.data if response.data else []
-            return result
+            symbol_up = symbol.upper()
+
+            if interval in MarketService._INTRADAY_INTERVALS:
+                return MarketService._aggregate_from_1m(symbol_up, interval)
+            elif interval in MarketService._DAILY_INTERVALS:
+                return MarketService._aggregate_from_1d(symbol_up, interval)
+            else:
+                valid = list(MarketService._INTRADAY_INTERVALS) + list(MarketService._DAILY_INTERVALS)
+                raise ValueError(f"Unsupported interval: '{interval}'. Valid: {valid}")
 
         except Exception as e:
             print(f"Error fetching prices for {symbol} ({interval}): {e}")
             return []
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Private helpers
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _fetch_raw(table: str, symbol: str) -> pd.DataFrame:
+        """
+        Paginate qua Supabase để lấy TOÀN BỘ records (1000 rows/request).
+        Trả về DataFrame index bởi trading_time ASC.
+        """
+        PAGE_SIZE = 1000
+        all_rows: List[Dict] = []
+        offset = 0
+
+        while True:
+            response = supabase.table(table) \
+                .select("symbol, trading_time, open, high, low, close, volume") \
+                .eq("symbol", symbol) \
+                .order("trading_time", desc=False) \
+                .range(offset, offset + PAGE_SIZE - 1) \
+                .execute()
+
+            rows = response.data or []
+            all_rows.extend(rows)
+
+            # Ít hơn PAGE_SIZE → đã đến trang cuối
+            if len(rows) < PAGE_SIZE:
+                break
+
+            offset += PAGE_SIZE
+
+        if not all_rows:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(all_rows)
+        df["trading_time"] = pd.to_datetime(df["trading_time"])
+        df = df.set_index("trading_time")
+
+        for col in ("open", "high", "low", "close", "volume"):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        return df
+
+    @staticmethod
+    def _resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
+        """Aggregate DataFrame OHLCV theo pandas resample rule."""
+        return df.resample(rule, label="left", closed="left").agg(
+            open=("open",     "first"),
+            high=("high",     "max"),
+            low=("low",       "min"),
+            close=("close",   "last"),
+            volume=("volume", "sum"),
+        ).dropna(subset=["open"])   # bỏ nến rỗng (không có giao dịch)
+
+    @staticmethod
+    def _df_to_records(df: pd.DataFrame, symbol: str) -> List[Dict[str, Any]]:
+        """Chuyển DataFrame về List[Dict] theo format chuẩn."""
+        df = df.reset_index()
+        df["trading_time"] = df["trading_time"].dt.strftime("%Y-%m-%dT%H:%M:%S")
+        df["symbol"] = symbol
+        return df[["symbol", "trading_time", "open", "high", "low", "close", "volume"]] \
+            .to_dict(orient="records")
+
+    @staticmethod
+    def _aggregate_from_1m(symbol: str, interval: str) -> List[Dict[str, Any]]:
+        """
+        Fetch toàn bộ bảng 1m (paginate hết), sau đó:
+        - interval == "1m" → trả thẳng toàn bộ (không resample)
+        - còn lại          → resample + áp cutoff time nếu có
+        """
+        _, rule, cutoff = MarketService._INTRADAY_INTERVALS[interval]
+
+        # Luôn paginate hết toàn bộ 1m dù interval là gì
+        df = MarketService._fetch_raw("Stock_Price_1m", symbol)
+        if df.empty:
+            return []
+
+        # 1m: trả thẳng toàn bộ, không resample
+        if interval == "1m":
+            return MarketService._df_to_records(df, symbol)
+
+        # 5m, 15m, 30m, 1h: áp cutoff rồi resample
+        if cutoff is not None:
+            df = df[df.index.time <= cutoff]
+
+        agg = MarketService._resample_ohlcv(df, rule)
+        return MarketService._df_to_records(agg, symbol)
+
+    @staticmethod
+    def _aggregate_from_1d(symbol: str, interval: str) -> List[Dict[str, Any]]:
+        """
+        Fetch toàn bộ bảng 1d (paginate), sau đó:
+          - interval == "1d" → trả thẳng toàn bộ records
+          - còn lại          → resample (1w, 1mo)
+        """
+        _, rule, _ = MarketService._DAILY_INTERVALS[interval]
+
+        df = MarketService._fetch_raw("Stock_Price_1d", symbol)
+        if df.empty:
+            return []
+
+        # 1d: không cần resample, trả toàn bộ
+        if interval == "1d":
+            return MarketService._df_to_records(df, symbol)
+
+        agg = MarketService._resample_ohlcv(df, rule)
+        return MarketService._df_to_records(agg, symbol)
     
     @staticmethod
     def get_priority(stock, keyword: str):

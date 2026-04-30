@@ -4,7 +4,6 @@ FastAPI routes for SSI FC Data API integration
 """
 from fastapi import APIRouter, Query
 import uuid
-import asyncio
 from supabase_auth import Any
 from app.services.market_service import MarketService
 from app.services.ssi_service import get_ssi_service
@@ -56,7 +55,7 @@ async def get_latest_historical_chart_data(
     request_id = str(uuid.uuid4())
     result = MarketService.get_stock_price_by_interval(symbol, interval=interval)
     return {
-        "data": result[-300:] if result and len(result) > 300 else result,
+        "data": result,
         "errorCode": 0 if result else 500001,
         "errorDesc": "" if result else "No data found for the specified symbol and interval",
         "requestId": request_id,
