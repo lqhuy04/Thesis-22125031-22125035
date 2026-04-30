@@ -25,7 +25,7 @@ client = fc_md_client.MarketDataClient(config)
 SYMBOL        = "VNM"
 TABLE         = "Stock_Price_1d"
 CHUNK_DAYS    = 30          # SSI giới hạn tối đa 30 ngày mỗi request
-SLEEP_SECONDS = 1.2         # Delay giữa các request để tránh rate-limit SSI
+SLEEP_SECONDS = 1.1         # Delay giữa các request để tránh rate-limit SSI
 YEARS_BACK    = 5           # Số năm lấy dữ liệu lịch sử
 
 logging.basicConfig(
