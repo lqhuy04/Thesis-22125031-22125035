@@ -600,7 +600,7 @@ class MarketService:
     _DAILY_INTERVALS = {
         "1d": ("Stock_Price_1d", "1D",  None),
         "1w": ("Stock_Price_1d", "1W",  None),
-        "1mo": ("Stock_Price_1d", "1ME", None),   # pandas: month-end
+        "1M": ("Stock_Price_1d", "1ME", None),   # pandas: month-end
     }
     
     _ATC_TIME = dtime(14, 45)
@@ -616,7 +616,7 @@ class MarketService:
 
         Nguồn dữ liệu:
           - Bảng Stock_Price_1m → interval: 1m, 5m, 15m, 30m, 1h
-          - Bảng Stock_Price_1d → interval: 1d, 1w, 1mo
+          - Bảng Stock_Price_1d → interval: 1d, 1w, 1M
         """
         try:
             symbol_up = symbol.upper()
@@ -726,7 +726,7 @@ class MarketService:
         """
         Fetch toàn bộ bảng 1d (paginate), sau đó:
           - interval == "1d" → trả thẳng toàn bộ records
-          - còn lại          → resample (1w, 1mo)
+          - còn lại          → resample (1w, 1M)
         """
         _, rule, _ = MarketService._DAILY_INTERVALS[interval]
 
