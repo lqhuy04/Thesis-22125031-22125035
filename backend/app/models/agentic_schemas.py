@@ -1,13 +1,13 @@
 """
-app/models/agentic_schema.py
-Request / Response schemas riêng cho agentic AI endpoints.
+app/models/agentic_schemas.py
+Request / Response schemas cho agentic AI endpoints.
 """
 
 from typing import Literal
 from pydantic import BaseModel, Field
 
 
-# ─── Request ──────────────────────────────────────────────────────────────────
+# ─── Shared ───────────────────────────────────────────────────────────────────
 
 class RiskAppetite(BaseModel):
     capital_ratio: str = Field(description="Tỷ lệ vốn, ví dụ: 'Dưới 10%'")
@@ -17,25 +17,41 @@ class RiskAppetite(BaseModel):
     period: str = Field(description="Kỳ hạn đầu tư, ví dụ: 'Ngắn hạn (Dưới 1 năm)'")
 
 
+# ─── /analyze (API mode) ──────────────────────────────────────────────────────
+
 class StockAnalysisRequest(BaseModel):
     symbol: str = Field(description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
     risk_appetite: RiskAppetite
+    user_input: str | None = Field(
+        default=None,
+        description="Câu hỏi / yêu cầu cụ thể. Nếu để trống sẽ dùng prompt mặc định."
+    )
 
-
-# ─── Output của LLM (Structured Output) ──────────────────────────────────────
 
 class InvestmentRecommendation(BaseModel):
-    summary: str = Field(
-        description="Phân tích tổng thể đầy đủ về tình hình cổ phiếu từ 3 nguồn: tin tức, phân tích cơ bản, kỹ thuật"
+    summary: str
+    recommendation: Literal["Mua", "Giữ", "Chờ", "Bán"]
+    reasoning: str
+    confidence: float = Field(ge=0, le=1)
+
+
+# ─── /chat (Chatbot mode) ─────────────────────────────────────────────────────
+
+class ChatRequest(BaseModel):
+    session_id: str = Field(
+        description="ID phiên hội thoại. Client tự tạo (UUID) và giữ nguyên suốt cuộc trò chuyện."
     )
-    recommendation: Literal["Mua", "Giữ", "Chờ", "Bán"] = Field(
-        description="Hành động đề xuất"
+    message: str = Field(description="Tin nhắn của user")
+    risk_appetite: RiskAppetite | None = Field(
+        default=None,
+        description="Khẩu vị rủi ro. Chỉ cần gửi ở tin nhắn đầu tiên, các turn sau bỏ qua."
     )
-    reasoning: str = Field(
-        description="Giải thích cho recommendation từ khẩu vị rủi ro của user, kết hợp dẫn chứng số liệu từ các nguồn phân tích"
-    )
-    confidence: float = Field(
-        description="Độ tin cậy từ 0 đến 1",
-        ge=0,
-        le=1,
+
+
+class ChatResponse(BaseModel):
+    session_id: str
+    reply: str                          # plain text trả về cho user
+    intent_type: str                    # để client biết loại intent (có thể dùng để render UI)
+    instant_reply: bool = Field(
+        description="True nếu reply đến từ intent_classifier (không qua full pipeline)"
     )

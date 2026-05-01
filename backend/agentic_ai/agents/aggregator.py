@@ -13,6 +13,7 @@ aggregator.py — Aggregator Agent (FINAL VERSION)
 import json
 from typing import Literal
 from pydantic import BaseModel, Field
+from langchain_core.messages import HumanMessage, AIMessage
 
 from agentic_ai.service.openai_service import _get_openai_client
 from agentic_ai.state import AgentState
@@ -205,7 +206,8 @@ def aggregator_agent(state: AgentState) -> AgentState:
     risk_appetite = state.get("risk_appetite", {})
     user_input = state.get("user_input", "")
 
-    user_message = f"""
+    # Nội dung phân tích — luôn là message cuối cùng gửi cho LLM
+    analysis_message = f"""
 DỮ LIỆU PHÂN TÍCH:
 
 {json.dumps(results, ensure_ascii=False, indent=2)}
@@ -222,14 +224,14 @@ YÊU CẦU:
 """
 
     try:
-        # ── API mode: structured output ───────────────────────
+        # ── API mode: structured output (không cần history) ───
         if mode == "api":
             response = client.beta.chat.completions.parse(
                 model="gpt-4o-mini",
                 temperature=0.2,
                 messages=[
                     {"role": "system", "content": AGGREGATOR_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_message},
+                    {"role": "user", "content": analysis_message},
                 ],
                 response_format=InvestmentRecommendation,
             )
@@ -242,21 +244,41 @@ YÊU CẦU:
 
             return {"final_output": output}
 
-        # ── Chatbot mode: plain text ──────────────────────────
+        # ── Chatbot mode: plain text + inject history ─────────
         else:
+            # Lấy lịch sử, trim xuống còn tối đa MAX_HISTORY_TURNS turn gần nhất
+            # Mỗi turn = 1 HumanMessage + 1 AIMessage → MAX_HISTORY_TURNS * 2 message
+            MAX_HISTORY_TURNS = 5
+            history = state.get("messages", [])
+            trimmed_history = history[-(MAX_HISTORY_TURNS * 2):]
+
+            history_messages = [
+                {"role": "assistant" if isinstance(m, AIMessage) else "user", "content": m.content}
+                for m in trimmed_history
+            ]
+
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 temperature=0.3,
                 messages=[
                     {"role": "system", "content": AGGREGATOR_CHATBOT_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_message},
+                    *history_messages,          # lịch sử hội thoại
+                    {"role": "user", "content": analysis_message},  # turn hiện tại
                 ],
             )
 
             text = response.choices[0].message.content
             print(f"[Aggregator] Output (chatbot):\n{text}")
 
-            return {"final_output": text}
+            return {
+                "final_output": text,
+                # Append cả HumanMessage (câu hỏi gốc) lẫn AIMessage (câu trả lời)
+                # HumanMessage ở đây dùng user_input thô, không kèm data phân tích
+                "messages": [
+                    HumanMessage(content=user_input),
+                    AIMessage(content=text),
+                ],
+            }
 
     except Exception as e:
         print(f"[Aggregator] Error: {str(e)}")

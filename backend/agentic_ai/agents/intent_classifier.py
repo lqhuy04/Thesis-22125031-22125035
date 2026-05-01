@@ -12,6 +12,7 @@ intent_type:
 
 from typing import Literal
 from pydantic import BaseModel, Field
+from langchain_core.messages import HumanMessage, AIMessage
 
 from agentic_ai.service.openai_service import _get_openai_client
 from agentic_ai.state import AgentState
@@ -107,11 +108,20 @@ def intent_classifier_agent(state: AgentState) -> dict:
     client = _get_openai_client()
     user_input = state.get("user_input", "")
 
+    # Inject lịch sử hội thoại vào classifier để nó hiểu ngữ cảnh
+    # VD: user hỏi "còn FPT thì sao?" — classifier cần biết turn trước đang nói về gì
+    history = state.get("messages", [])
+    history_messages = [
+        {"role": "assistant" if isinstance(m, AIMessage) else "user", "content": m.content}
+        for m in history
+    ]
+
     response = client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         temperature=0,
         messages=[
             {"role": "system", "content": INTENT_CLASSIFIER_SYSTEM_PROMPT},
+            *history_messages,
             {"role": "user", "content": user_input},
         ],
         response_format=IntentClassification,
@@ -125,9 +135,16 @@ def intent_classifier_agent(state: AgentState) -> dict:
     if result.instant_reply:
         print(f"[Intent Classifier] instant_reply = {result.instant_reply}")
 
-    return {
+    updates: dict = {
         "intent": result.model_dump(),
-        # Nếu classifier extract được symbol thì ghi vào state luôn
-        # để Orchestrator không phải tự đoán
         "symbol": result.symbol or state.get("symbol", ""),
+        # Append HumanMessage — add_messages reducer tự merge vào list
+        "messages": [HumanMessage(content=user_input)],
     }
+
+    # Nếu kết thúc sớm (không phải stock_analysis), append AIMessage luôn tại đây
+    # vì aggregator sẽ không được gọi
+    if result.intent_type != "stock_analysis" and result.instant_reply:
+        updates["messages"].append(AIMessage(content=result.instant_reply))
+
+    return updates

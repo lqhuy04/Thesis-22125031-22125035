@@ -4,6 +4,7 @@ graph.py — Xây dựng LangGraph StateGraph
 """
 
 from langgraph.graph import StateGraph, END
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 from agentic_ai.state import AgentState
 from agentic_ai.agents.intent_classifier import intent_classifier_agent
@@ -122,4 +123,8 @@ def build_graph() -> StateGraph:
     # ── Kết thúc ─────────────────────────────────────────────
     graph.add_edge("aggregator", END)
 
-    return graph.compile()
+    import sqlite3
+    conn = sqlite3.connect("chat_memory.db", check_same_thread=False)
+    checkpointer = SqliteSaver(conn)
+
+    return graph.compile(checkpointer=checkpointer)
