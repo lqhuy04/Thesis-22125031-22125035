@@ -2,7 +2,7 @@
 main.py — Entry point
 """
 
-from graph import build_graph
+from agentic_ai.graph import build_graph
 
 
 def main():
@@ -20,12 +20,11 @@ def main():
     }
 
     initial_state = {
-        "user_input": (
-            f"Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu {symbol} "
-            f"dựa vào khẩu vị rủi ro của nhà đầu tư."
-        ),
-        "risk_appetite": user_risk_appetite,   # Truyền riêng để orchestrator dễ parse
-        "symbol": symbol,                      # Truyền riêng để các agent dễ xử lý
+        "user_input": f"Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu {symbol} dựa vào khẩu vị rủi ro của nhà đầu tư.",
+        "risk_appetite": user_risk_appetite,
+        "mode": "chatbot",
+        "symbol": symbol,
+        "intent": {},
         "plan": {},
         "agent_results": {},
         "final_output": "",
@@ -37,7 +36,16 @@ def main():
     result = graph.invoke(initial_state)
 
     print("\n=== Kết quả cuối ===")
-    print(result.get("final_output", "(Không có kết quả)"))
+
+    intent = result.get("intent", {})
+    intent_type = intent.get("intent_type")
+
+    # Nếu pipeline dừng sớm (general_question / clarification / out_of_scope)
+    # → trả instant_reply thẳng cho user
+    if intent_type != "stock_analysis":
+        print(intent.get("instant_reply", "(Không có phản hồi)"))
+    else:
+        print(result.get("final_output", "(Không có kết quả)"))
 
 
 if __name__ == "__main__":

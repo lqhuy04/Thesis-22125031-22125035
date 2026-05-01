@@ -6,6 +6,7 @@ graph.py — Xây dựng LangGraph StateGraph
 from langgraph.graph import StateGraph, END
 
 from agentic_ai.state import AgentState
+from agentic_ai.agents.intent_classifier import intent_classifier_agent
 from agentic_ai.agents.orchestrator import orchestrator_agent
 from agentic_ai.agents.aggregator import aggregator_agent
 from agentic_ai.agents.article import article_agent
@@ -13,20 +14,44 @@ from agentic_ai.agents.fundamental_analysis import fundamental_analysis_agent
 from agentic_ai.agents.technical_analysis import technical_analysis_agent
 
 
-# ─── Routing function ────────────────────────────────────────────────────────
+# ─── Routing: entry point ────────────────────────────────────────────────────
+
+def route_entry(state: AgentState) -> str:
+    """
+    mode = "api"     → skip intent_classifier, vào thẳng orchestrator
+    mode = "chatbot" → qua intent_classifier trước
+    """
+    mode = state.get("mode", "api")
+    print(f"[Router/Entry] mode = {mode}")
+    return "orchestrator" if mode == "api" else "intent_classifier"
+
+
+# ─── Routing: sau Intent Classifier ──────────────────────────────────────────
+
+def route_after_intent(state: AgentState) -> str:
+    """
+    Nếu intent_type = 'stock_analysis' → vào pipeline chính (orchestrator).
+    Còn lại (general_question / clarification / out_of_scope) → kết thúc luôn,
+    instant_reply đã có sẵn trong state["intent"].
+    """
+    intent_type = state.get("intent", {}).get("intent_type", "out_of_scope")
+    print(f"[Router/Intent] intent_type = {intent_type}")
+
+    if intent_type == "stock_analysis":
+        return "orchestrator"
+    return "end"
+
+
+# ─── Routing: sau Orchestrator → các sub-agent ───────────────────────────────
 
 def route_to_agents(state: AgentState) -> list[str]:
     """
     Conditional edge: Orchestrator quyết định agent nào sẽ chạy
     dựa trên plan đã tạo.
-
-    Trả về danh sách tên node sẽ được gọi song song (Send API)
-    hoặc tuần tự tuỳ thiết kế.
     """
     plan = state.get("plan", {})
-    print(f"[Router] Routing theo plan: {plan}")
+    print(f"[Router/Agents] Routing theo plan: {plan}")
 
-    # Map task name → node name trong graph
     task_to_node = {
         "article_agent": "article_agent",
         "fundamental_analysis_agent": "fundamental_analysis_agent",
@@ -34,11 +59,10 @@ def route_to_agents(state: AgentState) -> list[str]:
     }
 
     nodes_to_run = [task_to_node[task] for task in plan if task in task_to_node]
-    
-    print(f"[Router] Các node được chọn để chạy: {nodes_to_run}")
+    print(f"[Router/Agents] Các node được chọn: {nodes_to_run}")
 
     if not nodes_to_run:
-        print("[Router] Không tìm thấy agent phù hợp, chuyển thẳng đến aggregator.")
+        print("[Router/Agents] Không tìm thấy agent phù hợp, chuyển thẳng đến aggregator.")
         return ["aggregator"]
 
     return nodes_to_run
@@ -47,38 +71,55 @@ def route_to_agents(state: AgentState) -> list[str]:
 # ─── Build graph ──────────────────────────────────────────────────────────────
 
 def build_graph() -> StateGraph:
-    """
-    Khởi tạo và compile LangGraph StateGraph.
-    """
     graph = StateGraph(AgentState)
 
-    # Thêm các node
+    # ── Nodes ────────────────────────────────────────────────
+    graph.add_node("intent_classifier", intent_classifier_agent)
     graph.add_node("orchestrator", orchestrator_agent)
+    graph.add_node("article_agent", article_agent)
     graph.add_node("fundamental_analysis_agent", fundamental_analysis_agent)
     graph.add_node("technical_analysis_agent", technical_analysis_agent)
-    graph.add_node("article_agent", article_agent)
     graph.add_node("aggregator", aggregator_agent)
 
-    # Entry point
-    graph.set_entry_point("orchestrator")
+    # ── Entry point: mode routing ─────────────────────────────
+    # mode = "api"     → thẳng orchestrator, bỏ qua intent_classifier
+    # mode = "chatbot" → qua intent_classifier trước
+    graph.add_conditional_edges(
+        "__start__",
+        route_entry,
+        {
+            "intent_classifier": "intent_classifier",
+            "orchestrator": "orchestrator",
+        },
+    )
 
-    # Conditional edge: sau orchestrator → routing
+    # ── Intent classifier → routing ───────────────────────────
+    graph.add_conditional_edges(
+        "intent_classifier",
+        route_after_intent,
+        {
+            "orchestrator": "orchestrator",
+            "end": END,             # instant_reply trả thẳng, không cần pipeline
+        },
+    )
+
+    # ── Orchestrator → sub-agents (song song) ─────────────────
     graph.add_conditional_edges(
         "orchestrator",
         route_to_agents,
         {
+            "article_agent": "article_agent",
             "fundamental_analysis_agent": "fundamental_analysis_agent",
             "technical_analysis_agent": "technical_analysis_agent",
-            "article_agent": "article_agent",
         },
     )
 
-    # Các sub-agent xong → tổng hợp
+    # ── Sub-agents → aggregator ───────────────────────────────
+    graph.add_edge("article_agent", "aggregator")
     graph.add_edge("fundamental_analysis_agent", "aggregator")
     graph.add_edge("technical_analysis_agent", "aggregator")
-    graph.add_edge("article_agent", "aggregator")
 
-    # Kết thúc
+    # ── Kết thúc ─────────────────────────────────────────────
     graph.add_edge("aggregator", END)
 
     return graph.compile()

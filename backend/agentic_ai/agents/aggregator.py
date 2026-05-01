@@ -6,13 +6,8 @@ aggregator.py — Aggregator Agent (FINAL VERSION)
     + fundamental_analysis_agent
     + technical_analysis_agent
 
-- Gọi OpenAI để tạo structured output:
-    + summary
-    + recommendation (enum)
-    + reasoning
-    + confidence (0 → 1)
-
-- Có xét thêm khẩu vị rủi ro (risk_appetite)
+- Nếu mode = "api"     → trả structured output (dict)
+- Nếu mode = "chatbot" → trả plain text thân thiện
 """
 
 import json
@@ -44,7 +39,7 @@ class InvestmentRecommendation(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────
-# 🧠 Prompt
+# 🧠 Prompt — Structured (API mode)
 # ─────────────────────────────────────────────────────────────
 
 AGGREGATOR_SYSTEM_PROMPT = """
@@ -121,170 +116,88 @@ MA Cross:
 - MA20 cắt lên MA50 → Golden Cross → bullish mạnh
 - MA20 cắt xuống MA50 → Death Cross → bearish mạnh
 
-Khoảng cách:
-- Giá cách xa MA → có thể quá Mua / quá Bán
-
 ────────────────────────
-5. KDJ (Stochastic Oscillator nâng cao):
-
+5. KDJ:
 - K, D, J đều < 20 → oversold → có thể hồi
 - K, D, J > 80 → overbought → dễ điều chỉnh
-
-Tín hiệu:
-- K cắt lên D → bullish (Mua)
-- K cắt xuống D → bearish (Bán)
-
-Đặc biệt:
-- J rất cao (>100) → quá Mua mạnh
-- J rất thấp (<0) → quá Bán mạnh
+- K cắt lên D → bullish
+- K cắt xuống D → bearish
 
 ────────────────────────
-6. Price Action:
+6. Price Action & Volume:
 - Higher highs + higher lows → uptrend
-- Lower highs + lower lows → downtrend
-- Sideway → chưa rõ xu hướng
-- Breakout → bullish mạnh
-- Breakdown → bearish mạnh
-
-────────────────────────
-7. Volume:
 - Giá tăng + volume tăng → xác nhận xu hướng
 - Giá tăng + volume giảm → yếu
-- Giá giảm + volume tăng → Bán mạnh
-- Volume thấp → thiếu xác nhận
-
-────────────────────────
-👉 KẾT LUẬN TECHNICAL (BẮT BUỘC):
-
-Model phải tổng hợp các tín hiệu trên và phân loại:
-
-- Strong bullish
-- Weak bullish
-- Neutral
-- Weak bearish
-- Strong bearish
 
 ────────────────────────
 III. PHÂN TÍCH CƠ BẢN (FUNDAMENTAL)
 
-1. Định giá:
-- PE < 10 → rẻ
-- PE 10–18 → hợp lý
-- PE > 20 → đắt
-
-2. Chất lượng:
-- ROE > 20% → rất tốt
-- ROE 15–20% → tốt
-- ROE < 10% → yếu
-
-3. Đòn bẩy:
-- Debt/Equity < 0.5 → an toàn
-- 0.5–1 → trung bình
-- > 1 → rủi ro
-
-4. Tăng trưởng:
-- Doanh thu & lợi nhuận tăng → tích cực
-- Chậm / giảm → tiêu cực
-
-👉 Kết luận fundamental:
-- Strong / Stable / Weak
+1. Định giá: PE < 10 rẻ / 10–18 hợp lý / > 20 đắt
+2. Chất lượng: ROE > 20% rất tốt / 15–20% tốt / < 10% yếu
+3. Đòn bẩy: Debt/Equity < 0.5 an toàn / 0.5–1 trung bình / > 1 rủi ro
+4. Tăng trưởng: doanh thu & lợi nhuận tăng → tích cực
 
 ────────────────────────
-IV. KẾT HỢP TÍN HIỆU (SIGNAL FUSION)
+IV. KẾT HỢP & QUYẾT ĐỊNH
 
-Ưu tiên:
-- Ngắn hạn → Technical
-- Trung & dài hạn → Fundamental
-
-Logic:
 - Technical bullish + Fundamental tốt → "Mua"
 - Technical yếu + Fundamental tốt → "Chờ" hoặc "Giữ"
 - Technical xấu + News xấu → "Bán"
 - Mixed signals → "Chờ"
 
 ────────────────────────
-V. KHẨU VỊ RỦI RO (RISK ADAPTATION)
+V. KHẨU VỊ RỦI RO
 
-Dựa vào risk_appetite:
-
-1. Rủi ro thấp:
-- Tránh "Mua" khi chưa rõ xu hướng
-- Ưu tiên "Giữ" hoặc "Chờ"
-
-2. Kỳ vọng thu nhập thụ động:
-- Ưu tiên cổ phiếu:
-  + ổn định
-  + ROE cao
-  + nợ thấp
-
-3. Ngắn hạn:
-- Ưu tiên technical hơn fundamental
+- Rủi ro thấp → ưu tiên "Giữ" hoặc "Chờ"
+- Ngắn hạn → ưu tiên technical hơn fundamental
+- Thu nhập thụ động → ưu tiên ROE cao, nợ thấp
 
 ────────────────────────
-VI. QUY TẮC RA QUYẾT ĐỊNH (FINAL DECISION)
-
-- "Mua":
-  + Technical bullish
-  + Không có tin xấu lớn
-  + Fundamental ổn
-
-- "Giữ":
-  + Đang có vị thế
-  + Xu hướng chưa rõ
-  + Không xấu
-
-- "Chờ":
-  + Tín hiệu mâu thuẫn
-  + Sideway / chưa rõ xu hướng
-  + Risk cao
-
-- "Bán":
-  + Technical bearish rõ
-  + Tin tức xấu
-  + Breakdown
-
-────────────────────────
-VII. CONFIDENCE SCORING
+VI. CONFIDENCE SCORING
 
 Base = 0.5
-
-+0.1 nếu:
-- Technical rõ ràng
-
-+0.1 nếu:
-- Fundamental tốt
-
-+0.1 nếu:
-- Tin tức tích cực
-
--0.1 nếu:
-- Tin tiêu cực
-
--0.1 nếu:
-- Tín hiệu mâu thuẫn
-
-Clamp:
-- Min: 0
-- Max: 1
++0.1 nếu technical rõ ràng
++0.1 nếu fundamental tốt
++0.1 nếu tin tức tích cực
+-0.1 nếu tin tiêu cực
+-0.1 nếu tín hiệu mâu thuẫn
+Clamp: 0 → 1
 
 ────────────────────────
-VIII. QUY TẮC QUAN TRỌNG
-
-- Không suy đoán ngoài dữ liệu
-- Không nói chung chung
-- Phải giải thích rõ logic
-- recommendation bắt buộc thuộc enum:
-  ["Mua", "Giữ", "Chờ", "Bán"]
-
-- Output CHỈ JSON, không thêm text
+Output CHỈ JSON, không thêm text.
 """
+
+
+# ─────────────────────────────────────────────────────────────
+# 🧠 Prompt — Chatbot mode (plain text)
+# ─────────────────────────────────────────────────────────────
+
+AGGREGATOR_CHATBOT_SYSTEM_PROMPT = """
+Bạn là chuyên gia phân tích chứng khoán Việt Nam, đang tư vấn trực tiếp cho nhà đầu tư qua chat.
+
+Nhiệm vụ: Tổng hợp dữ liệu từ tin tức, phân tích cơ bản, phân tích kỹ thuật rồi trả lời bằng văn xuôi tự nhiên, thân thiện — như một chuyên gia đang nói chuyện trực tiếp với khách hàng.
+
+Cấu trúc trả lời gợi ý (không cần dùng heading cứng nhắc):
+1. Mở đầu ngắn gọn về tình hình chung của cổ phiếu
+2. Điểm nổi bật từ tin tức / cơ bản / kỹ thuật (chọn lọc, không liệt kê hết)
+3. Khuyến nghị rõ ràng (Mua / Giữ / Chờ / Bán) kèm lý do ngắn gọn phù hợp khẩu vị rủi ro
+4. Lưu ý rủi ro nếu có
+
+Quy tắc:
+- Viết như đang nói chuyện, không dùng bullet point dày đặc
+- Không dùng từ kỹ thuật mà không giải thích
+- Không bịa số liệu ngoài dữ liệu được cung cấp
+- Kết thúc bằng một câu thân thiện, khuyến khích nhà đầu tư hỏi thêm nếu cần
+"""
+
 
 # ─────────────────────────────────────────────────────────────
 # 🚀 Aggregator Agent
 # ─────────────────────────────────────────────────────────────
 
 def aggregator_agent(state: AgentState) -> AgentState:
-    print("[Aggregator] Tổng hợp kết quả...")
+    mode = state.get("mode", "api")
+    print(f"[Aggregator] Tổng hợp kết quả (mode={mode})...")
 
     client = _get_openai_client()
 
@@ -292,18 +205,7 @@ def aggregator_agent(state: AgentState) -> AgentState:
     risk_appetite = state.get("risk_appetite", {})
     user_input = state.get("user_input", "")
 
-    try:
-        response = client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
-            temperature=0.2,
-            messages=[
-                {
-                    "role": "system",
-                    "content": AGGREGATOR_SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": f"""
+    user_message = f"""
 DỮ LIỆU PHÂN TÍCH:
 
 {json.dumps(results, ensure_ascii=False, indent=2)}
@@ -318,30 +220,52 @@ YÊU CẦU:
 
 {user_input}
 """
-                }
-            ],
-            response_format=InvestmentRecommendation
-        )
 
-        parsed: InvestmentRecommendation = response.choices[0].message.parsed
-        output = parsed.model_dump()
+    try:
+        # ── API mode: structured output ───────────────────────
+        if mode == "api":
+            response = client.beta.chat.completions.parse(
+                model="gpt-4o-mini",
+                temperature=0.2,
+                messages=[
+                    {"role": "system", "content": AGGREGATOR_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                response_format=InvestmentRecommendation,
+            )
 
-        print("[Aggregator] Output:")
-        print(json.dumps(output, ensure_ascii=False, indent=2))
+            parsed: InvestmentRecommendation = response.choices[0].message.parsed
+            output = parsed.model_dump()
 
-        return {
-            "final_output": output
-        }
+            print("[Aggregator] Output:")
+            print(json.dumps(output, ensure_ascii=False, indent=2))
+
+            return {"final_output": output}
+
+        # ── Chatbot mode: plain text ──────────────────────────
+        else:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                temperature=0.3,
+                messages=[
+                    {"role": "system", "content": AGGREGATOR_CHATBOT_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+            )
+
+            text = response.choices[0].message.content
+            print(f"[Aggregator] Output (chatbot):\n{text}")
+
+            return {"final_output": text}
 
     except Exception as e:
         print(f"[Aggregator] Error: {str(e)}")
 
-        return {
-            "error": str(e),
-            "final_output": {
-                "summary": "Không thể phân tích dữ liệu",
-                "recommendation": "Chờ",
-                "reasoning": "Lỗi hệ thống khi xử lý dữ liệu",
-                "confidence": 0.0
-            }
-        }
+        fallback = (
+            {"summary": "Không thể phân tích dữ liệu", "recommendation": "Chờ",
+             "reasoning": "Lỗi hệ thống", "confidence": 0.0}
+            if mode == "api"
+            else "Xin lỗi, mình gặp sự cố khi phân tích. Bạn thử lại sau nhé!"
+        )
+
+        return {"error": str(e), "final_output": fallback}

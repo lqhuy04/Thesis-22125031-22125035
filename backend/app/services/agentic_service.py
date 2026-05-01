@@ -14,12 +14,11 @@ def run_stock_analysis(symbol: str, risk_appetite: dict) -> InvestmentRecommenda
     Chạy multi-agent pipeline, trả về InvestmentRecommendation (Pydantic object).
     """
     initial_state = {
-        "user_input": (
-            f"Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu {symbol} "
-            f"dựa vào khẩu vị rủi ro của nhà đầu tư."
-        ),
+        "user_input": f"Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu {symbol} dựa vào khẩu vị rủi ro của nhà đầu tư.",
         "risk_appetite": risk_appetite,
+        "mode": "api",
         "symbol": symbol,
+        "intent": {},
         "plan": {},
         "agent_results": {},
         "final_output": "",
