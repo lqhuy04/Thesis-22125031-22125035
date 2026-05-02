@@ -602,11 +602,6 @@ class MarketService:
         "1w": ("Stock_Price_1d", "1W",  None),
         "1M": ("Stock_Price_1d", "1ME", None),   # pandas: month-end
     }
-    
-    _ATC_TIME = dtime(14, 45)
-    _ATC_REMAP = {
-        "30m": dtime(14, 30),
-    }
 
 
     @staticmethod

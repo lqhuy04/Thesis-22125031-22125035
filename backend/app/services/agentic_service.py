@@ -33,7 +33,7 @@ def run_stock_analysis(
         "error": None,
     }
 
-    result = _graph.invoke(initial_state)
+    result = _graph.invoke(initial_state, config={"configurable": {"thread_id": f"api_{symbol}"}})
 
     if result.get("error"):
         raise RuntimeError(result["error"])

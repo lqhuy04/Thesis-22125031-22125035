@@ -23,20 +23,79 @@ from agentic_ai.state import AgentState
 # 📦 Structured Output Schema
 # ─────────────────────────────────────────────────────────────
 
-class InvestmentRecommendation(BaseModel):
-    summary: str = Field(description="Phân tích tổng thể đầy đủ về tình hình cổ phiếu từ 3 nguồn tin tức, phân tích cơ bản, kỹ thuật")
+class ConfidenceScores(BaseModel):
+    """
+    LLM chấm điểm từng thành phần dưới dạng số nguyên (đã nhân 100).
+    Code convert về float rồi tính confidence = base + sum(scores) / 100.
+    """
+    technical_score: Literal[-20, -10, 0, 10, 20] = Field(
+        description=(
+            "Mức độ đồng thuận các chỉ báo kỹ thuật (đơn vị: phần trăm điểm):\n"
+            "+20 = Strong bullish/bearish: ≥4/6 chỉ báo đồng thuận một chiều\n"
+            "+10 = Weak bullish/bearish: 2–3 chỉ báo đồng thuận\n"
+            "  0 = Neutral/Mixed: chỉ báo mâu thuẫn hoặc sideway\n"
+            "-10 = Weak bearish\n"
+            "-20 = Strong bearish"
+        )
+    )
+    fundamental_score: Literal[-10, 0, 8, 15] = Field(
+        description=(
+            "Chất lượng nền tảng tài chính (đơn vị: phần trăm điểm):\n"
+            "+15 = Strong: PE<18 AND ROE≥15% AND D/E<1.0\n"
+            " +8 = Stable: đạt 2/3 điều kiện trên\n"
+            "  0 = Weak: đạt 0–1 điều kiện\n"
+            "-10 = Rủi ro cao: D/E>1.5 hoặc ROE<5%"
+        )
+    )
+    news_score: Literal[-15, -5, 5, 15] = Field(
+        description=(
+            "Sentiment tin tức (đơn vị: phần trăm điểm):\n"
+            "+15 = Tích cực rõ ràng: tăng trưởng, cổ tức, khuyến nghị mua\n"
+            " +5 = Tích cực nhẹ hoặc trung lập\n"
+            " -5 = Tiêu cực nhẹ: áp lực ngành, vĩ mô bất lợi\n"
+            "-15 = Tiêu cực rõ ràng: thua lỗ, bán ròng mạnh, tin xấu trực tiếp"
+        )
+    )
+    consistency_score: Literal[-10, 0, 10] = Field(
+        description=(
+            "Mức độ đồng thuận giữa 3 nguồn tín hiệu (đơn vị: phần trăm điểm):\n"
+            "+10 = Cả 3 nguồn (technical + fundamental + news) cùng chiều\n"
+            "  0 = 2/3 nguồn cùng chiều\n"
+            "-10 = 3 nguồn mâu thuẫn nhau"
+        )
+    )
 
+
+class InvestmentRecommendation(BaseModel):
+    summary: str = Field(
+        description="Phân tích tổng thể đầy đủ về tình hình cổ phiếu từ 3 nguồn tin tức, phân tích cơ bản, kỹ thuật"
+    )
     recommendation: Literal["Mua", "Giữ", "Chờ", "Bán"] = Field(
         description="Hành động đề xuất"
     )
-
-    reasoning: str = Field(description="Giải thích cho recommendation từ khẩu vị rủi ro của user kết hợp dẫn chứng từ số liệu, tài liệu của các nguồn dựa trên dữ liệu phân tích")
-
-    confidence: float = Field(
-        description="Độ tin cậy từ 0 đến 1",
-        ge=0,
-        le=1
+    reasoning: str = Field(
+        description="Giải thích cho recommendation từ khẩu vị rủi ro của user kết hợp dẫn chứng từ số liệu, tài liệu của các nguồn dựa trên dữ liệu phân tích"
     )
+    scores: ConfidenceScores = Field(
+        description="Điểm thành phần để tính confidence — LLM chấm, code tính tổng"
+    )
+
+
+# ─────────────────────────────────────────────────────────────
+# 🧮 Tính confidence từ các điểm thành phần
+# ─────────────────────────────────────────────────────────────
+
+BASE_SCORE = 0.5
+
+def calculate_confidence(scores: ConfidenceScores) -> float:
+    total = (
+        BASE_SCORE
+        + scores.technical_score / 100
+        + scores.fundamental_score / 100
+        + scores.news_score / 100
+        + scores.consistency_score / 100
+    )
+    return round(max(0.0, min(1.0, total)), 2)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -56,7 +115,8 @@ Nhiệm vụ:
   + summary: tóm tắt tình hình
   + recommendation: ["Mua", "Giữ", "Chờ", "Bán"]
   + reasoning: giải thích logic rõ ràng
-  + confidence: từ 0 → 1
+  + scores: chấm điểm từng thành phần (technical, fundamental, news, consistency)
+            → confidence sẽ do code tính từ scores, KHÔNG cần bạn tính
 
 ────────────────────────
 I. PHÂN TÍCH TIN TỨC (NEWS SENTIMENT)
@@ -156,13 +216,130 @@ V. KHẨU VỊ RỦI RO
 ────────────────────────
 VI. CONFIDENCE SCORING
 
-Base = 0.5
-+0.1 nếu technical rõ ràng
-+0.1 nếu fundamental tốt
-+0.1 nếu tin tức tích cực
--0.1 nếu tin tiêu cực
--0.1 nếu tín hiệu mâu thuẫn
-Clamp: 0 → 1
+Công thức: confidence = clamp(base + technical_score + fundamental_score + news_score + consistency_score, 0, 1)
+
+Base = 0.5 (mặc định khi chưa có thông tin)
+
+────────────────────────
+1. TECHNICAL SCORE (trọng số: tối đa ±0.2)
+
+Đánh giá mức độ đồng thuận của các chỉ báo kỹ thuật CÓ SẴN trong dữ liệu.
+Chỉ xét các chỉ báo thực sự được cung cấp, không giả định chỉ báo không có.
+
+Bước 1 — Đánh giá từng chỉ báo có sẵn:
+
+| Chỉ báo            | Bullish                                      | Bearish                                       | Neutral              |
+|--------------------|----------------------------------------------|-----------------------------------------------|----------------------|
+| rsi_14             | 55–70                                        | 30–45                                         | 45–55                |
+|                    | < 30 (oversold, có thể hồi — bullish nhẹ)   | > 70 (overbought, risk điều chỉnh — bearish)  |                      |
+| macd + macd_signal | macd > macd_signal                           | macd < macd_signal                            |                      |
+| macd_histogram     | histogram > 0 và tăng                        | histogram < 0 và giảm                         | gần 0                |
+| bb_upper/lower     | giá gần bb_upper                             | giá gần bb_lower                              | giá gần bb_middle    |
+| sma_20             | close > sma_20                               | close < sma_20                                |                      |
+| sma_50             | close > sma_50                               | close < sma_50                                |                      |
+| sma_20 + sma_50    | sma_20 > sma_50 (Golden Cross)               | sma_20 < sma_50 (Death Cross)                 |                      |
+| kdj_k + kdj_d      | kdj_k cắt lên kdj_d                         | kdj_k cắt xuống kdj_d                         |                      |
+|                    | kdj_k, kdj_d, kdj_j < 20 (oversold)         | kdj_k, kdj_d, kdj_j > 80 (overbought)        |                      |
+| kdj_j              | kdj_j < 0 (oversold mạnh)                   | kdj_j > 100 (overbought mạnh)                 |                      |
+
+Bước 2 — Tính tỷ lệ đồng thuận trên số chỉ báo thực sự có:
+
++20 = ≥ 70% chỉ báo có sẵn đồng thuận bullish hoặc bearish
++10 = 50–69% chỉ báo có sẵn đồng thuận một chiều
+  0 = < 50% đồng thuận hoặc mâu thuẫn nhau
+-10 = 50–69% chỉ báo có sẵn đồng thuận bearish
+-20 = ≥ 70% chỉ báo có sẵn đồng thuận bearish
+
+Ví dụ:
+- Chỉ có rsi_14=60, macd>macd_signal → 2/2 bullish → 100% → +20
+- Có rsi_14=60, macd<macd_signal, close>sma_20 → 2/3 bullish → 67% → +10
+- Không có dữ liệu kỹ thuật → 0
+
+────────────────────────
+2. FUNDAMENTAL SCORE (trọng số: tối đa ±0.15)
+
+Đánh giá chất lượng nền tảng tài chính dựa trên các chỉ số CÓ SẴN trong dữ liệu.
+Chỉ xét các chỉ số thực sự được cung cấp.
+
+Bước 1 — Đánh giá từng chỉ số có sẵn:
+
+Định giá (Valuation):
+- pe_ratio:   < 10 → tốt | 10–18 → trung lập | > 20 → xấu
+- pb_ratio:   < 1.5 → tốt | 1.5–3 → trung lập | > 3 → xấu
+- ps_ratio:   < 1 → tốt | 1–3 → trung lập | > 3 → xấu
+
+Sinh lời (Profitability):
+- roe:         > 20% → tốt | 10–20% → trung lập | < 10% → xấu
+- roa:         > 10% → tốt | 5–10% → trung lập | < 5% → xấu
+- net_margin:  > 15% → tốt | 5–15% → trung lập | < 5% → xấu
+- gross_margin:> 30% → tốt | 15–30% → trung lập | < 15% → xấu
+- ebit_margin: > 15% → tốt | 5–15% → trung lập | < 5% → xấu
+
+Tăng trưởng (Growth):
+- revenue_yoy: > 15% → tốt | 0–15% → trung lập | < 0% → xấu
+- profit_yoy:  > 15% → tốt | 0–15% → trung lập | < 0% → xấu
+
+Sức khỏe tài chính (Financial Health):
+- debt_to_equity:    < 0.5 → tốt | 0.5–1.0 → trung lập | > 1.0 → xấu
+- current_ratio:     > 2 → tốt | 1–2 → trung lập | < 1 → xấu
+- quick_ratio:       > 1 → tốt | 0.5–1 → trung lập | < 0.5 → xấu
+- interest_coverage: > 5 → tốt | 2–5 → trung lập | < 2 → xấu
+
+Hiệu quả hoạt động (Efficiency):
+- asset_turnover:     > 1 → tốt | 0.5–1 → trung lập | < 0.5 → xấu
+- inventory_turnover: > 6 → tốt | 3–6 → trung lập | < 3 → xấu
+- days_receivable:    < 30 → tốt | 30–60 → trung lập | > 60 → xấu
+- days_payable:       < 45 → tốt | 45–90 → trung lập | > 90 → xấu
+
+Core metrics:
+- eps: tăng so với kỳ trước → tốt | ổn định → trung lập | giảm → xấu
+
+Bước 2 — Tính tỷ lệ chỉ số tốt trên tổng số chỉ số có sẵn:
+
++15 = ≥ 70% chỉ số có sẵn ở mức tốt
+ +8 = 50–69% chỉ số có sẵn ở mức tốt
+  0 = < 50% chỉ số tốt (trung lập hoặc yếu)
+-10 = ≥ 50% chỉ số có sẵn ở mức xấu, hoặc có chỉ số rủi ro cao
+      (debt_to_equity > 1.5, roe < 5%, current_ratio < 1)
+
+Ví dụ:
+- Chỉ có pe_ratio=14, roe=25% → 2/2 tốt → 100% → +15
+- Có pe_ratio=14, roe=8%, debt_to_equity=0.8 → 1/3 tốt → 33% → 0
+- Không có dữ liệu cơ bản → 0
+
+────────────────────────
+3. NEWS SCORE (trọng số: tối đa ±0.15)
+
+Đánh giá sentiment tin tức gần nhất:
+
++0.15 → Tích cực rõ ràng:
+  - Tin tăng trưởng doanh thu / lợi nhuận
+  - Công bố cổ tức, mở rộng kinh doanh
+  - Khuyến nghị mua từ công ty chứng khoán uy tín
+
++0.05 → Tích cực nhẹ hoặc trung lập
+
+-0.05 → Tiêu cực nhẹ:
+  - Áp lực ngành, vĩ mô bất lợi
+
+-0.15 → Tiêu cực rõ ràng:
+  - VN-Index giảm mạnh + khối ngoại bán ròng
+  - Tin xấu trực tiếp về công ty (thua lỗ, kiện tụng, vi phạm)
+
+────────────────────────
+4. CONSISTENCY SCORE (trọng số: ±0.1)
+
+Đánh giá mức độ đồng thuận giữa 3 nguồn tín hiệu:
+
++0.1 → Cả 3 nguồn (technical + fundamental + news) cùng chiều
++0.0 → 2/3 nguồn cùng chiều
+-0.1 → 3 nguồn mâu thuẫn nhau (mixed signals)
+
+────────────────────────
+QUY TẮC BẮT BUỘC:
+- Luôn ghi rõ từng thành phần điểm trong reasoning để giải thích confidence
+- Clamp kết quả về [0.0, 1.0]
+- Không làm tròn thô (VD: không phải lúc nào cũng trả về 0.5 hoặc 0.8)
 
 ────────────────────────
 Output CHỈ JSON, không thêm text.
@@ -237,7 +414,23 @@ YÊU CẦU:
             )
 
             parsed: InvestmentRecommendation = response.choices[0].message.parsed
-            output = parsed.model_dump()
+
+            # Tính confidence từ code, không dùng giá trị LLM tự tính
+            confidence = calculate_confidence(parsed.scores)
+
+            output = {
+                "summary": parsed.summary,
+                "recommendation": parsed.recommendation,
+                "reasoning": parsed.reasoning,
+                "confidence": confidence,
+                "confidence_breakdown": {
+                    "base": BASE_SCORE,
+                    "technical_score": parsed.scores.technical_score / 100,
+                    "fundamental_score": parsed.scores.fundamental_score / 100,
+                    "news_score": parsed.scores.news_score / 100,
+                    "consistency_score": parsed.scores.consistency_score / 100,
+                },
+            }
 
             print("[Aggregator] Output:")
             print(json.dumps(output, ensure_ascii=False, indent=2))

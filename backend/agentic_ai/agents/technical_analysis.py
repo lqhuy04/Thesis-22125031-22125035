@@ -15,8 +15,8 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
         from_date=myTask.get("from_date", ""),  
         to_date=myTask.get("to_date", ""),
         indicators=myTask.get("indicators", []),
-    )
- 
+    ) 
+    
     return {
         "agent_results": {
             "technical_analysis_agent": result,

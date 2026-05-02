@@ -4,8 +4,10 @@ import pandas as pd
 from supabase import Client, create_client
 import talib
 import numpy as np
-from typing import Dict, Any
+from typing import Dict, Any, List
 import math
+from datetime import time as dtime
+
 
 load_dotenv()
 
@@ -204,133 +206,183 @@ def calculate_all_indicators(df: pd.DataFrame, required_indicators: list[str]) -
 
     except Exception as e:
         raise ValueError(f"Error calculating indicators: {str(e)}")
-        
+    
+_INTRADAY_INTERVALS = {
+    "1m":  ("Stock_Price_1m",  "1min",  None),
+    "5m":  ("Stock_Price_1m",  "5min",  None),
+    "15m": ("Stock_Price_1m",  "15min", None),
+    "30m": ("Stock_Price_1m",  "30min", None),   # lấy đến 14:30
+    "1h":  ("Stock_Price_1m",  "1h",    None),   # lấy đến 14:00
+}
+
+_DAILY_INTERVALS = {
+    "1d": ("Stock_Price_1d", "1D",  None),
+    "1w": ("Stock_Price_1d", "1W",  None),
+    "1M": ("Stock_Price_1d", "1ME", None),   # pandas: month-end
+}
+
+
+def _fetch_raw(table: str, symbol: str) -> pd.DataFrame:
+    """
+    Paginate qua Supabase để lấy TOÀN BỘ records (1000 rows/request).
+    Trả về DataFrame index bởi trading_time ASC.
+    """
+    PAGE_SIZE = 1000
+    all_rows: List[Dict] = []
+    offset = 0
+    supabase = _get_supabase_client()
+
+    while True:
+        response = supabase.table(table) \
+            .select("symbol, trading_time, open, high, low, close, volume") \
+            .eq("symbol", symbol) \
+            .order("trading_time", desc=False) \
+            .range(offset, offset + PAGE_SIZE - 1) \
+            .execute()
+
+        rows = response.data or []
+        all_rows.extend(rows)
+
+        # Ít hơn PAGE_SIZE → đã đến trang cuối
+        if len(rows) < PAGE_SIZE:
+            break
+
+        offset += PAGE_SIZE
+
+    if not all_rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(all_rows)
+    df["trading_time"] = pd.to_datetime(df["trading_time"])
+    df = df.set_index("trading_time")
+
+    for col in ("open", "high", "low", "close", "volume"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    return df
+
+
+def _resample_ohlcv(df: pd.DataFrame, rule: str) -> pd.DataFrame:
+    """Aggregate DataFrame OHLCV theo pandas resample rule."""
+    return df.resample(rule, label="left", closed="left").agg(
+        open=("open",     "first"),
+        high=("high",     "max"),
+        low=("low",       "min"),
+        close=("close",   "last"),
+        volume=("volume", "sum"),
+    ).dropna(subset=["open"])   # bỏ nến rỗng (không có giao dịch)
 
 def get_technical_analysis(symbol: str, interval: str, from_date: str, to_date: str, indicators: list[str]):
     """
     Lấy chỉ số phân tích kỹ thuật cho một mã chứng khoán.
+
+    Cách lấy giá theo đúng pattern của get_stock_price_by_interval:
+    - Intraday (1m, 5m, 15m, 30m, 1h) → fetch toàn bộ Stock_Price_1m rồi resample
+    - Daily    (1d, 1w, 1M)            → fetch toàn bộ Stock_Price_1d rồi resample
+    - Sau đó filter theo from_date / to_date
+    - Tính indicators trên toàn bộ data trước khi filter (đảm bảo đủ lookback period)
     """
     try:
-        supabase = _get_supabase_client()
+        # ──────────────────────────────────────────────────────
+        # Bước 1: Fetch raw + resample theo interval
+        # ──────────────────────────────────────────────────────
+        if interval in _INTRADAY_INTERVALS:
+            _, rule, cutoff = _INTRADAY_INTERVALS[interval]
+            df = _fetch_raw("Stock_Price_1m", symbol.upper())
 
-        # ==============================
-        # CASE 1: Không có indicators
-        # ==============================
-        if not indicators:
-            from_iso = f"{from_date}T00:00:00+00:00"
-            to_iso = f"{to_date}T23:59:59+00:00"
+            if df.empty:
+                return {"priceData": [], "indicatorsData": []}
 
-            response = supabase.table(f"Stock_Price_{interval}") \
-                .select("trading_time, open, high, low, close, volume") \
-                .eq("symbol", symbol.upper()) \
-                .gte("trading_time", from_iso) \
-                .lte("trading_time", to_iso) \
-                .order("trading_time", desc=False) \
-                .execute()
+            if interval == "1m":
+                pass  # không resample
+            else:
+                if cutoff is not None:
+                    df = df[df.index.time <= cutoff]
+                df = _resample_ohlcv(df, rule)
 
-            if not response.data:
-                return {
-                    "priceData": [],
-                    "indicatorsData": [],
-                }
+        elif interval in _DAILY_INTERVALS:
+            _, rule, _ = _DAILY_INTERVALS[interval]
+            df = _fetch_raw("Stock_Price_1d", symbol.upper())
 
-            return {
-                "priceData": response.data,
-                "indicatorsData": [],
-            }
+            if df.empty:
+                return {"priceData": [], "indicatorsData": []}
 
-        # ==============================
-        # CASE 2: Có indicators
-        # ==============================
-        # Lấy toàn bộ data để tính indicator
-        response = supabase.table(f"Stock_Price_{interval}") \
-            .select("trading_time, open, high, low, close, volume") \
-            .eq("symbol", symbol.upper()) \
-            .order("trading_time", desc=False) \
-            .execute()
+            if interval != "1d":
+                df = _resample_ohlcv(df, rule)
 
-        if not response.data:
-            return {
-                "priceData": [],
-                "indicatorsData": [],
-            }
+        else:
+            valid = list(_INTRADAY_INTERVALS) + list(_DAILY_INTERVALS)
+            raise ValueError(f"Unsupported interval: '{interval}'. Valid: {valid}")
 
-        df = pd.DataFrame(response.data)
-
-        # Convert datetime
+        # Reset index để trading_time thành column
+        df = df.reset_index()
         df["trading_time"] = pd.to_datetime(df["trading_time"], utc=True)
         df = df.sort_values("trading_time").reset_index(drop=True)
 
-        # Tính indicators
-        indicators_result = calculate_all_indicators(df, indicators)
+        # ──────────────────────────────────────────────────────
+        # Bước 2: Tính indicators trên TOÀN BỘ data (trước filter)
+        # Quan trọng: đảm bảo đủ lookback period (VD: RSI cần 14 nến trước)
+        # ──────────────────────────────────────────────────────
+        indicators_result = {}
+        if indicators:
+            indicators_result = calculate_all_indicators(df, indicators)
 
-        # ==============================
-        # Lọc theo khoảng thời gian
-        # ==============================
+        # ──────────────────────────────────────────────────────
+        # Bước 3: Filter theo from_date / to_date
+        # ──────────────────────────────────────────────────────
         from_dt = pd.to_datetime(from_date).tz_localize("UTC")
-        to_dt = pd.to_datetime(to_date).tz_localize("UTC") + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+        to_dt = (
+            pd.to_datetime(to_date).tz_localize("UTC")
+            + pd.Timedelta(days=1)
+            - pd.Timedelta(seconds=1)
+        )
 
         mask = (df["trading_time"] >= from_dt) & (df["trading_time"] <= to_dt)
-
         filtered_df = df[mask].reset_index(drop=True)
-        filtered_indices = df[mask].index
+        original_indices = df[mask].index.tolist()
 
-        # ==============================
-        # Filter indicators theo index
-        # ==============================
+        if filtered_df.empty:
+            return {"priceData": [], "indicatorsData": []}
+
+        # ──────────────────────────────────────────────────────
+        # Bước 4: Filter indicators theo index gốc
+        # ──────────────────────────────────────────────────────
         filtered_indicators = {}
         for key, values in indicators_result.items():
             filtered_indicators[key] = [
-                values[i] for i in filtered_indices if i < len(values)
+                values[i] for i in original_indices if i < len(values)
             ]
 
-        # ==============================
-        # Build indicatorsData
-        # ==============================
-        records = []
-        for i, row in filtered_df.iterrows():
+        # ──────────────────────────────────────────────────────
+        # Bước 5: Build priceData + indicatorsData
+        # ──────────────────────────────────────────────────────
+        price_data = []
+        indicators_data = []
+
+        for local_i, (_, row) in enumerate(filtered_df.iterrows()):
             t_dt = row["trading_time"]
+            date_str = t_dt.strftime("%d/%m/%Y")
+            time_str = t_dt.strftime("%H:%M:%S")
 
-            record = {
-                "TradingDate": t_dt.strftime("%d/%m/%Y"),
-                "Time": t_dt.strftime("%H:%M:%S"),
-            }
-
-            for key, values in filtered_indicators.items():
-                record[key] = values[i] if i < len(values) else None
-
-            records.append(record)
-
-        # ==============================
-        # priceData sau khi filter
-        # ==============================
-        filtered_price_data = []
-
-        for _, row in filtered_df.iterrows():
-            t_dt = row["trading_time"]
-
-            record = {
-                "TradingDate": t_dt.strftime("%d/%m/%Y"),
-                "Time": t_dt.strftime("%H:%M:%S"),
+            price_data.append({
+                "TradingDate": date_str,
+                "Time": time_str,
                 "open": row["open"],
                 "high": row["high"],
                 "low": row["low"],
                 "close": row["close"],
                 "volume": row["volume"],
-            }
+            })
 
-            filtered_price_data.append(record)
-
-        # Nếu không có indicator nào
-        if not indicators_result:
-            return {
-                "priceData": filtered_price_data,
-                "indicatorsData": [],
-            }
+            if filtered_indicators:
+                record = {"TradingDate": date_str, "Time": time_str}
+                for key, values in filtered_indicators.items():
+                    record[key] = values[local_i] if local_i < len(values) else None
+                indicators_data.append(record)
 
         return {
-            "priceData": filtered_price_data,
-            "indicatorsData": records,
+            "priceData": price_data,
+            "indicatorsData": indicators_data,
         }
 
     except Exception as e:

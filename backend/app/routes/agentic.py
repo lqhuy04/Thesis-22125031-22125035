@@ -50,7 +50,6 @@ async def analyze_stock(body: StockAnalysisRequest):
         "Giữ nguyên session_id giữa các lần gọi để duy trì lịch sử hội thoại. "
         "risk_appetite chỉ cần gửi ở turn đầu tiên."
     ),
-    response_model=ChatResponse,
 )
 async def chat(body: ChatRequest):
     try:
@@ -59,12 +58,10 @@ async def chat(body: ChatRequest):
             message=body.message,
             risk_appetite=body.risk_appetite.model_dump() if body.risk_appetite else None,
         )
-        return ChatResponse(
-            session_id=body.session_id,
-            reply=result["reply"],
-            intent_type=result["intent_type"],
-            instant_reply=result["instant_reply"],
-        )
+        return success_response(data={
+            "session_id": body.session_id,
+            "reply": result["reply"],
+        })
 
     except RuntimeError as e:
         return JSONResponse(
