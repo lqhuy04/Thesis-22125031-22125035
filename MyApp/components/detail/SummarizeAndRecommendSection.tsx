@@ -1,4 +1,3 @@
-import { AnalysisData, getAnalysis } from "@/helpers/DetailHelpers";
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
@@ -7,6 +6,7 @@ import Entypo from "@expo/vector-icons/Entypo";
 import { Switch } from "react-native-gesture-handler";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import { AnalysisData, getAnalysis } from "@/helpers/AgenticHelpers";
 
 // Custom cross-platform checkbox — avoids AndroidCheckBox native module error
 const CustomCheckBox = ({

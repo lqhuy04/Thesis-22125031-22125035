@@ -55,19 +55,41 @@ const Home = () => {
         style={{ padding: 12, backgroundColor: theme.background.bg, flex: 1 }}
       >
         <MarketIndicesSection />
-
         <IndustryMovementSection />
-
         <TodayHighlightSection />
-
         <BusinessNewsSection />
-
         <CategoriesNewsSection />
-
         <MacroEcomNewsSection />
-
         <AllNewsSection />
       </ScrollView>
+
+      {/* Floating Chat Button */}
+      <TouchableOpacity
+        onPress={() => router.push("/Chatbot")}
+        style={{
+          position: "absolute",
+          bottom: 24,
+          right: 20,
+          width: 52,
+          height: 52,
+          borderRadius: 26,
+          backgroundColor: theme.base.primary,
+          alignItems: "center",
+          justifyContent: "center",
+          shadowColor: theme.base.primary,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.4,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+        activeOpacity={0.85}
+      >
+        <Ionicons
+          name="chatbubble-ellipses-outline"
+          size={22}
+          color="#FFFFFF"
+        />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

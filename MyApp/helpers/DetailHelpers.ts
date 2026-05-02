@@ -1,6 +1,5 @@
 import { sendMessage } from "./api/ApiClients";
 import { MarketIndex } from "./MarketHelpers";
-import { getRiskAppetite } from "./ProfileHelpers";
 
 function parseTradingTime(tradingTime: string): { date: string; time: string } {
   const date = new Date(tradingTime);
@@ -220,52 +219,6 @@ export const fetchStockDataByTimeFrame = async (
     return {
       status: false,
       data: [],
-    };
-  }
-};
-
-//------------------------------------------------------------
-export type AnalysisData = {
-  summary: string;
-  recommendation: string;
-  reasoning: string;
-  confidence: number;
-};
-
-export const getAnalysis = async (
-  symbol: string,
-): Promise<{
-  status: boolean;
-  data: AnalysisData | null;
-}> => {
-  try {
-    const riskAppetite = await getRiskAppetite();
-
-    const result = await sendMessage("api/agentic/analyze", {
-      method: "POST",
-      body: JSON.stringify({
-        symbol: symbol,
-        risk_appetite: riskAppetite.data,
-      }),
-    });
-
-    const { errorCode, data } = result || {};
-    if (errorCode === 0) {
-      return {
-        status: true,
-        data: data as AnalysisData,
-      };
-    }
-
-    return {
-      status: false,
-      data: null,
-    };
-  } catch (error) {
-    console.error(error);
-    return {
-      status: false,
-      data: null,
     };
   }
 };
