@@ -6,8 +6,8 @@ from fastapi import APIRouter, status
 from fastapi.responses import JSONResponse
 
 from app.models.base_schemas import success_response, error_response
-from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest, ChatResponse
-from app.services.agentic_service import run_stock_analysis, run_chat
+from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest
+from app.services.agentic_service import run_stock_analysis, run_chat, delete_session
 
 router = APIRouter(prefix="/api/agentic", tags=["agentic-ai"])
 
@@ -68,6 +68,25 @@ async def chat(body: ChatRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=error_response(error_code=500, error_desc=str(e)),
         )
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=error_response(error_code=500, error_desc=f"Lỗi hệ thống: {e}"),
+        )
+
+
+# ─── Xóa session ─────────────────────────────────────────────────────────────
+
+@router.delete(
+    "/chat/session/{session_id}",
+    summary="Xóa session chat",
+    description="Xóa toàn bộ lịch sử hội thoại của một session. Gọi khi user thoát màn hình chatbot.",
+)
+async def remove_session(session_id: str):
+    try:
+        delete_session(session_id)
+        return success_response(data={"session_id": session_id})
+
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

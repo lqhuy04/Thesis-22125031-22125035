@@ -9,7 +9,7 @@ import json
 from langchain_core.messages import AIMessage
 
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.state import AgentState
+from agentic_ai.chatbot.state import AgentState
 
 
 MERGER_SYSTEM_PROMPT = """

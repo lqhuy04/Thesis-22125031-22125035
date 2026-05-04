@@ -6,7 +6,7 @@ aggregator.py — Aggregator Agent (FINAL VERSION)
     + fundamental_analysis_agent
     + technical_analysis_agent
 
-- Nếu mode = "api"     → trả structured output (dict)
+- Nếu mode = "auto"     → trả structured output (dict)
 - Nếu mode = "chatbot" → trả plain text thân thiện
 """
 
@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage
 
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.state import AgentState
+from agentic_ai.chatbot.state import AgentState
 
 
 # ─────────────────────────────────────────────────────────────
@@ -374,7 +374,7 @@ Quy tắc:
 # ─────────────────────────────────────────────────────────────
 
 def aggregator_agent(state: AgentState) -> AgentState:
-    mode = state.get("mode", "api")
+    mode = state.get("mode", "auto")
     print(f"[Aggregator] Tổng hợp kết quả (mode={mode})...")
 
     client = _get_openai_client()
@@ -399,10 +399,9 @@ YÊU CẦU:
 
 {user_input}
 """
-
     try:
         # ── API mode: structured output (không cần history) ───
-        if mode == "api":
+        if mode == "auto":
             response = client.beta.chat.completions.parse(
                 model="gpt-4o-mini",
                 temperature=0.2,
@@ -479,7 +478,7 @@ YÊU CẦU:
         fallback = (
             {"summary": "Không thể phân tích dữ liệu", "recommendation": "Chờ",
              "reasoning": "Lỗi hệ thống", "confidence": 0.0}
-            if mode == "api"
+            if mode == "auto"
             else "Xin lỗi, mình gặp sự cố khi phân tích. Bạn thử lại sau nhé!"
         )
 

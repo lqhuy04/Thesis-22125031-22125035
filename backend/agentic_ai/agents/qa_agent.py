@@ -8,7 +8,7 @@ Xử lý các intent không cần pipeline DB:
 """
 
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.state import IntentJob
+from agentic_ai.chatbot.state import IntentJob
 
 
 QA_SYSTEM_PROMPT = """

@@ -11,7 +11,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Send
 
-from agentic_ai.state import AgentState, IntentJob
+from agentic_ai.state import ChatbotSystemState
 from agentic_ai.agents.intent_classifier import intent_classifier_agent
 from agentic_ai.agents.qa_agent import qa_agent
 from agentic_ai.agents.orchestrator import orchestrator_agent
@@ -22,37 +22,9 @@ from agentic_ai.agents.technical_analysis import technical_analysis_agent
 from agentic_ai.agents.reply_merger import reply_merger_agent
 
 
-# ─── Constants ────────────────────────────────────────────────────────────────
-
-PIPELINE_INTENTS = ("stock_analysis", "market_index_analysis", "category_analysis")
-
-
-# ─── Routing: entry point ─────────────────────────────────────────────────────
-
-def route_entry(state: AgentState) -> str:
-    mode = state.get("mode", "api")
-    print(f"[Router/Entry] mode = {mode}")
-    # API mode: thẳng vào orchestrator, bỏ qua toàn bộ intent/dispatch/merger
-    return "orchestrator" if mode == "api" else "intent_classifier"
-
-
-# ─── Routing: API mode — orchestrator → sub-agents ───────────────────────────
-
-def route_to_agents(state: AgentState) -> list[str]:
-    plan = state.get("plan", {})
-    task_to_node = {
-        "article_agent": "article_agent",
-        "fundamental_analysis_agent": "fundamental_analysis_agent",
-        "technical_analysis_agent": "technical_analysis_agent",
-    }
-    nodes = [task_to_node[t] for t in plan if t in task_to_node]
-    print(f"[Router/Agents] Nodes: {nodes}")
-    return nodes or ["aggregator"]
-
-
 # ─── Routing: Chatbot mode — dispatch intent jobs song song ───────────────────
 
-def dispatch_intents(state: AgentState) -> list[Send]:
+def dispatch_intents(state: ChatbotSystemState) -> list[Send]:
     intents = state.get("intents", [])
     sends = []
 
@@ -73,7 +45,7 @@ def dispatch_intents(state: AgentState) -> list[Send]:
             "agent_results": {},
         }
 
-        if intent["intent_type"] in PIPELINE_INTENTS:
+        if intent["intent_type"] == "analysis":
             sends.append(Send("run_pipeline", job))
         else:
             sends.append(Send("run_qa", job))
@@ -125,15 +97,8 @@ def run_qa(job: IntentJob) -> dict:
 
 # ─── Build graph ──────────────────────────────────────────────────────────────
 
-def build_graph() -> StateGraph:
+def build_chatbot_graph() -> StateGraph:
     graph = StateGraph(AgentState)
-
-    # ── API mode nodes ─────────────────────────────────────────
-    graph.add_node("orchestrator", orchestrator_agent)
-    graph.add_node("article_agent", article_agent)
-    graph.add_node("fundamental_analysis_agent", fundamental_analysis_agent)
-    graph.add_node("technical_analysis_agent", technical_analysis_agent)
-    graph.add_node("aggregator", aggregator_agent)
 
     # ── Chatbot mode nodes ─────────────────────────────────────
     graph.add_node("intent_classifier", intent_classifier_agent)
@@ -142,30 +107,10 @@ def build_graph() -> StateGraph:
     graph.add_node("reply_merger", reply_merger_agent)
 
     # ── Entry: phân nhánh theo mode ───────────────────────────
-    graph.add_conditional_edges(
+    graph.add_edge(
         "__start__",
-        route_entry,
-        {
-            "orchestrator": "orchestrator",       # API mode
-            "intent_classifier": "intent_classifier",  # Chatbot mode
-        },
+        "intent_classifier"
     )
-
-    # ── API mode pipeline ──────────────────────────────────────
-    graph.add_conditional_edges(
-        "orchestrator",
-        route_to_agents,
-        {
-            "article_agent": "article_agent",
-            "fundamental_analysis_agent": "fundamental_analysis_agent",
-            "technical_analysis_agent": "technical_analysis_agent",
-            "aggregator": "aggregator",
-        },
-    )
-    graph.add_edge("article_agent", "aggregator")
-    graph.add_edge("fundamental_analysis_agent", "aggregator")
-    graph.add_edge("technical_analysis_agent", "aggregator")
-    graph.add_edge("aggregator", END)
 
     # ── Chatbot mode pipeline ──────────────────────────────────
     graph.add_conditional_edges(
@@ -176,6 +121,8 @@ def build_graph() -> StateGraph:
     graph.add_edge("run_pipeline", "reply_merger")
     graph.add_edge("run_qa", "reply_merger")
     graph.add_edge("reply_merger", END)
+
+    # graph.add_edge("intent_classifier", END)
 
     # ── Checkpointer ──────────────────────────────────────────
     conn = sqlite3.connect("chat_memory.db", check_same_thread=False)

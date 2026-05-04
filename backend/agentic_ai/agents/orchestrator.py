@@ -8,19 +8,17 @@ from typing import Literal
  
 from pydantic import BaseModel, Field
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.state import AgentState
+from agentic_ai.chatbot.state import AgentState
  
  
 # ─── Schema định nghĩa output của LLM ────────────────────────────────────────
  
 class ArticleAgentParams(BaseModel):
-    symbol: str = Field(description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
     from_date: str = Field(description="Ngày bắt đầu lấy tin tức, định dạng YYYY-MM-DD")
     to_date: str = Field(description="Ngày kết thúc lấy tin tức, định dạng YYYY-MM-DD")
  
  
 class FundamentalAgentParams(BaseModel):
-    symbol: str = Field(description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
     indicators: list[Literal[
         # Valuation (định giá)
         "pe_ratio",
@@ -60,7 +58,6 @@ class FundamentalAgentParams(BaseModel):
  
  
 class TechnicalAgentParams(BaseModel):
-    symbol: str = Field(description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
     interval: Literal["1m", "5m", "15m", "30m", "1h", "1d", "1w", "1M"] = Field(description="Khung thời gian nến")
     from_date: str = Field(description="Ngày bắt đầu, định dạng YYYY-MM-DD")
     to_date: str = Field(description="Ngày kết thúc, định dạng YYYY-MM-DD")

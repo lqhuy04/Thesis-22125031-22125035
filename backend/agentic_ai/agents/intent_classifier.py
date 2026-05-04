@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, AIMessage
 
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.state import AgentState
+from agentic_ai.state import ChatbotSystemState
 
 
 # ─────────────────────────────────────────────────────────────
@@ -87,17 +87,13 @@ class SingleIntent(BaseModel):
     """Một intent đơn lẻ trong câu input của user."""
 
     intent_type: Literal[
-        "stock_analysis",
-        "market_index_analysis",
-        "category_analysis",
+        "analysis",
         "general_question",
         "clarification",
         "out_of_scope"
     ] = Field(description=(
         "Loại intent:\n"
-        "- stock_analysis: phân tích một mã cổ phiếu cụ thể\n"
-        "- market_index_analysis: hỏi về chỉ số thị trường\n"
-        "- category_analysis: hỏi về nhóm ngành / lĩnh vực\n"
+        "- analysis: câu hỏi liên quan đến một mã cổ phiếu hoặc chỉ số hoặc ngành cụ thể.\n Khi intent là analysis thì ít nhất 1 trong 3 biến symbol, market_index, category phải khác None"
         "- general_question: câu hỏi kiến thức, không cần dữ liệu thực\n"
         "- clarification: yêu cầu quá mơ hồ, cần hỏi lại\n"
         "- out_of_scope: ngoài phạm vi chứng khoán / tài chính"
@@ -110,7 +106,8 @@ class SingleIntent(BaseModel):
 
     symbol: str | None = Field(
         default=None,
-        description="Mã cổ phiếu. Chỉ điền khi intent_type = 'stock_analysis'. Viết HOA."
+        description="Mã cổ phiếu. Viết HOA."
+        "Chỉ điền khi có stock symbol rõ ràng trong câu hỏi, mặc định là None"
     )
 
     market_index: Literal[
@@ -118,16 +115,18 @@ class SingleIntent(BaseModel):
     ] | None = Field(
         default=None,
         description=(
-            "Chỉ số thị trường. Chỉ điền khi intent_type = 'market_index_analysis'. "
-            f"Chọn trong: {', '.join(MARKET_INDICES)}. Mặc định VNINDEX nếu không rõ."
+            "Chỉ số thị trường."
+            f"Chọn trong: {', '.join(MARKET_INDICES)}"
+            "Chỉ điền khi có đề cập market index rõ ràng trong câu hỏi, mặc định là None"
         )
     )
 
     category: Literal[tuple(CATEGORIES)] | None = Field(  # type: ignore[valid-type]
         default=None,
         description=(
-            "Nhóm ngành. Chỉ điền khi intent_type = 'category_analysis'. "
+            "Nhóm ngành."
             "Chọn đúng tên trong danh sách CATEGORIES."
+            "Chỉ điền khi có category rõ ràng trong câu hỏi, mặc định là None"
         )
     )
 
@@ -157,30 +156,20 @@ Nếu chỉ có một ý → trả về list 1 phần tử.
 ────────────────────────
 PHÂN LOẠI INTENT:
 
-1. stock_analysis
-   - Phân tích / gợi ý về một mã cổ phiếu cụ thể
-   - VD: "VNM có nên mua không?", "Phân tích HPG giúp tôi"
-   - Điền symbol (viết HOA)
+1. analysis
+   - Phân tích / gợi ý về một mã cổ phiếu hoặc một chỉ số thị trường hoặc một ngành cụ thể
+   - VD: "VNM có nên mua không?", "Phân tích HPG giúp tôi", "Ngành Bất động sản đang như thế nào?", "Phân tích chỉ số VNINDEX hiện tại"
+   - Điền symbol (viết HOA) hoặc market_index (chọn trong danh sách) hoặc ngành (chọn từ danh sách ngành)
 
-2. market_index_analysis
-   - Hỏi về chỉ số thị trường
-   - VD: "VNINDEX hôm nay thế nào?", "Thị trường đang ra sao?"
-   - Điền market_index, mặc định VNINDEX nếu không rõ
-
-3. category_analysis
-   - Hỏi về nhóm ngành / lĩnh vực
-   - VD: "Nhóm ngân hàng đang thế nào?", "Cổ phiếu thép có triển vọng không?"
-   - Điền category từ danh sách CATEGORIES
-
-4. general_question
+2. general_question
    - Câu hỏi kiến thức, không cần dữ liệu thực
    - VD: "RSI là gì?", "Cách đọc MACD?"
 
-5. clarification
+3. clarification
    - Quá mơ hồ, không xác định được đối tượng
    - VD: "Mua gì bây giờ?", "Cổ phiếu nào tốt?"
 
-6. out_of_scope
+4. out_of_scope
    - Không liên quan đến chứng khoán / tài chính
    - VD: "Thời tiết hôm nay?", "Viết thơ cho tôi"
 
@@ -190,18 +179,19 @@ VÍ DỤ TÁCH INTENT:
 Input: "RSI là gì và VNM có nên mua không?"
 → intents: [
     {{intent_type: "general_question", sub_query: "RSI là gì?"}},
-    {{intent_type: "stock_analysis",   sub_query: "VNM có nên mua không?", symbol: "VNM"}}
+    {{intent_type: "analysis",   sub_query: "VNM có nên mua không?", symbol: "VNM"}}
   ]
 
 Input: "Phân tích FPT và ngành ngân hàng đang ra sao?"
 → intents: [
-    {{intent_type: "stock_analysis",    sub_query: "Phân tích FPT", symbol: "FPT"}},
-    {{intent_type: "category_analysis", sub_query: "Ngành ngân hàng đang ra sao?", category: "Ngân hàng"}}
+    {{intent_type: "analysis", sub_query: "Phân tích FPT", symbol: "FPT"}},
+    {{intent_type: "analysis", sub_query: "Ngành ngân hàng đang ra sao?", category: "Ngân hàng"}}
   ]
 
-Input: "VNM có nên mua không?"
+Input: "VNINDEX hiện tại đang như thế nào và VNM có nên mua không?"
 → intents: [
-    {{intent_type: "stock_analysis", sub_query: "VNM có nên mua không?", symbol: "VNM"}}
+    {{intent_type: "analysis", sub_query: "VNINDEX hiện tại đang như thế nào?", market_index: "VNINDEX"}},
+    {{intent_type: "analysis", sub_query: "VNM có nên mua không?", symbol: "VNM"}}
   ]
 
 ────────────────────────
@@ -220,7 +210,7 @@ QUY TẮC:
 # 🚀 Intent Classifier Agent
 # ─────────────────────────────────────────────────────────────
 
-def intent_classifier_agent(state: AgentState) -> dict:
+def intent_classifier_agent(state: ChatbotSystemState) -> dict:
     print("[Intent Classifier] Phân loại input...")
 
     client = _get_openai_client()
@@ -254,6 +244,7 @@ def intent_classifier_agent(state: AgentState) -> dict:
     print(f"[Intent Classifier] Tìm thấy {len(intents)} intent(s):")
     for item in intents:
         print(f"  [{item['order']}] {item['intent_type']} — {item['sub_query']}")
+        print(item)
 
     return {
         "intents": intents,
