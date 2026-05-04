@@ -248,5 +248,6 @@ def intent_classifier_agent(state: ChatbotSystemState) -> dict:
 
     return {
         "intents": intents,
+        "sub_results": [],          # Reset sub_results đầu mỗi turn
         "messages": [HumanMessage(content=user_input)],
     }

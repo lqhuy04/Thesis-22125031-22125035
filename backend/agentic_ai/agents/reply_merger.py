@@ -31,7 +31,7 @@ def reply_merger_agent(state: ChatbotSystemState) -> dict:
     print("[Reply Merger] Gộp kết quả...")
 
     sub_results = state.get("sub_results", [])
-    mode = state.get("mode", "api")
+    mode = state.get("mode", "chat")
 
     # Sắp xếp theo order để đúng thứ tự user hỏi
     sub_results_sorted = sorted(sub_results, key=lambda x: x.get("order", 0))

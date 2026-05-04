@@ -77,18 +77,15 @@ def run_chat(
     resolved_risk_appetite = _session_risk_appetite.get(session_id, DEFAULT_RISK_APPETITE)
 
     initial_state = {
+        "mode": "chat",
+        
         "user_input": message,
         "risk_appetite": resolved_risk_appetite,
-        "symbol": "",
-        "mode": "chat",
-        "session_id": session_id,
-        "intents": [],
-        "plan": {},
-        "agent_results": {},
+        
         "sub_results": [],
+        
+        "intents": [],
         "messages": [],
-        "final_output": "",
-        "error": None,
     }
 
     # thread_id = session_id → LangGraph tự load/save history qua SqliteSaver
