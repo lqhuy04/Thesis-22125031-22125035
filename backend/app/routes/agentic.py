@@ -60,7 +60,7 @@ async def chat(body: ChatRequest):
         )
         return success_response(data={
             "session_id": body.session_id,
-            "reply": result["reply"],
+            "reply": result,
         })
 
     except RuntimeError as e:

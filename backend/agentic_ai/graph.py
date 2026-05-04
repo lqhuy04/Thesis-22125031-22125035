@@ -1,72 +1,126 @@
 """
-graph.py — Xây dựng LangGraph StateGraph
-Định nghĩa các node, edge, và routing logic.
+graph.py — LangGraph StateGraph
+
+API mode:     __start__ → orchestrator → agents → aggregator → END
+Chatbot mode: __start__ → intent_classifier → dispatch song song
+                          → [run_pipeline | run_qa] → reply_merger → END
 """
 
+import sqlite3
 from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.types import Send
 
-from agentic_ai.state import AgentState
+from agentic_ai.state import AgentState, IntentJob
 from agentic_ai.agents.intent_classifier import intent_classifier_agent
+from agentic_ai.agents.qa_agent import qa_agent
 from agentic_ai.agents.orchestrator import orchestrator_agent
 from agentic_ai.agents.aggregator import aggregator_agent
 from agentic_ai.agents.article import article_agent
 from agentic_ai.agents.fundamental_analysis import fundamental_analysis_agent
 from agentic_ai.agents.technical_analysis import technical_analysis_agent
+from agentic_ai.agents.reply_merger import reply_merger_agent
 
 
-# ─── Routing: entry point ────────────────────────────────────────────────────
+# ─── Constants ────────────────────────────────────────────────────────────────
+
+PIPELINE_INTENTS = ("stock_analysis", "market_index_analysis", "category_analysis")
+
+
+# ─── Routing: entry point ─────────────────────────────────────────────────────
 
 def route_entry(state: AgentState) -> str:
-    """
-    mode = "api"     → skip intent_classifier, vào thẳng orchestrator
-    mode = "chatbot" → qua intent_classifier trước
-    """
     mode = state.get("mode", "api")
     print(f"[Router/Entry] mode = {mode}")
+    # API mode: thẳng vào orchestrator, bỏ qua toàn bộ intent/dispatch/merger
     return "orchestrator" if mode == "api" else "intent_classifier"
 
 
-# ─── Routing: sau Intent Classifier ──────────────────────────────────────────
-
-def route_after_intent(state: AgentState) -> str:
-    """
-    Nếu intent_type = 'stock_analysis' → vào pipeline chính (orchestrator).
-    Còn lại (general_question / clarification / out_of_scope) → kết thúc luôn,
-    instant_reply đã có sẵn trong state["intent"].
-    """
-    intent_type = state.get("intent", {}).get("intent_type", "out_of_scope")
-    print(f"[Router/Intent] intent_type = {intent_type}")
-
-    if intent_type == "stock_analysis":
-        return "orchestrator"
-    return "end"
-
-
-# ─── Routing: sau Orchestrator → các sub-agent ───────────────────────────────
+# ─── Routing: API mode — orchestrator → sub-agents ───────────────────────────
 
 def route_to_agents(state: AgentState) -> list[str]:
-    """
-    Conditional edge: Orchestrator quyết định agent nào sẽ chạy
-    dựa trên plan đã tạo.
-    """
     plan = state.get("plan", {})
-    print(f"[Router/Agents] Routing theo plan: {plan}")
-
     task_to_node = {
         "article_agent": "article_agent",
         "fundamental_analysis_agent": "fundamental_analysis_agent",
         "technical_analysis_agent": "technical_analysis_agent",
     }
+    nodes = [task_to_node[t] for t in plan if t in task_to_node]
+    print(f"[Router/Agents] Nodes: {nodes}")
+    return nodes or ["aggregator"]
 
-    nodes_to_run = [task_to_node[task] for task in plan if task in task_to_node]
-    print(f"[Router/Agents] Các node được chọn: {nodes_to_run}")
 
-    if not nodes_to_run:
-        print("[Router/Agents] Không tìm thấy agent phù hợp, chuyển thẳng đến aggregator.")
-        return ["aggregator"]
+# ─── Routing: Chatbot mode — dispatch intent jobs song song ───────────────────
 
-    return nodes_to_run
+def dispatch_intents(state: AgentState) -> list[Send]:
+    intents = state.get("intents", [])
+    sends = []
+
+    for intent in intents:
+        job: IntentJob = {
+            "intent_type": intent["intent_type"],
+            "sub_query": intent["sub_query"],
+            "symbol": intent.get("symbol") or state.get("symbol", ""),
+            "market_index": intent.get("market_index"),
+            "category": intent.get("category"),
+            "order": intent["order"],
+            "user_input": intent["sub_query"],
+            "risk_appetite": state.get("risk_appetite", {}),
+            "mode": "chatbot",
+            "session_id": state.get("session_id", ""),
+            "messages": state.get("messages", []),
+            "plan": {},
+            "agent_results": {},
+        }
+
+        if intent["intent_type"] in PIPELINE_INTENTS:
+            sends.append(Send("run_pipeline", job))
+        else:
+            sends.append(Send("run_qa", job))
+
+    print(f"[Router/Dispatch] Dispatch {len(sends)} job(s) song song")
+    return sends
+
+
+# ─── Job nodes (chatbot only) ─────────────────────────────────────────────────
+
+def run_pipeline(job: IntentJob) -> dict:
+    """Full pipeline cho một pipeline intent."""
+    # Orchestrator
+    plan_result = orchestrator_agent(job)
+    job = {**job, **plan_result}
+
+    # Sub-agents
+    agent_results = {}
+    plan = job.get("plan", {})
+
+    if "article_agent" in plan:
+        agent_results.update(article_agent(job).get("agent_results", {}))
+    if "fundamental_analysis_agent" in plan:
+        agent_results.update(fundamental_analysis_agent(job).get("agent_results", {}))
+    if "technical_analysis_agent" in plan:
+        agent_results.update(technical_analysis_agent(job).get("agent_results", {}))
+
+    job = {**job, "agent_results": agent_results}
+
+    # Aggregator
+    agg_result = aggregator_agent(job)
+    final_output = agg_result.get("final_output", "")
+    reply = final_output if isinstance(final_output, str) else str(final_output)
+
+    return {
+        "sub_results": [{
+            "order": job["order"],
+            "intent_type": job["intent_type"],
+            "sub_query": job["sub_query"],
+            "reply": reply,
+        }]
+    }
+
+
+def run_qa(job: IntentJob) -> dict:
+    """QA agent cho general_question / clarification / out_of_scope."""
+    return qa_agent(job)
 
 
 # ─── Build graph ──────────────────────────────────────────────────────────────
@@ -74,37 +128,30 @@ def route_to_agents(state: AgentState) -> list[str]:
 def build_graph() -> StateGraph:
     graph = StateGraph(AgentState)
 
-    # ── Nodes ────────────────────────────────────────────────
-    graph.add_node("intent_classifier", intent_classifier_agent)
+    # ── API mode nodes ─────────────────────────────────────────
     graph.add_node("orchestrator", orchestrator_agent)
     graph.add_node("article_agent", article_agent)
     graph.add_node("fundamental_analysis_agent", fundamental_analysis_agent)
     graph.add_node("technical_analysis_agent", technical_analysis_agent)
     graph.add_node("aggregator", aggregator_agent)
 
-    # ── Entry point: mode routing ─────────────────────────────
-    # mode = "api"     → thẳng orchestrator, bỏ qua intent_classifier
-    # mode = "chatbot" → qua intent_classifier trước
+    # ── Chatbot mode nodes ─────────────────────────────────────
+    graph.add_node("intent_classifier", intent_classifier_agent)
+    graph.add_node("run_pipeline", run_pipeline)
+    graph.add_node("run_qa", run_qa)
+    graph.add_node("reply_merger", reply_merger_agent)
+
+    # ── Entry: phân nhánh theo mode ───────────────────────────
     graph.add_conditional_edges(
         "__start__",
         route_entry,
         {
-            "intent_classifier": "intent_classifier",
-            "orchestrator": "orchestrator",
+            "orchestrator": "orchestrator",       # API mode
+            "intent_classifier": "intent_classifier",  # Chatbot mode
         },
     )
 
-    # ── Intent classifier → routing ───────────────────────────
-    graph.add_conditional_edges(
-        "intent_classifier",
-        route_after_intent,
-        {
-            "orchestrator": "orchestrator",
-            "end": END,             # instant_reply trả thẳng, không cần pipeline
-        },
-    )
-
-    # ── Orchestrator → sub-agents (song song) ─────────────────
+    # ── API mode pipeline ──────────────────────────────────────
     graph.add_conditional_edges(
         "orchestrator",
         route_to_agents,
@@ -112,19 +159,24 @@ def build_graph() -> StateGraph:
             "article_agent": "article_agent",
             "fundamental_analysis_agent": "fundamental_analysis_agent",
             "technical_analysis_agent": "technical_analysis_agent",
+            "aggregator": "aggregator",
         },
     )
-
-    # ── Sub-agents → aggregator ───────────────────────────────
     graph.add_edge("article_agent", "aggregator")
     graph.add_edge("fundamental_analysis_agent", "aggregator")
     graph.add_edge("technical_analysis_agent", "aggregator")
-
-    # ── Kết thúc ─────────────────────────────────────────────
     graph.add_edge("aggregator", END)
 
-    import sqlite3
-    conn = sqlite3.connect("chat_memory.db", check_same_thread=False)
-    checkpointer = SqliteSaver(conn)
+    # ── Chatbot mode pipeline ──────────────────────────────────
+    graph.add_conditional_edges(
+        "intent_classifier",
+        dispatch_intents,
+        ["run_pipeline", "run_qa"],
+    )
+    graph.add_edge("run_pipeline", "reply_merger")
+    graph.add_edge("run_qa", "reply_merger")
+    graph.add_edge("reply_merger", END)
 
-    return graph.compile(checkpointer=checkpointer)
+    # ── Checkpointer ──────────────────────────────────────────
+    conn = sqlite3.connect("chat_memory.db", check_same_thread=False)
+    return graph.compile(checkpointer=SqliteSaver(conn))

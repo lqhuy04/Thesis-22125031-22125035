@@ -24,16 +24,17 @@ def run_stock_analysis(
         "risk_appetite": risk_appetite,
         "symbol": symbol,
         "mode": "api",
-        "session_id": "",   # api mode không dùng memory
-        "intent": {},
+        "session_id": "",
+        "intents": [],
         "plan": {},
         "agent_results": {},
+        "sub_results": [],
         "messages": [],
         "final_output": "",
         "error": None,
     }
 
-    result = _graph.invoke(initial_state, config={"configurable": {"thread_id": f"api_{symbol}"}})
+    result = _graph.invoke(initial_state, config={"configurable": {"thread_id": "api_static"}})
 
     if result.get("error"):
         raise RuntimeError(result["error"])
@@ -73,32 +74,21 @@ def run_chat(
         "symbol": "",
         "mode": "chatbot",
         "session_id": session_id,
-        "intent": {},
+        "intents": [],
         "plan": {},
         "agent_results": {},
+        "sub_results": [],
         "messages": [],
         "final_output": "",
         "error": None,
     }
 
     # thread_id = session_id → LangGraph tự load/save history qua SqliteSaver
-    config = {"configurable": {"thread_id": session_id}}
-    result = _graph.invoke(initial_state, config=config)
+    result = _graph.invoke(initial_state, config={"configurable": {"thread_id": session_id}})
+    
+    print(result)
 
-    intent = result.get("intent", {})
-    intent_type = intent.get("intent_type", "out_of_scope")
+    if result.get("error"):
+        raise RuntimeError(result["error"])
 
-    # Xác định reply và nguồn gốc
-    if intent_type != "stock_analysis":
-        # Kết thúc sớm tại intent_classifier
-        reply = intent.get("instant_reply", "Xin lỗi, mình không hiểu yêu cầu này.")
-        is_instant = True
-    else:
-        reply = result.get("final_output", "")
-        is_instant = False
-
-    return {
-        "reply": reply,
-        "intent_type": intent_type,
-        "instant_reply": is_instant,
-    }
+    return result["final_output"]
