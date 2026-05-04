@@ -86,7 +86,7 @@ CATEGORIES = [
 class SingleIntent(BaseModel):
     """Một intent đơn lẻ trong câu input của user."""
 
-    intent_type: Literal[
+    intent: Literal[
         "analysis",
         "general_question",
         "clarification",
@@ -99,7 +99,7 @@ class SingleIntent(BaseModel):
         "- out_of_scope: ngoài phạm vi chứng khoán / tài chính"
     ))
 
-    sub_query: str = Field(description=(
+    user_input: str = Field(description=(
         "Câu hỏi con tương ứng với intent này, trích từ input gốc hoặc diễn đạt lại ngắn gọn. "
         "Ví dụ: 'VNM có nên mua không?', 'RSI là gì?'"
     ))
@@ -178,20 +178,20 @@ VÍ DỤ TÁCH INTENT:
 
 Input: "RSI là gì và VNM có nên mua không?"
 → intents: [
-    {{intent_type: "general_question", sub_query: "RSI là gì?"}},
-    {{intent_type: "analysis",   sub_query: "VNM có nên mua không?", symbol: "VNM"}}
+    {{intent: "general_question", user_input: "RSI là gì?"}},
+    {{intent: "analysis",   user_input: "VNM có nên mua không?", symbol: "VNM"}}
   ]
 
 Input: "Phân tích FPT và ngành ngân hàng đang ra sao?"
 → intents: [
-    {{intent_type: "analysis", sub_query: "Phân tích FPT", symbol: "FPT"}},
-    {{intent_type: "analysis", sub_query: "Ngành ngân hàng đang ra sao?", category: "Ngân hàng"}}
+    {{intent: "analysis", user_input: "Phân tích FPT", symbol: "FPT"}},
+    {{intent: "analysis", user_input: "Ngành ngân hàng đang ra sao?", category: "Ngân hàng"}}
   ]
 
 Input: "VNINDEX hiện tại đang như thế nào và VNM có nên mua không?"
 → intents: [
-    {{intent_type: "analysis", sub_query: "VNINDEX hiện tại đang như thế nào?", market_index: "VNINDEX"}},
-    {{intent_type: "analysis", sub_query: "VNM có nên mua không?", symbol: "VNM"}}
+    {{intent: "analysis", user_input: "VNINDEX hiện tại đang như thế nào?", market_index: "VNINDEX"}},
+    {{intent: "analysis", user_input: "VNM có nên mua không?", symbol: "VNM"}}
   ]
 
 ────────────────────────
@@ -201,7 +201,7 @@ DANH SÁCH CATEGORIES:
 ────────────────────────
 QUY TẮC:
 - Mỗi intent chỉ điền trường tương ứng, còn lại = None
-- sub_query bắt buộc có giá trị với mọi intent
+- user_input bắt buộc có giá trị với mọi intent
 - Trả lời bằng tiếng Việt
 """
 
@@ -243,7 +243,7 @@ def intent_classifier_agent(state: ChatbotSystemState) -> dict:
 
     print(f"[Intent Classifier] Tìm thấy {len(intents)} intent(s):")
     for item in intents:
-        print(f"  [{item['order']}] {item['intent_type']} — {item['sub_query']}")
+        print(f"  [{item['order']}] {item['intent']} — {item['user_input']}")
         print(item)
 
     return {

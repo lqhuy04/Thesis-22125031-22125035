@@ -8,7 +8,7 @@ Xử lý các intent không cần pipeline DB:
 """
 
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.chatbot.state import IntentJob
+from agentic_ai.state import AgentState
 
 
 QA_SYSTEM_PROMPT = """
@@ -25,22 +25,22 @@ Trả lời bằng tiếng Việt. Không bịa số liệu.
 """
 
 
-def qa_agent(job: IntentJob) -> dict:
+def qa_agent(job: AgentState) -> dict:
     """
-    Nhận một IntentJob, gọi LLM trả lời thẳng không qua DB.
+    Nhận một AgentState, gọi LLM trả lời thẳng không qua DB.
     Trả về dict có order và reply để Reply Merger gộp.
     """
-    intent_type = job["intent_type"]
-    sub_query = job["sub_query"]
+    intent_type = job["intent"]
+    user_input = job["user_input"]
     order = job["order"]
 
-    print(f"[QA Agent] Xử lý intent [{order}] {intent_type}: {sub_query}")
+    print(f"[QA Agent] Xử lý intent [{order}] {intent_type}: {user_input}")
 
     client = _get_openai_client()
 
     user_message = (
         f"Loại câu hỏi: {intent_type}\n"
-        f"Câu hỏi: {sub_query}"
+        f"Câu hỏi: {user_input}"
     )
 
     response = client.chat.completions.create(
@@ -58,8 +58,8 @@ def qa_agent(job: IntentJob) -> dict:
     return {
         "sub_results": [{
             "order": order,
-            "intent_type": intent_type,
-            "sub_query": sub_query,
+            "intent": intent_type,
+            "user_input": user_input,
             "reply": reply,
         }]
     }

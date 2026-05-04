@@ -11,7 +11,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Send
 
-from agentic_ai.state import ChatbotSystemState
+from agentic_ai.state import AgentState, ChatbotSystemState
 from agentic_ai.agents.intent_classifier import intent_classifier_agent
 from agentic_ai.agents.qa_agent import qa_agent
 from agentic_ai.agents.orchestrator import orchestrator_agent
@@ -29,23 +29,27 @@ def dispatch_intents(state: ChatbotSystemState) -> list[Send]:
     sends = []
 
     for intent in intents:
-        job: IntentJob = {
-            "intent_type": intent["intent_type"],
-            "sub_query": intent["sub_query"],
+        job: AgentState = {
+            "mode": "chat",
+            
+            "intent": intent["intent"],
+            "order": intent["order"],
+            
+            "user_input": intent["user_input"],
+            "risk_appetite": state.get("risk_appetite", {}),
+            
             "symbol": intent.get("symbol") or state.get("symbol", ""),
             "market_index": intent.get("market_index"),
             "category": intent.get("category"),
-            "order": intent["order"],
-            "user_input": intent["sub_query"],
-            "risk_appetite": state.get("risk_appetite", {}),
-            "mode": "chatbot",
-            "session_id": state.get("session_id", ""),
-            "messages": state.get("messages", []),
+            
             "plan": {},
             "agent_results": {},
+            
+            "final_output": "",
+            "error": None,
         }
 
-        if intent["intent_type"] == "analysis":
+        if intent["intent"] == "analysis":
             sends.append(Send("run_pipeline", job))
         else:
             sends.append(Send("run_qa", job))
@@ -56,7 +60,7 @@ def dispatch_intents(state: ChatbotSystemState) -> list[Send]:
 
 # ─── Job nodes (chatbot only) ─────────────────────────────────────────────────
 
-def run_pipeline(job: IntentJob) -> dict:
+def run_pipeline(job: AgentState) -> dict:
     """Full pipeline cho một pipeline intent."""
     # Orchestrator
     plan_result = orchestrator_agent(job)
@@ -83,14 +87,14 @@ def run_pipeline(job: IntentJob) -> dict:
     return {
         "sub_results": [{
             "order": job["order"],
-            "intent_type": job["intent_type"],
-            "sub_query": job["sub_query"],
+            "intent": job["intent"],
+            "user_input": job["user_input"],
             "reply": reply,
         }]
     }
 
 
-def run_qa(job: IntentJob) -> dict:
+def run_qa(job: AgentState) -> dict:
     """QA agent cho general_question / clarification / out_of_scope."""
     return qa_agent(job)
 

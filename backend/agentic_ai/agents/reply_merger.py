@@ -9,7 +9,7 @@ import json
 from langchain_core.messages import AIMessage
 
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.chatbot.state import AgentState
+from agentic_ai.state import ChatbotSystemState
 
 
 MERGER_SYSTEM_PROMPT = """
@@ -27,7 +27,7 @@ Quy tắc:
 """
 
 
-def reply_merger_agent(state: AgentState) -> dict:
+def reply_merger_agent(state: ChatbotSystemState) -> dict:
     print("[Reply Merger] Gộp kết quả...")
 
     sub_results = state.get("sub_results", [])
@@ -46,11 +46,11 @@ def reply_merger_agent(state: AgentState) -> dict:
         )
 
         return {
-            "final_output": reply if mode == "chatbot" else single.get("final_output", reply),
+            "final_output": reply if mode == "chat" else single.get("final_output", reply),
             "messages": [AIMessage(content=reply if isinstance(reply, str) else str(reply))],
         }
 
-    # Nhiều kết quả → gọi LLM gộp lại (chỉ áp dụng chatbot mode)
+    # Nhiều kết quả → gọi LLM gộp lại (chỉ áp dụng chat mode)
     # API mode: trả list structured output
     if mode == "api":
         return {
@@ -61,7 +61,7 @@ def reply_merger_agent(state: AgentState) -> dict:
     client = _get_openai_client()
 
     parts_text = "\n\n".join([
-        f"[Câu hỏi {i+1}]: {r['sub_query']}\n[Trả lời {i+1}]: {r.get('reply', '')}"
+        f"[Câu hỏi {i+1}]: {r['user_input']}\n[Trả lời {i+1}]: {r.get('reply', '')}"
         for i, r in enumerate(sub_results_sorted)
     ])
 

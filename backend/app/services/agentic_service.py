@@ -21,7 +21,10 @@ def run_stock_analysis(
 ) -> dict:
     initial_state = {
         "mode": "auto",
-
+        
+        "intent": "analysis",  # API mode chỉ tập trung vào 1 intent chính là phân tích, không cần classifier phức tạp
+        "order": 0,            # API mode coi như chỉ có 1 sub-query duy nhất
+        
         "user_input": user_input or (
             f"Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu {symbol} "
             f"dựa vào khẩu vị rủi ro của nhà đầu tư."
