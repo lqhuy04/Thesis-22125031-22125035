@@ -1,8 +1,9 @@
 """
 scheduler.py
-Chạy liên tục, quản lý 2 tác vụ:
+Chạy liên tục, quản lý 3 tác vụ:
   1. WebSocket stream  → mở đầu phiên (9:00), đóng cuối phiên (15:30)
-  2. Standardize sync  → chạy 1 lần lúc 15:35 (sau khi stream đóng)
+  2. Standardize 1m   → chạy 1 lần lúc 15:35 (sau khi stream đóng)
+  3. Standardize 1d   → chạy 1 lần lúc 15:35 (cùng lúc với 1m)
 
 Giờ Việt Nam = UTC+7
 """
@@ -29,8 +30,8 @@ STANDARDIZE_H,  STANDARDIZE_M  = 15, 35
 # Ngày trong tuần giao dịch (0=Mon ... 4=Fri)
 TRADING_DAYS = {0, 1, 2, 3, 4}
 
-ws_process:         subprocess.Popen | None = None
-standardize_done_today: str = ""   # "YYYY-MM-DD" của ngày đã chạy standardize
+ws_process:              subprocess.Popen | None = None
+standardize_done_today:  str = ""   # "YYYY-MM-DD" của ngày đã chạy standardize
 
 
 def now_vn() -> datetime:
@@ -78,15 +79,29 @@ def stop_websocket():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_standardize():
-    logger.info("▶ Running standardize_stock_price_1m.py")
-    result = subprocess.run(
-        [sys.executable, "standardize_stock_price_1m.py"],
-        capture_output=False,
-    )
-    if result.returncode == 0:
-        logger.info("✅ Standardize done")
-    else:
-        logger.error(f"❌ Standardize exited with code {result.returncode}")
+    """Chạy song song cả 1m và 1d, đợi cả 2 xong mới tiếp tục."""
+    scripts = [
+        "standardize_stock_price_1m.py",
+        "standardize_stock_price_1d.py",
+    ]
+
+    procs = []
+    for script in scripts:
+        logger.info(f"▶ Running {script}")
+        p = subprocess.Popen(
+            [sys.executable, script],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
+        procs.append((script, p))
+
+    # Đợi cả 2 tiến trình hoàn thành
+    for script, p in procs:
+        p.wait()
+        if p.returncode == 0:
+            logger.info(f"✅ {script} done")
+        else:
+            logger.error(f"❌ {script} exited with code {p.returncode}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -9,7 +9,11 @@ def article_agent(state: AgentState) -> AgentState:
     """
     
     myTask = state.get("plan", {}).get("article_agent", {})
+
     symbol = state.get("symbol", "")
+    market_index = state.get("market_index","")
+    category = state.get("category","")
+
     print("[Article Agent] Đang xử lý task:", myTask)
  
     result = database_service.get_articles(

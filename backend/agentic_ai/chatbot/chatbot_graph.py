@@ -16,9 +16,9 @@ from agentic_ai.agents.intent_classifier import intent_classifier_agent
 from agentic_ai.agents.qa_agent import qa_agent
 from agentic_ai.agents.orchestrator import orchestrator_agent
 from agentic_ai.agents.aggregator import aggregator_agent
-from agentic_ai.agents.article import article_agent
-from agentic_ai.agents.fundamental_analysis import fundamental_analysis_agent
-from agentic_ai.agents.technical_analysis import technical_analysis_agent
+from agentic_ai.nodes.article import article_agent
+from agentic_ai.nodes.fundamental_analysis import fundamental_analysis_agent
+from agentic_ai.nodes.technical_analysis import technical_analysis_agent
 from agentic_ai.agents.reply_merger import reply_merger_agent
 
 

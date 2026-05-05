@@ -2,9 +2,9 @@ from langgraph.graph import StateGraph, END
 from agentic_ai.state import AgentState
 from agentic_ai.agents.orchestrator import orchestrator_agent
 from agentic_ai.agents.aggregator import aggregator_agent
-from agentic_ai.agents.article import article_agent
-from agentic_ai.agents.fundamental_analysis import fundamental_analysis_agent
-from agentic_ai.agents.technical_analysis import technical_analysis_agent
+from agentic_ai.nodes.article import article_agent
+from agentic_ai.nodes.fundamental_analysis import fundamental_analysis_agent
+from agentic_ai.nodes.technical_analysis import technical_analysis_agent
 
 def route_to_agents(state: AgentState) -> list[str]:
     plan = state.get("plan", {})
