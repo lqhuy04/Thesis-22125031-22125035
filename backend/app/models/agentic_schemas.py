@@ -3,7 +3,7 @@ app/models/agentic_schemas.py
 Request / Response schemas cho agentic AI endpoints.
 """
 
-from typing import Literal
+from typing import Literal, Any
 from pydantic import BaseModel, Field
 
 
@@ -20,12 +20,10 @@ class RiskAppetite(BaseModel):
 # ─── /analyze (API mode) ──────────────────────────────────────────────────────
 
 class StockAnalysisRequest(BaseModel):
+    mode: str = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
     symbol: str = Field(description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
     risk_appetite: RiskAppetite
-    user_input: str | None = Field(
-        default=None,
-        description="Câu hỏi / yêu cầu cụ thể. Nếu để trống sẽ dùng prompt mặc định."
-    )
+    plan: Any | None
 
 
 class InvestmentRecommendation(BaseModel):

@@ -1,10 +1,10 @@
 from langgraph.graph import StateGraph, END
-from agentic_ai.state import AgentState
-from agentic_ai.agents.orchestrator import orchestrator_agent
-from agentic_ai.agents.aggregator import aggregator_agent
-from agentic_ai.nodes.article import article_agent
-from agentic_ai.nodes.fundamental_analysis import fundamental_analysis_agent
-from agentic_ai.nodes.technical_analysis import technical_analysis_agent
+from agentic_ai.analyze.state import AgentState
+from agentic_ai.analyze.agents.orchestrator import orchestrator_agent
+from agentic_ai.analyze.agents.aggregator import aggregator_agent
+from agentic_ai.analyze.nodes.article import article_agent
+from agentic_ai.analyze.nodes.fundamental_analysis import fundamental_analysis_agent
+from agentic_ai.analyze.nodes.technical_analysis import technical_analysis_agent
 
 def route_to_agents(state: AgentState) -> list[str]:
     plan = state.get("plan", {})
@@ -15,9 +15,9 @@ def route_to_agents(state: AgentState) -> list[str]:
     }
     nodes = [task_to_node[t] for t in plan if t in task_to_node]
     print(f"[Router/Agents] Nodes: {nodes}")
-    return nodes or ["aggregator"]
+    return nodes
 
-def build_analyze_graph() -> StateGraph:
+def build_graph() -> StateGraph:
     graph = StateGraph(AgentState)
 
     graph.add_node("orchestrator", orchestrator_agent)
@@ -35,7 +35,6 @@ def build_analyze_graph() -> StateGraph:
             "article_agent": "article_agent",
             "fundamental_analysis_agent": "fundamental_analysis_agent",
             "technical_analysis_agent": "technical_analysis_agent",
-            "aggregator": "aggregator",
         },
     )
     graph.add_edge("article_agent", "aggregator")

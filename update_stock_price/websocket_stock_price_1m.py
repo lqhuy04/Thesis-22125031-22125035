@@ -119,10 +119,10 @@ def parse_tick(message) -> Optional[dict]:
         return {
             "symbol":       symbol,
             "trading_time": trading_time,
-            "open":         float(bar.get("Open")   or 0),
-            "high":         float(bar.get("High")   or 0),
-            "low":          float(bar.get("Low")    or 0),
-            "close":        float(bar.get("Close")  or 0),
+            "open":         float(bar.get("Open")   or 0) / 1000,
+            "high":         float(bar.get("High")   or 0) / 1000,
+            "low":          float(bar.get("Low")    or 0) / 1000,
+            "close":        float(bar.get("Close")  or 0) / 1000,
             "volume":       float(bar.get("Volume") or 0),
         }
     except Exception as e:

@@ -1,11 +1,7 @@
-from agentic_ai.state import AgentState
+from agentic_ai.analyze.state import AgentState
 from agentic_ai.service import database_service
  
 def technical_analysis_agent(state: AgentState) -> AgentState:
-    """
-    Technical Analysis Agent — xử lý task_c.
-    TODO: Thêm logic / tool / LLM call vào đây.
-    """
     myTask = state.get("plan", {}).get("technical_analysis_agent", {})
     symbol = state.get("symbol", "")
     print("[Technical Analysis Agent] Đang xử lý task:", myTask)

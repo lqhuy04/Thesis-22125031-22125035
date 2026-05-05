@@ -8,7 +8,7 @@ Sắp xếp theo order để giữ đúng thứ tự user hỏi.
 import json
 from langchain_core.messages import AIMessage
 
-from agentic_ai.service.openai_service import _get_openai_client
+from backend.agentic_ai.shared.openai_service import _get_openai_client
 from agentic_ai.state import ChatbotSystemState
 
 

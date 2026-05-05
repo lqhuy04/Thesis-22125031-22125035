@@ -12,14 +12,14 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Send
 
 from agentic_ai.state import AgentState, ChatbotSystemState
-from agentic_ai.agents.intent_classifier import intent_classifier_agent
-from agentic_ai.agents.qa_agent import qa_agent
-from agentic_ai.agents.orchestrator import orchestrator_agent
-from agentic_ai.agents.aggregator import aggregator_agent
-from agentic_ai.nodes.article import article_agent
-from agentic_ai.nodes.fundamental_analysis import fundamental_analysis_agent
-from agentic_ai.nodes.technical_analysis import technical_analysis_agent
-from agentic_ai.agents.reply_merger import reply_merger_agent
+from agentic_ai.chatbot.agents.intent_classifier import intent_classifier_agent
+from agentic_ai.chatbot.agents.qa import qa_agent
+from agentic_ai.chatbot.agents.orchestrator import orchestrator_agent
+from agentic_ai.chatbot.agents.aggregator import aggregator_agent
+from agentic_ai.chatbot.nodes.article import article_agent
+from agentic_ai.chatbot.nodes.fundamental_analysis import fundamental_analysis_agent
+from agentic_ai.chatbot.nodes.technical_analysis import technical_analysis_agent
+from agentic_ai.chatbot.agents.reply_merger import reply_merger_agent
 
 
 # ─── Routing: Chatbot mode — dispatch intent jobs song song ───────────────────

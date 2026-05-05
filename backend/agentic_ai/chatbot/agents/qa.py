@@ -8,7 +8,7 @@ Xử lý các intent không cần pipeline DB:
 """
 
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.state import AgentState
+from agentic_ai.analyze.state import AgentState
 
 
 QA_SYSTEM_PROMPT = """
@@ -25,14 +25,14 @@ Trả lời bằng tiếng Việt. Không bịa số liệu.
 """
 
 
-def qa_agent(job: AgentState) -> dict:
+def qa_agent(state: AgentState) -> dict:
     """
     Nhận một AgentState, gọi LLM trả lời thẳng không qua DB.
     Trả về dict có order và reply để Reply Merger gộp.
     """
-    intent_type = job["intent"]
-    user_input = job["user_input"]
-    order = job["order"]
+    intent_type = state["intent"]
+    user_input = state["user_input"]
+    order = state["order"]
 
     print(f"[QA Agent] Xử lý intent [{order}] {intent_type}: {user_input}")
 
@@ -55,11 +55,4 @@ def qa_agent(job: AgentState) -> dict:
     reply = response.choices[0].message.content
     print(f"[QA Agent] Reply [{order}]: {reply[:80]}...")
 
-    return {
-        "sub_results": [{
-            "order": order,
-            "intent": intent_type,
-            "user_input": user_input,
-            "reply": reply,
-        }]
-    }
+    return reply

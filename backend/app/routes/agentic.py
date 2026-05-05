@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.models.base_schemas import success_response, error_response
 from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest
-from app.services.agentic_service import run_stock_analysis, run_chat, delete_session
+from app.services.agentic_service import run_stock_analysis
 
 router = APIRouter(prefix="/api/agentic", tags=["agentic-ai"])
 
@@ -22,9 +22,10 @@ router = APIRouter(prefix="/api/agentic", tags=["agentic-ai"])
 async def analyze_stock(body: StockAnalysisRequest):
     try:
         recommendation = run_stock_analysis(
+            mode=body.mode,
             symbol=body.symbol,
             risk_appetite=body.risk_appetite.model_dump(),
-            user_input=body.user_input,
+            plan=body.plan,
         )
         return success_response(data=recommendation)
 
