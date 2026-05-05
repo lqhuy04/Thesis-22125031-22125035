@@ -11,7 +11,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Send
 
-from agentic_ai.state import AgentState, ChatbotSystemState
+from agentic_ai.chatbot.state import  ChatbotSystemState, IntentJob
 from agentic_ai.chatbot.agents.intent_classifier import intent_classifier_agent
 from agentic_ai.chatbot.agents.qa import qa_agent
 from agentic_ai.chatbot.agents.orchestrator import orchestrator_agent
@@ -29,14 +29,11 @@ def dispatch_intents(state: ChatbotSystemState) -> list[Send]:
     sends = []
 
     for intent in intents:
-        job: AgentState = {
-            "mode": "chat",
-            
-            "intent": intent["intent"],
+        job: IntentJob = {
             "order": intent["order"],
             
+            "intent": intent["intent"],
             "user_input": intent["user_input"],
-            "risk_appetite": state.get("risk_appetite", {}),
             
             "symbol": intent.get("symbol") or state.get("symbol", ""),
             "market_index": intent.get("market_index"),
@@ -44,13 +41,13 @@ def dispatch_intents(state: ChatbotSystemState) -> list[Send]:
             
             "plan": {},
             "agent_results": {},
-            
+
             "final_output": "",
             "error": None,
         }
 
         if intent["intent"] == "analysis":
-            sends.append(Send("run_pipeline", job))
+            sends.append(Send("run_pipeline", {"state": state, "job": job}))
         else:
             sends.append(Send("run_qa", job))
 
@@ -60,10 +57,13 @@ def dispatch_intents(state: ChatbotSystemState) -> list[Send]:
 
 # ─── Job nodes (chatbot only) ─────────────────────────────────────────────────
 
-def run_pipeline(job: AgentState) -> dict:
+def run_pipeline(param: dict) -> dict:
     """Full pipeline cho một pipeline intent."""
+    state = param["state"]
+    job = param["job"]
+
     # Orchestrator
-    plan_result = orchestrator_agent(job)
+    plan_result = orchestrator_agent(state, job)
     job = {**job, **plan_result}
 
     # Sub-agents
@@ -80,9 +80,8 @@ def run_pipeline(job: AgentState) -> dict:
     job = {**job, "agent_results": agent_results}
 
     # Aggregator
-    agg_result = aggregator_agent(job)
-    final_output = agg_result.get("final_output", "")
-    reply = final_output if isinstance(final_output, str) else str(final_output)
+    agg_result = aggregator_agent(state, job)
+    reply = agg_result.get("final_output", "")
 
     return {
         "sub_results": [{
@@ -94,15 +93,20 @@ def run_pipeline(job: AgentState) -> dict:
     }
 
 
-def run_qa(job: AgentState) -> dict:
+def run_qa(job: IntentJob) -> dict:
     """QA agent cho general_question / clarification / out_of_scope."""
-    return qa_agent(job)
-
-
+    reply = qa_agent(job)
+    return {"sub_results": [{
+        "order": job["order"],
+        "intent": job["intent"],
+        "user_input": job["user_input"],
+        "reply": reply,
+    }]}
+    
 # ─── Build graph ──────────────────────────────────────────────────────────────
 
 def build_chatbot_graph() -> StateGraph:
-    graph = StateGraph(AgentState)
+    graph = StateGraph(ChatbotSystemState)
 
     # ── Chatbot mode nodes ─────────────────────────────────────
     graph.add_node("intent_classifier", intent_classifier_agent)
@@ -125,8 +129,6 @@ def build_chatbot_graph() -> StateGraph:
     graph.add_edge("run_pipeline", "reply_merger")
     graph.add_edge("run_qa", "reply_merger")
     graph.add_edge("reply_merger", END)
-
-    # graph.add_edge("intent_classifier", END)
 
     # ── Checkpointer ──────────────────────────────────────────
     conn = sqlite3.connect("chat_memory.db", check_same_thread=False)

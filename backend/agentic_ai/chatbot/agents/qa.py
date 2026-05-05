@@ -8,8 +8,7 @@ Xử lý các intent không cần pipeline DB:
 """
 
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.analyze.state import AgentState
-
+from agentic_ai.chatbot.state import ChatbotSystemState, IntentJob
 
 QA_SYSTEM_PROMPT = """
 Bạn là trợ lý phân tích chứng khoán Việt Nam, đang trò chuyện trực tiếp với nhà đầu tư.
@@ -25,14 +24,14 @@ Trả lời bằng tiếng Việt. Không bịa số liệu.
 """
 
 
-def qa_agent(state: AgentState) -> dict:
+def qa_agent(job: IntentJob) -> dict:
     """
-    Nhận một AgentState, gọi LLM trả lời thẳng không qua DB.
+    Nhận một IntentJob, gọi LLM trả lời thẳng không qua DB.
     Trả về dict có order và reply để Reply Merger gộp.
     """
-    intent_type = state["intent"]
-    user_input = state["user_input"]
-    order = state["order"]
+    intent_type = job["intent"]
+    user_input = job["user_input"]
+    order = job["order"]
 
     print(f"[QA Agent] Xử lý intent [{order}] {intent_type}: {user_input}")
 

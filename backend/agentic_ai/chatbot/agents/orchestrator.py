@@ -8,7 +8,7 @@ from typing import Literal
  
 from pydantic import BaseModel, Field
 from agentic_ai.service.openai_service import _get_openai_client
-from agentic_ai.analyze.state import AgentState
+from agentic_ai.chatbot.state import ChatbotSystemState, IntentJob
  
  
 # ─── Schema định nghĩa output của LLM ────────────────────────────────────────
@@ -340,21 +340,15 @@ Khẩu vị rủi ro:
  
 # ─── Node ────────────────────────────────────────────────────────────────────
  
-def orchestrator_agent(state: AgentState) -> dict:
+def orchestrator_agent(state: ChatbotSystemState, job: IntentJob) -> dict:
     """Node chính: gọi LLM với Structured Output để tạo plan."""
-    print(f"[Orchestrator] Nhận mode: {state['mode']}")
-    print(f"[Orchestrator] Nhận input: {state['user_input']}")
+    print(f"[Orchestrator] Nhận input: {job['user_input']}")
     print(f"[Orchestrator] Nhận risk_appetite: {state['risk_appetite']}")
 
-    if (state['mode'] == "manual" and state["plan"] != None):
-        print(f"[Orchestrator] Chế độ thủ công")
-        print(f"[Orchestrator] Sử dụng plan của user: {state['plan']}")
-        return {}
- 
     client = _get_openai_client()
  
     risk_appetite = state.get("risk_appetite", {})
-    symbol = state.get("symbol", "")  # Mặc định nếu không có
+    symbol = job.get("symbol", "")  # Mặc định nếu không có
  
     response = client.beta.chat.completions.parse(
         model="gpt-4o-mini",
@@ -363,7 +357,7 @@ def orchestrator_agent(state: AgentState) -> dict:
             {"role": "system", "content": ORCHESTRATOR_SYSTEM_PROMPT},
             {"role": "user", "content": ORCHESTRATOR_USER_PROMPT.format(
                 today=datetime.today().strftime("%Y-%m-%d"),
-                user_input=state["user_input"],
+                user_input=job["user_input"],
                 risk_appetite=json.dumps(risk_appetite, ensure_ascii=False, indent=2),
                 symbol=symbol
             )},

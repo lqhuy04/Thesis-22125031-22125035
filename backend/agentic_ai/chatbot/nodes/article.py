@@ -1,8 +1,8 @@
-from agentic_ai.analyze.state import AgentState
 from agentic_ai.service import database_service
+from agentic_ai.chatbot.state import IntentJob
  
  
-def article_agent(state: AgentState) -> AgentState:
+def article_agent(state: IntentJob) -> dict:
     myTask = state.get("plan", {}).get("article_agent", {})
     symbol = state.get("symbol", "")
 

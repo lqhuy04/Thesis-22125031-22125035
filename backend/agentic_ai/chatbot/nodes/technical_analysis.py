@@ -1,7 +1,7 @@
-from agentic_ai.analyze.state import AgentState
 from agentic_ai.service import database_service
+from agentic_ai.chatbot.state import IntentJob
  
-def technical_analysis_agent(state: AgentState) -> AgentState:
+def technical_analysis_agent(state: IntentJob) -> dict:
     myTask = state.get("plan", {}).get("technical_analysis_agent", {})
     symbol = state.get("symbol", "")
     print("[Technical Analysis Agent] Đang xử lý task:", myTask)

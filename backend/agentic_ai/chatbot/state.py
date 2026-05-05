@@ -2,11 +2,11 @@
 shared/state/chatbot_state.py — State dùng cho Chatbot pipeline (chat mode).
 """
 
+import operator
 from typing import Annotated, Any
 from typing_extensions import TypedDict
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
-from agentic_ai.analyze.state import AgentState
 
 
 def reset_each_turn(old: list, new: list) -> list:
@@ -18,10 +18,24 @@ def reset_each_turn(old: list, new: list) -> list:
         return []
     return old + new
 
+
 class IntentJob(TypedDict):
-    intent: str
     order: int
-    state: AgentState
+    
+    intent: str
+    user_input: str
+
+    symbol: str | None
+    market_index: str | None
+    category: str | None
+    
+    # Pipeline fields
+    plan: dict                         # Kế hoạch do Orchestrator tạo
+    agent_results: Annotated[dict[str, Any], operator.or_]  # Kết quả sub-agents
+
+    # Output cuối
+    final_output: Any
+    error: str | None
 
 
 class ChatbotSystemState(TypedDict):
