@@ -1,9 +1,10 @@
 """
 scheduler.py
-Chạy liên tục, quản lý 3 tác vụ:
-  1. WebSocket stream  → mở đầu phiên (9:00), đóng cuối phiên (15:30)
-  2. Standardize 1m   → chạy 1 lần lúc 15:35 (sau khi stream đóng)
-  3. Standardize 1d   → chạy 1 lần lúc 15:35 (cùng lúc với 1m)
+Chạy liên tục, quản lý 4 tác vụ:
+  1. WebSocket 1m stream  → mở đầu phiên (9:00), đóng cuối phiên (15:30)
+  2. WebSocket 1d stream  → mở đầu phiên (9:00), đóng cuối phiên (15:30)
+  3. Standardize 1m       → chạy 1 lần lúc 15:35 (sau khi stream đóng)
+  4. Standardize 1d       → chạy 1 lần lúc 15:35 (cùng lúc với 1m)
 
 Giờ Việt Nam = UTC+7
 """
@@ -30,8 +31,9 @@ STANDARDIZE_H,  STANDARDIZE_M  = 15, 35
 # Ngày trong tuần giao dịch (0=Mon ... 4=Fri)
 TRADING_DAYS = {0, 1, 2, 3, 4}
 
-ws_process:              subprocess.Popen | None = None
-standardize_done_today:  str = ""   # "YYYY-MM-DD" của ngày đã chạy standardize
+ws_1m_process:          subprocess.Popen | None = None
+ws_1d_process:          subprocess.Popen | None = None
+standardize_done_today: str = ""   # "YYYY-MM-DD" của ngày đã chạy standardize
 
 
 def now_vn() -> datetime:
@@ -47,31 +49,43 @@ def hm(dt: datetime) -> tuple[int, int]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# WEBSOCKET PROCESS
+# WEBSOCKET PROCESSES
 # ─────────────────────────────────────────────────────────────────────────────
 
-def start_websocket():
-    global ws_process
-    if ws_process and ws_process.poll() is None:
-        return  # đang chạy rồi
-    logger.info("▶ Starting websocket_stock_price_1m.py")
-    ws_process = subprocess.Popen(
-        [sys.executable, "websocket_stock_price_1m.py"],
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-    )
+def start_websockets():
+    global ws_1m_process, ws_1d_process
+
+    if not ws_1m_process or ws_1m_process.poll() is not None:
+        logger.info("▶ Starting websocket_stock_price_1m.py")
+        ws_1m_process = subprocess.Popen(
+            [sys.executable, "websocket_stock_price_1m.py"],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
+
+    if not ws_1d_process or ws_1d_process.poll() is not None:
+        logger.info("▶ Starting websocket_stock_price_1d.py")
+        ws_1d_process = subprocess.Popen(
+            [sys.executable, "websocket_stock_price_1d.py"],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
 
 
-def stop_websocket():
-    global ws_process
-    if ws_process and ws_process.poll() is None:
-        logger.info("⏹ Stopping WebSocket process")
-        ws_process.terminate()
-        try:
-            ws_process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            ws_process.kill()
-    ws_process = None
+def stop_websockets():
+    global ws_1m_process, ws_1d_process
+
+    for name, proc in [("1m", ws_1m_process), ("1d", ws_1d_process)]:
+        if proc and proc.poll() is None:
+            logger.info(f"⏹ Stopping WebSocket {name} process")
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+
+    ws_1m_process = None
+    ws_1d_process = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -95,7 +109,6 @@ def run_standardize():
         )
         procs.append((script, p))
 
-    # Đợi cả 2 tiến trình hoàn thành
     for script, p in procs:
         p.wait()
         if p.returncode == 0:
@@ -124,13 +137,13 @@ def main():
             )
             after_close = (h, m) >= (MARKET_CLOSE_H, MARKET_CLOSE_M)
 
-            # 1️⃣  Trong phiên → đảm bảo WebSocket đang chạy
+            # 1️⃣  Trong phiên → đảm bảo cả 2 WebSocket đang chạy
             if in_session:
-                start_websocket()
+                start_websockets()
 
-            # 2️⃣  Hết phiên → tắt WebSocket
+            # 2️⃣  Hết phiên → tắt cả 2 WebSocket
             elif after_close:
-                stop_websocket()
+                stop_websockets()
 
                 # 3️⃣  Chạy standardize đúng 1 lần lúc ≥ 15:35
                 if (
@@ -142,11 +155,11 @@ def main():
 
             # Trước giờ mở → chắc chắn WebSocket không chạy
             else:
-                stop_websocket()
+                stop_websockets()
 
         else:
             # Cuối tuần / ngày nghỉ
-            stop_websocket()
+            stop_websockets()
 
         time.sleep(30)  # kiểm tra mỗi 30 giây
 
