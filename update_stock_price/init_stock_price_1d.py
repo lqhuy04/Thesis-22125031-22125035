@@ -22,7 +22,7 @@ class Config:
 config = Config()
 client = fc_md_client.MarketDataClient(config)
 
-SYMBOL        = "VNM"
+SYMBOL        = "VNINDEX"
 TABLE         = "Stock_Price_1d"
 CHUNK_DAYS    = 30          # SSI giới hạn tối đa 30 ngày mỗi request
 SLEEP_SECONDS = 1.1         # Delay giữa các request để tránh rate-limit SSI

@@ -21,7 +21,7 @@ class Config:
 config = Config()
 client = fc_md_client.MarketDataClient(config)
 
-SYMBOL = "VNM"
+SYMBOL = "VNINDEX"
 TABLE  = "Stock_Price_1m"
 
 logging.basicConfig(

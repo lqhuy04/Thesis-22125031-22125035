@@ -20,16 +20,16 @@ const MacroEcomNewsSection = () => {
   }, []);
 
   return (
-    <View>
+    <View style={{ marginTop: 16, marginHorizontal: 12 }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginVertical: 12,
+          marginBottom: 12,
         }}
       >
-        <Text typography="titleLarge">{"Tin tức kinh tế - vĩ mô"}</Text>
+        <Text typography="titleMedium">{"Tin tức kinh tế - vĩ mô"}</Text>
         <Text
           typography="titleMedium"
           color={theme.base.primary}

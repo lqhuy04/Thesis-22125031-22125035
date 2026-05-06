@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TextInput, TouchableOpacity } from "react-native";
+import { View, TextInput, TouchableOpacity, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/ThemeContext";
 
@@ -17,6 +17,7 @@ export const SearchBar = ({
   autoFocus = false,
 }: SearchBarProps) => {
   const { theme } = useTheme();
+  const screenWidth = Dimensions.get("window").width;
 
   return (
     <View>
@@ -24,10 +25,11 @@ export const SearchBar = ({
         style={{
           borderWidth: 1,
           borderColor: theme.border.default,
-          borderRadius: 5,
+          borderRadius: 8,
           paddingVertical: 10,
           paddingHorizontal: 16,
           marginTop: 4,
+          width: screenWidth - 24,
           color: theme.text.primary,
         }}
         value={value}
@@ -41,7 +43,7 @@ export const SearchBar = ({
 
       <TouchableOpacity
         onPress={onSearchPress}
-        style={{ position: "absolute", right: 12, top: 14 }}
+        style={{ position: "absolute", right: 16, top: 14 }}
       >
         <Ionicons name="search-outline" size={20} color={theme.text.primary} />
       </TouchableOpacity>

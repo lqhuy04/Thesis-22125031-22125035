@@ -16,7 +16,9 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
     <TouchableOpacity
       style={{
         padding: 12,
-        backgroundColor: theme.base.primary + "08",
+        backgroundColor: theme.base.primary + "12",
+        borderRadius: 12,
+        marginBottom: 8,
       }}
       onPress={() => {
         router.push({
@@ -26,7 +28,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
       }}
     >
       <Text
-        typography="titleMedium"
+        typography="labelLarge"
         style={{ marginBottom: 4 }}
         numberOfLines={2}
       >
@@ -37,7 +39,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
       </Text>
 
       <Text
-        typography="bodyMedium"
+        typography="bodySmall"
         numberOfLines={1}
         color={theme.text.primary + "80"}
       >

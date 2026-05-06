@@ -1,5 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Dimensions, ActivityIndicator, ScrollView } from "react-native";
+import {
+  View,
+  Dimensions,
+  ActivityIndicator,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
 import { TreeMap } from "../ui/TreeMap";
 import { CurrentPriceData } from "@/helpers/DetailHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
@@ -37,16 +43,16 @@ const IndustryMovementSection = () => {
   }, [categories, chosenIndex]);
 
   return (
-    <View>
+    <View style={{ marginTop: 24, marginHorizontal: 12 }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginVertical: 12,
+          marginBottom: 8,
         }}
       >
-        <Text typography="titleLarge">{"Diễn biến nhóm ngành"}</Text>
+        <Text typography="titleMedium">{"Diễn biến nhóm ngành"}</Text>
         <Text
           typography="titleMedium"
           color={theme.base.primary}
@@ -72,41 +78,45 @@ const IndustryMovementSection = () => {
         showsHorizontalScrollIndicator={false}
         style={{
           flexDirection: "row",
-          marginBottom: 12,
+          marginBottom: 0,
         }}
       >
         {categories.map((item, index) => {
           return (
-            <Text
+            <TouchableOpacity
               key={index.toString()}
-              typography="bodyLarge"
-              color={
-                chosenIndex === index
-                  ? theme.text.onPrimary
-                  : theme.text.primary
-              }
               style={{
                 backgroundColor:
                   chosenIndex === index
-                    ? theme.base.primary
-                    : theme.background.surface,
-                paddingVertical: 2,
-                paddingHorizontal: 4,
-                borderRadius: 4,
-                borderWidth: 1,
+                    ? theme.base.primary + "12"
+                    : theme.text.secondary + "80",
+                borderWidth: 2,
                 borderColor:
                   chosenIndex === index
-                    ? theme.base.primary
-                    : theme.border.default,
+                    ? theme.base.primary + "80"
+                    : theme.text.secondary + "80",
+                paddingVertical: 4,
+                paddingHorizontal: 6,
+                borderRadius: 16,
                 marginRight: 8,
-                alignItems: "center",
+                marginBottom: 8,
               }}
               onPress={() => {
                 setChosenIndex(index);
               }}
             >
-              {item}
-            </Text>
+              <Text
+                typography="labelMedium"
+                color={
+                  chosenIndex === index
+                    ? theme.base.primary
+                    : theme.text.primary
+                }
+              >
+                {" "}
+                {item}{" "}
+              </Text>
+            </TouchableOpacity>
           );
         })}
       </ScrollView>

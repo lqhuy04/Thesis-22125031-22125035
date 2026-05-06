@@ -20,7 +20,7 @@ const SignInComponent = () => {
       password: formData?.password,
     }).then((response) => {
       if (response.status) {
-        router.push("/Home");
+        router.push("/Tabs");
       } else {
         Alert.alert("Sign In Failed", "Invalid username or password.");
       }

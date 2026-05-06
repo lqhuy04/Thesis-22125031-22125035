@@ -20,8 +20,8 @@ const AllNewsSection = () => {
   }, []);
 
   return (
-    <View>
-      <View style={{ marginVertical: 16 }}>
+    <View style={{ marginTop: 16, marginHorizontal: 12 }}>
+      <View style={{ marginBottom: 12 }}>
         <View
           style={{
             flexDirection: "row",
@@ -29,7 +29,7 @@ const AllNewsSection = () => {
             justifyContent: "space-between",
           }}
         >
-          <Text typography="titleLarge">{"Toàn cảnh thị trường"}</Text>
+          <Text typography="titleMedium">{"Toàn cảnh thị trường"}</Text>
           <Text
             typography="titleMedium"
             color={theme.base.primary}

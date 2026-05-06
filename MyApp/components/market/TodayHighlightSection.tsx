@@ -37,8 +37,8 @@ const TodayHighlightSection = () => {
   };
 
   return (
-    <View style={{ marginTop: 12 }}>
-      <Text typography="titleLarge">{"Tiêu điểm hôm nay"}</Text>
+    <View style={{ marginHorizontal: 12 }}>
+      <Text typography="titleMedium">{"Tiêu điểm hôm nay"}</Text>
 
       <FlatList
         ref={flatListRef}
@@ -47,7 +47,7 @@ const TodayHighlightSection = () => {
         data={data}
         keyExtractor={(item) => item.stock_id}
         renderItem={({ item }) => <TodayHighlightCard item={item} />}
-        style={{ marginTop: 12 }}
+        style={{ marginTop: 8 }}
         // Carousel config
         snapToInterval={SNAP_INTERVAL}
         snapToAlignment="start"

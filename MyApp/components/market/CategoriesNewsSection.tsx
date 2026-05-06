@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
@@ -60,16 +60,16 @@ const CategoriesNewsSection = () => {
   }, []);
 
   return categoryArticles.length === 0 ? null : (
-    <View>
+    <View style={{ marginTop: 16, marginHorizontal: 12 }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginVertical: 12,
+          marginBottom: 8,
         }}
       >
-        <Text typography="titleLarge">{"Tin tức theo nhóm ngành"}</Text>
+        <Text typography="titleMedium">{"Tin tức theo nhóm ngành"}</Text>
         <Text
           typography="titleMedium"
           color={theme.base.primary}
@@ -100,36 +100,37 @@ const CategoriesNewsSection = () => {
       >
         {categoryArticles.map((item, index) => {
           return (
-            <Text
+            <TouchableOpacity
               key={item.category_id}
-              typography="bodyLarge"
-              color={
-                chosenIndex === index
-                  ? theme.text.onPrimary
-                  : theme.text.primary
-              }
+              onPress={() => setChosenIndex(index)}
               style={{
                 backgroundColor:
                   chosenIndex === index
-                    ? theme.base.primary
-                    : theme.background.surface,
-                paddingVertical: 2,
-                paddingHorizontal: 4,
-                borderRadius: 4,
-                borderWidth: 1,
+                    ? theme.base.primary + "12"
+                    : theme.text.secondary + "80",
+                borderWidth: 2,
                 borderColor:
                   chosenIndex === index
-                    ? theme.base.primary
-                    : theme.border.default,
-                marginHorizontal: 4,
-                alignItems: "center",
-              }}
-              onPress={() => {
-                setChosenIndex(index);
+                    ? theme.base.primary + "80"
+                    : theme.text.secondary + "80",
+                paddingVertical: 4,
+                paddingHorizontal: 8,
+                borderRadius: 16,
+                marginRight: 8,
+                marginBottom: 8,
               }}
             >
-              {item.category_name}
-            </Text>
+              <Text
+                typography="labelMedium"
+                color={
+                  chosenIndex === index
+                    ? theme.base.primary
+                    : theme.text.primary
+                }
+              >
+                {item.category_name}
+              </Text>
+            </TouchableOpacity>
           );
         })}
       </View>

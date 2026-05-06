@@ -23,8 +23,8 @@ const MarketIndicesSection = () => {
   }, []);
 
   return (
-    <View>
-      <Text typography="titleLarge">Thị trường hôm nay</Text>
+    <View style={{ marginLeft: 12 }}>
+      <Text typography="titleMedium">Thị trường hôm nay</Text>
 
       <FlatList
         data={indices}

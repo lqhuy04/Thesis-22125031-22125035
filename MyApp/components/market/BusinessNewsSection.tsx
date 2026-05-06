@@ -20,16 +20,16 @@ const BusinessNewsSection = () => {
   }, []);
 
   return (
-    <View>
+    <View style={{ marginHorizontal: 12, marginTop: 24 }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
-          marginVertical: 12,
+          marginBottom: 12,
         }}
       >
-        <Text typography="titleLarge">{"Doanh nghiệp"}</Text>
+        <Text typography="titleMedium">{"Doanh nghiệp"}</Text>
         <Text
           typography="titleMedium"
           color={theme.base.primary}
