@@ -2,19 +2,21 @@ import { sendMessage } from "./api/ApiClients";
 import { MarketIndex } from "./MarketHelpers";
 
 function parseTradingTime(tradingTime: string): { date: string; time: string } {
-  const date = new Date(tradingTime);
+  const date = new Date(tradingTime); // +07:00 đã được JS tự xử lý → convert sang UTC
 
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const year = date.getUTCFullYear();
+  // Cộng thêm 7h để convert UTC → UTC+7
+  const vnDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
 
-  const hours = String(date.getUTCHours()).padStart(2, "0");
-  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
-  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+  const day = String(vnDate.getUTCDate()).padStart(2, "0");
+  const month = String(vnDate.getUTCMonth() + 1).padStart(2, "0");
+  const year = vnDate.getUTCFullYear();
+  const hours = String(vnDate.getUTCHours()).padStart(2, "0");
+  const minutes = String(vnDate.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(vnDate.getUTCSeconds()).padStart(2, "0");
 
   return {
-    date: `${day}/${month}/${year}`, // "30/03/2026"
-    time: `${hours}:${minutes}:${seconds}`, // "10:30:00"
+    date: `${day}/${month}/${year}`, // "22/04/2026"
+    time: `${hours}:${minutes}:${seconds}`, // "13:15:00"
   };
 }
 

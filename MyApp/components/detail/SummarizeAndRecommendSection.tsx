@@ -137,7 +137,7 @@ const ManualConfigModal = ({
         >
           <Text
             typography="bodyMedium"
-            color={theme.text.primary + "88"}
+            color={theme.text.primary}
             style={{ marginTop: 16, marginBottom: 8 }}
           >
             Chọn các thông tin dùng để phân tích
@@ -198,17 +198,14 @@ const ManualConfigModal = ({
                       borderColor: theme.border.default,
                     }}
                   >
-                    <Text
-                      typography="labelMedium"
-                      color={theme.text.primary + "88"}
-                    >
+                    <Text typography="labelLarge" color={theme.text.primary}>
                       {option.value.filter((c: any) => c.value).length}/
                       {option.value.length}
                     </Text>
                     <SimpleLineIcons
                       name={option.expanded ? "arrow-up" : "arrow-down"}
                       size={10}
-                      color={theme.text.primary + "88"}
+                      color={theme.text.primary}
                     />
                   </TouchableOpacity>
                 ) : null}
@@ -438,7 +435,7 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
                 size={14}
                 color={theme.text.primary + "94"}
               />
-              <Text typography="labelMedium" color={theme.text.primary + "94"}>
+              <Text typography="labelLarge" color={theme.text.primary + "94"}>
                 Cấu hình
               </Text>
             </TouchableOpacity>
@@ -476,8 +473,8 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
         >
           <View>
             <Text
-              typography="labelMedium"
-              color={theme.text.secondary}
+              typography="labelLarge"
+              color={theme.base.primary}
               style={{ marginBottom: 4 }}
             >
               TÓM TẮT
@@ -491,13 +488,13 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
 
           <View>
             <Text
-              typography="labelMedium"
-              color={theme.text.secondary}
+              typography="labelLarge"
+              color={theme.base.primary}
               style={{ marginBottom: 4 }}
             >
               GỢI Ý
             </Text>
-            <Text typography="titleMedium" color={theme.base.primary}>
+            <Text typography="titleMedium" color={theme.text.primary}>
               {data?.recommendation}
             </Text>
           </View>
@@ -506,8 +503,23 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
 
           <View>
             <Text
-              typography="labelMedium"
-              color={theme.text.secondary}
+              typography="labelLarge"
+              color={theme.base.primary}
+              style={{ marginBottom: 4 }}
+            >
+              GỢI Ý CHIẾN THUẬT
+            </Text>
+            <Text typography="bodyMedium" color={theme.text.primary}>
+              {data?.tactical_suggestion}
+            </Text>
+          </View>
+
+          <View style={{ height: 1, backgroundColor: theme.border.default }} />
+
+          <View>
+            <Text
+              typography="labelLarge"
+              color={theme.base.primary}
               style={{ marginBottom: 4 }}
             >
               LÝ DO
@@ -522,8 +534,8 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
           {/* Confidence bar */}
           <View>
             <Text
-              typography="labelMedium"
-              color={theme.text.secondary}
+              typography="labelLarge"
+              color={theme.text.primary}
               style={{ marginBottom: 12 }}
             >
               ĐỘ TIN CẬY
@@ -531,10 +543,13 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
             >
-              <Text typography="labelSmall" color={theme.text.secondary}>
+              <Text typography="labelSmall" color={theme.text.primary}>
                 0
               </Text>
-              <View style={{ flex: 1 }}>
+              <View
+                style={{ flex: 1 }}
+                onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+              >
                 <View
                   style={{
                     flexDirection: "row",
@@ -555,13 +570,12 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
                 </View>
                 <View
                   style={{ position: "absolute", width: "100%", height: 8 }}
-                  onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
                 >
                   <View
                     style={{
                       position: "absolute",
-                      left: (data?.confidence ?? 0) * width - 12,
-                      top: -20,
+                      left: (data?.confidence ?? 0) * width - 10,
+                      top: -24,
                       alignItems: "center",
                     }}
                   >
@@ -572,11 +586,12 @@ const SummarizeAndRecommendSection = ({ stockSymbol }: Props) => {
                       name="triangle-down"
                       size={20}
                       color={theme.text.primary}
+                      style={{ marginTop: -4 }}
                     />
                   </View>
                 </View>
               </View>
-              <Text typography="labelSmall" color={theme.text.secondary}>
+              <Text typography="labelSmall" color={theme.text.primary}>
                 100
               </Text>
             </View>

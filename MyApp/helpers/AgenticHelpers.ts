@@ -6,6 +6,7 @@ export type AnalysisData = {
   recommendation: string;
   reasoning: string;
   confidence: number;
+  tactical_suggestion: string;
 };
 
 export const getAnalysis = async (
@@ -20,6 +21,8 @@ export const getAnalysis = async (
     const result = await sendMessage("api/agentic/analyze", {
       method: "POST",
       body: JSON.stringify({
+        mode: "auto",
+        plan: {},
         symbol: symbol,
         risk_appetite: riskAppetite.data,
       }),
