@@ -5,7 +5,7 @@ interface JwtPayload {
   exp: number;
 }
 
-interface Session {
+export interface Session {
   token: string;
   email: string;
   user_id: string;
