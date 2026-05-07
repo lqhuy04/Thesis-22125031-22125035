@@ -766,7 +766,7 @@ class MarketService:
                     f"symbol.ilike.%{keyword}%,company_name.ilike.%{keyword}%"
                 ) \
                 .execute()
-
+                
             data = result.data if result.data else []
 
             # filter symbol <= 3
@@ -774,6 +774,17 @@ class MarketService:
                 stock for stock in data
                 if len(stock["symbol"]) <= 3
             ]
+            
+            for i, stock in enumerate(filtered):
+                symbol = stock["symbol"]
+                current_price_info = supabase.table("Current_Stock_Price") \
+                    .select("current_price, price_change, per_price_change") \
+                    .eq("symbol", symbol) \
+                    .execute()
+
+                current_price = current_price_info.data[0] if current_price_info.data else {}
+                filtered[i].update(current_price)  # update trực tiếp vào item trong list
+                
 
             # sort theo priority
             sorted_data = sorted(

@@ -28,6 +28,8 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
         flexDirection: "row",
         alignItems: "center",
         marginTop: 16,
+        borderWidth: 1,
+        borderColor: theme.border.default,
       }}
     >
       <Image
@@ -43,11 +45,50 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
       />
 
       <View style={{ flex: 1, marginRight: 12 }}>
-        <Text typography="titleMedium" color={theme.text.primary}>
+        <Text typography="labelLarge" color={theme.text.primary}>
           {item.symbol}
         </Text>
-        <Text typography="bodyMedium" color={theme.text.primary}>
+        <Text typography="bodySmall" color={theme.text.primary}>
           {item.company_name}
+        </Text>
+      </View>
+
+      <View>
+        <Text typography="labelLarge" color={theme.text.primary}>
+          {item.current_price}
+        </Text>
+        <Text
+          typography="bodySmall"
+          color={item.price_change >= 0 ? theme.base.success : theme.base.error}
+          style={{ textAlign: "right" }}
+        >
+          {"("}
+          {item.price_change >= 0 ? "+" : ""}
+          {item.price_change}
+          {")"}
+        </Text>
+      </View>
+
+      <View
+        style={{
+          marginLeft: 8,
+          borderRadius: 4,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          backgroundColor:
+            item.per_price_change >= 0
+              ? theme.base.success + "36"
+              : theme.base.error + "36",
+        }}
+      >
+        <Text
+          typography="labelMedium"
+          color={
+            item.per_price_change >= 0 ? theme.base.success : theme.base.error
+          }
+        >
+          {item.per_price_change >= 0 ? "▲" : "▼"}
+          {item.per_price_change.toFixed(2)}%
         </Text>
       </View>
     </TouchableOpacity>

@@ -8,9 +8,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
 import uuid from "react-native-uuid";
 import Markdown from "react-native-markdown-display";
 
@@ -282,7 +280,9 @@ const Chatbot = () => {
   }, [inputText, isLoading, scrollToBottom]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: theme.background.bg }}>
+    <View
+      style={{ flex: 1, backgroundColor: theme.background.bg, paddingTop: 24 }}
+    >
       {/* Header */}
       <View
         style={{
@@ -296,14 +296,6 @@ const Chatbot = () => {
           gap: 12,
         }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons
-            name="arrow-back-outline"
-            size={22}
-            color={theme.text.primary}
-          />
-        </TouchableOpacity>
-
         <View
           style={{
             width: 36,
@@ -378,7 +370,6 @@ const Chatbot = () => {
               paddingHorizontal: 16,
               paddingVertical: 10,
               minHeight: 42,
-              maxHeight: 120,
               justifyContent: "center",
             }}
           >
@@ -432,7 +423,7 @@ const Chatbot = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 

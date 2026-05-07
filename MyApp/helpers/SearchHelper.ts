@@ -5,6 +5,9 @@ export type SearchStockItem = {
   symbol: string;
   company_name: string;
   exchange: string;
+  current_price: number;
+  price_change: number;
+  per_price_change: number;
 };
 
 export const searchStocks = async (
