@@ -2,8 +2,20 @@ import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
 
 interface JwtPayload {
-  exp: number; // seconds
+  exp: number;
 }
+
+interface Session {
+  token: string;
+  email: string;
+  user_id: string;
+}
+
+const SESSION_KEYS = {
+  TOKEN: "access_token",
+  EMAIL: "email",
+  USER_ID: "user_id",
+} as const;
 
 const isTokenExpired = (token: string): boolean => {
   try {
@@ -11,34 +23,44 @@ const isTokenExpired = (token: string): boolean => {
 
     if (!decoded.exp) return true;
 
-    const currentTime = Date.now(); // convert to seconds
+    const currentTime = Date.now();
 
     return decoded.exp * 1000 < currentTime;
   } catch (error) {
     console.error("Error decoding token:", error);
-    return true; // token lỗi => coi như expired
+    return true;
   }
 };
 
-const TOKEN_KEY = "access_token";
-
-export const saveToken = async (token: string) => {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+export const saveSession = async ({ token, email, user_id }: Session) => {
+  await Promise.all([
+    SecureStore.setItemAsync(SESSION_KEYS.TOKEN, token),
+    SecureStore.setItemAsync(SESSION_KEYS.EMAIL, email),
+    SecureStore.setItemAsync(SESSION_KEYS.USER_ID, user_id),
+  ]);
 };
 
-export const getToken = async () => {
-  const token = await SecureStore.getItemAsync(TOKEN_KEY);
+export const getSession = async (): Promise<Session | null> => {
+  const [token, email, user_id] = await Promise.all([
+    SecureStore.getItemAsync(SESSION_KEYS.TOKEN),
+    SecureStore.getItemAsync(SESSION_KEYS.EMAIL),
+    SecureStore.getItemAsync(SESSION_KEYS.USER_ID),
+  ]);
 
-  if (!token) return null;
+  if (!token || !email || !user_id) return null;
 
   if (isTokenExpired(token)) {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+    await removeSession();
     return null;
   }
 
-  return token;
+  return { token, email, user_id };
 };
 
-export const removeToken = async () => {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+export const removeSession = async () => {
+  await Promise.all([
+    SecureStore.deleteItemAsync(SESSION_KEYS.TOKEN),
+    SecureStore.deleteItemAsync(SESSION_KEYS.EMAIL),
+    SecureStore.deleteItemAsync(SESSION_KEYS.USER_ID),
+  ]);
 };

@@ -1,5 +1,5 @@
 import { sendMessage } from "./api/ApiClients";
-import { saveToken, removeToken } from "./api/TokenStorage";
+import { saveSession, removeSession } from "./api/TokenStorage";
 
 export const signIn = async ({
   username,
@@ -22,7 +22,7 @@ export const signIn = async ({
     const { errorCode, data } = result || {};
 
     if (errorCode === 0) {
-      await saveToken(data.token);
+      await saveSession(data);
 
       return {
         status: true,
@@ -63,7 +63,7 @@ export const signUp = async ({
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
-      await saveToken(data.token);
+      await saveSession(data);
       return {
         status: true,
       };
@@ -81,5 +81,5 @@ export const signUp = async ({
 };
 
 export const logout = async () => {
-  await removeToken();
+  await removeSession();
 };

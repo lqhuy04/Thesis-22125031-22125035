@@ -4,7 +4,7 @@ import { TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
 import { router } from "expo-router";
-import { removeToken } from "@/helpers/api/TokenStorage";
+import { removeSession } from "@/helpers/api/TokenStorage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AntDesign from "@expo/vector-icons/AntDesign";
 
@@ -15,9 +15,17 @@ const Profile = () => {
     <SafeAreaView
       style={{
         flex: 1,
-        backgroundColor: theme.background.bg,
+        backgroundColor: theme.background.surface,
       }}
     >
+      <View
+        style={{
+          backgroundColor: theme.background.bg,
+          borderRadius: 12,
+          padding: 12,
+        }}
+      ></View>
+
       <View style={{ padding: 12 }}>
         <TouchableOpacity
           onPress={() => router.push("/WatchListStock")}
@@ -29,11 +37,11 @@ const Profile = () => {
         >
           <AntDesign
             name="stock"
-            size={24}
+            size={20}
             color="black"
             style={{ marginRight: 8 }}
           />
-          <Text typography="titleLarge">Cổ phiếu của tôi</Text>
+          <Text typography="titleMedium">Cổ phiếu của tôi</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -46,10 +54,10 @@ const Profile = () => {
         >
           <Ionicons
             name="bar-chart-outline"
-            size={24}
+            size={20}
             style={{ marginRight: 8 }}
           />
-          <Text typography="titleLarge">Khẩu vị rủi ro</Text>
+          <Text typography="titleMedium">Khẩu vị rủi ro</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -62,15 +70,15 @@ const Profile = () => {
         >
           <Ionicons
             name="settings-outline"
-            size={24}
+            size={20}
             style={{ marginRight: 8 }}
           />
-          <Text typography="titleLarge">Cài đặt</Text>
+          <Text typography="titleMedium">Cài đặt</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={async () => {
-            await removeToken();
+            await removeSession();
             router.replace("/Authentication");
           }}
           style={{
@@ -81,10 +89,10 @@ const Profile = () => {
         >
           <Ionicons
             name="log-out-outline"
-            size={24}
+            size={20}
             style={{ marginRight: 8 }}
           />
-          <Text typography="titleLarge">Đăng xuất</Text>
+          <Text typography="titleMedium">Đăng xuất</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

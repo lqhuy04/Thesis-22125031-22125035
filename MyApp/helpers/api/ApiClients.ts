@@ -1,11 +1,12 @@
-import { getToken } from "./TokenStorage";
+import { getSession } from "./TokenStorage";
 import { baseUrl } from "./base";
 
 export const sendMessage = async (
   endpoint: string,
   options: RequestInit = {},
 ) => {
-  const token = await getToken();
+  const session = await getSession();
+  const token = session?.token;
 
   const headers = {
     Accept: "application/json",

@@ -1,7 +1,7 @@
 import { Redirect } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
-import { getToken } from "@/helpers/api/TokenStorage";
+import { getSession } from "@/helpers/api/TokenStorage";
 
 export default function Index() {
   const [loading, setLoading] = useState(false);
@@ -10,7 +10,8 @@ export default function Index() {
   useEffect(() => {
     const checkAuth = async () => {
       setLoading(true);
-      const token = await getToken();
+      const session = await getSession();
+      const token = session?.token;
 
       if (token != null) {
         setIsLoggedIn(true);
