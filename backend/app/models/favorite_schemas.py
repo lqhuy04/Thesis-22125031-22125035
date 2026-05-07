@@ -17,3 +17,12 @@ class FavoriteData(BaseModel):
     symbol: str
     company_name: str
     exchange: str
+
+
+class CheckFavoriteRequest(BaseModel):
+    symbol: str = Field(..., min_length=1, max_length=64, description="Stock symbol (e.g. VNM)")
+
+
+class CheckFavoriteResponse(BaseModel):
+    is_favorited: bool = Field(..., description="Whether the stock is in user's favorites")
+    symbol: str = Field(..., description="Stock symbol")

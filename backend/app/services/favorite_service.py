@@ -83,11 +83,9 @@ class FavoriteService:
     @staticmethod
     async def add_favorite(symbol: str, user_id: str) -> Dict:
         try:
-            # resolve symbol -> stock_id
+            # resolve symbol -> stock_id from BI_Profile
             sym = symbol.strip().upper()
 
-            stock_id = None
-            # 1) try BI_Profile.symbol -> stock_id (preferred)
             try:
                 prof_res = (
                     supabase.table("BI_Profile")
@@ -96,28 +94,12 @@ class FavoriteService:
                     .limit(1)
                     .execute()
                 )
-                if prof_res.data and prof_res.data[0].get("stock_id"):
-                    stock_id = prof_res.data[0].get("stock_id")
-            except Exception:
-                # ignore and fallback
-                pass
-
-            # 2) fallback to Stock.stock_symbol -> id
-            if not stock_id:
-                try:
-                    stock_res = (
-                        supabase.table("Stock")
-                        .select("id")
-                        .eq("stock_symbol", sym)
-                        .limit(1)
-                        .execute()
-                    )
-                    if stock_res.data:
-                        stock_id = stock_res.data[0].get("id")
-                except Exception:
-                    pass
-
-            if not stock_id:
+                if not prof_res.data or not prof_res.data[0].get("stock_id"):
+                    raise ValueError(f"Stock symbol not found: {symbol}")
+                stock_id = prof_res.data[0].get("stock_id")
+            except ValueError:
+                raise
+            except Exception as e:
                 raise ValueError(f"Stock symbol not found: {symbol}")
 
             # check if favorite already exists
@@ -183,3 +165,50 @@ class FavoriteService:
         except Exception as e:
             print(f"Error removing favorite by stock_id: {e}")
             raise ValueError(f"Failed to remove favorite by stock_id: {str(e)}")
+
+    @staticmethod
+    async def check_is_favorited(symbol: str, user_id: str) -> Dict:
+        """
+        Efficiently check if a stock is favorited by a user.
+        Uses limit(1) to avoid fetching unnecessary data.
+        """
+        try:
+            # resolve symbol -> stock_id from BI_Profile
+            sym = symbol.strip().upper()
+
+            try:
+                prof_res = (
+                    supabase.table("BI_Profile")
+                    .select("stock_id, symbol")
+                    .eq("symbol", sym)
+                    .limit(1)
+                    .execute()
+                )
+                if not prof_res.data or not prof_res.data[0].get("stock_id"):
+                    raise ValueError(f"Stock symbol not found: {symbol}")
+                stock_id = prof_res.data[0].get("stock_id")
+                resolved_symbol = prof_res.data[0].get("symbol", sym)
+            except ValueError:
+                raise
+            except Exception as e:
+                raise ValueError(f"Stock symbol not found: {symbol}")
+
+            # Check if favorite exists (efficient: limit(1))
+            result = (
+                supabase.table(FavoriteService.TABLE_NAME)
+                .select("id", count="exact")
+                .eq("stock_id", stock_id)
+                .eq("user_id", user_id.strip())
+                .limit(1)
+                .execute()
+            )
+
+            is_favorited = bool(result.data and len(result.data) > 0)
+
+            return {
+                "is_favorited": is_favorited,
+                "symbol": resolved_symbol,
+            }
+        except Exception as e:
+            print(f"Error checking if stock is favorited: {e}")
+            raise ValueError(f"Failed to check if stock is favorited: {str(e)}")
