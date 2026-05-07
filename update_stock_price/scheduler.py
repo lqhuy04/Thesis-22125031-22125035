@@ -25,8 +25,8 @@ VN_TZ = timezone(timedelta(hours=7))
 
 # Giờ giao dịch (giờ Việt Nam)
 MARKET_OPEN_H,  MARKET_OPEN_M  = 9,  0
-MARKET_CLOSE_H, MARKET_CLOSE_M = 15, 30
-STANDARDIZE_H,  STANDARDIZE_M  = 15, 35
+MARKET_CLOSE_H, MARKET_CLOSE_M = 15, 00
+STANDARDIZE_H,  STANDARDIZE_M  = 15, 5
 
 # Ngày trong tuần giao dịch (0=Mon ... 4=Fri)
 TRADING_DAYS = {0, 1, 2, 3, 4}
