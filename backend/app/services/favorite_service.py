@@ -19,6 +19,26 @@ class FavoriteService:
     TABLE_NAME = "Favorite"
 
     @staticmethod
+    def _resolve_stock_id_by_symbol(symbol: str) -> str:
+        sym = symbol.strip().upper()
+
+        try:
+            prof_res = (
+                supabase.table("BI_Profile")
+                .select("stock_id, symbol")
+                .eq("symbol", sym)
+                .limit(1)
+                .execute()
+            )
+            if not prof_res.data or not prof_res.data[0].get("stock_id"):
+                raise ValueError(f"Stock symbol not found: {symbol}")
+            return prof_res.data[0].get("stock_id")
+        except ValueError:
+            raise
+        except Exception:
+            raise ValueError(f"Stock symbol not found: {symbol}")
+
+    @staticmethod
     def _normalize_row(row: Dict) -> Dict:
         return {
             "id": row.get("id"),
@@ -84,23 +104,7 @@ class FavoriteService:
     async def add_favorite(symbol: str, user_id: str) -> Dict:
         try:
             # resolve symbol -> stock_id from BI_Profile
-            sym = symbol.strip().upper()
-
-            try:
-                prof_res = (
-                    supabase.table("BI_Profile")
-                    .select("stock_id")
-                    .eq("symbol", sym)
-                    .limit(1)
-                    .execute()
-                )
-                if not prof_res.data or not prof_res.data[0].get("stock_id"):
-                    raise ValueError(f"Stock symbol not found: {symbol}")
-                stock_id = prof_res.data[0].get("stock_id")
-            except ValueError:
-                raise
-            except Exception as e:
-                raise ValueError(f"Stock symbol not found: {symbol}")
+            stock_id = FavoriteService._resolve_stock_id_by_symbol(symbol)
 
             # check if favorite already exists
             try:
@@ -133,38 +137,22 @@ class FavoriteService:
             raise ValueError(f"Failed to add favorite: {str(e)}")
 
     @staticmethod
-    async def delete_favorites(favorite_ids: List[str]) -> bool:
+    async def remove_favorite_by_symbol(symbol: str, user_id: str) -> bool:
         try:
-            if not favorite_ids:
-                return False
-
-            result = (
-                supabase.table(FavoriteService.TABLE_NAME)
-                .delete()
-                .in_("id", favorite_ids)
-                .execute()
-            )
-
-            return bool(result.data)
-        except Exception as e:
-            print(f"Error deleting favorites: {e}")
-            raise ValueError(f"Failed to delete favorites: {str(e)}")
-
-    @staticmethod
-    async def remove_favorite_by_stock_id(stock_id: str, user_id: str) -> bool:
-        try:
+            stock_id = FavoriteService._resolve_stock_id_by_symbol(symbol)
             result = (
                 supabase.table(FavoriteService.TABLE_NAME)
                 .delete()
                 .eq("stock_id", stock_id)
-                .eq("user_id", user_id)
+                .eq("user_id", user_id.strip())
                 .execute()
             )
 
             return bool(result.data)
         except Exception as e:
-            print(f"Error removing favorite by stock_id: {e}")
-            raise ValueError(f"Failed to remove favorite by stock_id: {str(e)}")
+            print(f"Error removing favorite by symbol: {e}")
+            raise ValueError(f"Failed to remove favorite by symbol: {str(e)}")
+
 
     @staticmethod
     async def check_is_favorited(symbol: str, user_id: str) -> Dict:
