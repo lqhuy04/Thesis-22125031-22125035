@@ -39,7 +39,8 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str
+    email: EmailStr
+    old_password: str = Field(..., min_length=1)
     new_password: str = Field(..., min_length=8)
     
     @validator('new_password')

@@ -39,7 +39,7 @@ python -m app.main
 - `POST /api/auth/signup` - Register new user
 - `POST /api/auth/login` - Login user
 - `POST /api/auth/forgot-password` - Request password reset
-- `POST /api/auth/reset-password` - Reset password with token
+- `POST /api/auth/reset-password` - Reset password with email, old password, and new password
 
 ### Protected Routes (Require Authorization header)
 - `GET /api/auth/me` - Get current user info

@@ -76,22 +76,23 @@ class AuthService:
         return {"message": "If the email exists, a reset link has been sent"}
     
     @staticmethod
-    async def reset_password(token: str, new_password: str):
-        from app.utils.token import verify_token
-        
-        # Verify token
-        try:
-            payload = verify_token(token, token_type="reset")
-        except ValueError as e:
-            raise ValueError(str(e))
-        
-        user_id = payload.get("user_id")
-        
+    async def reset_password(email: str, old_password: str, new_password: str):
+        # Find user
+        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        if not user_result.data:
+            raise ValueError("Invalid email or password")
+
+        user = user_result.data[0]
+
+        # Verify current password before updating
+        if not user.get("hash_password") or not verify_password(old_password, user["hash_password"]):
+            raise ValueError("Invalid email or password")
+
         # Update password
         hashed_pwd = hash_password(new_password)
         result = supabase.table("User").update({
             "hash_password": hashed_pwd
-        }).eq("id", user_id).execute()
+        }).eq("id", user["id"]).execute()
         
         if not result.data:
             raise ValueError("Failed to reset password")

@@ -106,7 +106,11 @@ async def forgot_password(request: ForgotPasswordRequest):
 async def reset_password(request: ResetPasswordRequest):
     request_id = str(uuid.uuid4())
     try:
-        result = await AuthService.reset_password(request.token, request.new_password)
+        result = await AuthService.reset_password(
+            request.email,
+            request.old_password,
+            request.new_password,
+        )
         return {
             "data": result,
             "errorCode": 0,
