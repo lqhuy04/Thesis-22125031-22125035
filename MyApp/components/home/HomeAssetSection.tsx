@@ -1,10 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { getWatchlist, WatchItem } from "@/helpers/ProfileHelpers";
 import Entypo from "@expo/vector-icons/Entypo";
 import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const totalQty = (item: WatchItem) =>
   item.history.reduce((s, h) => s + h.amount, 0);
@@ -13,7 +14,11 @@ const totalCost = (item: WatchItem) =>
 const marketValue = (item: WatchItem) => item.CurrentPrice * totalQty(item);
 const pnl = (item: WatchItem) => marketValue(item) - totalCost(item);
 
-const HomeAssetSection = () => {
+type Props = {
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+};
+
+const HomeAssetSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
   const [data, setData] = useState<WatchItem[]>([]);
 
@@ -39,18 +44,30 @@ const HomeAssetSection = () => {
   const isProfit = totalPnl >= 0;
   const sign = isProfit ? "+" : "";
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     getWatchlist().then((res) => {
       if (res?.status) setData(res.data);
     });
   }, []);
+
+  useEffect(() => {
+    fetchData(); // gọi lần đầu
+
+    // Đăng ký để Home có thể trigger refresh
+    const unregister = registerRefresh?.(fetchData);
+    return () => unregister?.();
+  }, [fetchData, registerRefresh]);
+
+  const insets = useSafeAreaInsets();
 
   return (
     <View
       style={{
         alignItems: "center",
         justifyContent: "center",
-        marginVertical: 36,
+        paddingBottom: 48,
+        paddingTop: 36 + insets.top,
+        backgroundColor: theme.base.primary,
       }}
     >
       <TouchableOpacity

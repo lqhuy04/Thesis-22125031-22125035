@@ -11,6 +11,7 @@ import IndustryMovementSection from "@/components/market/IndustryMovementSection
 import TodayHighlightSection from "@/components/market/TodayHighlightSection";
 import { router } from "expo-router";
 import { Text } from "@/components/ui/Text";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const TABS = [
   { key: "market", label: "Thị trường" },
@@ -22,11 +23,10 @@ const Market = () => {
   const [activeTab, setActiveTab] = useState<"market" | "news">("market");
 
   return (
-    <View
+    <SafeAreaView
       style={{
         flex: 1,
-        backgroundColor: theme.background.bg,
-        paddingTop: 24,
+        backgroundColor: theme.background.surface,
       }}
     >
       {/* Search Bar */}
@@ -81,7 +81,6 @@ const Market = () => {
       <ScrollView
         style={{
           display: activeTab === "market" ? "flex" : "none",
-          backgroundColor: theme.background.bg,
           flex: 1,
         }}
       >
@@ -102,7 +101,7 @@ const Market = () => {
         <MacroEcomNewsSection />
         <AllNewsSection />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

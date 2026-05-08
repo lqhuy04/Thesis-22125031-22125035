@@ -345,7 +345,7 @@ export const addStockToFavorite = async (
 };
 
 export const deleteStockFromFavorite = async (
-  favorite_ids: string[],
+  symbol: string,
 ): Promise<{
   status: boolean;
 }> => {
@@ -353,7 +353,7 @@ export const deleteStockFromFavorite = async (
     const result = await sendMessage("api/favorite", {
       method: "DELETE",
       body: JSON.stringify({
-        favorite_ids,
+        symbol,
       }),
     });
 

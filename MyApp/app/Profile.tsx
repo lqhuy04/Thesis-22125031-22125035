@@ -1,6 +1,6 @@
 import { useTheme } from "@/hooks/ThemeContext";
 import React, { useEffect, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Modal, Pressable, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
 import { router } from "expo-router";
@@ -97,6 +97,7 @@ const MenuSection = ({ title, items }: MenuSectionProps) => {
 const Profile = () => {
   const { theme } = useTheme();
   const [profile, setProfile] = useState<Session | null>(null);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     getSession().then(setProfile);
@@ -170,10 +171,7 @@ const Profile = () => {
       icon: (
         <MaterialIcons name="logout" size={20} color={theme.base.primary} />
       ),
-      onPress: async () => {
-        await removeSession();
-        router.replace("/Authentication");
-      },
+      onPress: () => setConfirmLogout(true),
     },
   ];
 
@@ -222,6 +220,80 @@ const Profile = () => {
       <MenuSection title="Quản lý" items={managementItems} />
       <MenuSection title="Hệ thống" items={systemItems} />
       <MenuSection title="Tài khoản" items={accountItems} />
+
+      <Modal
+        visible={confirmLogout}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmLogout(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 24,
+          }}
+          onPress={() => setConfirmLogout(false)}
+        >
+          <Pressable
+            style={{
+              width: "100%",
+              backgroundColor: theme.background.bg,
+              borderRadius: 16,
+              borderWidth: 0.5,
+              borderColor: theme.border.default,
+              padding: 20,
+              gap: 8,
+            }}
+          >
+            <Text typography="titleLarge">Đăng xuất</Text>
+            <Text
+              typography="bodyLarge"
+              style={{ opacity: 0.6, marginBottom: 8 }}
+            >
+              Bạn có chắc muốn đăng xuất khỏi tài khoản không?
+            </Text>
+
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  borderWidth: 1,
+                  borderColor: theme.border.default,
+                  backgroundColor: theme.background.surface,
+                }}
+                onPress={() => setConfirmLogout(false)}
+              >
+                <Text typography="titleMedium">Huỷ</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  backgroundColor: theme.base.error,
+                }}
+                onPress={async () => {
+                  setConfirmLogout(false);
+                  await removeSession();
+                  router.replace("/Authentication");
+                }}
+              >
+                <Text typography="titleMedium" color="#fff">
+                  Đăng xuất
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };

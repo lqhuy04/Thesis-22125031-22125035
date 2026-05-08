@@ -45,6 +45,13 @@ class FavoriteService:
             "stock_id": row.get("stock_id"),
             "user_id": row.get("user_id"),
         }
+    
+    @staticmethod
+    def _to_float(value) -> float:
+        try:
+            return float(value) if value is not None else 0.0
+        except (TypeError, ValueError):
+            return 0.0
 
     @staticmethod
     async def list_favorites_by_user_id(user_id: str) -> List[Dict]:

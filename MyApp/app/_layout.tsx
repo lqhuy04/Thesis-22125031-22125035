@@ -6,6 +6,7 @@ import { useFonts } from "expo-font";
 import React from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SessionExpiredModal } from "@/components/authentication/SessionExpiredModal";
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -26,6 +27,7 @@ export default function RootLayout() {
               <Stack.Screen name="index" />
             </Stack>
             <StatusBar style="auto" />
+            <SessionExpiredModal />
           </ThemeProvider>
         </LocalizationProvider>
       </GestureHandlerRootView>

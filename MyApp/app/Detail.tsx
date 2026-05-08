@@ -2,11 +2,9 @@ import IntroductionSection from "@/components/detail/IntroductionSection";
 import NewsSection from "@/components/detail/NewsSection";
 import BoardSection from "@/components/detail/BoardSection";
 import ScreenHeader from "@/components/ui/ScreenHeader";
-import { useLocalization } from "@/hooks/LocalizationContext";
 import { useTheme } from "@/hooks/ThemeContext";
 import React, { useCallback, useRef, useState } from "react";
 import { ScrollView } from "react-native-gesture-handler";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import TabView from "@/components/detail/DetailTabView";
@@ -16,7 +14,6 @@ import FinancialAnalysisSummarySection from "@/components/detail/FinancialAnalys
 import SummarizeAndRecommendSection from "@/components/detail/SummarizeAndRecommendSection";
 
 const Detail = () => {
-  const { t } = useLocalization();
   const { theme } = useTheme();
 
   const { data } = useLocalSearchParams() || {};
@@ -110,12 +107,14 @@ const Detail = () => {
   }, [stockSymbol]);
 
   return (
-    <SafeAreaView
+    <View
       style={{
         flex: 1,
         backgroundColor: theme.background.surface,
       }}
     >
+      <ScreenHeader title={"Chi tiết cổ phiếu"} />
+
       <TabView
         tabs={TABS}
         activeTab={activeTab}
@@ -126,7 +125,7 @@ const Detail = () => {
         handleTabPress={handleTabPress}
         renderContent={renderContent}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

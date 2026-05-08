@@ -1,5 +1,6 @@
 import { getSession } from "./TokenStorage";
 import { baseUrl } from "./base";
+import { authEvents, AUTH_EXPIRED_EVENT } from "./authEvents";
 
 export const sendMessage = async (
   endpoint: string,
@@ -19,6 +20,11 @@ export const sendMessage = async (
     ...options,
     headers,
   });
+
+  if (response.status === 401) {
+    authEvents.emit(AUTH_EXPIRED_EVENT); // 🔥 bắn event
+    throw new Error("Unauthorized");
+  }
 
   return response.json();
 };

@@ -24,7 +24,7 @@ const Search = () => {
     <SafeAreaView
       style={{
         paddingHorizontal: 12,
-        backgroundColor: theme.background.bg,
+        backgroundColor: theme.background.surface,
         flex: 1,
       }}
     >

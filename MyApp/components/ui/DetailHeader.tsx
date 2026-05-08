@@ -32,6 +32,7 @@ const SearchResultItem = ({
       if (prev === false) {
         addStockToFavorite(symbol);
       } else {
+        deleteStockFromFavorite(symbol);
       }
 
       return !prev;
