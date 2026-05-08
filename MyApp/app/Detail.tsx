@@ -113,11 +113,9 @@ const Detail = () => {
     <SafeAreaView
       style={{
         flex: 1,
-        backgroundColor: theme.background.bg,
+        backgroundColor: theme.background.surface,
       }}
     >
-      <ScreenHeader title={t("detail.screenTitle")} />
-
       <TabView
         tabs={TABS}
         activeTab={activeTab}

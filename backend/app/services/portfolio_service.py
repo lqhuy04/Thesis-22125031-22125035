@@ -121,7 +121,6 @@ class PortfolioService:
                 response.append({
                     "id": group.get("id"),
                     "stock_id": sid,
-                    "user_id": user_id,
                     "symbol": symbol,
                     "company_name": profile.get("company_name"),
                     "exchange": profile.get("exchange"),

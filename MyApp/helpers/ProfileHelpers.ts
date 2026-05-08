@@ -242,3 +242,136 @@ export const updateWatchListRecord = async ({
     };
   }
 };
+
+// ----------------------------------------------
+export type FavoriteItem = CurrentPriceData & {
+  id: string;
+};
+
+export const getFavoritelist = async (): Promise<{
+  status: boolean;
+  data: FavoriteItem[];
+}> => {
+  try {
+    const result = await sendMessage("api/favorite");
+    const { errorCode, data } = result || {};
+
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as FavoriteItem[],
+      };
+    } else {
+      return {
+        status: false,
+        data: [],
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+};
+
+export const checkStockInFavorite = async (
+  symbol: string,
+): Promise<{
+  status: boolean;
+  data: boolean;
+}> => {
+  try {
+    const result = await sendMessage("api/favorite/check", {
+      method: "POST",
+      body: JSON.stringify({
+        symbol,
+      }),
+    });
+
+    const { errorCode, data } = result || {};
+
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data?.is_favorited,
+      };
+    } else {
+      return {
+        status: false,
+        data: false,
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: false,
+    };
+  }
+};
+
+export const addStockToFavorite = async (
+  symbol: string,
+): Promise<{
+  status: boolean;
+}> => {
+  try {
+    const result = await sendMessage("api/favorite", {
+      method: "POST",
+      body: JSON.stringify({
+        symbol,
+      }),
+    });
+
+    const { errorCode } = result || {};
+
+    if (errorCode === 0) {
+      return {
+        status: true,
+      };
+    } else {
+      return {
+        status: false,
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+    };
+  }
+};
+
+export const deleteStockFromFavorite = async (
+  favorite_ids: string[],
+): Promise<{
+  status: boolean;
+}> => {
+  try {
+    const result = await sendMessage("api/favorite", {
+      method: "DELETE",
+      body: JSON.stringify({
+        favorite_ids,
+      }),
+    });
+
+    const { errorCode } = result || {};
+
+    if (errorCode === 0) {
+      return {
+        status: true,
+      };
+    } else {
+      return {
+        status: false,
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+    };
+  }
+};

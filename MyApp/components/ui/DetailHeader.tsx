@@ -1,11 +1,17 @@
 import { useTheme } from "@/hooks/ThemeContext";
-import React, { useEffect, useMemo, useState } from "react";
-import { View, Image } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { View, Image, TouchableOpacity } from "react-native";
 import { Text } from "./Text";
 import {
   fetchCurrentIndexData,
   fetchCurrentPriceData,
 } from "@/helpers/DetailHelpers";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import {
+  addStockToFavorite,
+  checkStockInFavorite,
+  deleteStockFromFavorite,
+} from "@/helpers/ProfileHelpers";
 
 interface SearchResultItemProps {
   symbol: string;
@@ -19,6 +25,26 @@ const SearchResultItem = ({
   const { theme } = useTheme();
 
   const [data, setData] = useState<any>(null);
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+
+  const toggleFavorite = useCallback(() => {
+    setIsFavorite((prev) => {
+      if (prev === false) {
+        addStockToFavorite(symbol);
+      } else {
+      }
+
+      return !prev;
+    });
+  }, [symbol]);
+
+  useEffect(() => {
+    checkStockInFavorite(symbol).then((res) => {
+      if (res?.status) {
+        setIsFavorite(res?.data);
+      }
+    });
+  }, [symbol]);
 
   useEffect(() => {
     if (isMarketIndex) {
@@ -37,6 +63,7 @@ const SearchResultItem = ({
     return {
       symbol: isMarketIndex ? data?.IndexId : data?.symbol,
       company_name: isMarketIndex ? data?.IndexName : data?.company_name,
+      exchange: isMarketIndex ? "" : data?.exchange,
       CurrentPrice: isMarketIndex ? data?.IndexValue : data?.CurrentPrice,
       PriceChange: isMarketIndex ? data?.Change : data?.PriceChange,
       PerPriceChange: isMarketIndex ? data?.RatioChange : data?.PerPriceChange,
@@ -54,8 +81,8 @@ const SearchResultItem = ({
         style={{
           paddingHorizontal: 16,
           paddingVertical: 12,
-          backgroundColor: theme.base.primary,
-          borderRadius: 4,
+          backgroundColor: theme.background.bg,
+          borderRadius: 12,
           flexDirection: "row",
           alignItems: "center",
           marginHorizontal: 12,
@@ -67,10 +94,12 @@ const SearchResultItem = ({
           }}
           style={{
             marginRight: 8,
-            width: 40,
-            height: 40,
-            borderRadius: 2,
-            backgroundColor: theme.text.onPrimary,
+            width: 48,
+            height: 48,
+            borderRadius: 4,
+            backgroundColor: theme.background.bg,
+            borderWidth: 1,
+            borderColor: theme.border.default,
           }}
         />
 
@@ -82,72 +111,38 @@ const SearchResultItem = ({
               marginBottom: 2,
             }}
           >
-            <Text typography="titleMedium" color={theme.text.onPrimary}>
+            <Text typography="titleMedium" color={theme.text.primary}>
               {displayData?.symbol}
             </Text>
-            <View
-              style={{
-                padding: 2,
-                backgroundColor:
-                  displayData?.PriceChange >= 0
-                    ? theme.base.success + "18"
-                    : theme.base.error + "18",
-                borderRadius: 2,
-                marginLeft: 8,
-              }}
-            >
-              <Text
-                typography="labelLarge"
-                color={
-                  displayData?.PriceChange >= 0
-                    ? theme.base.success
-                    : theme.base.error
-                }
+
+            {displayData?.company_name?.length > 0 ? (
+              <View
+                style={{
+                  paddingVertical: 2,
+                  paddingHorizontal: 4,
+                  borderRadius: 2,
+                  backgroundColor: theme.text.primary + "36",
+                  marginLeft: 8,
+                }}
               >
-                {displayData?.PriceChange >= 0 ? "+" : ""}
-                {displayData?.PriceChange}
-              </Text>
-            </View>
+                <Text typography="bodySmall" color={theme.text.primary}>
+                  {displayData?.exchange}
+                </Text>
+              </View>
+            ) : null}
           </View>
-          <Text typography="bodyMedium" color={theme.text.onPrimary}>
+          <Text typography="bodyMedium" color={theme.text.primary + "80"}>
             {displayData?.company_name}
           </Text>
         </View>
 
-        <View style={{ alignItems: "flex-end" }}>
-          {displayData?.CurrentPrice != null ? (
-            <View
-              style={{
-                paddingHorizontal: 4,
-                paddingVertical: 2,
-                borderRadius: 2,
-                backgroundColor: theme.base.info,
-                marginBottom: 2,
-              }}
-            >
-              <Text
-                typography="labelLarge"
-                color={
-                  displayData?.PerPriceChange != null &&
-                  displayData?.PerPriceChange >= 0
-                    ? theme.base.success
-                    : theme.base.error
-                }
-              >
-                {displayData?.PerPriceChange != null &&
-                displayData?.PerPriceChange >= 0
-                  ? "+"
-                  : ""}
-                {displayData?.PerPriceChange}%
-              </Text>
-            </View>
-          ) : null}
-          {displayData?.CurrentPrice != null ? (
-            <Text typography="titleSmall" color={theme.text.onPrimary}>
-              {displayData?.CurrentPrice}
-            </Text>
-          ) : null}
-        </View>
+        <TouchableOpacity onPress={toggleFavorite}>
+          {isFavorite ? (
+            <FontAwesome name="star" size={24} color={theme.base.warning} />
+          ) : (
+            <FontAwesome name="star-o" size={24} color={theme.base.warning} />
+          )}
+        </TouchableOpacity>
       </View>
 
       <View

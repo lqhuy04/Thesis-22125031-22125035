@@ -80,19 +80,58 @@ class FavoriteService:
                 except Exception:
                     pass
 
+            # fetch current prices by symbol
+            symbols = [
+                profiles_by_stock[sid].get("symbol")
+                for sid in stock_ids
+                if profiles_by_stock.get(sid) and profiles_by_stock[sid].get("symbol")
+            ]
+            prices_by_symbol: Dict[str, Dict] = {}
+            if symbols:
+                try:
+                    price_result = (
+                        supabase.table("Current_Stock_Price")
+                        .select("*")
+                        .in_("symbol", symbols)
+                        .execute()
+                    )
+                    for p in (price_result.data or []):
+                        prices_by_symbol[str(p.get("symbol")).upper()] = p
+                except Exception:
+                    pass
+
             # build response
             response: List[Dict] = []
             for row in rows:
                 sid = row.get("stock_id")
                 profile = profiles_by_stock.get(sid, {})
+                symbol = profile.get("symbol") or ""
+                price_row = prices_by_symbol.get(str(symbol).upper(), {})
+
+                # map price fields with safe defaults
+                current_price     = FavoriteService._to_float(price_row.get("current_price"))
+                price_change      = FavoriteService._to_float(price_row.get("price_change")     or price_row.get("PriceChange"))
+                per_price_change  = FavoriteService._to_float(price_row.get("per_price_change") or price_row.get("PerPriceChange"))
+                ceiling_price     = FavoriteService._to_float(price_row.get("ceiling_price"))
+                floor_price       = FavoriteService._to_float(price_row.get("floor_price"))
+                ref_price         = FavoriteService._to_float(price_row.get("ref_price")        or price_row.get("RefPrice"))
+                total_match_vol   = FavoriteService._to_float(price_row.get("total_match_vol")  or price_row.get("TotalMatchVol"))
+                total_match_val   = FavoriteService._to_float(price_row.get("total_match_val")  or price_row.get("TotalMatchVal"))
 
                 response.append({
-                    "id": row.get("id"),
-                    "stock_id": sid,
-                    "user_id": user_id,
-                    "symbol": profile.get("symbol", ""),
+                    "id":           row.get("id"),
+                    "stock_id":     sid,
+                    "symbol":       symbol,
                     "company_name": profile.get("company_name", ""),
-                    "exchange": profile.get("exchange", ""),
+                    "exchange":     profile.get("exchange", ""),
+                    "PriceChange":    price_change,
+                    "PerPriceChange": per_price_change,
+                    "CeilingPrice":   ceiling_price,
+                    "FloorPrice":     floor_price,
+                    "RefPrice":       ref_price,
+                    "CurrentPrice":   current_price,
+                    "TotalMatchVol":  total_match_vol,
+                    "TotalMatchVal":  total_match_val,
                 })
 
             return response
