@@ -1,6 +1,8 @@
 import os
 import time
 import logging
+import re
+import requests
 from datetime import date, timedelta
 from dotenv import load_dotenv
 from supabase import create_client
@@ -22,11 +24,12 @@ class Config:
 config = Config()
 client = fc_md_client.MarketDataClient(config)
 
-SYMBOL        = "VNINDEX"
 TABLE         = "Stock_Price_1d"
 CHUNK_DAYS    = 30          # SSI giới hạn tối đa 30 ngày mỗi request
 SLEEP_SECONDS = 1.1         # Delay giữa các request để tránh rate-limit SSI
 YEARS_BACK    = 5           # Số năm lấy dữ liệu lịch sử
+RESUME_AFTER_SYMBOL = "CVPB2513"
+SYMBOL_SKIP_SUFFIX_RE = re.compile(r"\d{4}$")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +46,63 @@ supabase = create_client(
 # DATE RANGE GENERATOR
 # ═════════════════════════════════════════════════════════════════════════════
 
+def get_ssi_access_token() -> str:
+    """Get access token from SSI API using consumer credentials."""
+    try:
+        url = "https://fc-data.ssi.com.vn/api/v2/Market/AccessToken"
+        payload = {
+            "consumerID": config.consumerID,
+            "consumerSecret": config.consumerSecret
+        }
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        access_token = data.get("data", {}).get("accessToken", "")
+        if not access_token:
+            raise ValueError("No access token in response")
+        
+        logger.info("Successfully obtained SSI access token")
+        return access_token
+    except Exception as e:
+        logger.error(f"Failed to get SSI access token: {e}")
+        return ""
+
+def get_all_symbols() -> list[str]:
+    """Fetch all HOSE symbols from SSI API."""
+    try:
+        access_token = get_ssi_access_token()
+        if not access_token:
+            return []
+        
+        url = "https://fc-data.ssi.com.vn/api/v2/Market/Securities?Market=HOSE&PageSize=1000"
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        data = response.json()
+        symbols = [item.get("Symbol") for item in (data.get("data") or []) if item.get("Symbol")]
+        logger.info(f"Fetched {len(symbols)} HOSE symbols from SSI API")
+        return sorted(symbols)
+    except Exception as e:
+        logger.error(f"Failed to fetch symbols from SSI API: {e}")
+        return []
+
+def filter_symbols(symbols: list[str]) -> list[str]:
+    """Skip symbols that end with four digits, and resume after a marker if present."""
+    start_index = 0
+
+    if RESUME_AFTER_SYMBOL in symbols:
+        start_index = symbols.index(RESUME_AFTER_SYMBOL) + 1
+        logger.info(f"Resuming after {RESUME_AFTER_SYMBOL} at source index {start_index + 1}/{len(symbols)}")
+    else:
+        logger.warning(f"Resume symbol {RESUME_AFTER_SYMBOL} not found; starting from beginning")
+
+    remaining = symbols[start_index:]
+    return [symbol for symbol in remaining if not SYMBOL_SKIP_SUFFIX_RE.search(symbol)]
+
 def generate_chunks(start: date, end: date, chunk_days: int):
     """Yield (from_date, to_date) tuples in DD/MM/YYYY, each <= chunk_days apart."""
     cursor = start
@@ -55,12 +115,12 @@ def generate_chunks(start: date, end: date, chunk_days: int):
 # SSI DATA
 # ═════════════════════════════════════════════════════════════════════════════
 
-def fetch_daily_ohlc(from_date: str, to_date: str) -> list[dict]:
+def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
     """
     Gọi client.daily_ohlc và chuẩn hoá kết quả về dict phù hợp với bảng DB.
     Giá trả về từ SSI là VNĐ (integer), không cần chia 1000.
     """
-    req  = model.daily_ohlc(SYMBOL, from_date, to_date, 1, 100, "HOSE")
+    req  = model.daily_ohlc(symbol, from_date, to_date, 1, 100, "HOSE")
     data = client.daily_ohlc(config, req)
 
     if isinstance(data, dict):
@@ -104,7 +164,7 @@ def fetch_daily_ohlc(from_date: str, to_date: str) -> list[dict]:
             return 0.0
 
         result.append({
-            "symbol":       SYMBOL,
+            "symbol":       symbol,
             "trading_time": f"{iso_date}T14:45:00",
             "open":         _float(["Open"])   / 1000,
             "high":         _float(["High"])   / 1000,
@@ -129,37 +189,54 @@ def upsert_candles(candles: list[dict]) -> None:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def main():
+    symbols = get_all_symbols()
+    if not symbols:
+        logger.error("No symbols found. Exiting.")
+        return
+
+    symbols = filter_symbols(symbols)
+    if not symbols:
+        logger.error("No symbols left after filtering. Exiting.")
+        return
+
     today      = date.today()
     start_date = today.replace(year=today.year - YEARS_BACK)
-
     chunks     = list(generate_chunks(start_date, today, CHUNK_DAYS))
-    total      = len(chunks)
+    total_chunks = len(chunks)
 
     logger.info(
-        f"[{SYMBOL}] Init daily OHLC: {start_date} → {today} "
-        f"({total} chunks × {CHUNK_DAYS}d, delay={SLEEP_SECONDS}s)"
+        f"Init daily OHLC for {len(symbols)} symbols: {start_date} → {today} "
+        f"({total_chunks} chunks × {CHUNK_DAYS}d, delay={SLEEP_SECONDS}s)"
     )
 
-    all_candles = []
+    total_symbols = len(symbols)
+    total_upserted = 0
 
-    for idx, (from_date, to_date) in enumerate(chunks, start=1):
-        logger.info(f"[{SYMBOL}] Chunk {idx}/{total}: {from_date} → {to_date}")
+    for sym_idx, symbol in enumerate(symbols, start=1):
+        logger.info(f"[{sym_idx}/{total_symbols}] Processing {symbol}...")
+        symbol_candles = []
 
-        try:
-            candles = fetch_daily_ohlc(from_date, to_date)
-            logger.info(f"[{SYMBOL}]   Fetched {len(candles)} candles")
-            all_candles.extend(candles)
+        for chunk_idx, (from_date, to_date) in enumerate(chunks, start=1):
+            logger.info(f"  [{symbol}] Chunk {chunk_idx}/{total_chunks}: {from_date} → {to_date}")
 
-        except Exception as exc:
-            logger.error(f"[{SYMBOL}]   Error on chunk {from_date}→{to_date}: {exc}")
+            try:
+                candles = fetch_daily_ohlc(symbol, from_date, to_date)
+                logger.info(f"  [{symbol}]   Fetched {len(candles)} candles")
+                symbol_candles.extend(candles)
 
-        # Delay giữa các lần gọi SSI, bỏ qua lần cuối
-        if idx < total:
-            time.sleep(SLEEP_SECONDS)
+            except Exception as exc:
+                logger.error(f"  [{symbol}]   Error on chunk {from_date}→{to_date}: {exc}")
 
-    logger.info(f"[{SYMBOL}] Fetch done. Total candles: {len(all_candles)}. Upserting...")
-    upsert_candles(all_candles)
-    logger.info(f"[{SYMBOL}] Done. Upserted {len(all_candles)} daily candles.")
+            # Delay giữa các lần gọi SSI, bỏ qua lần cuối
+            if chunk_idx < total_chunks or sym_idx < total_symbols:
+                time.sleep(SLEEP_SECONDS)
+
+        # Upsert candles for this symbol immediately
+        upsert_candles(symbol_candles)
+        total_upserted += len(symbol_candles)
+        logger.info(f"[{sym_idx}/{total_symbols}] {symbol} done. Upserted {len(symbol_candles)} candles.")
+
+    logger.info(f"All done. Total upserted: {total_upserted} candles.")
 
 if __name__ == "__main__":
     main()

@@ -150,7 +150,7 @@ def main():
     logger.info("Starting SSI WebSocket stream...")
 
     mm = MarketDataStream(config, MarketDataClient(config))
-    mm.start(get_market_data, get_error, "B:VNM")
+    mm.start(get_market_data, get_error, "B:ALL")
 
     logger.info("Stream started. Press Ctrl+C to stop.")
     try:
