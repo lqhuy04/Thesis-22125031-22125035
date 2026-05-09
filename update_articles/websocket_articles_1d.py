@@ -381,11 +381,15 @@ def main():
                 continue
 
             # Prepare article data
+            # Use article's actual publish_date if available, otherwise use current time
+            publish_date = article_content.get("publish_date")
+            article_time = publish_date.isoformat() if publish_date else datetime.now().isoformat()
+            
             article_data = {
                 "title": article_content["title"],
                 "link": link,
                 "description": item.get("snippet", ""),
-                "time": datetime.now().isoformat(),
+                "time": article_time,
                 "thumbnail": item.get("imageUrl") or article_content.get("top_image"),  # Serper imageUrl or Newspaper top_image
                 "source": get_source(link),
                 "content": article_content["content"],
