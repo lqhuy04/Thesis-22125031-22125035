@@ -15,7 +15,6 @@ async def signup(request: SignupRequest):
     try:
         result = await AuthService.signup(
             request.email,
-            request.phone_number,
             request.password
         )
         return AuthResponse(
@@ -103,11 +102,14 @@ async def forgot_password(request: ForgotPasswordRequest):
         }
 
 @router.post("/reset-password")
-async def reset_password(request: ResetPasswordRequest):
+async def reset_password(
+    request: ResetPasswordRequest,
+    current_user: dict = Depends(get_current_user)
+):
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.reset_password(
-            request.email,
+            current_user["email"],
             request.old_password,
             request.new_password,
         )
