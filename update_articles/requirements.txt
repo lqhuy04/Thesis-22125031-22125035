@@ -4,3 +4,4 @@ ssi-fc-data
 requests
 newspaper3k
 openai
+lxml[html-clean]
