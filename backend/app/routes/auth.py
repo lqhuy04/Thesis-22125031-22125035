@@ -15,7 +15,6 @@ async def signup(request: SignupRequest):
     try:
         result = await AuthService.signup(
             request.email,
-            request.phone_number,
             request.password
         )
         return AuthResponse(

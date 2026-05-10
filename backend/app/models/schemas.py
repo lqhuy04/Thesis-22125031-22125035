@@ -4,7 +4,6 @@ import re
 
 class SignupRequest(BaseModel):
     email: EmailStr
-    phone_number: Optional[str] = Field(None, min_length=10, max_length=15)
     password: str = Field(..., min_length=8)
     
     @validator('password')
@@ -19,16 +18,6 @@ class SignupRequest(BaseModel):
             raise ValueError('Password must contain at least one digit')
         return v
     
-    @validator('phone_number')
-    def validate_phone(cls, v):
-        if v is None:
-            return v
-        phone = re.sub(r'[\s\-]', '', v)
-        if not re.match(r'^\+?\d{10,15}$', phone):
-            raise ValueError('Invalid phone number format')
-        return phone
-
-
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=1)

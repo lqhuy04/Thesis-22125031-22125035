@@ -12,7 +12,7 @@ supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 class AuthService:
     @staticmethod
-    async def signup(email: str, phone_number: str, password: str):
+    async def signup(email: str, password: str):
         # Check if user exists
         existing = supabase.table("User").select("*").eq("email", email).execute()
         if existing.data:
@@ -22,7 +22,6 @@ class AuthService:
         hashed_pwd = hash_password(password)
         new_user = supabase.table("User").insert({
             "email": email,
-            "phone_number": phone_number,
             "hash_password": hashed_pwd
         }).execute()
         
