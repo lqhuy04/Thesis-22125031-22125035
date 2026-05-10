@@ -23,7 +23,6 @@ export const Input = ({
   secure = false,
 }: InputProps) => {
   const { theme } = useTheme();
-
   const [hidden, setHidden] = useState(secure);
 
   return (
@@ -31,33 +30,42 @@ export const Input = ({
       control={control}
       name={name}
       render={({ field: { onChange, value } }) => (
-        <View>
+        <View style={{ gap: 6 }}>
+          {/* Label */}
           <Text
-            typography="bodySmall"
-            color={theme.text.primary}
-            style={{ marginTop: 24 }}
+            typography="labelLarge"
+            style={{ opacity: 0.55, marginLeft: 2 }}
           >
             {label}
             {required && (
-              <Text typography="bodySmall" color={theme.base.error}>
+              <Text typography="labelLarge" color={theme.base.error}>
+                {" "}
                 *
               </Text>
             )}
           </Text>
 
-          <View>
+          {/* Input row */}
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: theme.border.default,
+              borderRadius: 10,
+              backgroundColor: theme.background.bg,
+              paddingHorizontal: 12,
+            }}
+          >
             <TextInput
               style={{
-                borderWidth: 1,
-                borderColor: theme.border.default,
-                borderRadius: 5,
-                paddingVertical: 10,
-                paddingHorizontal: 16,
-                marginTop: 4,
+                flex: 1,
+                fontSize: 15,
+                paddingVertical: 11,
                 color: theme.text.primary,
               }}
               placeholder={placeholder}
-              placeholderTextColor={theme.text.secondary}
+              placeholderTextColor={theme.text.primary + "44"}
               value={value}
               onChangeText={onChange}
               secureTextEntry={hidden}
@@ -66,13 +74,13 @@ export const Input = ({
 
             {secure && (
               <TouchableOpacity
-                onPress={() => setHidden(!hidden)}
-                style={{ position: "absolute", right: 12, top: 14 }}
+                onPress={() => setHidden((h) => !h)}
+                style={{ padding: 6 }}
               >
                 <Ionicons
-                  name={hidden ? "eye-off-outline" : "eye-outline"}
-                  size={20}
-                  color={theme.text.primary}
+                  name={hidden ? "eye-off" : "eye"}
+                  size={16}
+                  color={theme.text.primary + "66"}
                 />
               </TouchableOpacity>
             )}

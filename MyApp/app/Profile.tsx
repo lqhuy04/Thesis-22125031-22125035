@@ -164,7 +164,7 @@ const Profile = () => {
       icon: (
         <MaterialIcons name="password" size={20} color={theme.base.primary} />
       ),
-      onPress: () => router.push("/WatchListStock"),
+      onPress: () => router.push("/ChangePass"),
     },
     {
       label: "Đăng xuất",

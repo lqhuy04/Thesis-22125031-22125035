@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { Text } from "@/components/ui/Text";
 import { useLocalization } from "@/hooks/LocalizationContext";
@@ -15,62 +15,55 @@ const AuthenticationTab = ({ tab, setTab }: AuthenticationTabProps) => {
 
   return (
     <View
-      style={{
-        marginBottom: 24,
-        backgroundColor: theme.background.surface,
-        padding: 4,
-        borderRadius: 4,
-        alignItems: "center",
-        flexDirection: "row",
-      }}
+      style={[
+        styles.container,
+        {
+          backgroundColor: theme.background.surface,
+          borderColor: theme.border.default,
+        },
+      ]}
     >
-      <TouchableOpacity
-        onPress={() => setTab("signIn")}
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          paddingVertical: 8,
-          borderTopLeftRadius: 4,
-          borderBottomLeftRadius: 4,
-          backgroundColor: tab === "signIn" ? theme.base.primary : undefined,
-          borderWidth: 1,
-          borderColor:
-            tab === "signIn" ? theme.base.primary : theme.border.default,
-        }}
-      >
-        <Text
-          typography="titleMedium"
-          color={tab === "signIn" ? theme.text.onPrimary : theme.text.primary}
-          style={{ textAlign: "center" }}
-        >
-          {t("auth.signIn")}
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={() => setTab("signUp")}
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          paddingVertical: 8,
-          borderTopRightRadius: 4,
-          borderBottomRightRadius: 4,
-          backgroundColor: tab === "signUp" ? theme.base.primary : undefined,
-          borderWidth: 1,
-          borderColor:
-            tab === "signUp" ? theme.base.primary : theme.border.default,
-        }}
-      >
-        <Text
-          typography="titleMedium"
-          color={tab === "signUp" ? theme.text.onPrimary : theme.text.primary}
-          style={{ textAlign: "center" }}
-        >
-          {t("auth.signUp")}
-        </Text>
-      </TouchableOpacity>
+      {(["signIn", "signUp"] as const).map((key) => {
+        const isActive = tab === key;
+        return (
+          <TouchableOpacity
+            key={key}
+            onPress={() => setTab(key)}
+            activeOpacity={0.8}
+            style={[
+              styles.tab,
+              isActive && { backgroundColor: theme.base.primary },
+            ]}
+          >
+            <Text
+              typography="titleMedium"
+              color={isActive ? theme.text.onPrimary : theme.text.primary}
+              style={{ opacity: isActive ? 1 : 0.5 }}
+            >
+              {t(`auth.${key}`)}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 };
 
 export default AuthenticationTab;
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: "row",
+    borderRadius: 12,
+    borderWidth: 0.5,
+    padding: 4,
+    marginBottom: 24,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TouchableOpacity, Alert } from "react-native";
+import { View, TouchableOpacity, Alert, StyleSheet } from "react-native";
 import { useForm } from "react-hook-form";
 import { useTheme } from "@/hooks/ThemeContext";
 import { Text } from "@/components/ui/Text";
@@ -11,7 +11,6 @@ import { Input } from "../ui/Input";
 const SignInComponent = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
-
   const { control, handleSubmit } = useForm();
 
   const onSubmit = (formData: any) => {
@@ -28,47 +27,56 @@ const SignInComponent = () => {
   };
 
   return (
-    <View>
+    <View style={styles.container}>
+      {/* Header */}
       <Text typography="headlineSmall" color={theme.text.primary}>
         {t("auth.signIn")}
       </Text>
-
-      <Input
-        control={control}
-        name="username"
-        label={t("auth.username")}
-        placeholder="username@gmail.com"
-        required={true}
-      />
-
-      <Input
-        control={control}
-        name="password"
-        label={t("auth.password")}
-        placeholder={t("auth.passwordPlaceholder")}
-        required={true}
-        secure={true}
-      />
-
-      <Text
-        typography="bodySmall"
-        color={theme.base.primary}
-        style={{ marginTop: 4 }}
-      >
-        {t("auth.forgotPassword")}
+      <Text typography="bodyMedium" style={{ opacity: 0.5, marginTop: 4 }}>
+        Chào mừng bạn trở lại 👋
       </Text>
 
+      {/* Card */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.background.bg,
+            borderColor: theme.border.default,
+          },
+        ]}
+      >
+        <Input
+          control={control}
+          name="username"
+          label={t("auth.username")}
+          placeholder="username@gmail.com"
+          required
+        />
+        <Input
+          control={control}
+          name="password"
+          label={t("auth.password")}
+          placeholder={t("auth.passwordPlaceholder")}
+          required
+          secure
+        />
+
+        {/* Forgot password */}
+        <TouchableOpacity style={{ alignSelf: "flex-end", marginTop: 4 }}>
+          <Text typography="labelLarge" color={theme.base.primary}>
+            {t("auth.forgotPassword")}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Submit */}
       <TouchableOpacity
         onPress={handleSubmit(onSubmit)}
-        style={{
-          backgroundColor: theme.base.primary,
-          paddingVertical: 8,
-          borderRadius: 4,
-          marginTop: 24,
-          alignItems: "center",
-        }}
+        style={[styles.button, { backgroundColor: theme.base.primary }]}
+        activeOpacity={0.8}
       >
-        <Text typography="titleLarge" color="#F2F4F7">
+        <Text typography="titleLarge" color={theme.text.onPrimary}>
           {t("auth.signIn")}
         </Text>
       </TouchableOpacity>
@@ -77,3 +85,22 @@ const SignInComponent = () => {
 };
 
 export default SignInComponent;
+
+const styles = StyleSheet.create({
+  container: {
+    gap: 12,
+  },
+  card: {
+    borderRadius: 16,
+    borderWidth: 0.5,
+    padding: 16,
+    gap: 4,
+    marginTop: 8,
+  },
+  button: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+});

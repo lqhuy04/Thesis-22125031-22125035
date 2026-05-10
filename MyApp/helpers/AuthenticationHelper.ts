@@ -42,11 +42,9 @@ export const signIn = async ({
 
 export const signUp = async ({
   email,
-  phoneNumber,
   password,
 }: {
   email: string;
-  phoneNumber: string;
   password: string;
 }): Promise<{
   status: boolean;
@@ -56,7 +54,6 @@ export const signUp = async ({
       method: "POST",
       body: JSON.stringify({
         email: email,
-        phone_number: phoneNumber,
         password: password,
       }),
     });

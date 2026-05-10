@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TouchableOpacity, Alert } from "react-native";
+import { View, TouchableOpacity, Alert, StyleSheet } from "react-native";
 import { useForm } from "react-hook-form";
 import { useTheme } from "@/hooks/ThemeContext";
 import { Text } from "@/components/ui/Text";
@@ -14,13 +14,11 @@ interface SignUpComponentProps {
 const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
-
   const { control, handleSubmit } = useForm();
 
   const onSubmit = (formData: any) => {
     signUp({
       email: formData?.email,
-      phoneNumber: formData?.phoneNumber,
       password: formData?.password,
     }).then((response) => {
       if (response.status) {
@@ -35,56 +33,62 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
   };
 
   return (
-    <View>
+    <View style={styles.container}>
+      {/* Header */}
       <Text typography="headlineSmall" color={theme.text.primary}>
         {t("auth.signUp")}
       </Text>
+      <Text typography="bodyMedium" style={{ opacity: 0.5, marginTop: 4 }}>
+        Tạo tài khoản để bắt đầu 🚀
+      </Text>
 
-      <Input
-        control={control}
-        name="email"
-        label={t("auth.email")}
-        placeholder="username@gmail.com"
-        required={true}
-      />
+      {/* Card */}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: theme.background.bg,
+            borderColor: theme.border.default,
+          },
+        ]}
+      >
+        <Input
+          control={control}
+          name="email"
+          label={t("auth.email")}
+          placeholder="username@gmail.com"
+          required
+        />
 
-      <Input
-        control={control}
-        name="phoneNumber"
-        label={t("auth.phoneNumber")}
-        placeholder={t("auth.phoneNumberPlaceholder")}
-        required={true}
-      />
+        <View
+          style={[styles.divider, { backgroundColor: theme.border.default }]}
+        />
 
-      <Input
-        control={control}
-        name="password"
-        label={t("auth.password")}
-        placeholder={t("auth.passwordPlaceholder")}
-        required={true}
-        secure={true}
-      />
+        <Input
+          control={control}
+          name="password"
+          label={t("auth.password")}
+          placeholder={t("auth.passwordPlaceholder")}
+          required
+          secure
+        />
+        <Input
+          control={control}
+          name="confirmPassword"
+          label={t("auth.confirmPassword")}
+          placeholder={t("auth.confirmPasswordPlaceholder")}
+          required
+          secure
+        />
+      </View>
 
-      <Input
-        control={control}
-        name="confirmPassword"
-        label={t("auth.confirmPassword")}
-        placeholder={t("auth.confirmPasswordPlaceholder")}
-        required={true}
-        secure={true}
-      />
-
+      {/* Submit */}
       <TouchableOpacity
         onPress={handleSubmit(onSubmit)}
-        style={{
-          backgroundColor: theme.base.primary,
-          paddingVertical: 8,
-          borderRadius: 4,
-          marginTop: 24,
-          alignItems: "center",
-        }}
+        style={[styles.button, { backgroundColor: theme.base.primary }]}
+        activeOpacity={0.8}
       >
-        <Text typography="titleLarge" color="#F2F4F7">
+        <Text typography="titleLarge" color={theme.text.onPrimary}>
           {t("auth.signUp")}
         </Text>
       </TouchableOpacity>
@@ -93,3 +97,27 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
 };
 
 export default SignUpComponent;
+
+const styles = StyleSheet.create({
+  container: {
+    gap: 12,
+  },
+  card: {
+    borderRadius: 16,
+    borderWidth: 0.5,
+    padding: 16,
+    gap: 4,
+    marginTop: 8,
+  },
+  divider: {
+    height: 0.5,
+    opacity: 0.6,
+    marginVertical: 4,
+  },
+  button: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+});
