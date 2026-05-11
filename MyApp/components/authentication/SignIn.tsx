@@ -63,7 +63,12 @@ const SignInComponent = () => {
         />
 
         {/* Forgot password */}
-        <TouchableOpacity style={{ alignSelf: "flex-end", marginTop: 4 }}>
+        <TouchableOpacity
+          onPress={() => {
+            router.push("./InputEmail");
+          }}
+          style={{ alignSelf: "flex-end", marginTop: 4 }}
+        >
           <Text typography="labelLarge" color={theme.base.primary}>
             {t("auth.forgotPassword")}
           </Text>
