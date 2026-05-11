@@ -15,6 +15,7 @@ import Markdown from "react-native-markdown-display";
 import { useTheme } from "@/hooks/ThemeContext";
 import { Text } from "@/components/ui/Text";
 import { sendChatMessage } from "@/helpers/AgenticHelpers";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -279,9 +280,15 @@ const Chatbot = () => {
     scrollToBottom();
   }, [inputText, isLoading, scrollToBottom]);
 
+  const insets = useSafeAreaInsets();
+
   return (
     <View
-      style={{ flex: 1, backgroundColor: theme.background.bg, paddingTop: 24 }}
+      style={{
+        flex: 1,
+        backgroundColor: theme.background.bg,
+        paddingTop: insets.top,
+      }}
     >
       {/* Header */}
       <View
