@@ -2,11 +2,12 @@ from supabase import create_client, Client
 from app.config import settings
 from app.utils.password import hash_password, verify_password
 from app.utils.token import create_access_token, create_reset_token
-from app.utils.email import send_reset_email
+from app.utils.email import send_reset_email, send_verification_email
 import httpx
 import google.auth.transport.requests
 import google.oauth2.id_token
 import facebook
+import uuid
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
@@ -20,21 +21,26 @@ class AuthService:
         
         # Create user
         hashed_pwd = hash_password(password)
+        verification_token = str(uuid.uuid4())
         new_user = supabase.table("User").insert({
             "email": email,
-            "hash_password": hashed_pwd
+            "hash_password": hashed_pwd,
+            "status": "unverified",
+            "verification_token": verification_token
         }).execute()
         
         if not new_user.data:
             raise ValueError("Failed to create user")
         
         user_data = new_user.data[0]
-        token = create_access_token(user_data["id"], user_data["email"])
+
+        # Send verification email after account creation
+        await send_verification_email(user_data["email"], verification_token)
         
         return {
-            "token": token,
             "user_id": user_data["id"],
-            "email": user_data["email"]
+            "email": user_data["email"],
+            "message": "Registration successful. Please verify your email before logging in."
         }
     
     @staticmethod
@@ -49,6 +55,10 @@ class AuthService:
         # Verify password
         if not verify_password(password, user["hash_password"]):
             raise ValueError("Invalid credentials")
+
+        # Block login until email is verified
+        if user.get("status") != "verified":
+            raise ValueError("Email is not verified")
         
         token = create_access_token(user["id"], user["email"])
         
@@ -57,6 +67,27 @@ class AuthService:
             "user_id": user["id"],
             "email": user["email"]
         }
+
+    @staticmethod
+    async def verify_email(token: str):
+        user_result = supabase.table("User").select("*").eq("verification_token", token).execute()
+
+        if not user_result.data:
+            raise ValueError("Invalid verification token")
+
+        user = user_result.data[0]
+        if user.get("status") == "verified":
+            return {"message": "Email already verified"}
+
+        result = supabase.table("User").update({
+            "status": "verified",
+            "verification_token": None
+        }).eq("id", user["id"]).execute()
+
+        if not result.data:
+            raise ValueError("Failed to verify email")
+
+        return {"message": "Email verified successfully"}
     
     @staticmethod
     async def forgot_password(email: str):
@@ -133,6 +164,8 @@ class AuthService:
                     "email": email,
                     "provider": "google",
                     "avatar_url": avatar_url,
+                    "status": "verified",
+                    "verification_token": None,
                     "hash_password": ""  # No password for OAuth users
                 }).execute()
                 
@@ -200,6 +233,8 @@ class AuthService:
                     "provider": "facebook",
                     "avatar_url": avatar_url,
                     "facebook_id": facebook_id,
+                    "status": "verified",
+                    "verification_token": None,
                     "hash_password": ""  # No password for OAuth users
                 }).execute()
                 

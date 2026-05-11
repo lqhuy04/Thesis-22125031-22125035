@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     
     # Frontend URL (for password reset links)
     FRONTEND_URL: str = "http://localhost:3000"
+    BACKEND_URL: str = "http://localhost:8000"
     
     # OAuth Settings
     GOOGLE_CLIENT_ID: str = ""

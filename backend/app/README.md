@@ -36,10 +36,11 @@ python -m app.main
 ## API Endpoints
 
 ### Public Routes
-- `POST /api/auth/signup` - Register new user
-- `POST /api/auth/login` - Login user
+- `POST /api/auth/signup` - Register new user (creates unverified account and sends verification email)
+- `GET /api/auth/verify-email?token=...` - Verify email by token
+- `POST /api/auth/login` - Login user (only verified accounts)
 - `POST /api/auth/forgot-password` - Request password reset
-- `POST /api/auth/reset-password` - Reset password with email, old password, and new password
+- `POST /api/auth/reset-password` - Reset password with old_password and new_password (requires Authorization header)
 
 ### Protected Routes (Require Authorization header)
 - `GET /api/auth/me` - Get current user info

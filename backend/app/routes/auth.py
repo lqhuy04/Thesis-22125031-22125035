@@ -19,12 +19,11 @@ async def signup(request: SignupRequest):
         )
         return AuthResponse(
             data=AuthData(
-                token=result["token"],
                 user_id=result["user_id"],
                 email=result["email"]
             ).dict(),
             errorCode=0,
-            errorDesc="User registered successfully",
+            errorDesc=result["message"],
             requestId=request_id,
             result=True,
             userId=result["user_id"]
@@ -63,11 +62,11 @@ async def login(request: LoginRequest):
             result=True,
             userId=result["user_id"]
         )
-    except ValueError:
+    except ValueError as e:
         return AuthResponse(
             data={},
             errorCode=401001,
-            errorDesc="Invalid email or password",
+            errorDesc=str(e),
             requestId=request_id,
             result=False
         )
@@ -93,6 +92,36 @@ async def forgot_password(request: ForgotPasswordRequest):
             "result": True
         }
     except Exception as e:
+        return {
+            "data": {},
+            "errorCode": 500001,
+            "errorDesc": "Internal server error",
+            "requestId": request_id,
+            "result": False
+        }
+
+
+@router.get("/verify-email")
+async def verify_email(token: str):
+    request_id = str(uuid.uuid4())
+    try:
+        result = await AuthService.verify_email(token)
+        return {
+            "data": result,
+            "errorCode": 0,
+            "errorDesc": "",
+            "requestId": request_id,
+            "result": True
+        }
+    except ValueError as e:
+        return {
+            "data": {},
+            "errorCode": 400003,
+            "errorDesc": str(e),
+            "requestId": request_id,
+            "result": False
+        }
+    except Exception:
         return {
             "data": {},
             "errorCode": 500001,
