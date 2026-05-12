@@ -204,46 +204,29 @@ https://stockrium.vn
         raise
 
 
-async def send_verification_email(to_email: str, verification_token: str):
+async def send_verification_email(to_email: str, verification_otp: str):
     """
-    Send account verification email.
-    In development mode (no SMTP configured), just prints the link.
+    Send account verification email with OTP.
+    In development mode (no SMTP configured), just prints the OTP.
     """
-    verify_link = f"{settings.BACKEND_URL}/api/auth/verify-email?token={verification_token}"
-
-    # Check if SMTP is configured
-    if not settings.SMTP_USER or settings.SMTP_USER == "":
-        # Development mode - just print the link
-        print("\n" + "="*60)
-        print("EMAIL VERIFICATION LINK (Development Mode)")
-        print("="*60)
-        print(f"Email: {to_email}")
-        print(f"Verification Link: {verify_link}")
-        print(f"Token: {verification_token}")
-        print("="*60 + "\n")
-        return True
-
-    # Production mode - send actual email
     subject = "Verify your Stockrium account"
-    
-    # Plain text version
+
     text_body = f"""
 Welcome to Stockrium!
 
-Thank you for registering. Please verify your email address by clicking the link below:
+Thank you for registering. Use the OTP below to verify your email address:
 
-{verify_link}
+OTP Code: {verification_otp}
 
-This link will expire in 24 hours.
+This code will expire in 10 minutes.
 
-If you did not create this account, please ignore this email and do not click the link.
+If you did not create this account, please ignore this email.
 
 Best regards,
 The Stockrium Team
 https://stockrium.vn
 """
 
-    # HTML version with better formatting
     html_body = f'''
     <html>
         <head>
@@ -255,10 +238,12 @@ https://stockrium.vn
                 .header {{ background-color: #1e40af; color: white; padding: 20px; text-align: center; border-radius: 4px 4px 0 0; }}
                 .header h1 {{ margin: 0; font-size: 24px; }}
                 .content {{ background-color: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }}
-                .button {{ display: inline-block; background-color: #1e40af; color: white; padding: 12px 30px; text-decoration: none; border-radius: 4px; margin: 20px 0; }}
-                .button:hover {{ background-color: #1e3a8a; }}
+                .otp-box {{ background-color: #dbeafe; border: 2px solid #1e40af; padding: 20px; text-align: center; border-radius: 8px; margin: 20px 0; }}
+                .otp-code {{ font-size: 36px; font-weight: bold; color: #1e40af; letter-spacing: 4px; font-family: 'Courier New', monospace; }}
+                .otp-expiry {{ color: #dc2626; font-weight: bold; margin-top: 10px; }}
                 .footer {{ background-color: #f3f4f6; padding: 20px; font-size: 12px; color: #6b7280; text-align: center; border-top: 1px solid #e5e7eb; }}
                 .footer a {{ color: #1e40af; text-decoration: none; }}
+                .warning {{ background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0; }}
             </style>
         </head>
         <body>
@@ -267,21 +252,17 @@ https://stockrium.vn
                     <h1>Stockrium</h1>
                 </div>
                 <div class="content">
-                    <h2>Welcome to Stockrium!</h2>
-                    <p>Thank you for registering. Please verify your email address to activate your account and start analyzing Vietnamese stocks.</p>
-                    
-                    <center>
-                        <a href="{verify_link}" class="button">Verify Email</a>
-                    </center>
-                    
-                    <p>Or copy and paste this link in your browser:</p>
-                    <p style="word-break: break-all; background-color: #e5e7eb; padding: 10px; border-radius: 4px; font-size: 12px;">
-                        {verify_link}
-                    </p>
-                    
-                    <p style="margin-top: 30px; font-size: 14px; color: #6b7280;">
-                        <strong>Note:</strong> This link will expire in 24 hours. If you did not create this account, please ignore this email.
-                    </p>
+                    <h2>Verify your email</h2>
+                    <p>Thank you for registering. Use the OTP below to verify your email address:</p>
+
+                    <div class="otp-box">
+                        <div class="otp-code">{verification_otp}</div>
+                        <div class="otp-expiry">⏱️ Valid for 10 minutes</div>
+                    </div>
+
+                    <div class="warning">
+                        <strong>🔒 Security Notice:</strong> Do not share this code with anyone. If you did not create this account, please ignore this email.
+                    </div>
                 </div>
                 <div class="footer">
                     <p>© 2024 Stockrium. All rights reserved.</p>
@@ -294,6 +275,18 @@ https://stockrium.vn
         </body>
     </html>
     '''
+
+    # Check if SMTP is configured
+    if not settings.SMTP_USER or settings.SMTP_USER == "":
+        # Development mode - just print the OTP
+        print("\n" + "="*60)
+        print("EMAIL VERIFICATION OTP (Development Mode)")
+        print("="*60)
+        print(f"Email: {to_email}")
+        print(f"OTP Code: {verification_otp}")
+        print(f"Valid for: 10 minutes")
+        print("="*60 + "\n")
+        return True
 
     message = MIMEMultipart("alternative")
     message["From"] = settings.FROM_EMAIL

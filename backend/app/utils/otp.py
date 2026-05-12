@@ -17,11 +17,23 @@ class OTPService:
     OTP_EXPIRY_MINUTES = 10  # OTP valid for 10 minutes
     RESET_SESSION_EXPIRY_MINUTES = 5  # Short-lived session after OTP verification
     MAX_OTP_ATTEMPTS = 5  # Max attempts before OTP expires
+
+    @staticmethod
+    def _otp_key(email: str, purpose: str) -> str:
+        return f"otp:{purpose}:{email}"
+
+    @staticmethod
+    def _attempts_key(email: str, purpose: str) -> str:
+        return f"otp:attempts:{purpose}:{email}"
     
     @staticmethod
     async def generate_and_store_otp(email: str) -> str:
+        return await OTPService.generate_and_store_otp_for_purpose(email, "reset-password")
+
+    @staticmethod
+    async def generate_and_store_otp_for_purpose(email: str, purpose: str, expiry_minutes: int | None = None) -> str:
         """
-        Generate a 6-digit OTP and store in Redis.
+        Generate a 6-digit OTP and store in Redis for a specific purpose.
         
         Args:
             email: User email address
@@ -37,10 +49,10 @@ class OTPService:
         # Generate 6-digit OTP
         otp = ''.join(random.choices(string.digits, k=OTPService.OTP_LENGTH))
         
-        # Store OTP in Redis with TTL
-        ttl_seconds = OTPService.OTP_EXPIRY_MINUTES * 60
-        key = f"otp:{email}"
-        attempts_key = f"otp:attempts:{email}"
+        ttl_minutes = expiry_minutes or OTPService.OTP_EXPIRY_MINUTES
+        ttl_seconds = ttl_minutes * 60
+        key = OTPService._otp_key(email, purpose)
+        attempts_key = OTPService._attempts_key(email, purpose)
         
         try:
             # Store OTP
@@ -55,6 +67,10 @@ class OTPService:
     
     @staticmethod
     async def verify_otp(email: str, otp_input: str) -> bool:
+        return await OTPService.verify_otp_for_purpose(email, otp_input, "reset-password")
+
+    @staticmethod
+    async def verify_otp_for_purpose(email: str, otp_input: str, purpose: str) -> bool:
         """
         Verify if the provided OTP matches the stored OTP in Redis.
         
@@ -69,8 +85,8 @@ class OTPService:
             Exception: If max attempts exceeded or Redis fails
         """
         redis = get_redis_client()
-        key = f"otp:{email}"
-        attempts_key = f"otp:attempts:{email}"
+        key = OTPService._otp_key(email, purpose)
+        attempts_key = OTPService._attempts_key(email, purpose)
         
         try:
             # Get current OTP from Redis
@@ -165,6 +181,10 @@ class OTPService:
     
     @staticmethod
     async def delete_otp(email: str) -> bool:
+        return await OTPService.delete_otp_for_purpose(email, "reset-password")
+
+    @staticmethod
+    async def delete_otp_for_purpose(email: str, purpose: str) -> bool:
         """
         Delete OTP from Redis (for cleanup).
         
@@ -175,8 +195,8 @@ class OTPService:
             True if successful
         """
         redis = get_redis_client()
-        key = f"otp:{email}"
-        attempts_key = f"otp:attempts:{email}"
+        key = OTPService._otp_key(email, purpose)
+        attempts_key = OTPService._attempts_key(email, purpose)
         
         try:
             await redis.delete(key)
@@ -188,6 +208,10 @@ class OTPService:
     
     @staticmethod
     async def check_otp_exists(email: str) -> bool:
+        return await OTPService.check_otp_exists_for_purpose(email, "reset-password")
+
+    @staticmethod
+    async def check_otp_exists_for_purpose(email: str, purpose: str) -> bool:
         """
         Check if OTP exists for the given email.
         
@@ -198,7 +222,7 @@ class OTPService:
             True if OTP exists, False otherwise
         """
         redis = get_redis_client()
-        key = f"otp:{email}"
+        key = OTPService._otp_key(email, purpose)
         
         try:
             otp = await redis.get(key)

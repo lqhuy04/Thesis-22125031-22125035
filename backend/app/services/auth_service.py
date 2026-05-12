@@ -1,14 +1,13 @@
 from supabase import create_client, Client
 from app.config import settings
 from app.utils.password import hash_password, verify_password
-from app.utils.token import create_access_token, create_refresh_token, create_reset_token, verify_token
+from app.utils.token import create_access_token, create_refresh_token, verify_token
 from app.utils.email import send_reset_email, send_verification_email
 from app.utils.otp import OTPService
 from app.services.redis_session_service import RedisSessionService
 import httpx
 import google.auth.transport.requests
 import google.oauth2.id_token
-import facebook
 import uuid
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
@@ -23,12 +22,11 @@ class AuthService:
         
         # Create user
         hashed_pwd = hash_password(password)
-        verification_token = str(uuid.uuid4())
         new_user = supabase.table("User").insert({
             "email": email,
             "hash_password": hashed_pwd,
             "status": "unverified",
-            "verification_token": verification_token
+            "verification_token": None
         }).execute()
         
         if not new_user.data:
@@ -36,12 +34,11 @@ class AuthService:
         
         user_data = new_user.data[0]
 
-        # Send verification email after account creation
-        await send_verification_email(user_data["email"], verification_token)
+        # Generate and send verification OTP after account creation
+        verification_otp = await OTPService.generate_and_store_otp_for_purpose(email, "verify-email")
+        await send_verification_email(user_data["email"], verification_otp)
         
         return {
-            "user_id": user_data["id"],
-            "email": user_data["email"],
             "message": "Registration successful. Please verify your email before logging in."
         }
     
@@ -78,15 +75,19 @@ class AuthService:
         }
 
     @staticmethod
-    async def verify_email(token: str):
-        user_result = supabase.table("User").select("*").eq("verification_token", token).execute()
+    async def verify_email(email: str, otp: str):
+        user_result = supabase.table("User").select("*").eq("email", email).execute()
 
         if not user_result.data:
-            raise ValueError("Invalid verification token")
+            raise ValueError("Invalid verification code")
 
         user = user_result.data[0]
         if user.get("status") == "verified":
             return {"message": "Email already verified"}
+
+        is_valid = await OTPService.verify_otp_for_purpose(email, otp, "verify-email")
+        if not is_valid:
+            raise ValueError("Invalid verification code")
 
         result = supabase.table("User").update({
             "status": "verified",
@@ -97,6 +98,22 @@ class AuthService:
             raise ValueError("Failed to verify email")
 
         return {"message": "Email verified successfully"}
+
+    @staticmethod
+    async def resend_verification_otp(email: str):
+        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        if not user_result.data:
+            return {"message": "If the email exists, a new verification OTP has been sent"}
+
+        user = user_result.data[0]
+        if user.get("status") == "verified":
+            return {"message": "Email already verified"}
+
+        await OTPService.delete_otp_for_purpose(email, "verify-email")
+        verification_otp = await OTPService.generate_and_store_otp_for_purpose(email, "verify-email")
+        await send_verification_email(email, verification_otp)
+
+        return {"message": "If the email exists, a new verification OTP has been sent"}
     
     @staticmethod
     async def reset_password(email: str, old_password: str, new_password: str):
@@ -315,80 +332,7 @@ class AuthService:
         except Exception as e:
             raise ValueError(f"Google authentication failed: {str(e)}")
     
-    @staticmethod
-    async def facebook_login(token: str):
-        """Authenticate user with Facebook access token"""
-        try:
-            # Create Facebook GraphAPI instance
-            graph = facebook.GraphAPI(access_token=token)
-            
-            # Get user profile information
-            profile = graph.get_object('me', fields='id,email,name,picture')
-            
-            # Debug: Print what Facebook returns
-            print(f"Facebook profile data: {profile}")
-            
-            email = profile.get('email')
-            facebook_id = profile.get('id')
-            name = profile.get('name', '')
-            avatar_url = profile.get('picture', {}).get('data', {}).get('url', '')
-            
-            # If no email, use Facebook ID as identifier
-            if not email:
-                email = f"facebook_{facebook_id}@facebook.local"  # Create a dummy email
-                print(f"No email provided by Facebook, using dummy email: {email}")
-            
-            # Check if user exists by email first, then by Facebook ID if not found
-            user_result = supabase.table("User").select("*").eq("email", email).execute()
-            
-            # If no user found by email, try to find by Facebook ID
-            if not user_result.data:
-                user_result = supabase.table("User").select("*").eq("facebook_id", facebook_id).execute()
-            
-            if user_result.data:
-                # User exists, update their info
-                user = user_result.data[0]
-                update_data = {
-                    "provider": "facebook",
-                    "avatar_url": avatar_url,
-                    "facebook_id": facebook_id
-                }
-                supabase.table("User").update(update_data).eq("id", user["id"]).execute()
-            else:
-                # Create new user
-                new_user = supabase.table("User").insert({
-                    "email": email,
-                    "provider": "facebook",
-                    "avatar_url": avatar_url,
-                    "facebook_id": facebook_id,
-                    "status": "verified",
-                    "verification_token": None,
-                    "hash_password": ""  # No password for OAuth users
-                }).execute()
-                
-                if not new_user.data:
-                    raise ValueError("Failed to create user")
-                user = new_user.data[0]
-            
-            # Create access token and refresh token
-            access_token = create_access_token(user["id"], user["email"])
-            refresh_token = create_refresh_token(user["id"], user["email"])
-            
-            # Store tokens in Redis
-            await RedisSessionService.store_access_token(user["id"], access_token)
-            await RedisSessionService.store_refresh_token(user["id"], refresh_token)
-            
-            return {
-                "token": access_token,
-                "refresh_token": refresh_token,
-                "user_id": user["id"],
-                "email": user["email"],
-                "provider": "facebook",
-                "avatar_url": avatar_url
-            }
-            
-        except Exception as e:
-            raise ValueError(f"Facebook authentication failed: {str(e)}")
+
     
     @staticmethod
     async def refresh_access_token(refresh_token: str):
