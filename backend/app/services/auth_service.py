@@ -3,6 +3,7 @@ from app.config import settings
 from app.utils.password import hash_password, verify_password
 from app.utils.token import create_access_token, create_refresh_token, create_reset_token, verify_token
 from app.utils.email import send_reset_email, send_verification_email
+from app.utils.otp import OTPService
 from app.services.redis_session_service import RedisSessionService
 import httpx
 import google.auth.transport.requests
@@ -98,22 +99,6 @@ class AuthService:
         return {"message": "Email verified successfully"}
     
     @staticmethod
-    async def forgot_password(email: str):
-        # Find user
-        user_result = supabase.table("User").select("*").eq("email", email).execute()
-        if not user_result.data:
-            # Don't reveal if user exists or not
-            return {"message": "If the email exists, a reset link has been sent"}
-        
-        user = user_result.data[0]
-        reset_token = create_reset_token(user["id"], user["email"])
-        
-        # Send email
-        await send_reset_email(email, reset_token)
-        
-        return {"message": "If the email exists, a reset link has been sent"}
-    
-    @staticmethod
     async def reset_password(email: str, old_password: str, new_password: str):
         # Find user
         user_result = supabase.table("User").select("*").eq("email", email).execute()
@@ -136,6 +121,129 @@ class AuthService:
             raise ValueError("Failed to reset password")
         
         return {"message": "Password reset successfully"}
+    
+    @staticmethod
+    async def forgot_password(email: str):
+        # Find user
+        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        if not user_result.data:
+            # Don't reveal if user exists or not
+            return {"message": "If the email exists, an OTP has been sent"}
+        
+        user = user_result.data[0]
+        
+        # Generate OTP and store in Redis
+        otp = await OTPService.generate_and_store_otp(email)
+        
+        # Send OTP via email
+        await send_reset_email(email, otp)
+        
+        return {"message": "If the email exists, an OTP has been sent"}
+    
+
+    
+    @staticmethod
+    async def verify_otp(email: str, otp: str):
+        """
+        Verify OTP sent to email.
+        
+        Args:
+            email: User email address
+            otp: OTP provided by user
+            
+        Returns:
+            Success message
+            
+        Raises:
+            ValueError: If OTP is invalid or expired
+        """
+        try:
+            # Verify the OTP
+            is_valid = await OTPService.verify_otp(email, otp)
+            
+            if is_valid:
+                reset_password_token = await OTPService.create_reset_session(email)
+                return {
+                    "message": "OTP verified successfully",
+                    "reset_password_token": reset_password_token,
+                    "expires_in_minutes": OTPService.RESET_SESSION_EXPIRY_MINUTES,
+                }
+            else:
+                raise ValueError("Invalid OTP")
+                
+        except Exception as e:
+            raise ValueError(str(e))
+    
+    @staticmethod
+    async def reset_password_with_otp(reset_password_token: str, new_password: str):
+        """
+        Reset password after OTP verification.
+        Requires a short-lived reset session token issued by verify_otp.
+        
+        Args:
+            reset_password_token: Short-lived token issued after OTP verification
+            new_password: New password to set
+            
+        Returns:
+            Success message with user info
+            
+        Raises:
+            ValueError: If user not found or update fails
+        """
+        email = await OTPService.consume_reset_session(reset_password_token)
+        if not email:
+            raise ValueError("Reset session expired or invalid")
+
+        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        if not user_result.data:
+            raise ValueError("User not found")
+
+        user = user_result.data[0]
+
+        # Update password
+        hashed_pwd = hash_password(new_password)
+        result = supabase.table("User").update({
+            "hash_password": hashed_pwd
+        }).eq("id", user["id"]).execute()
+        
+        if not result.data:
+            raise ValueError("Failed to reset password")
+        
+        return {
+            "message": "Password reset successfully",
+        }
+    
+    @staticmethod
+    async def resend_otp(email: str):
+        """
+        Resend OTP to email. Deletes old OTP and generates a new one.
+        
+        Args:
+            email: User email address
+            
+        Returns:
+            Success message
+            
+        Raises:
+            ValueError: If user not found
+        """
+        # Check if user exists
+        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        if not user_result.data:
+            # Don't reveal if user exists or not
+            return {"message": "If the email exists, a new OTP has been sent"}
+        
+        # Delete old OTP if exists
+        await OTPService.delete_otp(email)
+        await OTPService.delete_reset_session(email)
+        
+        # Generate new OTP and store in Redis
+        otp = await OTPService.generate_and_store_otp(email)
+        
+        # Send OTP via email
+        await send_reset_email(email, otp)
+        
+        return {"message": "If the email exists, a new OTP has been sent"}
     
     @staticmethod
     async def google_login(token: str):
