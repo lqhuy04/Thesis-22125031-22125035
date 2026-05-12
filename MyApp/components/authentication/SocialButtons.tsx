@@ -1,50 +1,41 @@
-import React, { useEffect } from "react";
-import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
-import * as Google from "expo-auth-session/providers/google";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import * as Facebook from "expo-auth-session/providers/facebook";
 import * as WebBrowser from "expo-web-browser";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import {
+  GoogleSignin,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { socialLogin } from "@/helpers/AuthenticationHelper";
 import { router } from "expo-router";
-import * as AuthSession from "expo-auth-session";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const redirectUri = AuthSession.makeRedirectUri({
-  scheme: "stockrium",
+GoogleSignin.configure({
+  webClientId:
+    "372062103134-ucu0jacbo5g104ofijuqf1jobnspstu1.apps.googleusercontent.com",
+  iosClientId:
+    "372062103134-tt5avvnivu4f50cmau3p8l72rj6i24og.apps.googleusercontent.com",
 });
-
-console.log("Redirect URI:", redirectUri);
 
 const SocialButtons = () => {
   const { theme } = useTheme();
-
-  // ── Google ────────────────────────────────────────────────────────────────
-  const [, googleResponse, googlePromptAsync] = Google.useAuthRequest({
-    webClientId:
-      "372062103134-ucu0jacbo5g104ofijuqf1jobnspstu1.apps.googleusercontent.com",
-    androidClientId:
-      "372062103134-jv08s6160qi9quhc6fjmv2ugkcn4b7ca.apps.googleusercontent.com",
-    iosClientId:
-      "372062103134-tt5avvnivu4f50cmau3p8l72rj6i24og.apps.googleusercontent.com",
-    redirectUri: "http://localhost:8081",
-  });
-
-  console.log("Google Response:", googleResponse);
-
-  useEffect(() => {
-    if (googleResponse?.type === "success") {
-      const token = googleResponse.authentication?.idToken;
-      if (token) handleSocialLogin("google", token);
-    }
-  }, [googleResponse]);
+  const [loadingProvider, setLoadingProvider] = useState<
+    "google" | "facebook" | null
+  >(null);
 
   // ── Facebook ──────────────────────────────────────────────────────────────
   const [, fbResponse, fbPromptAsync] = Facebook.useAuthRequest({
     clientId: "670026132766795",
-    redirectUri: "https://auth.expo.io/@zhuskyz/stockrium",
   });
 
   useEffect(() => {
@@ -54,18 +45,46 @@ const SocialButtons = () => {
     }
   }, [fbResponse]);
 
+  // ── Google ────────────────────────────────────────────────────────────────
+  const onPressGoogle = async () => {
+    try {
+      setLoadingProvider("google");
+      await GoogleSignin.hasPlayServices();
+      const result: any = await GoogleSignin.signIn();
+      const idToken = result?.data?.idToken ?? result?.idToken;
+      if (idToken) {
+        await handleSocialLogin("google", idToken);
+      } else {
+        Alert.alert("Đăng nhập thất bại", "Không nhận được idToken.");
+        setLoadingProvider(null);
+      }
+    } catch (e: any) {
+      if (e?.code !== statusCodes.SIGN_IN_CANCELLED) {
+        Alert.alert("Đăng nhập thất bại", "Vui lòng thử lại.");
+      }
+      setLoadingProvider(null);
+    }
+  };
+
   // ── Gọi API ───────────────────────────────────────────────────────────────
   const handleSocialLogin = async (
     provider: "google" | "facebook",
     token: string,
   ) => {
-    const res = await socialLogin({ provider, token });
-    if (res.status) {
-      router.replace("/Tabs");
-    } else {
-      Alert.alert("Đăng nhập thất bại", "Vui lòng thử lại.");
+    setLoadingProvider(provider);
+    try {
+      const res = await socialLogin({ provider, token });
+      if (res.status) {
+        router.replace("/Tabs");
+      } else {
+        Alert.alert("Đăng nhập thất bại", "Vui lòng thử lại.");
+      }
+    } finally {
+      setLoadingProvider(null);
     }
   };
+
+  const isLoading = loadingProvider !== null;
 
   return (
     <View style={{ gap: 10, marginTop: 8 }}>
@@ -93,16 +112,22 @@ const SocialButtons = () => {
       {/* Google */}
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => googlePromptAsync()}
+        onPress={onPressGoogle}
+        disabled={isLoading}
         style={[
           styles.socialBtn,
           {
             backgroundColor: theme.background.bg,
             borderColor: theme.border.default,
           },
+          isLoading && { opacity: 0.6 },
         ]}
       >
-        <FontAwesome name="google" size={18} color="#EA4335" />
+        {loadingProvider === "google" ? (
+          <ActivityIndicator size="small" color="#EA4335" />
+        ) : (
+          <FontAwesome name="google" size={18} color="#EA4335" />
+        )}
         <Text typography="titleMedium">Đăng nhập với Google</Text>
       </TouchableOpacity>
 
@@ -110,15 +135,21 @@ const SocialButtons = () => {
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => fbPromptAsync()}
+        disabled={isLoading}
         style={[
           styles.socialBtn,
           {
             backgroundColor: theme.background.bg,
             borderColor: theme.border.default,
           },
+          isLoading && { opacity: 0.6 },
         ]}
       >
-        <FontAwesome name="facebook-official" size={18} color="#1877F2" />
+        {loadingProvider === "facebook" ? (
+          <ActivityIndicator size="small" color="#1877F2" />
+        ) : (
+          <FontAwesome name="facebook-official" size={18} color="#1877F2" />
+        )}
         <Text typography="titleMedium">Đăng nhập với Facebook</Text>
       </TouchableOpacity>
     </View>

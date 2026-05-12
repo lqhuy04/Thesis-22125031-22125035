@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ### Frontend (`MyApp/`)
+
 ```bash
 npm install          # Install dependencies
 npm start            # Start Expo dev server
@@ -19,6 +20,7 @@ npm run lint         # Run ESLint
 ```
 
 ### Backend (`backend/app/`)
+
 ```bash
 pip install -r requirements.txt   # Install Python dependencies
 python -m app.main                # Run FastAPI server (localhost:8000)
@@ -40,9 +42,17 @@ Three-layer structure: **routes → services → Supabase/SSI API**
 - `config.py` — pydantic-settings, all env vars loaded from `.env`
 
 **Standardized API response format:**
+
 ```json
-{ "data": {}, "errorCode": 0, "errorDesc": "", "requestId": "uuid", "result": true }
+{
+  "data": {},
+  "errorCode": 0,
+  "errorDesc": "",
+  "requestId": "uuid",
+  "result": true
+}
 ```
+
 Error codes follow convention: HTTP status → code (e.g., 400 → 400001, 401 → 401001).
 
 ### AI Agent System (`backend/agentic_ai/`)
@@ -70,15 +80,15 @@ Tokens are stored using `expo-secure-store` (encrypted).
 
 ## Key Environment Variables (Backend)
 
-| Group | Variables |
-|-------|-----------|
-| Database | `SUPABASE_URL`, `SUPABASE_KEY` |
-| Auth | `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRATION_HOURS` |
-| OAuth | `GOOGLE_CLIENT_ID/SECRET`, `FACEBOOK_APP_ID/SECRET` |
-| Market data | `SSI_CONSUMER_ID`, `SSI_CONSUMER_SECRET`, `SSI_API_URL`, `SSI_STREAM_URL` |
-| AI | `OPENAI_API_KEY`, `GEMINI_API_KEY` |
-| Search | `SERPER_API_URL`, `SERPER_API_KEY` |
-| Email | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `FROM_EMAIL` |
+| Group       | Variables                                                                                              |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| Database    | `SUPABASE_URL`, `SUPABASE_KEY`                                                                         |
+| Auth        | `JWT_SECRET`, `JWT_ALGORITHM`, `JWT_EXPIRATION_HOURS`                                                  |
+| OAuth       | `GOOGLE_CLIENT_ID/SECRET`,`GOOGLE_IOS_CLIENT_ID`, `GOOGLE_ANDROID_CLIENT_ID`, `FACEBOOK_APP_ID/SECRET` |
+| Market data | `SSI_CONSUMER_ID`, `SSI_CONSUMER_SECRET`, `SSI_API_URL`, `SSI_STREAM_URL`                              |
+| AI          | `OPENAI_API_KEY`, `GEMINI_API_KEY`                                                                     |
+| Search      | `SERPER_API_URL`, `SERPER_API_KEY`                                                                     |
+| Email       | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `FROM_EMAIL`                                   |
 
 See `backend/.env.example` for the full list.
 

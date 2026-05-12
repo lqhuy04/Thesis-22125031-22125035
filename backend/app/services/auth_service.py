@@ -133,10 +133,16 @@ class AuthService:
     async def google_login(token: str):
         """Authenticate user with Google OAuth token"""
         try:
+            valid_client_ids = [
+                settings.GOOGLE_CLIENT_ID,           # Web
+                settings.GOOGLE_IOS_CLIENT_ID,       # iOS
+                settings.GOOGLE_ANDROID_CLIENT_ID,   # Android
+            ]
+            
             # Verify Google token
             request = google.auth.transport.requests.Request()
             id_info = google.oauth2.id_token.verify_oauth2_token(
-                token, request, settings.GOOGLE_CLIENT_ID
+                token, request, valid_client_ids
             )
             
             # Extract user information
