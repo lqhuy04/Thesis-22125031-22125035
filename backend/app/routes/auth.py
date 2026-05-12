@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from app.models.schemas import (
+from app.models.auth_schemas import (
     SignupRequest, LoginRequest, AuthResponse, AuthData,
     ForgotPasswordRequest, ResetPasswordRequest, UserResponse, SocialLoginRequest,
     RefreshTokenRequest, LogoutRequest, VerifyOTPRequest, ResetPasswordWithOTPRequest
