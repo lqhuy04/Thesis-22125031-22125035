@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from app.models.schemas import (
     SignupRequest, LoginRequest, AuthResponse, AuthData,
-    ForgotPasswordRequest, ResetPasswordRequest, UserResponse, SocialLoginRequest
+    ForgotPasswordRequest, ResetPasswordRequest, UserResponse, SocialLoginRequest,
+    RefreshTokenRequest, LogoutRequest
 )
 from app.services.auth_service import AuthService
 from app.middleware.auth_middleware import get_current_user
@@ -53,6 +54,7 @@ async def login(request: LoginRequest):
         return AuthResponse(
             data=AuthData(
                 token=result["token"],
+                refresh_token=result.get("refresh_token"),
                 user_id=result["user_id"],
                 email=result["email"]
             ).dict(),
@@ -186,6 +188,7 @@ async def social_login(request: SocialLoginRequest):
         return AuthResponse(
             data=AuthData(
                 token=result["token"],
+                refresh_token=result.get("refresh_token"),
                 user_id=result["user_id"],
                 email=result["email"],
                 provider=result.get("provider"),
@@ -248,6 +251,71 @@ async def get_me(current_user: dict = Depends(get_current_user)):
             "requestId": request_id,
             "result": True,
             "userId": user["id"]
+        }
+    except Exception as e:
+        return {
+            "data": {},
+            "errorCode": 500001,
+            "errorDesc": "Internal server error",
+            "requestId": request_id,
+            "result": False
+        }
+
+
+@router.post("/refresh", response_model=AuthResponse)
+async def refresh(request: RefreshTokenRequest):
+    request_id = str(uuid.uuid4())
+    try:
+        result = await AuthService.refresh_access_token(request.refresh_token)
+        return AuthResponse(
+            data=AuthData(
+                token=result["token"],
+                user_id=result["user_id"],
+                email=result["email"]
+            ).dict(),
+            errorCode=0,
+            errorDesc="Token refreshed successfully",
+            requestId=request_id,
+            result=True,
+            userId=result["user_id"]
+        )
+    except ValueError as e:
+        return AuthResponse(
+            data={},
+            errorCode=401001,
+            errorDesc=str(e),
+            requestId=request_id,
+            result=False
+        )
+    except Exception as e:
+        return AuthResponse(
+            data={},
+            errorCode=500001,
+            errorDesc="Internal server error",
+            requestId=request_id,
+            result=False
+        )
+
+
+@router.post("/logout")
+async def logout(request: LogoutRequest):
+    request_id = str(uuid.uuid4())
+    try:
+        result = await AuthService.logout(request.refresh_token)
+        return {
+            "data": result,
+            "errorCode": 0,
+            "errorDesc": "",
+            "requestId": request_id,
+            "result": True
+        }
+    except ValueError as e:
+        return {
+            "data": {},
+            "errorCode": 500001,
+            "errorDesc": str(e),
+            "requestId": request_id,
+            "result": False
         }
     except Exception as e:
         return {

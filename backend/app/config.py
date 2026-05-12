@@ -18,6 +18,23 @@ class Settings(BaseSettings):
     JWT_EXPIRATION_HOURS: int = 24
     RESET_TOKEN_EXPIRATION_MINUTES: int = 30
     
+    # Token TTL (for Redis session storage)
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    
+    # OTP Settings
+    OTP_LENGTH: int = 6
+    OTP_EXPIRE_MINUTES: int = 15
+    OTP_MAX_ATTEMPTS: int = 5
+    OTP_RESEND_COOLDOWN_SECONDS: int = 60
+
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: str = ""
+    
     # Email (for password reset)
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587

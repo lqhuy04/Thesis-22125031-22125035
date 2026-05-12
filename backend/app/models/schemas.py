@@ -55,6 +55,7 @@ class AuthResponse(BaseModel):
 
 class AuthData(BaseModel):
     token: Optional[str] = None
+    refresh_token: Optional[str] = None
     user_id: Optional[str] = None
     email: Optional[str] = None
     provider: Optional[str] = None
@@ -72,3 +73,11 @@ class UserResponse(BaseModel):
     phone_number: Optional[str] = None
     provider: Optional[str] = None
     avatar_url: Optional[str] = None
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str

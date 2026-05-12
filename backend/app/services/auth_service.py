@@ -1,8 +1,9 @@
 from supabase import create_client, Client
 from app.config import settings
 from app.utils.password import hash_password, verify_password
-from app.utils.token import create_access_token, create_reset_token
+from app.utils.token import create_access_token, create_refresh_token, create_reset_token, verify_token
 from app.utils.email import send_reset_email, send_verification_email
+from app.services.redis_session_service import RedisSessionService
 import httpx
 import google.auth.transport.requests
 import google.oauth2.id_token
@@ -60,10 +61,17 @@ class AuthService:
         if user.get("status") != "verified":
             raise ValueError("Email is not verified")
         
-        token = create_access_token(user["id"], user["email"])
+        # Generate tokens
+        access_token = create_access_token(user["id"], user["email"])
+        refresh_token = create_refresh_token(user["id"], user["email"])
+        
+        # Store tokens in Redis
+        await RedisSessionService.store_access_token(user["id"], access_token)
+        await RedisSessionService.store_refresh_token(user["id"], refresh_token)
         
         return {
-            "token": token,
+            "token": access_token,
+            "refresh_token": refresh_token,
             "user_id": user["id"],
             "email": user["email"]
         }
@@ -173,11 +181,17 @@ class AuthService:
                     raise ValueError("Failed to create user")
                 user = new_user.data[0]
             
-            # Create access token
+            # Create access token and refresh token
             access_token = create_access_token(user["id"], user["email"])
+            refresh_token = create_refresh_token(user["id"], user["email"])
+            
+            # Store tokens in Redis
+            await RedisSessionService.store_access_token(user["id"], access_token)
+            await RedisSessionService.store_refresh_token(user["id"], refresh_token)
             
             return {
                 "token": access_token,
+                "refresh_token": refresh_token,
                 "user_id": user["id"],
                 "email": user["email"],
                 "provider": "google",
@@ -242,11 +256,17 @@ class AuthService:
                     raise ValueError("Failed to create user")
                 user = new_user.data[0]
             
-            # Create access token
+            # Create access token and refresh token
             access_token = create_access_token(user["id"], user["email"])
+            refresh_token = create_refresh_token(user["id"], user["email"])
+            
+            # Store tokens in Redis
+            await RedisSessionService.store_access_token(user["id"], access_token)
+            await RedisSessionService.store_refresh_token(user["id"], refresh_token)
             
             return {
                 "token": access_token,
+                "refresh_token": refresh_token,
                 "user_id": user["id"],
                 "email": user["email"],
                 "provider": "facebook",
@@ -255,6 +275,55 @@ class AuthService:
             
         except Exception as e:
             raise ValueError(f"Facebook authentication failed: {str(e)}")
+    
+    @staticmethod
+    async def refresh_access_token(refresh_token: str):
+        """
+        Validate refresh token and issue a new access token.
+        """
+        # Verify refresh token is valid JWT
+        try:
+            payload = verify_token(refresh_token, "refresh")
+        except ValueError as e:
+            raise ValueError(f"Invalid refresh token: {str(e)}")
+
+        user_id = payload.get("user_id")
+        email = payload.get("email")
+        
+        # Verify refresh token exists in Redis
+        is_valid = await RedisSessionService.validate_refresh_token(user_id, refresh_token)
+        if not is_valid:
+            raise ValueError("Refresh token not found or invalid")
+        
+        # Generate new access token
+        new_access_token = create_access_token(user_id, email)
+        
+        # Store new access token in Redis
+        await RedisSessionService.store_access_token(user_id, new_access_token)
+        
+        return {
+            "token": new_access_token,
+            "user_id": user_id,
+            "email": email
+        }
+    
+    @staticmethod
+    async def logout(refresh_token: str):
+        """
+        Revoke all tokens for a user (logout).
+        """
+        try:
+            payload = verify_token(refresh_token, "refresh")
+        except ValueError as e:
+            raise ValueError(f"Invalid refresh token: {str(e)}")
+
+        user_id = payload.get("user_id")
+
+        success = await RedisSessionService.revoke_all_sessions(user_id)
+        if not success:
+            raise ValueError("Failed to logout")
+        
+        return {"message": "Logged out successfully"}
     
     @staticmethod
     async def verify_google_token(token: str):
