@@ -221,49 +221,44 @@ class ArticlesService:
     @staticmethod
     def get_business_articles(limit: Optional[int] = None) -> List[ArticlesResponse]:
         try:
-            result = (
-                supabase.table("Article")
-                .select("*")
-                .execute()
-            )
-
-            if not result.data:
-                return []
-            
-            # Bước 3: Lấy danh sách article_id từ kết quả trên
-            article_ids = []
-            article_map = {}
-            for item in result.data:
-                article_id = str(item.get("id") or "")
-                if article_id:
-                    article_ids.append(article_id)
-                    article_map[article_id] = item
-
-            if not article_ids:
-                return []
-
-            # Bước 4: Đếm số stock được tag cho mỗi article_id
-            # Chỉ giữ lại article nào chỉ có đúng 1 stock tag
-            count_result = (
+            # Query Article_Stock rows including the related Article data
+            rows = (
                 supabase.table("Article_Stock")
-                .select("article_id")
-                .in_("article_id", article_ids)
+                .select("article_id, Article(*)")
                 .execute()
             )
+
+            if not rows.data:
+                return []
 
             from collections import Counter
-            tag_counts = Counter(
-                str(row["article_id"]) for row in count_result.data
-            )
-            exclusive_ids = {aid for aid, count in tag_counts.items() if count == 1}
 
-            # Bước 5: Build response chỉ từ exclusive articles
-            articles = []
-            for article_id, article in article_map.items():
-                if article_id not in exclusive_ids:
+            article_map: dict = {}
+            article_id_list: List[str] = []
+
+            for row in rows.data:
+                article_id = row.get("article_id")
+                article = row.get("Article")
+                if not article_id or not article:
+                    continue
+                aid = str(article_id)
+                article_id_list.append(aid)
+                # keep the article payload (last one wins)
+                article_map[aid] = article
+
+            if not article_map:
+                return []
+
+            counts = Counter(article_id_list)
+            single_tag_ids = {aid for aid, c in counts.items() if c == 1}
+
+            articles: List[ArticlesResponse] = []
+            for aid in single_tag_ids:
+                payload = article_map.get(aid)
+                if not payload:
                     continue
                 try:
-                    articles.append(ArticlesResponse(**article))
+                    articles.append(ArticlesResponse(**payload))
                 except Exception:
                     continue
 
@@ -273,7 +268,7 @@ class ArticlesService:
             return articles
 
         except Exception as e:
-            print(f"Error getting news: {e}")
+            print(f"Error getting business articles: {e}")
             import traceback
             traceback.print_exc()
             return []
