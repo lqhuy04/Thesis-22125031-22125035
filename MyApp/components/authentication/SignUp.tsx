@@ -6,6 +6,7 @@ import { Text } from "@/components/ui/Text";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { signUp } from "@/helpers/AuthenticationHelper";
 import { Input } from "../ui/Input";
+import SocialButtons from "./SocialButtons";
 
 interface SignUpComponentProps {
   onSuccess: () => void;
@@ -92,6 +93,8 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
           {t("auth.signUp")}
         </Text>
       </TouchableOpacity>
+
+      <SocialButtons />
     </View>
   );
 };

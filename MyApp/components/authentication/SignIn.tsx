@@ -7,6 +7,7 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import { signIn } from "@/helpers/AuthenticationHelper";
 import { router } from "expo-router";
 import { Input } from "../ui/Input";
+import SocialButtons from "./SocialButtons";
 
 const SignInComponent = () => {
   const { theme } = useTheme();
@@ -85,6 +86,8 @@ const SignInComponent = () => {
           {t("auth.signIn")}
         </Text>
       </TouchableOpacity>
+
+      <SocialButtons />
     </View>
   );
 };
