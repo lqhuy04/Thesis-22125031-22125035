@@ -77,6 +77,34 @@ export const signUp = async ({
   }
 };
 
+export const socialLogin = async ({
+  provider,
+  token,
+}: {
+  provider: "google" | "facebook";
+  token: string;
+}): Promise<{
+  status: boolean;
+}> => {
+  try {
+    const result = await sendMessage("api/auth/social-login", {
+      method: "POST",
+      body: JSON.stringify({ provider, token }),
+    });
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      await saveSession(data);
+      return { status: true };
+    } else {
+      return { status: false };
+    }
+  } catch (error) {
+    console.error(error);
+    return { status: false };
+  }
+};
+
 export const logout = async () => {
   await removeSession();
 };

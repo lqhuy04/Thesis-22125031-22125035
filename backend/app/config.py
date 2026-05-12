@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     # OAuth Settings
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+    GOOGLE_IOS_CLIENT_ID: str = ""
+    GOOGLE_ANDROID_CLIENT_ID: str = ""
     FACEBOOK_APP_ID: str = ""
     FACEBOOK_APP_SECRET: str = ""
     
