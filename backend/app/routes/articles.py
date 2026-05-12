@@ -55,7 +55,7 @@ async def get_business_articles(
     limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
 ):
     """
-    Lấy tin tức "Doanh nghiệp" có tác động lên nhiều mã cổ phiếu (2 hoặc hơn).
+    Lấy tin tức "Doanh nghiệp" có tác động lên chỉ 1 mã cổ phiếu.
 
     - **limit**: Số lượng bài viết tối đa trả về
     """
