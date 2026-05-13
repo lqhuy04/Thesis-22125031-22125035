@@ -299,7 +299,6 @@ class AuthService:
                     "email": email,
                     "avatar_url": avatar_url,
                     "status": "verified",
-                    "verification_token": None,
                     "hash_password": ""  # No password for OAuth users
                 }).execute()
                 

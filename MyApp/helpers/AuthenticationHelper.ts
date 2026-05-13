@@ -180,6 +180,7 @@ export const socialLogin = async ({
     return { status: false };
   }
 };
+
 // Forgot Pass ------------------------------------------------------------
 export const sendOTPForgotPass = async ({
   email,
