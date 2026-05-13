@@ -4,6 +4,8 @@ import re
 import os
 import json
 import logging
+import threading
+import time
 from typing import Optional
 from dotenv import load_dotenv
 from supabase import create_client
@@ -45,6 +47,10 @@ supabase = create_client(
 # ═════════════════════════════════════════════════════════════════════════════
 
 candle_buffer: dict[str, dict] = {}
+batch_flush_buffer: dict[tuple[str, str], dict] = {}
+BATCH_SIZE = 200
+FLUSH_INTERVAL_SECS = 5
+periodic_flush_stop = threading.Event()
 
 def get_day_key(trading_date: str) -> str:
     """'2026-04-22' → '2026-04-22T14:45:00'"""
@@ -88,20 +94,51 @@ def update_buffer(tick: dict) -> None:
             candle["close"]  = tick["close"]    # close = giá tick mới nhất
             candle["volume"] += tick["volume"]  # volume cộng dồn
 
-    # Flush ngay sau mỗi tick để record luôn up-to-date
-    flush_candle(candle_buffer[symbol])
+    # Queue for batch flush so active candles are written periodically
+    add_to_batch_flush(candle_buffer[symbol].copy())
+
+def add_to_batch_flush(candle: dict) -> None:
+    """Add a candle to the batch buffer and flush when the buffer fills."""
+    batch_key = (candle["symbol"], candle["trading_time"])
+    batch_flush_buffer[batch_key] = candle
+    if len(batch_flush_buffer) >= BATCH_SIZE:
+        flush_batch()
+
+def flush_batch() -> None:
+    """Batch upsert multiple candles into the DB."""
+    if not batch_flush_buffer:
+        return
+
+    try:
+        batch_size = len(batch_flush_buffer)
+        payload = list(batch_flush_buffer.values())
+        supabase.table(TABLE).upsert(payload, on_conflict="symbol,trading_time").execute()
+        symbols = set(c["symbol"] for c in payload)
+        logger.info(f"[BATCH FLUSH] {batch_size} candles, symbols: {symbols}")
+        batch_flush_buffer.clear()
+    except Exception as e:
+        logger.error(f"Supabase batch upsert error: {e} | batch_size: {len(batch_flush_buffer)}")
 
 def flush_candle(candle: dict) -> None:
-    """Upsert candle ngày hiện tại vào DB."""
-    try:
-        supabase.table(TABLE).upsert(candle, on_conflict="symbol,trading_time").execute()
-        logger.info(
-            f"[{candle['symbol']}] {candle['trading_time']} "
-            f"open={candle['open']} high={candle['high']} "
-            f"low={candle['low']} close={candle['close']} vol={candle['volume']}"
-        )
-    except Exception as e:
-        logger.error(f"Supabase upsert error: {e} | candle: {candle}")
+    """Backward-compatible wrapper that now queues for batch flush."""
+    add_to_batch_flush(candle)
+
+def flush_active_candles() -> None:
+    """Upsert the current in-memory snapshot so the DB stays near real time."""
+    if not candle_buffer:
+        return
+
+    for candle in list(candle_buffer.values()):
+        add_to_batch_flush(candle.copy())
+
+def periodic_flush_thread() -> None:
+    """Periodically flush active candles every FLUSH_INTERVAL_SECS seconds."""
+    while not periodic_flush_stop.is_set():
+        time.sleep(FLUSH_INTERVAL_SECS)
+        flush_active_candles()
+        if batch_flush_buffer:
+            logger.info(f"[PERIODIC FLUSH] Flushing {len(batch_flush_buffer)} active candles...")
+            flush_batch()
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PARSE
@@ -162,6 +199,11 @@ def get_error(error) -> None:
 def main():
     logger.info("Starting SSI WebSocket stream (daily candle)...")
 
+    periodic_flush_stop.clear()
+    flush_thread = threading.Thread(target=periodic_flush_thread, daemon=True)
+    flush_thread.start()
+    logger.info(f"Periodic flush thread started (flush every {FLUSH_INTERVAL_SECS}s)")
+
     mm = MarketDataStream(config, MarketDataClient(config))
     mm.start(get_market_data, get_error, "B:ALL")
 
@@ -170,9 +212,13 @@ def main():
         while True:
             pass
     except KeyboardInterrupt:
+        periodic_flush_stop.set()
         logger.info(f"Flushing {len(candle_buffer)} remaining candles...")
         for candle in candle_buffer.values():
-            flush_candle(candle)
+            add_to_batch_flush(candle.copy())
+        if batch_flush_buffer:
+            logger.info(f"Flushing final batch with {len(batch_flush_buffer)} candles...")
+            flush_batch()
         logger.info("Stopped.")
 
 if __name__ == "__main__":

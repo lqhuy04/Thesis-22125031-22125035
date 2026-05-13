@@ -58,10 +58,19 @@ async def login(request: LoginRequest):
             result=True
         )
     except ValueError as e:
+        msg = str(e)
+        if msg == "Account not verified":
+            return AuthResponse(
+                data={},
+                errorCode=403001,
+                errorDesc=msg,
+                requestId=request_id,
+                result=False
+            )
         return AuthResponse(
             data={},
             errorCode=401001,
-            errorDesc=str(e),
+            errorDesc=msg,
             requestId=request_id,
             result=False
         )

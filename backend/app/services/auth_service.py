@@ -11,7 +11,6 @@ import google.oauth2.id_token
 import uuid
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-
 class AuthService:
     @staticmethod
     async def signup(email: str, password: str):
@@ -56,7 +55,7 @@ class AuthService:
 
         # Block login until email is verified
         if user.get("status") != "verified":
-            raise ValueError("Email is not verified")
+            raise ValueError("Account not verified")
         
         # Generate tokens
         access_token = create_access_token(user["id"], user["email"])
