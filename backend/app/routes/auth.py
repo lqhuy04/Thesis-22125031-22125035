@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, status, Depends
-from app.models.schemas import (
+from app.models.auth_schemas import (
     SignupRequest, LoginRequest, AuthResponse, AuthData,
     ForgotPasswordRequest, ResetPasswordRequest, UserResponse, SocialLoginRequest,
-    RefreshTokenRequest, LogoutRequest
+    RefreshTokenRequest, LogoutRequest, VerifyOTPRequest, ResetPasswordWithOTPRequest
 )
 from app.services.auth_service import AuthService
 from app.middleware.auth_middleware import get_current_user
@@ -19,15 +19,11 @@ async def signup(request: SignupRequest):
             request.password
         )
         return AuthResponse(
-            data=AuthData(
-                user_id=result["user_id"],
-                email=result["email"]
-            ).dict(),
+            data=AuthData().dict(),
             errorCode=0,
             errorDesc=result["message"],
             requestId=request_id,
-            result=True,
-            userId=result["user_id"]
+            result=True
         )
     except ValueError as e:
         return AuthResponse(
@@ -54,15 +50,12 @@ async def login(request: LoginRequest):
         return AuthResponse(
             data=AuthData(
                 token=result["token"],
-                refresh_token=result.get("refresh_token"),
-                user_id=result["user_id"],
-                email=result["email"]
+                refresh_token=result.get("refresh_token")
             ).dict(),
             errorCode=0,
             errorDesc="Login successful",
             requestId=request_id,
-            result=True,
-            userId=result["user_id"]
+            result=True
         )
     except ValueError as e:
         return AuthResponse(
@@ -81,33 +74,12 @@ async def login(request: LoginRequest):
             result=False
         )
 
-@router.post("/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest):
+
+@router.post("/verify-email")
+async def verify_email(request: VerifyOTPRequest):
     request_id = str(uuid.uuid4())
     try:
-        result = await AuthService.forgot_password(request.email)
-        return {
-            "data": result,
-            "errorCode": 0,
-            "errorDesc": "",
-            "requestId": request_id,
-            "result": True
-        }
-    except Exception as e:
-        return {
-            "data": {},
-            "errorCode": 500001,
-            "errorDesc": "Internal server error",
-            "requestId": request_id,
-            "result": False
-        }
-
-
-@router.get("/verify-email")
-async def verify_email(token: str):
-    request_id = str(uuid.uuid4())
-    try:
-        result = await AuthService.verify_email(token)
+        result = await AuthService.verify_email(request.email, request.otp)
         return {
             "data": result,
             "errorCode": 0,
@@ -124,6 +96,28 @@ async def verify_email(token: str):
             "result": False
         }
     except Exception:
+        return {
+            "data": {},
+            "errorCode": 500001,
+            "errorDesc": "Internal server error",
+            "requestId": request_id,
+            "result": False
+        }
+
+
+@router.post("/resend-verification-otp")
+async def resend_verification_otp(request: ForgotPasswordRequest):
+    request_id = str(uuid.uuid4())
+    try:
+        result = await AuthService.resend_verification_otp(request.email)
+        return {
+            "data": result,
+            "errorCode": 0,
+            "errorDesc": "",
+            "requestId": request_id,
+            "result": True
+        }
+    except Exception as e:
         return {
             "data": {},
             "errorCode": 500001,
@@ -172,39 +166,23 @@ async def reset_password(
 async def social_login(request: SocialLoginRequest):
     request_id = str(uuid.uuid4())
     try:
-        if request.provider == "google":
-            result = await AuthService.google_login(request.token)
-        elif request.provider == "facebook":
-            result = await AuthService.facebook_login(request.token)
-        else:
-            return AuthResponse(
-                data={},
-                errorCode=400001,
-                errorDesc="Unsupported provider",
-                requestId=request_id,
-                result=False
-            )
+        result = await AuthService.google_login(request.token)
         
         return AuthResponse(
             data=AuthData(
                 token=result["token"],
-                refresh_token=result.get("refresh_token"),
-                user_id=result["user_id"],
-                email=result["email"],
-                provider=result.get("provider"),
-                avatar_url=result.get("avatar_url")
+                refresh_token=result.get("refresh_token")
             ).dict(),
             errorCode=0,
-            errorDesc=f"{request.provider.title()} login successful",
+            errorDesc="Google login successful",
             requestId=request_id,
-            result=True,
-            userId=result["user_id"]
+            result=True
         )
     except ValueError as e:
         return AuthResponse(
             data={},
             errorCode=401002,
-            errorDesc=f"{request.provider} authentication failed: {str(e)}",
+            errorDesc=f"Google authentication failed: {str(e)}",
             requestId=request_id,
             result=False
         )
@@ -249,8 +227,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
             "errorCode": 0,
             "errorDesc": "User profile retrieved successfully",
             "requestId": request_id,
-            "result": True,
-            "userId": user["id"]
+            "result": True
         }
     except Exception as e:
         return {
@@ -270,14 +247,12 @@ async def refresh(request: RefreshTokenRequest):
         return AuthResponse(
             data=AuthData(
                 token=result["token"],
-                user_id=result["user_id"],
-                email=result["email"]
+                refresh_token=result.get("refresh_token")
             ).dict(),
             errorCode=0,
             errorDesc="Token refreshed successfully",
             requestId=request_id,
-            result=True,
-            userId=result["user_id"]
+            result=True
         )
     except ValueError as e:
         return AuthResponse(
@@ -316,6 +291,125 @@ async def logout(request: LogoutRequest):
             "errorDesc": str(e),
             "requestId": request_id,
             "result": False
+        }
+    except Exception as e:
+        return {
+            "data": {},
+            "errorCode": 500001,
+            "errorDesc": "Internal server error",
+            "requestId": request_id,
+            "result": False
+        }
+    
+
+@router.post("/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest):
+    request_id = str(uuid.uuid4())
+    try:
+        result = await AuthService.forgot_password(request.email)
+        return {
+            "data": result,
+            "errorCode": 0,
+            "errorDesc": "",
+            "requestId": request_id,
+            "result": True
+        }
+    except Exception as e:
+        return {
+            "data": {},
+            "errorCode": 500001,
+            "errorDesc": "Internal server error",
+            "requestId": request_id,
+            "result": False
+        }
+
+
+@router.post("/verify-otp")
+async def verify_otp(request: VerifyOTPRequest):
+    """
+    Verify OTP sent to email for password reset.
+    This endpoint validates the OTP without resetting the password.
+    """
+    request_id = str(uuid.uuid4())
+    try:
+        result = await AuthService.verify_otp(request.email, request.otp)
+        return {
+            "data": result,
+            "errorCode": 0,
+            "errorDesc": "OTP verified successfully",
+            "requestId": request_id,
+            "result": True
+        }
+    except ValueError as e:
+        return {
+            "data": {},
+            "errorCode": 400001,
+            "errorDesc": str(e),
+            "requestId": request_id,
+            "result": False
+        }
+    except Exception as e:
+        return {
+            "data": {},
+            "errorCode": 500001,
+            "errorDesc": "Internal server error",
+            "requestId": request_id,
+            "result": False
+        }
+
+
+@router.post("/reset-password-with-otp")
+async def reset_password_with_otp(request: ResetPasswordWithOTPRequest):
+    """
+    Reset password after OTP verification.
+    OTP must be verified before calling this endpoint.
+    """
+    request_id = str(uuid.uuid4())
+    try:
+        result = await AuthService.reset_password_with_otp(
+            request.reset_password_token,
+            request.new_password,
+        )
+        return {
+            "data": result,
+            "errorCode": 0,
+            "errorDesc": "Password reset successfully",
+            "requestId": request_id,
+            "result": True
+        }
+    except ValueError as e:
+        return {
+            "data": {},
+            "errorCode": 400002,
+            "errorDesc": str(e),
+            "requestId": request_id,
+            "result": False
+        }
+    except Exception as e:
+        return {
+            "data": {},
+            "errorCode": 500001,
+            "errorDesc": "Internal server error",
+            "requestId": request_id,
+            "result": False
+        }
+
+
+@router.post("/resend-otp")
+async def resend_otp(request: ForgotPasswordRequest):
+    """
+    Resend OTP to email. Call this when user didn't receive OTP or it expired.
+    Deletes old OTP and generates a new one.
+    """
+    request_id = str(uuid.uuid4())
+    try:
+        result = await AuthService.resend_otp(request.email)
+        return {
+            "data": result,
+            "errorCode": 0,
+            "errorDesc": "",
+            "requestId": request_id,
+            "result": True
         }
     except Exception as e:
         return {
