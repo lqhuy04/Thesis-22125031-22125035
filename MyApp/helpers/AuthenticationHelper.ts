@@ -78,10 +78,8 @@ export const signUp = async ({
 };
 
 export const socialLogin = async ({
-  provider,
   token,
 }: {
-  provider: "google" | "facebook";
   token: string;
 }): Promise<{
   status: boolean;
@@ -89,7 +87,7 @@ export const socialLogin = async ({
   try {
     const result = await sendMessage("api/auth/social-login", {
       method: "POST",
-      body: JSON.stringify({ provider, token }),
+      body: JSON.stringify({ token }),
     });
 
     const { errorCode, data } = result || {};

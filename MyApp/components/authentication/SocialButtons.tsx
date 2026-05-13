@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Alert,
   ActivityIndicator,
@@ -6,8 +6,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as Facebook from "expo-auth-session/providers/facebook";
-import * as WebBrowser from "expo-web-browser";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
   GoogleSignin,
@@ -18,8 +16,6 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { socialLogin } from "@/helpers/AuthenticationHelper";
 import { router } from "expo-router";
 
-WebBrowser.maybeCompleteAuthSession();
-
 GoogleSignin.configure({
   webClientId:
     "372062103134-ucu0jacbo5g104ofijuqf1jobnspstu1.apps.googleusercontent.com",
@@ -29,23 +25,8 @@ GoogleSignin.configure({
 
 const SocialButtons = () => {
   const { theme } = useTheme();
-  const [loadingProvider, setLoadingProvider] = useState<
-    "google" | "facebook" | null
-  >(null);
+  const [loadingProvider, setLoadingProvider] = useState<"google" | null>(null);
 
-  // ── Facebook ──────────────────────────────────────────────────────────────
-  const [, fbResponse, fbPromptAsync] = Facebook.useAuthRequest({
-    clientId: "670026132766795",
-  });
-
-  useEffect(() => {
-    if (fbResponse?.type === "success") {
-      const token = fbResponse.authentication?.accessToken;
-      if (token) handleSocialLogin("facebook", token);
-    }
-  }, [fbResponse]);
-
-  // ── Google ────────────────────────────────────────────────────────────────
   const onPressGoogle = async () => {
     try {
       setLoadingProvider("google");
@@ -66,11 +47,7 @@ const SocialButtons = () => {
     }
   };
 
-  // ── Gọi API ───────────────────────────────────────────────────────────────
-  const handleSocialLogin = async (
-    provider: "google" | "facebook",
-    token: string,
-  ) => {
+  const handleSocialLogin = async (provider: "google", token: string) => {
     setLoadingProvider(provider);
     try {
       const res = await socialLogin({ provider, token });
@@ -129,28 +106,6 @@ const SocialButtons = () => {
           <FontAwesome name="google" size={18} color="#EA4335" />
         )}
         <Text typography="titleMedium">Đăng nhập với Google</Text>
-      </TouchableOpacity>
-
-      {/* Facebook */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => fbPromptAsync()}
-        disabled={isLoading}
-        style={[
-          styles.socialBtn,
-          {
-            backgroundColor: theme.background.bg,
-            borderColor: theme.border.default,
-          },
-          isLoading && { opacity: 0.6 },
-        ]}
-      >
-        {loadingProvider === "facebook" ? (
-          <ActivityIndicator size="small" color="#1877F2" />
-        ) : (
-          <FontAwesome name="facebook-official" size={18} color="#1877F2" />
-        )}
-        <Text typography="titleMedium">Đăng nhập với Facebook</Text>
       </TouchableOpacity>
     </View>
   );
