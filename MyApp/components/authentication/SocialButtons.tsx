@@ -50,7 +50,7 @@ const SocialButtons = () => {
   const handleSocialLogin = async (provider: "google", token: string) => {
     setLoadingProvider(provider);
     try {
-      const res = await socialLogin({ provider, token });
+      const res = await socialLogin({ token });
       if (res.status) {
         router.replace("/Tabs");
       } else {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -12,24 +13,48 @@ import ScreenHeader from "@/components/ui/ScreenHeader";
 import { Input } from "@/components/ui/Input";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import { router } from "expo-router";
+import { sendOTPForgotPass } from "@/helpers/AuthenticationHelper";
+
+const validateEmail = (value: string): string | undefined => {
+  if (!value) return undefined;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(value)) return "Email không đúng định dạng.";
+  return undefined;
+};
 
 const ForgotPasswordEmail = () => {
   const { theme } = useTheme();
-  const { control, handleSubmit } = useForm();
+  const { control, handleSubmit, watch } = useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState<string | undefined>();
+
+  const email = watch("email");
+  const isFormValid = !!email && !validateEmail(email);
+
+  const handleEmailChange = (value: string) => {
+    setEmailError(validateEmail(value));
+  };
 
   const onSubmit = async (data: any) => {
+    const emailErr = validateEmail(data.email);
     if (!data.email) return setError("Vui lòng nhập email.");
+    if (emailErr) return setEmailError(emailErr);
 
     setError("");
     setLoading(true);
-    // TODO: gọi API gửi OTP về email
-    await new Promise((r) => setTimeout(r, 1200));
+
+    const response = await sendOTPForgotPass({ email: data.email });
+
     setLoading(false);
 
-    // if (!res.status) return setError("Email không tồn tại trong hệ thống.");
-    router.push("/OTP"); // chuyển sang trang OTP
+    if (!response.status)
+      return setError("Email không tồn tại trong hệ thống.");
+
+    router.push({
+      pathname: "/OTP",
+      params: { email: data.email, flow: "forgotPassword" },
+    });
   };
 
   return (
@@ -37,6 +62,18 @@ const ForgotPasswordEmail = () => {
       <ScreenHeader title="Quên mật khẩu" />
 
       <View style={styles.content}>
+        {/* Loading Modal */}
+        <Modal
+          visible={loading}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+        >
+          <View style={styles.overlay}>
+            <ActivityIndicator size="large" color={theme.base.primary} />
+          </View>
+        </Modal>
+
         {/* Icon + mô tả */}
         <View style={styles.header}>
           <View
@@ -81,6 +118,8 @@ const ForgotPasswordEmail = () => {
             label="Email"
             placeholder="username@gmail.com"
             required
+            errorMessage={emailError}
+            onChangeText={handleEmailChange}
           />
         </View>
 
@@ -112,18 +151,21 @@ const ForgotPasswordEmail = () => {
 
         {/* Button */}
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.base.primary }]}
+          style={[
+            styles.button,
+            {
+              backgroundColor: isFormValid
+                ? theme.base.primary
+                : theme.border.default,
+            },
+          ]}
           onPress={handleSubmit(onSubmit)}
-          disabled={loading}
+          disabled={loading || !isFormValid}
           activeOpacity={0.8}
         >
-          {loading ? (
-            <ActivityIndicator color={theme.text.onPrimary} />
-          ) : (
-            <Text typography="titleLarge" color={theme.text.onPrimary}>
-              Gửi mã xác thực
-            </Text>
-          )}
+          <Text typography="titleLarge" color={theme.text.onPrimary}>
+            Gửi mã xác thực
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -163,5 +205,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 4,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

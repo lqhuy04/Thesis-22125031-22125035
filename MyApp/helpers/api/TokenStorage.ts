@@ -7,14 +7,12 @@ interface JwtPayload {
 
 export interface Session {
   token: string;
-  email: string;
-  user_id: string;
+  refresh_token: string;
 }
 
 const SESSION_KEYS = {
   TOKEN: "access_token",
-  EMAIL: "email",
-  USER_ID: "user_id",
+  REFRESH_TOKEN: "refresh_token",
 } as const;
 
 const isTokenExpired = (token: string): boolean => {
@@ -32,35 +30,32 @@ const isTokenExpired = (token: string): boolean => {
   }
 };
 
-export const saveSession = async ({ token, email, user_id }: Session) => {
+export const saveSession = async ({ token, refresh_token }: Session) => {
   await Promise.all([
     SecureStore.setItemAsync(SESSION_KEYS.TOKEN, token),
-    SecureStore.setItemAsync(SESSION_KEYS.EMAIL, email),
-    SecureStore.setItemAsync(SESSION_KEYS.USER_ID, user_id),
+    SecureStore.setItemAsync(SESSION_KEYS.REFRESH_TOKEN, refresh_token),
   ]);
 };
 
 export const getSession = async (): Promise<Session | null> => {
-  const [token, email, user_id] = await Promise.all([
+  const [token, refresh_token] = await Promise.all([
     SecureStore.getItemAsync(SESSION_KEYS.TOKEN),
-    SecureStore.getItemAsync(SESSION_KEYS.EMAIL),
-    SecureStore.getItemAsync(SESSION_KEYS.USER_ID),
+    SecureStore.getItemAsync(SESSION_KEYS.REFRESH_TOKEN),
   ]);
 
-  if (!token || !email || !user_id) return null;
+  if (!token || !refresh_token) return null;
 
   if (isTokenExpired(token)) {
     await removeSession();
     return null;
   }
 
-  return { token, email, user_id };
+  return { token, refresh_token };
 };
 
 export const removeSession = async () => {
   await Promise.all([
     SecureStore.deleteItemAsync(SESSION_KEYS.TOKEN),
-    SecureStore.deleteItemAsync(SESSION_KEYS.EMAIL),
-    SecureStore.deleteItemAsync(SESSION_KEYS.USER_ID),
+    SecureStore.deleteItemAsync(SESSION_KEYS.REFRESH_TOKEN),
   ]);
 };

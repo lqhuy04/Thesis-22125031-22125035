@@ -290,7 +290,6 @@ class AuthService:
                 # User exists, update their info
                 user = user_result.data[0]
                 update_data = {
-                    "provider": "google",
                     "avatar_url": avatar_url
                 }
                 supabase.table("User").update(update_data).eq("id", user["id"]).execute()
@@ -298,7 +297,6 @@ class AuthService:
                 # Create new user
                 new_user = supabase.table("User").insert({
                     "email": email,
-                    "provider": "google",
                     "avatar_url": avatar_url,
                     "status": "verified",
                     "verification_token": None,
@@ -322,14 +320,11 @@ class AuthService:
                 "refresh_token": refresh_token,
                 "user_id": user["id"],
                 "email": user["email"],
-                "provider": "google",
                 "avatar_url": avatar_url
             }
             
         except Exception as e:
             raise ValueError(f"Google authentication failed: {str(e)}")
-    
-
     
     @staticmethod
     async def refresh_access_token(refresh_token: str):

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   StyleSheet,
   TouchableOpacity,
   View,
@@ -11,42 +12,148 @@ import { Text } from "@/components/ui/Text";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { Input } from "@/components/ui/Input";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { resetForgetPassword } from "@/helpers/AuthenticationHelper";
 
 type FormData = {
   newPass: string;
   confirmPass: string;
 };
 
+const validatePassword = (value: string): string | undefined => {
+  if (!value) return undefined;
+  if (value.length < 8) return "Mật khẩu phải có ít nhất 8 ký tự.";
+  if (!/[0-9]/.test(value)) return "Mật khẩu phải chứa ít nhất 1 chữ số.";
+  if (!/[a-z]/.test(value)) return "Mật khẩu phải chứa ít nhất 1 chữ thường.";
+  if (!/[A-Z]/.test(value)) return "Mật khẩu phải chứa ít nhất 1 chữ in hoa.";
+  if (!/[^a-zA-Z0-9]/.test(value))
+    return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.";
+  return undefined;
+};
+
 const ResetPassword = () => {
+  const { reset_password_token = "" } = useLocalSearchParams<{
+    reset_password_token: string;
+  }>();
+
   const { theme } = useTheme();
-  const { control, handleSubmit, reset } = useForm<FormData>();
+  const { control, handleSubmit, watch, reset } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [successModal, setSuccessModal] = useState(false);
+  const [newPassError, setNewPassError] = useState<string | undefined>();
+  const [confirmPassError, setConfirmPassError] = useState<
+    string | undefined
+  >();
+
+  const newPass = watch("newPass");
+  const confirmPass = watch("confirmPass");
+
+  const isFormValid =
+    !!newPass &&
+    !!confirmPass &&
+    !validatePassword(newPass) &&
+    newPass === confirmPass;
+
+  const handleNewPassChange = (value: string) => {
+    setNewPassError(validatePassword(value));
+    if (confirmPass) {
+      setConfirmPassError(
+        value !== confirmPass ? "Xác nhận mật khẩu không khớp." : undefined,
+      );
+    }
+  };
+
+  const handleConfirmPassChange = (value: string) => {
+    setConfirmPassError(
+      value !== newPass ? "Xác nhận mật khẩu không khớp." : undefined,
+    );
+  };
 
   const onSubmit = async (data: FormData) => {
+    const passErr = validatePassword(data.newPass);
+    const confirmErr =
+      data.newPass !== data.confirmPass
+        ? "Xác nhận mật khẩu không khớp."
+        : undefined;
+
+    setNewPassError(passErr);
+    setConfirmPassError(confirmErr);
+
+    if (passErr || confirmErr) return;
+
     setError("");
-
-    if (data.newPass.length < 6)
-      return setError("Mật khẩu phải có ít nhất 6 ký tự.");
-    if (data.newPass !== data.confirmPass)
-      return setError("Xác nhận mật khẩu không khớp.");
-
     setLoading(true);
-    // TODO: gọi API đặt lại mật khẩu
-    await new Promise((r) => setTimeout(r, 1200));
+
+    const response = await resetForgetPassword({
+      reset_password_token,
+      new_password: data.newPass,
+      confirm_new_password: data.confirmPass,
+    });
+
     setLoading(false);
 
-    // if (!res.status) return setError("Đặt lại mật khẩu thất bại, vui lòng thử lại.");
+    if (!response.status)
+      return setError("Đặt lại mật khẩu thất bại, vui lòng thử lại.");
 
-    setSuccess(true);
     reset();
+    setSuccessModal(true);
   };
 
   return (
     <View style={[styles.safe, { backgroundColor: theme.background.surface }]}>
       <ScreenHeader title="Đặt lại mật khẩu" />
+
+      {/* Loading Modal */}
+      <Modal
+        visible={loading}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.overlay}>
+          <ActivityIndicator size="large" color={theme.base.primary} />
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        visible={successModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.overlay}>
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.background.bg }]}
+          >
+            <Text typography="titleLarge" style={{ textAlign: "center" }}>
+              🎉 Đổi mật khẩu thành công
+            </Text>
+            <Text
+              typography="bodyMedium"
+              style={{ opacity: 0.6, textAlign: "center", marginTop: 8 }}
+            >
+              Vui lòng đăng nhập lại để tiếp tục.
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.modalButton,
+                { backgroundColor: theme.base.primary },
+              ]}
+              onPress={() => {
+                setSuccessModal(false);
+                router.dismissAll();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text typography="titleMedium" color={theme.text.onPrimary}>
+                Đồng ý
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <View style={styles.content}>
         {/* Icon + mô tả */}
@@ -87,9 +194,11 @@ const ResetPassword = () => {
             control={control}
             name="newPass"
             label="Mật khẩu mới"
-            placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+            placeholder="Nhập mật khẩu mới"
             required
             secure
+            errorMessage={newPassError}
+            onChangeText={handleNewPassChange}
           />
           <Input
             control={control}
@@ -98,6 +207,8 @@ const ResetPassword = () => {
             placeholder="Nhập lại mật khẩu mới"
             required
             secure
+            errorMessage={confirmPassError}
+            onChangeText={handleConfirmPassChange}
           />
         </View>
 
@@ -127,50 +238,23 @@ const ResetPassword = () => {
           </View>
         )}
 
-        {/* Success */}
-        {success && (
-          <View
-            style={[
-              styles.banner,
-              {
-                backgroundColor: theme.base.success + "15",
-                borderColor: theme.base.success + "40",
-              },
-            ]}
-          >
-            <SimpleLineIcons
-              name="check"
-              size={13}
-              color={theme.base.success}
-            />
-            <Text
-              typography="labelLarge"
-              color={theme.base.success}
-              style={{ flex: 1 }}
-            >
-              Đặt lại mật khẩu thành công!
-            </Text>
-          </View>
-        )}
-
         {/* Button */}
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.base.primary }]}
-          onPress={
-            success
-              ? () => router.replace("/Authentication")
-              : handleSubmit(onSubmit)
-          }
-          disabled={loading}
+          style={[
+            styles.button,
+            {
+              backgroundColor: isFormValid
+                ? theme.base.primary
+                : theme.border.default,
+            },
+          ]}
+          onPress={handleSubmit(onSubmit)}
+          disabled={loading || !isFormValid}
           activeOpacity={0.8}
         >
-          {loading ? (
-            <ActivityIndicator color={theme.text.onPrimary} />
-          ) : (
-            <Text typography="titleLarge" color={theme.text.onPrimary}>
-              {success ? "Về trang đăng nhập" : "Xác nhận"}
-            </Text>
-          )}
+          <Text typography="titleLarge" color={theme.text.onPrimary}>
+            Xác nhận
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -211,5 +295,26 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 4,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  modalCard: {
+    width: "100%",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    gap: 4,
+  },
+  modalButton: {
+    marginTop: 16,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    alignItems: "center",
   },
 });

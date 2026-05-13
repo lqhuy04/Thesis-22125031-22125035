@@ -12,6 +12,8 @@ type InputProps = {
   placeholder?: string;
   required?: boolean;
   secure?: boolean;
+  errorMessage?: string;
+  onChangeText?: (value: string) => void;
 };
 
 export const Input = ({
@@ -21,6 +23,8 @@ export const Input = ({
   placeholder,
   required = false,
   secure = false,
+  errorMessage,
+  onChangeText,
 }: InputProps) => {
   const { theme } = useTheme();
   const [hidden, setHidden] = useState(secure);
@@ -51,7 +55,9 @@ export const Input = ({
               flexDirection: "row",
               alignItems: "center",
               borderWidth: 1,
-              borderColor: theme.border.default,
+              borderColor: errorMessage
+                ? theme.base.error
+                : theme.border.default,
               borderRadius: 10,
               backgroundColor: theme.background.bg,
               paddingHorizontal: 12,
@@ -67,7 +73,10 @@ export const Input = ({
               placeholder={placeholder}
               placeholderTextColor={theme.text.primary + "44"}
               value={value}
-              onChangeText={onChange}
+              onChangeText={(text) => {
+                onChange(text);
+                onChangeText?.(text);
+              }}
               secureTextEntry={hidden}
               autoCapitalize="none"
             />
@@ -85,6 +94,17 @@ export const Input = ({
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Error message */}
+          {!!errorMessage && (
+            <Text
+              typography="labelMedium"
+              color={theme.base.error}
+              style={{ marginLeft: 2 }}
+            >
+              {errorMessage}
+            </Text>
+          )}
         </View>
       )}
     />
