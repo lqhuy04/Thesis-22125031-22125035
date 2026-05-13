@@ -2,6 +2,13 @@ from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional
 import re
 
+
+def validate_confirm_password(v, values):
+    new_password = values.get('new_password')
+    if new_password and v != new_password:
+        raise ValueError('Confirm password does not match new password')
+    return v
+
 class SignupRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
@@ -28,8 +35,9 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    old_password: str = Field(..., min_length=1)
+    old_password: Optional[str] = None
     new_password: str = Field(..., min_length=8)
+    confirm_new_password: str = Field(..., min_length=8)
     
     @validator('new_password')
     def validate_password(cls, v):
@@ -42,6 +50,10 @@ class ResetPasswordRequest(BaseModel):
         if not re.search(r'\d', v):
             raise ValueError('Password must contain at least one digit')
         return v
+
+    @validator('confirm_new_password')
+    def validate_confirm_password(cls, v, values):
+        return validate_confirm_password(v, values)
 
 
 class VerifyOTPRequest(BaseModel):
@@ -68,10 +80,7 @@ class ResetPasswordWithOTPRequest(BaseModel):
 
     @validator('confirm_new_password')
     def validate_confirm_password(cls, v, values):
-        new_password = values.get('new_password')
-        if new_password and v != new_password:
-            raise ValueError('Confirm password does not match new password')
-        return v
+        return validate_confirm_password(v, values)
 
 
 class AuthResponse(BaseModel):

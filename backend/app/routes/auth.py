@@ -146,6 +146,7 @@ async def reset_password(
             current_user["email"],
             request.old_password,
             request.new_password,
+            request.confirm_new_password,
         )
         return {
             "data": result,
@@ -211,7 +212,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         # This is a protected route example
         from app.services.auth_service import supabase
         
-        user_result = supabase.table("user").select("id, email, phone_number, provider, avatar_url").eq("id", current_user["user_id"]).execute()
+        user_result = supabase.table("user").select("id, email, hash_password").eq("id", current_user["user_id"]).execute()
         
         if not user_result.data:
             return {
@@ -226,9 +227,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         user_data = {
             "user_id": user["id"],
             "email": user["email"],
-            "phone_number": user.get("phone_number"),
-            "provider": user.get("provider"),
-            "avatar_url": user.get("avatar_url")
+            "has_password": bool(user.get("hash_password"))
         }
         
         return {

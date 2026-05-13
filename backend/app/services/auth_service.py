@@ -9,6 +9,7 @@ import httpx
 import google.auth.transport.requests
 import google.oauth2.id_token
 import uuid
+from typing import Optional
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 class AuthService:
@@ -113,7 +114,10 @@ class AuthService:
         return {"message": "If the email exists, a new verification OTP has been sent"}
     
     @staticmethod
-    async def reset_password(email: str, old_password: str, new_password: str):
+    async def reset_password(email: str, old_password: Optional[str], new_password: str, confirm_new_password: str):
+        if new_password != confirm_new_password:
+            raise ValueError("Confirm password does not match new password")
+
         # Find user
         user_result = supabase.table("User").select("*").eq("email", email).execute()
         if not user_result.data:
@@ -121,9 +125,14 @@ class AuthService:
 
         user = user_result.data[0]
 
-        # Verify current password before updating
-        if not user.get("hash_password") or not verify_password(old_password, user["hash_password"]):
-            raise ValueError("Invalid email or password")
+        has_password = bool(user.get("hash_password"))
+
+        # Verify current password only for accounts that already have one
+        if has_password:
+            if not old_password:
+                raise ValueError("Old password is required")
+            if not verify_password(old_password, user["hash_password"]):
+                raise ValueError("Invalid email or password")
 
         # Update password
         hashed_pwd = hash_password(new_password)
