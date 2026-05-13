@@ -25,8 +25,7 @@ class AuthService:
         new_user = supabase.table("User").insert({
             "email": email,
             "hash_password": hashed_pwd,
-            "status": "unverified",
-            "verification_token": None
+            "status": "unverified"
         }).execute()
         
         if not new_user.data:
@@ -90,8 +89,7 @@ class AuthService:
             raise ValueError("Invalid verification code")
 
         result = supabase.table("User").update({
-            "status": "verified",
-            "verification_token": None
+            "status": "verified"
         }).eq("id", user["id"]).execute()
 
         if not result.data:
