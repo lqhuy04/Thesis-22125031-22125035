@@ -4,10 +4,10 @@ import re
 import os
 import json
 import logging
-import threading
-import time
-from datetime import datetime, timezone
+import requests
 from typing import Optional
+from datetime import datetime
+import time
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -40,6 +40,50 @@ supabase = create_client(
     os.getenv("SUPABASE_KEY", "")
 )
 
+def get_ssi_access_token() -> str:
+    """Get access token from SSI API using consumer credentials."""
+    try:
+        url = "https://fc-data.ssi.com.vn/api/v2/Market/AccessToken"
+        payload = {
+            "consumerID": config.consumerID,
+            "consumerSecret": config.consumerSecret,
+        }
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+
+        data = response.json()
+        access_token = data.get("data", {}).get("accessToken", "")
+        if not access_token:
+            raise ValueError("No access token in response")
+
+        return access_token
+    except Exception as e:
+        logger.error(f"Failed to get SSI access token: {e}")
+        return ""
+
+def get_hose_symbols() -> set[str]:
+    """Fetch HOSE symbols from SSI API and keep only symbols with 3 characters."""
+    try:
+        access_token = get_ssi_access_token()
+        if not access_token:
+            return set()
+
+        url = "https://fc-data.ssi.com.vn/api/v2/Market/Securities?Market=HOSE&PageSize=1000"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        data = response.json()
+        symbols = {
+            str(item.get("Symbol") or "").strip().upper()
+            for item in (data.get("data") or [])
+            if str(item.get("Symbol") or "").strip().upper()
+        }
+        return {symbol for symbol in symbols if SYMBOL_REGEX.match(symbol)}
+    except Exception as e:
+        logger.error(f"Failed to fetch HOSE symbols from SSI API: {e}")
+        return set()
+
 # ═════════════════════════════════════════════════════════════════════════════
 # IN-MEMORY CANDLE BUFFER
 # key: (symbol, "YYYY-MM-DDTHH:MM:00")
@@ -47,14 +91,37 @@ supabase = create_client(
 # ═════════════════════════════════════════════════════════════════════════════
 
 candle_buffer: dict[tuple, dict] = {}
-batch_flush_buffer: dict[tuple[str, str], dict] = {}  # Buffer for batch inserts
-BATCH_SIZE = 200  # Flush every 200 candles or when time changes
-FLUSH_INTERVAL_SECS = 5  # Periodic flush every 5 seconds
-periodic_flush_stop = threading.Event()  # Signal to stop periodic flush
+allowed_symbols: set[str] = set()
 
 def get_minute_key(trading_time: str) -> str:
     """'2026-04-22T10:20:13' → '2026-04-22T10:20:00'"""
     return trading_time[:16] + ":00"
+
+def flush_stale_candles(current_minute: str) -> None:
+    """Flush every candle whose minute is older than the current minute."""
+    stale_keys = [
+        key for key in candle_buffer
+        if key[1][:16] < current_minute
+    ]
+
+    if stale_keys:
+        logger.info(
+            f"[MINUTE ROLLOVER] Flushing {len(stale_keys)} stale candles before {current_minute}:00"
+        )
+
+    if not stale_keys:
+        return
+
+    payload = [candle_buffer.pop(key) for key in stale_keys]
+
+    try:
+        supabase.table(TABLE).upsert(payload, on_conflict="symbol,trading_time").execute()
+        symbols = {c["symbol"] for c in payload}
+        logger.info(
+            f"[MINUTE FLUSH] {len(payload)} candles flushed for completed minute(s), symbols: {symbols}"
+        )
+    except Exception as e:
+        logger.error(f"Supabase minute flush error: {e} | batch_size: {len(payload)}")
 
 def update_buffer(tick: dict) -> None:
     """Cập nhật candle trong buffer với tick mới."""
@@ -63,13 +130,8 @@ def update_buffer(tick: dict) -> None:
     key          = (symbol, minute_key)
     current_minute = minute_key[:16]  # "2026-04-22T10:20"
 
-    # Flush các candle của symbol này nếu đã sang phút mới
-    keys_to_flush = [
-        k for k in candle_buffer
-        if k[0] == symbol and k[1][:16] < current_minute
-    ]
-    for k in keys_to_flush:
-        add_to_batch_flush(candle_buffer.pop(k))
+    # Flush mọi candle của các phút cũ khi minute mới xuất hiện.
+    flush_stale_candles(current_minute)
 
     # Aggregate vào buffer
     if key not in candle_buffer:
@@ -89,52 +151,9 @@ def update_buffer(tick: dict) -> None:
         candle["close"]  = tick["close"]           # close = giá tick mới nhất
         candle["volume"] += tick["volume"]          # volume cộng dồn
 
-def add_to_batch_flush(candle: dict) -> None:
-    """Add candle to batch buffer and flush if threshold reached."""
-    batch_key = (candle["symbol"], candle["trading_time"])
-    batch_flush_buffer[batch_key] = candle
-    if len(batch_flush_buffer) >= BATCH_SIZE:
-        flush_batch()
-
-def flush_batch() -> None:
-    """Batch upsert multiple candles vào DB."""
-    if not batch_flush_buffer:
-        return
-    
-    try:
-        batch_size = len(batch_flush_buffer)
-        payload = list(batch_flush_buffer.values())
-        supabase.table(TABLE).upsert(payload, on_conflict="symbol,trading_time").execute()
-        
-        # Log batch info
-        symbols = set(c["symbol"] for c in payload)
-        logger.info(f"[BATCH FLUSH] {batch_size} candles, symbols: {symbols}")
-        
-        batch_flush_buffer.clear()
-    except Exception as e:
-        logger.error(f"Supabase batch upsert error: {e} | batch_size: {len(batch_flush_buffer)}")
-
 def flush_candle(candle: dict) -> None:
-    """(Deprecated) Upsert 1 candle hoàn chỉnh vào DB - now uses batch."""
-    add_to_batch_flush(candle)
-
-def flush_active_candles() -> None:
-    """Upsert all active in-memory candles so the DB tracks the latest minute in near real time."""
-    if not candle_buffer:
-        return
-
-    # Copy the current snapshot so we can upsert it without mutating the buffer.
-    for candle in list(candle_buffer.values()):
-        add_to_batch_flush(candle.copy())
-
-def periodic_flush_thread() -> None:
-    """Periodically flush batch buffer every FLUSH_INTERVAL_SECS seconds."""
-    while not periodic_flush_stop.is_set():
-        time.sleep(FLUSH_INTERVAL_SECS)
-        flush_active_candles()
-        if batch_flush_buffer:
-            logger.info(f"[PERIODIC FLUSH] Flushing {len(batch_flush_buffer)} active candles...")
-            flush_batch()
+    """Backward-compatible helper that flushes immediately."""
+    supabase.table(TABLE).upsert([candle], on_conflict="symbol,trading_time").execute()
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PARSE
@@ -152,6 +171,8 @@ def parse_tick(message) -> Optional[dict]:
 
         symbol = str(bar.get("Symbol") or "").strip().upper()
         if not SYMBOL_REGEX.match(symbol):
+            return None
+        if allowed_symbols and symbol not in allowed_symbols:
             return None
 
         trading_time_str = bar.get("Time")        or bar.get("time")        or ""
@@ -196,33 +217,59 @@ def get_error(error) -> None:
 
 def main():
     logger.info("Starting SSI WebSocket stream...")
-    
-    # Start periodic flush thread
-    periodic_flush_stop.clear()
-    flush_thread = threading.Thread(target=periodic_flush_thread, daemon=True)
-    flush_thread.start()
-    logger.info(f"Periodic flush thread started (flush every {FLUSH_INTERVAL_SECS}s)")
+
+    global allowed_symbols
+    allowed_symbols = get_hose_symbols()
+    if not allowed_symbols:
+        logger.warning("HOSE symbol list is empty; stream will rely only on the 3-character symbol filter.")
+    else:
+        logger.info(f"Loaded {len(allowed_symbols)} HOSE symbols for websocket filtering.")
 
     mm = MarketDataStream(config, MarketDataClient(config))
     mm.start(get_market_data, get_error, "B:ALL")
 
     logger.info("Stream started. Press Ctrl+C to stop.")
     try:
+        # Run a light loop: flush closed minutes periodically and refresh allowed symbols hourly
+        last_refresh = 0
+        REFRESH_INTERVAL = 60 * 60  # seconds
+        last_minute = None
         while True:
-            pass
+            now = datetime.now()
+            current_minute = now.replace(second=0, microsecond=0).isoformat()[:16]
+
+            # Flush closed minutes once per minute (even if no incoming ticks)
+            if current_minute != last_minute:
+                flush_stale_candles(current_minute)
+                last_minute = current_minute
+
+            # Refresh HOSE allowlist periodically
+            if time.time() - last_refresh > REFRESH_INTERVAL:
+                try:
+                    allowed = get_hose_symbols()
+                    if allowed:
+                        allowed_symbols.clear()
+                        allowed_symbols.update(allowed)
+                        logger.info(f"Refreshed HOSE symbol list: {len(allowed_symbols)} symbols")
+                    last_refresh = time.time()
+                except Exception as e:
+                    logger.warning(f"Failed to refresh HOSE symbols: {e}")
+
+            time.sleep(1)
     except KeyboardInterrupt:
-        # Signal periodic flush to stop
-        periodic_flush_stop.set()
-        
-        # Flush toàn bộ candle còn trong buffer trước khi tắt
         logger.info(f"Shutting down... Flushing {len(candle_buffer)} remaining candles from candle_buffer...")
-        for candle in candle_buffer.values():
-            add_to_batch_flush(candle)
-        
-        # Flush remaining batch
-        if batch_flush_buffer:
-            logger.info(f"Flushing final batch with {len(batch_flush_buffer)} candles...")
-            flush_batch()
+        if candle_buffer:
+            # Only flush completed minutes (do not write the current open minute)
+            now = datetime.now().replace(second=0, microsecond=0).isoformat()[:16]
+            completed = [c for k, c in candle_buffer.items() if k[1][:16] < now]
+            if completed:
+                try:
+                    supabase.table(TABLE).upsert(completed, on_conflict="symbol,trading_time").execute()
+                    logger.info(f"Flushed {len(completed)} completed candle(s) on shutdown.")
+                except Exception as e:
+                    logger.error(f"Supabase shutdown flush error: {e} | batch_size: {len(completed)}")
+            else:
+                logger.info("No completed candles to flush on shutdown; skipping open minute(s).")
         
         logger.info("Stopped.")
 

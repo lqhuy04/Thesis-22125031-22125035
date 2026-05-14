@@ -3,10 +3,9 @@ import logging
 import re
 import requests
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 from supabase import create_client
-from ssi_fc_data import fc_md_client, model
 
 load_dotenv()
 
@@ -22,11 +21,11 @@ class Config:
     stream_url     = os.getenv("SSI_STREAM_URL", "https://fc-datahub.ssi.com.vn/")
 
 config = Config()
-client = fc_md_client.MarketDataClient(config)
 
 TABLE         = "Stock_Price_1m"
 SLEEP_SECONDS = 1.1
 SYMBOL_SKIP_SUFFIX_RE = re.compile(r"\d{4}$")
+SYMBOL_3CHAR_RE = re.compile(r'^[A-Z0-9]{3}$')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,10 +64,33 @@ def get_ssi_access_token() -> str:
         logger.error(f"Failed to get SSI access token: {e}")
         return ""
 
-def get_all_symbols() -> list[str]:
+def fetch_intraday_rows(symbol: str, from_date: str, to_date: str, access_token: str) -> list[dict]:
+    """Fetch raw intraday rows for one symbol from SSI's IntradayOhlc endpoint."""
+    try:
+        if not access_token:
+            return []
+
+        url = "https://fc-data.ssi.com.vn/api/v2/Market/IntradayOhlc"
+        params = {
+            "PageSize": 9999,
+            "FromDate": from_date,
+            "ToDate": to_date,
+            "Symbol": symbol,
+        }
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        response = requests.get(url, params=params, headers=headers, timeout=30)
+        response.raise_for_status()
+
+        data = response.json()
+        return data.get("data") or []
+    except Exception as e:
+        logger.error(f"Failed to fetch intraday rows for {symbol}: {e}")
+        return []
+
+def get_all_symbols(access_token: str) -> list[str]:
     """Fetch all HOSE symbols from SSI API."""
     try:
-        access_token = get_ssi_access_token()
         if not access_token:
             return []
         
@@ -88,23 +110,44 @@ def get_all_symbols() -> list[str]:
         return []
 
 def filter_symbols(symbols: list[str]) -> list[str]:
-    """Skip symbols that end with four digits."""
-    return [symbol for symbol in symbols if not SYMBOL_SKIP_SUFFIX_RE.search(symbol)]
+    """Return only 3-character HOSE symbols (skip ones ending with 4-digit suffix)."""
+    return [s for s in symbols if SYMBOL_3CHAR_RE.match(s) and not SYMBOL_SKIP_SUFFIX_RE.search(s)]
 
-def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
+def _aggregate_intraday_minutes(rows: list[dict]) -> list[dict]:
+    """Aggregate raw SSI trade rows into 1m candles without synthetic gap fill."""
+    if not rows:
+        return []
+
+    rows = sorted(rows, key=lambda row: row["trading_time"])
+    symbol = rows[0]["symbol"]
+
+    aggregated: dict[datetime, dict] = {}
+    for row in rows:
+        minute_dt = datetime.fromisoformat(row["trading_time"]).replace(second=0, microsecond=0)
+        candle = aggregated.get(minute_dt)
+        if candle is None:
+            aggregated[minute_dt] = {
+                "symbol": symbol,
+                "trading_time": minute_dt.isoformat(timespec="seconds"),
+                "open": row["open"],
+                "high": row["high"],
+                "low": row["low"],
+                "close": row["close"],
+                "volume": row["volume"],
+            }
+            continue
+
+        candle["high"] = max(candle["high"], row["high"])
+        candle["low"] = min(candle["low"], row["low"])
+        candle["close"] = row["close"]
+        candle["volume"] += row["volume"]
+
+    return [aggregated[minute_dt] for minute_dt in sorted(aggregated)]
+
+def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str, access_token: str) -> list[dict]:
     """Fetch intraday OHLC data for a specific symbol."""
     try:
-        req  = model.intraday_ohlc(symbol, from_date, to_date, 1, 9999, "true", 1)
-        data = client.intraday_ohlc(config, req)
-
-        # SDK trả về dict với key 'data' chứa list
-        if isinstance(data, dict):
-            rows = data.get("data") or []
-        elif isinstance(data, list):
-            rows = data
-        else:
-            logger.error(f"Unexpected response type: {type(data)}")
-            return []
+        rows = fetch_intraday_rows(symbol, from_date, to_date, access_token)
 
         result = []
         for r in rows:
@@ -113,14 +156,11 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]
             if not trading_date or not raw_time:
                 continue
 
-            parts           = raw_time.split(":")
-            normalized_time = f"{parts[0]}:{parts[1]}:00"
             dd, mm, yyyy    = trading_date.split("/")
-            trading_time    = f"{yyyy}-{mm}-{dd}T{normalized_time}"
 
             result.append({
                 "symbol":       symbol,
-                "trading_time": trading_time,
+                "trading_time": f"{yyyy}-{mm}-{dd}T{raw_time[:5]}:00",
                 "open":         float(r.get("Open")   or 0) / 1000,
                 "high":         float(r.get("High")   or 0) / 1000,
                 "low":          float(r.get("Low")    or 0) / 1000,
@@ -129,7 +169,7 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]
             })
 
         time.sleep(SLEEP_SECONDS)  # Rate limiting
-        return result
+        return _aggregate_intraday_minutes(result)
     except Exception as e:
         logger.error(f"Failed to fetch intraday data for {symbol}: {e}")
         return []
@@ -143,18 +183,8 @@ def upsert_candles(candles: list[dict]) -> None:
     if not candles:
         return
     
-    # Deduplicate by symbol,trading_time to avoid conflict errors
-    seen = {}
-    for candle in candles:
-        key = (candle["symbol"], candle["trading_time"])
-        seen[key] = candle
-    
-    deduped = list(seen.values())
-    if len(deduped) < len(candles):
-        logger.info(f"  → Deduplicated {len(candles)} → {len(deduped)} candles")
-    
     try:
-        supabase.table(TABLE).upsert(deduped, on_conflict="symbol,trading_time").execute()
+        supabase.table(TABLE).upsert(candles, on_conflict="symbol,trading_time").execute()
     except Exception as e:
         logger.error(f"Error upserting candles: {e}")
 
@@ -163,7 +193,12 @@ def upsert_candles(candles: list[dict]) -> None:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def main():
-    symbols = get_all_symbols()
+    access_token = get_ssi_access_token()
+    if not access_token:
+        logger.error("No SSI access token found. Exiting.")
+        return
+
+    symbols = get_all_symbols(access_token)
     if not symbols:
         logger.error("No symbols found. Exiting.")
         return
@@ -186,7 +221,7 @@ def main():
     for idx, symbol in enumerate(symbols, 1):
         logger.info(f"[{idx}/{len(symbols)}] Fetching 1m data for {symbol}...")
         
-        candles = fetch_intraday_ohlc(symbol, from_date, to_date)
+        candles = fetch_intraday_ohlc(symbol, from_date, to_date, access_token)
         if candles:
             total_candles_fetched += len(candles)
             upsert_candles(candles)

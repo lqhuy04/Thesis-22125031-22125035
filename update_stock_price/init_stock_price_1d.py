@@ -30,6 +30,7 @@ SLEEP_SECONDS = 1.1         # Delay giữa các request để tránh rate-limit 
 YEARS_BACK    = 5           # Số năm lấy dữ liệu lịch sử
 RESUME_AFTER_SYMBOL = "CVPB2513"
 SYMBOL_SKIP_SUFFIX_RE = re.compile(r"\d{4}$")
+SYMBOL_3CHAR_RE = re.compile(r'^[A-Z0-9]{3}$')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -91,7 +92,7 @@ def get_all_symbols() -> list[str]:
         return []
 
 def filter_symbols(symbols: list[str]) -> list[str]:
-    """Skip symbols that end with four digits, and resume after a marker if present."""
+    """Return only 3-character HOSE symbols; keep resume marker behavior if present."""
     start_index = 0
 
     if RESUME_AFTER_SYMBOL in symbols:
@@ -101,7 +102,8 @@ def filter_symbols(symbols: list[str]) -> list[str]:
         logger.warning(f"Resume symbol {RESUME_AFTER_SYMBOL} not found; starting from beginning")
 
     remaining = symbols[start_index:]
-    return [symbol for symbol in remaining if not SYMBOL_SKIP_SUFFIX_RE.search(symbol)]
+    # Keep only 3-char alphanumeric symbols (HOSE tickers)
+    return [s for s in remaining if SYMBOL_3CHAR_RE.match(s) and not SYMBOL_SKIP_SUFFIX_RE.search(s)]
 
 def generate_chunks(start: date, end: date, chunk_days: int):
     """Yield (from_date, to_date) tuples in DD/MM/YYYY, each <= chunk_days apart."""
