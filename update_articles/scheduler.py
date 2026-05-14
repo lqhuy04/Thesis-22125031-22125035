@@ -21,10 +21,13 @@ logger = logging.getLogger(__name__)
 VN_TZ = timezone(timedelta(hours=7))
 
 # Giờ chạy (giờ Việt Nam)
+# Run once per week on the configured weekday at the given hour/minute.
+# Weekday: 0=Monday .. 6=Sunday
 ARTICLES_RUN_H,  ARTICLES_RUN_M  = 0, 0  # Midnight
+ARTICLES_RUN_WEEKDAY = 0  # Monday
 
 articles_process: subprocess.Popen | None = None
-articles_done_today: str = ""   # "YYYY-MM-DD" của ngày đã chạy article fetching
+articles_done_week: str = ""   # "YYYY-WW" của tuần đã chạy article fetching
 
 
 def now_vn() -> datetime:
@@ -75,14 +78,16 @@ def main():
 
     while True:
         now   = now_vn()
-        today = now.date().isoformat()
         h, m  = hm(now)
+        # ISO week string for tracking (year-weeknumber)
+        current_week = f"{now.isocalendar()[0]}-{now.isocalendar()[1]}"
 
-        # 1️⃣  Chạy fetch articles đúng 1 lần mỗi ngày lúc >= 00:00 (nửa đêm)
-        if (h, m) >= (ARTICLES_RUN_H, ARTICLES_RUN_M):
-            if articles_done_today != today:
-                logger.info(f"🔄 Triggering article fetch at {h:02d}:{m:02d}")
-                articles_done_today = today
+        # 1️⃣  Chạy fetch articles một lần mỗi tuần trên ngày/giờ cấu hình
+        # Compare weekday (0=Mon .. 6=Sun)
+        if now.weekday() == ARTICLES_RUN_WEEKDAY and (h, m) >= (ARTICLES_RUN_H, ARTICLES_RUN_M):
+            if articles_done_week != current_week:
+                logger.info(f"🔄 Triggering weekly article fetch for week {current_week} at {h:02d}:{m:02d}")
+                articles_done_week = current_week
                 run_article_fetch()
 
         time.sleep(60)  # Check every minute
