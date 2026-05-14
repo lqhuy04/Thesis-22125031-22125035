@@ -212,7 +212,7 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         # This is a protected route example
         from app.services.auth_service import supabase
         
-        user_result = supabase.table("user").select("id, email, hash_password").eq("id", current_user["user_id"]).execute()
+        user_result = supabase.table("User").select("id, email, hash_password").eq("id", current_user["user_id"]).execute()
         
         if not user_result.data:
             return {

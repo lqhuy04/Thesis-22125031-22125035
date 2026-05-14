@@ -1,15 +1,16 @@
 import { useTheme } from "@/hooks/ThemeContext";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Modal, Pressable, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
-import { router } from "expo-router";
-import { getSession, removeSession, Session } from "@/helpers/api/TokenStorage";
+import { router, useFocusEffect } from "expo-router";
+import { removeSession } from "@/helpers/api/TokenStorage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { getProfile, UserProfile } from "@/helpers/AuthenticationHelper";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface MenuItemProps {
@@ -96,12 +97,22 @@ const MenuSection = ({ title, items }: MenuSectionProps) => {
 
 const Profile = () => {
   const { theme } = useTheme();
-  const [profile, setProfile] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
-  useEffect(() => {
-    getSession().then(setProfile);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      getProfile()
+        .then((result) => {
+          if (result.status && result.data) {
+            setProfile(result.data);
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to fetch profile:", error);
+        });
+    }, []),
+  );
 
   const managementItems: MenuItemProps[] = [
     {
@@ -160,11 +171,17 @@ const Profile = () => {
 
   const accountItems: MenuItemProps[] = [
     {
-      label: "Đổi mật khẩu",
+      label: profile?.has_password ? "Đổi mật khẩu" : "Đặt mật khẩu",
       icon: (
         <MaterialIcons name="password" size={20} color={theme.base.primary} />
       ),
-      onPress: () => router.push("/ChangePass"),
+      onPress: () =>
+        router.push({
+          pathname: "/ChangePass",
+          params: {
+            data: JSON.stringify({ has_password: profile?.has_password }),
+          },
+        }),
     },
     {
       label: "Đăng xuất",
@@ -212,7 +229,7 @@ const Profile = () => {
 
         <View style={{ flex: 1, marginLeft: 8 }}>
           <Text typography="titleMedium">{profile?.email}</Text>
-          <Text typography="bodyLarge">{profile?.user_id}</Text>
+          <Text typography="bodyMedium">{profile?.user_id}</Text>
         </View>
       </View>
 

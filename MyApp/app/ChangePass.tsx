@@ -12,45 +12,99 @@ import ScreenHeader from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { Input } from "@/components/ui/Input";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
+import { useLocalSearchParams } from "expo-router";
+import { resetPassword } from "@/helpers/AuthenticationHelper";
 
 type FormData = {
   currentPass: string;
-  confirmPass: string;
   newPass: string;
+  confirmPass: string;
+};
+
+const validatePassword = (value: string): string | undefined => {
+  if (!value) return undefined;
+  if (value.length < 8) return "Mật khẩu phải có ít nhất 8 ký tự.";
+  if (!/[0-9]/.test(value)) return "Mật khẩu phải chứa ít nhất 1 chữ số.";
+  if (!/[a-z]/.test(value)) return "Mật khẩu phải chứa ít nhất 1 chữ thường.";
+  if (!/[A-Z]/.test(value)) return "Mật khẩu phải chứa ít nhất 1 chữ in hoa.";
+  if (!/[^a-zA-Z0-9]/.test(value))
+    return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.";
+  return undefined;
 };
 
 const ChangePass = () => {
+  const { data } = useLocalSearchParams() || {};
+  const { has_password } = data ? (JSON.parse(data as string) as any) : {};
+
   const { theme } = useTheme();
-  const { control, handleSubmit, getValues, reset } = useForm<FormData>();
+  const { control, handleSubmit, reset, watch } = useForm<FormData>();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  const [newPassError, setNewPassError] = useState<string | undefined>();
+  const [confirmPassError, setConfirmPassError] = useState<
+    string | undefined
+  >();
+
+  const newPass = watch("newPass");
+  const confirmPass = watch("confirmPass");
+
+  const isFormValid =
+    (!has_password || !!watch("currentPass")) &&
+    !!newPass &&
+    !!confirmPass &&
+    !validatePassword(newPass) &&
+    newPass === confirmPass;
+
+  const handleNewPassChange = (value: string) => {
+    setNewPassError(validatePassword(value));
+    if (confirmPass) {
+      setConfirmPassError(
+        value !== confirmPass ? "Mật khẩu xác nhận không khớp." : undefined,
+      );
+    }
+  };
+
+  const handleConfirmPassChange = (value: string) => {
+    setConfirmPassError(
+      value !== newPass ? "Mật khẩu xác nhận không khớp." : undefined,
+    );
+  };
+
   const onSubmit = async (data: FormData) => {
+    const newPassErr = validatePassword(data.newPass);
+    const confirmErr =
+      data.newPass !== data.confirmPass
+        ? "Mật khẩu xác nhận không khớp."
+        : undefined;
+
+    setNewPassError(newPassErr);
+    setConfirmPassError(confirmErr);
+
+    if (newPassErr || confirmErr) return;
+
     setError("");
     setSuccess(false);
 
-    if (data.currentPass !== data.confirmPass) {
-      return setError("Xác nhận mật khẩu hiện tại không khớp.");
-    }
-    if (data.newPass.length < 6) {
-      return setError("Mật khẩu mới phải có ít nhất 6 ký tự.");
-    }
-    if (data.newPass === data.currentPass) {
+    if (has_password && data.newPass === data.currentPass) {
       return setError("Mật khẩu mới phải khác mật khẩu hiện tại.");
     }
 
     setLoading(true);
-    // TODO: gọi API đổi mật khẩu
-    // const res = await changePassword({ current_password: data.currentPass, new_password: data.newPass });
-    await new Promise((r) => setTimeout(r, 1200));
-    const res = { status: true };
+    const res = await resetPassword({
+      old_password: has_password ? data.currentPass : undefined,
+      new_password: data.newPass,
+      confirm_new_password: data.confirmPass,
+    });
     setLoading(false);
 
     if (res.status) {
       setSuccess(true);
       reset();
+      setNewPassError(undefined);
+      setConfirmPassError(undefined);
     } else {
       setError(
         "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.",
@@ -60,7 +114,7 @@ const ChangePass = () => {
 
   return (
     <View style={[styles.safe, { backgroundColor: theme.background.surface }]}>
-      <ScreenHeader title="Đổi mật khẩu" />
+      <ScreenHeader title={has_password ? "Đổi mật khẩu" : "Đặt mật khẩu"} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -75,34 +129,46 @@ const ChangePass = () => {
             },
           ]}
         >
-          <Input
-            control={control}
-            name="currentPass"
-            label="Mật khẩu hiện tại"
-            placeholder="Nhập mật khẩu hiện tại"
-            secure
-            required
-          />
-          <Input
-            control={control}
-            name="confirmPass"
-            label="Xác nhận mật khẩu hiện tại"
-            placeholder="Nhập lại mật khẩu hiện tại"
-            secure
-            required
-          />
+          {has_password ? (
+            <>
+              <Input
+                control={control}
+                name="currentPass"
+                label="Mật khẩu hiện tại"
+                placeholder="Nhập mật khẩu hiện tại"
+                secure
+                required
+              />
 
-          <View
-            style={[styles.divider, { backgroundColor: theme.border.default }]}
-          />
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.border.default },
+                ]}
+              />
+            </>
+          ) : null}
 
           <Input
             control={control}
             name="newPass"
             label="Mật khẩu mới"
-            placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+            placeholder="Nhập mật khẩu mới"
             secure
             required
+            errorMessage={newPassError}
+            onChangeText={handleNewPassChange}
+          />
+
+          <Input
+            control={control}
+            name="confirmPass"
+            label="Xác nhận mật khẩu mới"
+            placeholder="Nhập lại mật khẩu mới để xác nhận"
+            secure
+            required
+            errorMessage={confirmPassError}
+            onChangeText={handleConfirmPassChange}
           />
         </View>
 
@@ -151,15 +217,22 @@ const ChangePass = () => {
               color={theme.base.success}
               style={{ flex: 1 }}
             >
-              Đổi mật khẩu thành công!
+              {has_password ? "Đổi" : "Đặt"} mật khẩu thành công!
             </Text>
           </View>
         )}
 
         <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.base.primary }]}
+          style={[
+            styles.button,
+            {
+              backgroundColor: isFormValid
+                ? theme.base.primary
+                : theme.border.default,
+            },
+          ]}
           onPress={handleSubmit(onSubmit)}
-          disabled={loading}
+          disabled={loading || !isFormValid}
           activeOpacity={0.8}
         >
           {loading ? (

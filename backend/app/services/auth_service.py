@@ -286,8 +286,6 @@ class AuthService:
             
             # Extract user information
             email = id_info.get('email')
-            name = id_info.get('name', '')
-            avatar_url = id_info.get('picture', '')
             
             if not email:
                 raise ValueError("Email not provided by Google")
@@ -298,15 +296,12 @@ class AuthService:
             if user_result.data:
                 # User exists, update their info
                 user = user_result.data[0]
-                update_data = {
-                    "avatar_url": avatar_url
-                }
+                update_data = {}
                 supabase.table("User").update(update_data).eq("id", user["id"]).execute()
             else:
                 # Create new user
                 new_user = supabase.table("User").insert({
                     "email": email,
-                    "avatar_url": avatar_url,
                     "status": "verified",
                     "hash_password": ""  # No password for OAuth users
                 }).execute()
@@ -328,7 +323,6 @@ class AuthService:
                 "refresh_token": refresh_token,
                 "user_id": user["id"],
                 "email": user["email"],
-                "avatar_url": avatar_url
             }
             
         except Exception as e:
