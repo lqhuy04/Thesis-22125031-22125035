@@ -1,37 +1,42 @@
 """
-aggregator.py — Aggregator Agent (REFACTORED: Confidence = mức độ ủng hộ, độc lập với chiều tín hiệu)
+aggregator.py — Aggregator Agent
 
-- Tổng hợp dữ liệu từ:
+Tổng hợp dữ liệu từ:
     + article_agent
     + fundamental_analysis_agent
     + technical_analysis_agent
 
-- Nếu mode = "auto"  → trả structured output (dict)
-- Nếu mode = "chat"  → trả plain text thân thiện
+Chỉ trả về "Mua" hoặc "Chờ" — không hỗ trợ short/bán khống.
 
 ────────────────────────────────────────────────────────
-THIẾT KẾ CONFIDENCE (Hướng 1):
+THIẾT KẾ CONFIDENCE:
 
   Confidence = f(signal_strength, signal_consistency, data_quality)
 
-  Hoàn toàn độc lập với chiều bullish/bearish của recommendation.
+  Hoàn toàn độc lập với chiều Mua/Chờ của recommendation.
   Câu hỏi confidence trả lời:
     "Các nguồn thông tin có đủ bằng chứng rõ ràng và đồng thuận
      với recommendation được đưa ra không?"
 
   Công thức:
-    confidence = signal_strength  * 0.40
-               + signal_consistency * 0.40
-               + data_quality       * 0.20
+    confidence = signal_strength   * 0.35
+               + signal_consistency * 0.35
+               + data_quality       * 0.30
 
-  Mỗi thành phần đã được chuẩn hóa về [0, 1] trước khi nhân trọng số.
+  Lý do tăng trọng số data_quality lên 0.30:
+    Nếu dữ liệu rỗng/sơ sài, confidence không nên cao dù LLM
+    chấm signal_strength và signal_consistency cao.
+
+  Mỗi thành phần chuẩn hóa về [0, 1] trước khi nhân trọng số.
+
+  data_quality được tính từ CODE (đếm khách quan số nguồn có dữ liệu),
+  không để LLM tự chấm — tránh circular reasoning.
 ────────────────────────────────────────────────────────
 """
 
 import json
 from typing import Literal
 from pydantic import BaseModel, Field
-from langchain_core.messages import HumanMessage, AIMessage
 
 from agentic_ai.service.openai_service import _get_openai_client
 from agentic_ai.analyze.state import AgentState
@@ -43,54 +48,41 @@ from agentic_ai.analyze.state import AgentState
 
 class ConfidenceScores(BaseModel):
     """
-    Ba chiều đánh giá độ tin cậy — hoàn toàn độc lập với chiều Mua/Bán.
-
-    LLM chấm điểm nguyên (0/1/2/3).
-    Code chuẩn hóa và tổng hợp thành confidence ∈ [0.0, 1.0].
+    Hai chiều đánh giá do LLM chấm.
+    data_quality do CODE tính khách quan — không có trong schema này.
     """
 
     signal_strength: Literal[0, 1, 2, 3] = Field(
         description=(
             "Số nguồn có tín hiệu RÕ RÀNG — tín hiệu không mơ hồ, không thiếu dữ liệu quan trọng.\n"
-            "Đếm độc lập với chiều bullish/bearish:\n"
+            "Đếm độc lập với chiều Mua/Chờ:\n"
             "  3 = Tất cả các nguồn đều có tín hiệu rõ ràng\n"
             "  2 = Phần lớn các nguồn có tín hiệu rõ ràng\n"
-            "  1 = Chỉ có ít nguồn có tín hiệu rõ ràng\n"
-            "  0 = Không nguồn nào có tín hiệu rõ ràng (thiếu dữ liệu, mâu thuẫn nội bộ)\n"
+            "  1 = Chỉ một nguồn có tín hiệu rõ ràng\n"
+            "  0 = Không nguồn nào có tín hiệu rõ ràng\n"
             "\n"
             "Tiêu chí 'rõ ràng' cho từng nguồn:\n"
             "  Technical: ≥50% chỉ báo đồng thuận một chiều (bullish hoặc bearish)\n"
             "  Fundamental: ≥50% chỉ số đánh giá được ở mức tốt hoặc xấu rõ ràng\n"
-            "  News: sentiment tin tức rõ ràng tích cực hoặc tiêu cực (không trung lập)"
+            "  News: sentiment rõ ràng tích cực hoặc tiêu cực (không trung lập)"
         )
     )
 
     signal_consistency: Literal[0, 1, 2] = Field(
         description=(
-            "Mức độ đồng thuận của các nguồn VỚI recommendation đã chọn.\n"
-            "Không phải đồng thuận với nhau, mà đồng thuận với kết quả cuối cùng:\n"
+            "Mức độ đồng thuận của các nguồn CÓ DỮ LIỆU với recommendation đã chọn.\n"
             "  2 = Tất cả nguồn có dữ liệu đều ủng hộ recommendation\n"
-            "  1 = Phần lớn nguồn ủng hộ, một nguồn trái chiều hoặc trung lập\n"
-            "  0 = Các nguồn mâu thuẫn nhau, recommendation là phán đoán chủ quan\n"
+            "  1 = Phần lớn ủng hộ, một nguồn trái chiều hoặc trung lập\n"
+            "  0 = Các nguồn mâu thuẫn nhau, recommendation là phán đoán trong uncertainty\n"
             "\n"
-            "Ví dụ:\n"
-            "  Recommendation = 'Mua': technical bullish + fundamental tốt + news tích cực → 2\n"
-            "  Recommendation = 'Bán': technical bearish + fundamental xấu + news tiêu cực → 2\n"
-            "  Recommendation = 'Chờ': tín hiệu mixed, không bên nào áp đảo → 1 hoặc 0"
-        )
-    )
-
-    data_quality: Literal[0, 1, 2] = Field(
-        description=(
-            "Chất lượng và độ đầy đủ của dữ liệu đầu vào:\n"
-            "  2 = Đầy đủ: có dữ liệu từ ≥2 nguồn, mỗi nguồn có đủ chỉ số quan trọng\n"
-            "  1 = Cơ bản: có dữ liệu nhưng thiếu một số chỉ số quan trọng\n"
-            "  0 = Thiếu: chỉ có 1 nguồn dữ liệu hoặc dữ liệu quá sơ sài\n"
+            "Ví dụ khi recommendation = 'Mua':\n"
+            "  technical bullish + fundamental tốt + news tích cực → 2\n"
+            "  technical bullish + fundamental tốt + news trung lập → 1\n"
+            "  technical bullish + fundamental xấu → 0\n"
             "\n"
-            "Chỉ số quan trọng tối thiểu:\n"
-            "  Technical: cần ít nhất RSI + MACD hoặc giá vs MA\n"
-            "  Fundamental: cần ít nhất PE + ROE hoặc D/E\n"
-            "  News: cần ít nhất 1 tin tức gần đây liên quan trực tiếp"
+            "Ví dụ khi recommendation = 'Chờ':\n"
+            "  tín hiệu mixed, không bên nào áp đảo → 1 hoặc 2\n"
+            "  dữ liệu quá sơ sài để kết luận → 0"
         )
     )
 
@@ -98,155 +90,176 @@ class ConfidenceScores(BaseModel):
 class InvestmentRecommendation(BaseModel):
     summary: str = Field(
         description=(
-            "Phân tích tổng thể đầy đủ về tình hình cổ phiếu từ 3 nguồn: "
-            "tin tức, phân tích cơ bản, kỹ thuật"
-            "Giải thích cho recommendation dựa trên:\n"
-            "  1. Dẫn chứng từ số liệu và phân tích của các nguồn\n"
-            "  2. Khẩu vị rủi ro của user\n"
-            "  3. Lý do chấm điểm confidence (signal_strength, signal_consistency, data_quality)"
+            "Phân tích tổng thể tình hình cổ phiếu từ các nguồn có dữ liệu: "
+            "tin tức, phân tích cơ bản, kỹ thuật. "
+            "Nêu các điểm nổi bật, không liệt kê lại toàn bộ số liệu."
         )
     )
-    recommendation: Literal["Mua", "Chờ", "Bán"] = Field(
-        description="Hành động đề xuất"
+
+    recommendation: Literal["Mua", "Chờ"] = Field(
+        description=(
+            "Hành động đề xuất. Chỉ có 2 lựa chọn:\n"
+            "  'Mua'  = Tín hiệu đủ rõ ràng và tích cực để xem xét vào lệnh\n"
+            "  'Chờ' = Tín hiệu mixed, yếu, hoặc tiêu cực — không nên vào lệnh lúc này"
+        )
     )
+
     reasoning: str = Field(
         description=(
-            "Giải thích cho recommendation dựa trên:\n"
-            "  1. Dẫn chứng từ số liệu và phân tích của các nguồn\n"
-            "  2. Khẩu vị rủi ro của user\n"
-            "  3. Lý do chấm điểm confidence (signal_strength, signal_consistency, data_quality)"
+            "Giải thích logic rõ ràng cho recommendation, có dẫn chứng số liệu cụ thể. "
+            "Giải thích tại sao chấm signal_strength và signal_consistency như vậy."
         )
     )
-    scores: ConfidenceScores = Field(
+
+    scores: ConfidenceScores
+
+    entry_price_hint: str | None = Field(
         description=(
-            "Điểm 3 chiều để tính confidence — LLM chấm, code tính tổng.\n"
-            "Nhớ: confidence đo mức độ TIN CẬY vào recommendation, "
-            "không phải mức độ bullish/bearish."
+            "Vùng giá vào lệnh hoặc vùng theo dõi, dạng chuỗi tự nhiên.\n"
+            "Nếu recommendation = 'Mua': vùng giá xem xét mua vào ngay.\n"
+            "  Ví dụ: 'Có thể xem xét mua ở vùng 45,000–47,000 (gần MA20 và lower BB)'\n"
+            "Nếu recommendation = 'Chờ': vùng giá cần về để xem xét vào lệnh (nếu đủ dữ liệu kỹ thuật).\n"
+            "  Ví dụ: 'Theo dõi nếu giá điều chỉnh về vùng 43,000–45,000 (support MA50)'\n"
+            "None nếu không đủ dữ liệu kỹ thuật để xác định vùng hỗ trợ."
         )
     )
+
+    exit_price_hint: str | None = Field(
+        description=(
+            "Vùng chốt lời và mức cắt lỗ tham khảo, dạng chuỗi tự nhiên.\n"
+            "Chỉ điền nếu recommendation = 'Mua' VÀ đã có entry_price_hint.\n"
+            "Ví dụ: 'TP1: 52,000 (upper BB) | TP2: 56,000 (đỉnh swing) | SL: đóng cửa dưới 43,000'\n"
+            "None nếu recommendation = 'Chờ' — chưa vào lệnh thì chưa cần exit."
+        )
+    )
+
     tactical_suggestion: str = Field(
         description=(
-            "Gợi ý vùng/thời điểm mua vào bằng ngôn ngữ tự nhiên. "
-            "Dựa trên support/resistance, MA, Bollinger Bands từ dữ liệu kỹ thuật. "
-            "Không bịa số — nếu thiếu dữ liệu kỹ thuật thì nói rõ 'chưa đủ dữ liệu để xác định vùng giá'."
-
-            "Gợi ý vùng chốt lời và mức cắt lỗ tham khảo. "
-            "Nêu rõ điều kiện kỹ thuật hoặc fundamental để re-evaluate."
-
-            "Khung thời gian phù hợp dựa trên khẩu vị rủi ro của user "
-            "và chất lượng tín hiệu (ngắn hạn / trung hạn / dài hạn)."
-
-            "1–2 rủi ro chính cần theo dõi, rút ra từ dữ liệu fundamental và news."
-
-            "Thêm disclaimer: Đây là gợi ý tham khảo, không phải lời khuyên đầu tư. Quyết định cuối cùng thuộc về nhà đầu tư."
+            "Gợi ý chiến thuật bổ sung:\n"
+            "  - Khung thời gian phù hợp với khẩu vị rủi ro của user\n"
+            "  - 1–2 rủi ro chính CỤ THỂ từ dữ liệu (không nói chung chung)\n"
+            "  - Điều kiện để re-evaluate nếu recommendation = 'Chờ'\n"
+            "  - Disclaimer: 'Đây là gợi ý tham khảo, không phải lời khuyên đầu tư. "
+            "Quyết định cuối cùng thuộc về nhà đầu tư.'"
         )
     )
 
 
 # ─────────────────────────────────────────────────────────────
-# 🧮 Tính confidence từ các điểm thành phần
+# 🧮 Tính data_quality từ code (khách quan, không để LLM tự chấm)
 # ─────────────────────────────────────────────────────────────
 
-# Trọng số: signal_strength và signal_consistency quan trọng hơn data_quality
-WEIGHTS = {
-    "signal_strength": 0.40,
-    "signal_consistency": 0.40,
-    "data_quality": 0.20,
-}
-
-# Max value của từng chiều (để chuẩn hóa về [0, 1])
-MAX_VALUES = {
-    "signal_strength": 3,
-    "signal_consistency": 2,
-    "data_quality": 2,
-}
-
-
-def calculate_confidence(scores: ConfidenceScores) -> float:
+def _compute_data_quality(results: dict) -> int:
     """
-    Tính confidence ∈ [0.0, 1.0] từ 3 chiều độc lập.
+    Đếm số nguồn có dữ liệu thực sự (không rỗng/None/lỗi).
+    Trả về 0, 1, hoặc 2 — chuẩn hóa thành [0, 1] khi tính confidence.
 
-    Công thức:
-        confidence = Σ (score_i / max_i) * weight_i
+    2 = ≥2 nguồn có dữ liệu
+    1 = đúng 1 nguồn có dữ liệu
+    0 = không nguồn nào có dữ liệu
+    """
+    sources = ["article_agent", "fundamental_analysis_agent", "technical_analysis_agent"]
+    count = 0
+    for src in sources:
+        data = results.get(src)
+        if data and data not in ({}, [], "", None):
+            count += 1
+    return min(count, 2)  # cap ở 2
 
-    Không clamp âm vì tất cả thành phần đều >= 0.
+
+# ─────────────────────────────────────────────────────────────
+# 🧮 Tính confidence tổng hợp
+# ─────────────────────────────────────────────────────────────
+
+WEIGHTS = {
+    "signal_strength":    0.35,
+    "signal_consistency": 0.35,
+    "data_quality":       0.30,  # tăng từ 0.20 → 0.30 để penalize dữ liệu thiếu
+}
+
+MAX_VALUES = {
+    "signal_strength":    3,
+    "signal_consistency": 2,
+    "data_quality":       2,
+}
+
+
+def calculate_confidence(scores: ConfidenceScores, data_quality: int) -> float:
+    """
+    Tính confidence ∈ [0.0, 1.0].
+
+    signal_strength và signal_consistency do LLM chấm.
+    data_quality do code tính khách quan.
     """
     confidence = (
-        (scores.signal_strength  / MAX_VALUES["signal_strength"])  * WEIGHTS["signal_strength"]
+        (scores.signal_strength    / MAX_VALUES["signal_strength"])    * WEIGHTS["signal_strength"]
         + (scores.signal_consistency / MAX_VALUES["signal_consistency"]) * WEIGHTS["signal_consistency"]
-        + (scores.data_quality       / MAX_VALUES["data_quality"])       * WEIGHTS["data_quality"]
+        + (data_quality              / MAX_VALUES["data_quality"])       * WEIGHTS["data_quality"]
     )
     return round(min(1.0, confidence), 2)
 
 
 # ─────────────────────────────────────────────────────────────
-# 🧠 Prompt — Structured (API mode)
+# 🧠 System Prompt
 # ─────────────────────────────────────────────────────────────
 
 AGGREGATOR_SYSTEM_PROMPT = """
 Bạn là chuyên gia phân tích chứng khoán Việt Nam với kinh nghiệm thực tế.
 
 Nhiệm vụ:
-- Tổng hợp dữ liệu từ các nguồn sau nếu có:
-  1. Tin tức (article_agent)
-  2. Phân tích cơ bản (fundamental_analysis_agent)
-  3. Phân tích kỹ thuật (technical_analysis_agent)
-
-- Trả về:
-  + summary    : tóm tắt tình hình từ cả 3 nguồn
-  + recommendation: ["Mua", , "Chờ", "Bán"]
-  + reasoning  : giải thích logic rõ ràng, có dẫn chứng số liệu
-  + scores     : chấm 3 chiều confidence — code sẽ tính tổng
+- Tổng hợp dữ liệu từ các nguồn được cung cấp (nếu có):
+    1. Tin tức (article_agent)
+    2. Phân tích cơ bản (fundamental_analysis_agent)
+    3. Phân tích kỹ thuật (technical_analysis_agent)
+- Đưa ra recommendation CHỈ gồm "Mua" hoặc "Chờ"
+- Nếu tín hiệu yếu, tiêu cực, hoặc mâu thuẫn → "Chờ"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN I — PHÂN TÍCH TÍN HIỆU
+PHẦN I — ĐỌC TÍN HIỆU
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-A. PHÂN TÍCH KỸ THUẬT
+A. KỸ THUẬT
 
 RSI (14):
-  < 30           → oversold — bullish nhẹ (có thể hồi)
-  30–45          → yếu → bearish
-  45–55          → trung lập
-  55–70          → mạnh → bullish
-  > 70           → overbought → risk điều chỉnh
+  < 30    → oversold, có thể hồi — bullish nhẹ
+  30–45   → yếu — bearish
+  45–55   → trung lập
+  55–70   → mạnh — bullish
+  > 70    → overbought — cảnh báo điều chỉnh
 
 MACD:
-  macd > signal  → bullish | macd < signal → bearish
-  histogram tăng → động lượng tăng | giảm → yếu dần
-  cắt lên signal → tín hiệu Mua | cắt xuống → tín hiệu Bán
+  macd > signal và histogram tăng → bullish, động lượng mạnh
+  macd < signal và histogram giảm → bearish, động lượng yếu
+  giao cắt lên signal               → tín hiệu Mua
+  giao cắt xuống signal             → tín hiệu thận trọng
 
 Bollinger Bands:
-  Giá gần upper  → mạnh | gần lower → yếu / có thể hồi
+  Giá gần upper BB → mạnh, nhưng cảnh báo không mua đuổi
+  Giá gần lower BB → yếu, có thể tìm điểm hồi
 
 Moving Average:
-  Giá > MA20     → ngắn hạn tích cực | < MA20 → yếu
-  Giá > MA50     → trung hạn tốt    | < MA50 → xấu
+  Giá > MA20 → ngắn hạn tích cực | < MA20 → yếu
+  Giá > MA50 → trung hạn tốt    | < MA50 → xấu
   MA20 cắt lên MA50 (Golden Cross)  → bullish mạnh
   MA20 cắt xuống MA50 (Death Cross) → bearish mạnh
 
 KDJ:
-  K, D, J < 20   → oversold → có thể hồi
-  K, D, J > 80   → overbought → dễ điều chỉnh
-  K cắt lên D    → bullish | cắt xuống → bearish
+  K, D, J < 20 → oversold | > 80 → overbought
+  K cắt lên D   → bullish  | cắt xuống → thận trọng
 
-Volume:
-  Giá tăng + volume tăng → xác nhận xu hướng
-  Giá tăng + volume giảm → tín hiệu yếu
+────────────────────────────────────────────────────────
+B. CƠ BẢN
 
-────────────────────────
-B. PHÂN TÍCH CƠ BẢN
+Định giá  : PE < 10 rẻ / 10–18 hợp lý / > 20 đắt
+Sinh lời  : ROE > 20% rất tốt / 15–20% tốt / < 10% yếu
+Đòn bẩy   : D/E < 0.5 an toàn / 0.5–1 trung bình / > 1 rủi ro
+Tăng trưởng: doanh thu & lợi nhuận tăng YoY → tích cực
 
-Định giá    : PE < 10 rẻ / 10–18 hợp lý / > 20 đắt
-Sinh lời    : ROE > 20% rất tốt / 15–20% tốt / < 10% yếu
-Đòn bẩy     : D/E < 0.5 an toàn / 0.5–1 trung bình / > 1 rủi ro
-Tăng trưởng : doanh thu & lợi nhuận tăng YoY → tích cực
+────────────────────────────────────────────────────────
+C. TIN TỨC
 
-────────────────────────
-C. TIN TỨC (NEWS SENTIMENT)
-
-Tích cực rõ ràng : tăng trưởng, cổ tức, mở rộng, khuyến nghị mua
-Tích cực nhẹ    : tin ngành tích cực, vĩ mô ổn định
+Tích cực rõ ràng : tăng trưởng, cổ tức, mở rộng, mua vào của insider
+Tích cực nhẹ    : tin ngành tốt, vĩ mô ổn định
 Trung lập        : tin thị trường chung, không ảnh hưởng trực tiếp
 Tiêu cực nhẹ    : áp lực ngành, vĩ mô bất lợi
 Tiêu cực rõ ràng: thua lỗ, bán ròng mạnh, kiện tụng, vi phạm
@@ -255,167 +268,93 @@ Tiêu cực rõ ràng: thua lỗ, bán ròng mạnh, kiện tụng, vi phạm
 PHẦN II — QUYẾT ĐỊNH RECOMMENDATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Kết hợp tín hiệu:
-  Technical bullish + Fundamental tốt                → "Mua"
-  Technical yếu     + Fundamental tốt                → "Chờ" hoặc 
-  Technical xấu     + News xấu                       → "Bán"
-  Mixed signals (không bên nào áp đảo)               → "Chờ"
+Chỉ có 2 lựa chọn: "Mua" hoặc "Chờ"
+
+Hướng dẫn:
+  Technical bullish + Fundamental tốt + News ít nhất trung lập → "Mua"
+  Bất kỳ trường hợp còn lại (mixed, yếu, tiêu cực, thiếu dữ liệu) → "Chờ"
 
 Điều chỉnh theo khẩu vị rủi ro:
-  Rủi ro thấp       → ưu tiên  hoặc "Chờ"
-  Ngắn hạn          → ưu tiên technical hơn fundamental
-  Thu nhập thụ động → ưu tiên ROE cao, nợ thấp
+  Rủi ro thấp    → ngưỡng để chọn "Mua" cao hơn (cần cả 3 nguồn đồng thuận)
+  Ngắn hạn       → ưu tiên technical hơn fundamental
+  Thu nhập thụ động → ưu tiên ROE cao, D/E thấp, cổ tức ổn định
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN III — CHẤM ĐIỂM CONFIDENCE (QUAN TRỌNG)
+PHẦN III — CHẤM ĐIỂM CONFIDENCE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ⚠️ NGUYÊN TẮC CỐT LÕI:
-Confidence ĐO MỨC ĐỘ TIN CẬY vào recommendation, KHÔNG đo chiều bullish/bearish.
-Recommendation "Bán" với đầy đủ bằng chứng → confidence CAO.
-Recommendation "Mua" với dữ liệu mơ hồ    → confidence THẤP.
+Confidence đo MỨC ĐỘ TIN CẬY vào recommendation, không đo chiều tích cực/tiêu cực.
+"Chờ" với đủ bằng chứng rõ ràng → confidence CAO.
+"Mua" với dữ liệu mơ hồ → confidence THẤP.
 
-────────────────────────
+LƯU Ý: data_quality được hệ thống tính tự động từ code — bạn KHÔNG cần chấm điểm này.
+Bạn chỉ chấm signal_strength và signal_consistency.
+
+────────────────────────────────────────────────────────
 1. SIGNAL_STRENGTH (0–3): Số nguồn có tín hiệu RÕ RÀNG
 
-Đếm từng nguồn một cách độc lập:
+Đếm từng nguồn độc lập với chiều Mua/Chờ:
 
-  [Technical rõ ràng] khi: ≥50% chỉ báo có sẵn đồng thuận một chiều
-    Ví dụ: RSI=65, MACD>signal, giá>MA20 → 3/3 bullish → rõ ràng bullish ✓
+  [Technical rõ ràng]: ≥50% chỉ báo có sẵn đồng thuận một chiều
+    Ví dụ: RSI=65, MACD>signal, giá>MA20 → 3/3 bullish → rõ ràng ✓
     Ví dụ: RSI=40, MACD>signal, giá<MA20 → 1/3 bullish → không rõ ✗
 
-  [Fundamental rõ ràng] khi: ≥50% chỉ số đánh giá được ở mức tốt HOẶC xấu rõ ràng
-    Ví dụ: PE=12(tốt), ROE=18%(tốt), D/E=0.4(tốt) → 3/3 tốt → rõ ràng tốt ✓
+  [Fundamental rõ ràng]: ≥50% chỉ số ở mức tốt HOẶC xấu rõ ràng
+    Ví dụ: PE=12(tốt), ROE=18%(tốt), D/E=0.4(tốt) → rõ ràng tốt ✓
     Ví dụ: PE=15(trung lập), ROE=12%(trung lập) → không rõ ✗
 
-  [News rõ ràng] khi: sentiment tích cực RÕ RÀNG hoặc tiêu cực RÕ RÀNG
-    Không tính nếu tin trung lập hoặc không đủ thông tin
+  [News rõ ràng]: sentiment tích cực RÕ RÀNG hoặc tiêu cực RÕ RÀNG
+    Tin trung lập không tính là rõ ràng.
 
-  Tổng hợp: signal_strength = số nguồn đạt tiêu chí "rõ ràng" (0, 1, 2, hoặc 3)
+  → signal_strength = số nguồn đạt tiêu chí (0, 1, 2, hoặc 3)
 
-────────────────────────
-2. SIGNAL_CONSISTENCY (0–2): Đồng thuận VỚI recommendation đã chọn
+────────────────────────────────────────────────────────
+2. SIGNAL_CONSISTENCY (0–2): Đồng thuận với recommendation
 
-  Sau khi chọn recommendation, đếm có bao nhiêu nguồn ủng hộ nó:
+Sau khi chọn recommendation, đếm nguồn CÓ DỮ LIỆU ủng hộ nó:
 
   2 = Tất cả nguồn có dữ liệu đều ủng hộ recommendation
-      Ví dụ Mua: technical bullish ✓ + fundamental tốt ✓ + news tích cực ✓
-      Ví dụ Bán: technical bearish ✓ + fundamental xấu ✓ + news tiêu cực ✓
-
   1 = Phần lớn ủng hộ, một nguồn trái chiều hoặc trung lập
-      Ví dụ Mua: technical bullish ✓ + fundamental tốt ✓ + news trung lập ~
+  0 = Các nguồn mâu thuẫn, recommendation là best guess trong uncertainty
 
-  0 = Mâu thuẫn, recommendation là phán đoán trong uncertainty
-      Ví dụ Chờ: technical bullish nhưng fundamental xấu, news tiêu cực
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHẦN IV — ENTRY / EXIT PRICE HINT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-────────────────────────
-3. DATA_QUALITY (0–2): Chất lượng dữ liệu đầu vào
+entry_price_hint — LUÔN CỐ GẮNG ĐIỀN nếu có đủ dữ liệu kỹ thuật:
 
-  2 = Đầy đủ: ≥2 nguồn cung cấp đủ chỉ số quan trọng
-      Technical: có RSI + MACD, hoặc giá vs MA + volume
-      Fundamental: có PE + ROE, hoặc D/E + tăng trưởng
-      News: có ≥1 tin gần đây liên quan trực tiếp
+  Nếu recommendation = "Mua":
+    → Vùng giá xem xét vào lệnh ngay
+    → Dựa trên: lower BB, MA20, MA50, đáy swing gần nhất
+    → Ngôn ngữ theo confidence:
+        ≥ 0.7 → "Có thể xem xét mua ở vùng X–Y (lý do kỹ thuật)"
+        0.4–0.7 → "Nếu giá giữ trên vùng X–Y, có thể xem xét"
+        < 0.4  → None
+    → Nếu giá đang gần upper BB hoặc RSI > 65 → cảnh báo "không mua đuổi, chờ giá về vùng X–Y"
 
-  1 = Cơ bản: có dữ liệu nhưng thiếu một số chỉ số quan trọng
+  Nếu recommendation = "Chờ":
+    → Vùng giá cần về để có thể xem xét vào lệnh (điều kiện re-entry)
+    → Dựa trên: support gần nhất (lower BB, MA50, đáy swing)
+    → Ngôn ngữ rõ ràng là "theo dõi" chứ không phải "mua ngay"
+    → Ví dụ: "Theo dõi nếu giá điều chỉnh về vùng 43,000–45,000 (MA50)"
+    → None nếu không đủ dữ liệu kỹ thuật để xác định vùng hỗ trợ
 
-  0 = Thiếu: chỉ có 1 nguồn, hoặc dữ liệu quá sơ sài để kết luận
-
-────────────────────────
-Ví dụ chấm điểm:
-
-  Case A — Tín hiệu Bán rõ ràng:
-    Technical: RSI=72(overbought), MACD<signal, giá<MA20 → 3/3 bearish → rõ ràng ✓
-    Fundamental: D/E=2.1(xấu), ROE=4%(xấu), PE=25(xấu) → 3/3 xấu → rõ ràng ✓
-    News: báo cáo thua lỗ 3 quý liên tiếp → tiêu cực rõ ràng ✓
-    Recommendation: "Bán"
-    → signal_strength=3, signal_consistency=2, data_quality=2
-    → confidence = 3/3*0.4 + 2/2*0.4 + 2/2*0.2 = 1.0 (rất cao ✓)
-
-  Case B — Tín hiệu Mua mơ hồ:
-    Technical: RSI=52(neutral), MACD>signal → 1/2 bullish → không rõ ✗
-    Fundamental: chỉ có PE=14(tốt), thiếu ROE và D/E → không rõ ✗
-    News: không có tin gần đây → không rõ ✗
-    Recommendation: "Chờ"
-    → signal_strength=0, signal_consistency=1, data_quality=0
-    → confidence = 0/3*0.4 + 1/2*0.4 + 0/2*0.2 = 0.2 (thấp ✓)
+exit_price_hint:
+  - Chỉ điền nếu recommendation = "Mua" VÀ đã có entry_price_hint
+  - Gồm: take profit (TP1, TP2 nếu có) và stop loss (SL)
+  - TP dựa trên: upper BB, đỉnh swing, MA kháng cự gần nhất
+  - SL dựa trên ĐIỀU KIỆN: "đóng cửa dưới X" thay vì chỉ nêu mức giá
+  - Mọi con số phải có trong dữ liệu đầu vào — KHÔNG bịa
+  - None nếu recommendation = "Chờ" (chưa vào lệnh thì chưa cần exit)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 QUY TẮC BẮT BUỘC:
-- Output CHỈ JSON, không thêm text ngoài JSON
-- Trong reasoning: giải thích rõ tại sao chấm từng điểm
-- Không bịa số liệu ngoài dữ liệu được cung cấp
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN IV — GỢI Ý CHIẾN THUẬT (tactical_suggestion)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Sinh tactical_suggestion SAU KHI đã có recommendation và confidence.
-Tất cả con số phải lấy từ dữ liệu kỹ thuật được cung cấp — KHÔNG bịa.
-
-────────────────────────
-1. ENTRY_HINT
-
-Mục tiêu: gợi ý VÙNG (không phải điểm) và ĐIỀU KIỆN để xem xét vào lệnh.
-
-Cách xác định vùng entry:
-  - Tìm support gần nhất: lower Bollinger Band, MA20, MA50, hoặc đáy swing gần nhất
-  - Vùng entry = [support - biên độ nhỏ, support + biên độ nhỏ]
-  - Nếu RSI > 65 hoặc giá đang gần upper BB → cảnh báo "không mua đuổi"
-  - Nếu thiếu dữ liệu kỹ thuật → viết: "Chưa đủ dữ liệu kỹ thuật để xác định vùng vào lệnh cụ thể"
-
-Ngôn ngữ theo confidence:
-  confidence ≥ 0.7 → "Có thể xem xét mua ở vùng X–Y..."
-  confidence 0.4–0.7 → "Nếu giá điều chỉnh về vùng X–Y, có thể theo dõi..."
-  confidence < 0.4  → "Tín hiệu chưa rõ ràng, nên chờ thêm xác nhận trước khi vào lệnh"
-
-────────────────────────
-2. EXIT_HINT
-
-Mục tiêu: gợi ý VÙNG chốt lời và mức cắt lỗ tham khảo.
-
-Cách xác định:
-  Take profit:
-    TP1 = kháng cự gần nhất (upper BB, đỉnh swing gần nhất, MA trên)
-    TP2 = mục tiêu xa hơn nếu momentum mạnh (tùy dữ liệu)
-  Stop loss:
-    SL = phá vỡ support quan trọng (đáy swing, dưới MA20 một biên độ)
-    Nên nêu điều KIỆN (đóng cửa dưới X) thay vì chỉ mức giá
-
-  Nếu recommendation = "Chờ" → exit_hint mô tả điều kiện để re-evaluate,
-    không cần nêu TP/SL cụ thể.
-  Nếu recommendation = "Bán" → exit_hint tập trung vào bảo toàn vốn,
-    gợi ý mức để cân nhắc mua lại nếu có.
-
-────────────────────────
-3. TIME_HORIZON
-
-Gắn với khẩu vị rủi ro và chất lượng tín hiệu:
-
-  Tín hiệu chủ yếu từ technical → ngắn hạn (1–4 tuần)
-  Tín hiệu từ cả technical + fundamental → trung hạn (1–3 tháng)
-  Fundamental dẫn dắt, technical yếu → dài hạn (3–12 tháng), cần kiên nhẫn
-
-  Điều chỉnh theo khẩu vị:
-    Ngắn hạn / giao dịch tích cực → ưu tiên khung tuần
-    Thu nhập thụ động / an toàn   → trung-dài hạn, nhấn mạnh cổ tức và fundamental
-
-────────────────────────
-4. KEY_RISK
-
-Nêu 1–2 rủi ro CỤ THỂ từ dữ liệu, không nói chung chung.
-
-  Tốt: "D/E = 1.2 ở mức cao, nếu lãi suất tăng thêm sẽ ảnh hưởng chi phí vốn"
-  Tốt: "RSI đang tiệm cận 70, nguy cơ điều chỉnh ngắn hạn nếu không có volume xác nhận"
-  Tránh: "Thị trường có thể biến động" (quá chung, vô nghĩa)
-
-────────────────────────
-QUY TẮC BẮT BUỘC cho tactical_suggestion:
-  ✓ Mọi con số phải có trong dữ liệu đầu vào — KHÔNG bịa giá, KHÔNG bịa chỉ số
-  ✓ Ngôn ngữ phải khớp với confidence (thận trọng hơn khi confidence thấp)
-  ✓ disclaimer luôn xuất hiện, không được bỏ qua
-  ✓ Nếu recommendation = "Chờ" và confidence < 0.5 → entry_hint và exit_hint
-     dùng ngôn ngữ quan sát, không đưa ra vùng giá cụ thể
+  ✓ Không bịa số liệu ngoài dữ liệu được cung cấp
+  ✓ Nếu nguồn nào không có dữ liệu → bỏ qua, không suy đoán
+  ✓ exit_price_hint luôn = None khi recommendation = "Chờ"
+  ✓ entry_price_hint khi "Chờ" dùng ngôn ngữ "theo dõi", không phải "mua"
+  ✓ Disclaimer trong tactical_suggestion là bắt buộc
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
@@ -430,11 +369,13 @@ def aggregator_agent(state: AgentState) -> AgentState:
 
     client = _get_openai_client()
 
-    results = state.get("agent_results", {})
+    results      = state.get("agent_results", {})
     risk_appetite = state.get("risk_appetite", {})
-    user_input = state.get("user_input", "")
+    user_input   = state.get("user_input", "")
 
-    # Nội dung phân tích — luôn là message cuối cùng gửi cho LLM
+    # Tính data_quality từ code — không để LLM tự chấm
+    data_quality = _compute_data_quality(results)
+
     analysis_message = f"""
 DỮ LIỆU PHÂN TÍCH:
 
@@ -452,58 +393,63 @@ YÊU CẦU:
 """
 
     try:
-      response = client.beta.chat.completions.parse(
-              model="gpt-4o-mini",
-              temperature=0.2,
-              messages=[
-                  {"role": "system", "content": AGGREGATOR_SYSTEM_PROMPT},
-                  {"role": "user",   "content": analysis_message},
-              ],
-              response_format=InvestmentRecommendation,
-          )
+        response = client.beta.chat.completions.parse(
+            model="gpt-4o-mini",
+            temperature=0.2,
+            messages=[
+                {"role": "system", "content": AGGREGATOR_SYSTEM_PROMPT},
+                {"role": "user",   "content": analysis_message},
+            ],
+            response_format=InvestmentRecommendation,
+        )
 
-      parsed: InvestmentRecommendation = response.choices[0].message.parsed
+        parsed: InvestmentRecommendation = response.choices[0].message.parsed
 
-      # Confidence do code tính — không dùng giá trị LLM tự tính
-      confidence = calculate_confidence(parsed.scores)
+        # Confidence: signal_strength + signal_consistency từ LLM, data_quality từ code
+        confidence = calculate_confidence(parsed.scores, data_quality)
 
-      output = {
-          "summary": parsed.summary,
-          "recommendation": parsed.recommendation,
-          "reasoning": parsed.reasoning,
-          "confidence": confidence,
-          "confidence_breakdown": {
-              # Giá trị gốc LLM chấm
-              "signal_strength":    parsed.scores.signal_strength,       # 0–3
-              "signal_consistency": parsed.scores.signal_consistency,    # 0–2
-              "data_quality":       parsed.scores.data_quality,          # 0–2
-              # Đóng góp vào confidence sau khi chuẩn hóa và nhân trọng số
-              "signal_strength_contribution":    round(
-                  parsed.scores.signal_strength / MAX_VALUES["signal_strength"] * WEIGHTS["signal_strength"], 3
-              ),
-              "signal_consistency_contribution": round(
-                  parsed.scores.signal_consistency / MAX_VALUES["signal_consistency"] * WEIGHTS["signal_consistency"], 3
-              ),
-              "data_quality_contribution":       round(
-                  parsed.scores.data_quality / MAX_VALUES["data_quality"] * WEIGHTS["data_quality"], 3
-              ),
-          },
-          "tactical_suggestion": parsed.tactical_suggestion
-      }
+        output = {
+            "summary":         parsed.summary,
+            "recommendation":  parsed.recommendation,
+            "reasoning":       parsed.reasoning,
+            "confidence":      confidence,
+            "confidence_breakdown": {
+                # Điểm gốc
+                "signal_strength":    parsed.scores.signal_strength,     # 0–3 (LLM)
+                "signal_consistency": parsed.scores.signal_consistency,  # 0–2 (LLM)
+                "data_quality":       data_quality,                      # 0–2 (code)
+                # Đóng góp sau chuẩn hóa và nhân trọng số
+                "signal_strength_contribution":    round(
+                    parsed.scores.signal_strength / MAX_VALUES["signal_strength"] * WEIGHTS["signal_strength"], 3
+                ),
+                "signal_consistency_contribution": round(
+                    parsed.scores.signal_consistency / MAX_VALUES["signal_consistency"] * WEIGHTS["signal_consistency"], 3
+                ),
+                "data_quality_contribution":       round(
+                    data_quality / MAX_VALUES["data_quality"] * WEIGHTS["data_quality"], 3
+                ),
+            },
+            "entry_price_hint": parsed.entry_price_hint,
+            "exit_price_hint":  parsed.exit_price_hint,
+            "tactical_suggestion": parsed.tactical_suggestion,
+        }
 
-      print("[Aggregator] Output:")
-      print(json.dumps(output, ensure_ascii=False, indent=2))
+        print("[Aggregator] Output:")
+        print(json.dumps(output, ensure_ascii=False, indent=2))
 
-      return {"final_output": output}
+        return {"final_output": output}
 
     except Exception as e:
         print(f"[Aggregator] Error: {str(e)}")
 
         fallback = {
-                "summary": "Không thể phân tích dữ liệu",
-                "recommendation": "Chờ",
-                "reasoning": "Lỗi hệ thống",
-                "confidence": 0.0,
+            "summary":         "Không thể phân tích dữ liệu",
+            "recommendation":  "Chờ",
+            "reasoning":       "Lỗi hệ thống",
+            "confidence":      0.0,
+            "entry_price_hint": None,
+            "exit_price_hint":  None,
+            "tactical_suggestion": "Vui lòng thử lại sau.",
         }
 
         return {"error": str(e), "final_output": fallback}

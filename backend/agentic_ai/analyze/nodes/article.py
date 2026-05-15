@@ -5,14 +5,18 @@ from agentic_ai.service import database_service
 def article_agent(state: AgentState) -> AgentState:
     myTask = state.get("plan", {}).get("article_agent", {})
     symbol = state.get("symbol", "")
+    from_date = myTask.get("from_date", "")
+    to_date = myTask.get("to_date", "")
 
-    print("[Article Agent] Đang xử lý task:", myTask)
- 
+    print(""""[Article Agent] Đang xử lý mã: {symbol} từ ngày {from_date} đến ngày {to_date}""" )
+
     result = database_service.get_articles(
         symbol=symbol,
-        from_date=myTask.get("from_date", ""),
-        to_date=myTask.get("to_date", ""),
+        from_date=from_date,
+        to_date=to_date,
     )
+
+    print("[Article Agent] Kết quả:", result)
  
     return {
         "agent_results": {

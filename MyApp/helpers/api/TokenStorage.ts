@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
+import { baseUrl } from "./base";
 
 interface JwtPayload {
   exp: number;
@@ -58,4 +59,36 @@ export const removeSession = async () => {
     SecureStore.deleteItemAsync(SESSION_KEYS.TOKEN),
     SecureStore.deleteItemAsync(SESSION_KEYS.REFRESH_TOKEN),
   ]);
+};
+
+export const refreshSession = async (): Promise<Session | null> => {
+  const refresh_token = await SecureStore.getItemAsync(
+    SESSION_KEYS.REFRESH_TOKEN,
+  );
+  if (!refresh_token) return null;
+
+  try {
+    const response = await fetch(`${baseUrl}/api/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token }),
+    });
+
+    if (!response.ok) {
+      await removeSession();
+      return null;
+    }
+
+    const data = await response.json();
+    const newSession: Session = {
+      token: data.token,
+      refresh_token: data.refresh_token ?? refresh_token,
+    };
+
+    await saveSession(newSession);
+    return newSession;
+  } catch {
+    await removeSession();
+    return null;
+  }
 };

@@ -23,7 +23,7 @@ class StockAnalysisRequest(BaseModel):
     mode: str = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
     symbol: str = Field(description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
     risk_appetite: RiskAppetite
-    plan: Any | None
+    plan: Any | None = Field(default=None, description="Kế hoạch phân tích thủ công, bỏ trống nếu dùng auto")
 
 
 class InvestmentRecommendation(BaseModel):

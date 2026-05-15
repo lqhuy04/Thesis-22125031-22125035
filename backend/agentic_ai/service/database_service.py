@@ -20,28 +20,31 @@ def _get_supabase_client() -> Client:
 
 def get_articles(symbol: str, from_date: str, to_date: str):
     """
-    Lấy danh sách bài báo liên quan đến một mã chứng khoán + thị trường trong khoảng thời gian nhất định.
+    Lấy bài báo liên quan đến một mã chứng khoán trong khoảng thời gian.
+    Chỉ giữ lại bài báo được tag DUY NHẤT cho mã đó (exclusive articles).
     """
-    try: 
-        supabase = _get_supabase_client();
-    
+    try:
+        supabase = _get_supabase_client()
+
+        # Bước 1: Lấy stock_id
         stock = supabase.table("Stock").select("id").eq("stock_symbol", symbol).execute()
-        
         stock_id = stock.data[0]["id"] if stock.data else None
         if not stock_id:
             return []
-        
+
+        # Bước 2: Lấy tất cả article liên quan đến stock này
         result = (
             supabase.table("Article_Stock")
             .select("Article(*)")
             .eq("stock_id", stock_id)
             .execute()
         )
-        
         if not result.data:
             return []
-        
-        formatted_result = []
+
+        # Bước 3: Build article_map và lọc theo khoảng ngày
+        article_ids = []
+        article_map = {}
         for item in result.data:
             article = item.get("Article")
             if not article:
@@ -51,15 +54,45 @@ def get_articles(symbol: str, from_date: str, to_date: str):
             if not article_time:
                 continue
 
-            # Filter theo khoảng ngày
-            if from_date <= article_time <= to_date:
-                formatted_result.append({
-                    "time": article_time,
-                    "title": article.get("title"),
-                    "summary": article.get("summary"),
-                })
-        
-        # Sort theo thời gian cũ -> mới
+            # Filter theo khoảng ngày sớm — tránh xử lý article ngoài range
+            if not (from_date <= article_time <= to_date):
+                continue
+
+            article_id = str(article.get("id") or "")
+            if article_id:
+                article_ids.append(article_id)
+                article_map[article_id] = article
+
+        if not article_ids:
+            return []
+
+        # Bước 4: Đếm số stock được tag cho mỗi article
+        # Chỉ giữ article nào chỉ được tag cho đúng 1 mã (exclusive)
+        count_result = (
+            supabase.table("Article_Stock")
+            .select("article_id")
+            .in_("article_id", article_ids)
+            .execute()
+        )
+
+        from collections import Counter
+        tag_counts = Counter(
+            str(row["article_id"]) for row in count_result.data
+        )
+        exclusive_ids = {aid for aid, count in tag_counts.items() if count == 1}
+
+        # Bước 5: Build response chỉ từ exclusive articles
+        formatted_result = []
+        for article_id, article in article_map.items():
+            if article_id not in exclusive_ids:
+                continue
+            formatted_result.append({
+                "time":    article.get("time"),
+                "title":   article.get("title"),
+                "summary": article.get("summary"),
+            })
+
+        # Sort cũ → mới
         formatted_result.sort(key=lambda x: x["time"])
         return formatted_result
 
