@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { jwtDecode } from "jwt-decode";
-import { baseUrl } from "./base";
+import { getBaseUrl } from "./base";
 
 interface JwtPayload {
   exp: number;
@@ -68,6 +68,8 @@ export const refreshSession = async (): Promise<Session | null> => {
   if (!refresh_token) return null;
 
   try {
+    const baseUrl = await getBaseUrl();
+
     const response = await fetch(`${baseUrl}/api/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

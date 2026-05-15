@@ -1,7 +1,7 @@
 import { New } from "@/helpers/DetailHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
 import React from "react";
-import { TouchableOpacity } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
 import { Text } from "./Text";
 import { router } from "expo-router";
 
@@ -19,6 +19,8 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
         backgroundColor: theme.base.primary + "12",
         borderRadius: 12,
         marginBottom: 8,
+        flexDirection: "row",
+        alignItems: "center",
       }}
       onPress={() => {
         router.push({
@@ -27,26 +29,29 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
         });
       }}
     >
-      <Text
-        typography="labelLarge"
-        style={{ marginBottom: 4 }}
-        numberOfLines={2}
-      >
-        {newItem.title}
-      </Text>
-      <Text typography="bodyMedium" numberOfLines={1}>
-        {newItem.description}
-      </Text>
+      <Image
+        source={{ uri: newItem.thumbnail }}
+        style={{ width: 64, height: 64, borderRadius: 8, marginRight: 12 }}
+      />
 
-      <Text
-        typography="bodySmall"
-        numberOfLines={1}
-        color={theme.text.primary + "80"}
-      >
-        {newItem.source}
-        {" • "}
-        {newItem.time.slice(0, 10)}
-      </Text>
+      <View style={{ flex: 1 }}>
+        <Text
+          typography="labelLarge"
+          style={{ marginBottom: 4 }}
+          numberOfLines={2}
+        >
+          {newItem.title}
+        </Text>
+        <Text
+          typography="bodySmall"
+          numberOfLines={1}
+          color={theme.text.primary + "80"}
+        >
+          {newItem.source}
+          {" • "}
+          {newItem.time.slice(0, 10)}
+        </Text>
+      </View>
     </TouchableOpacity>
   );
 };

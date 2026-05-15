@@ -1,5 +1,5 @@
 import { getSession, refreshSession, Session } from "./TokenStorage";
-import { baseUrl } from "./base";
+import { getBaseUrl } from "./base";
 import { authEvents, AUTH_EXPIRED_EVENT } from "./authEvents";
 
 // Mutex để tránh refresh bị gọi nhiều lần song song
@@ -19,6 +19,8 @@ export const sendMessage = async <T = any>(
     ...(token && { Authorization: `Bearer ${token}` }),
     ...(options.headers || {}),
   };
+
+  const baseUrl = await getBaseUrl();
 
   const response = await fetch(baseUrl + endpoint, { ...options, headers });
 
