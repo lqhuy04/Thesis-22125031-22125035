@@ -540,7 +540,7 @@ class ArticlesService:
                     "stock_symbol": stock_symbol,
                     "description": str(article.get("description") or ""),
                     "time": to_str(article.get("time")),
-                    "image_url": str(article.get("image_url") or ""),
+                    "thumbnail": str(article.get("thumbnail") or ""),
                     "published_at": to_str(article.get("published_at") or article.get("time")),
                     "content": str(article.get("content") or ""),
                     "source": str(article.get("source") or ""),

@@ -1,7 +1,6 @@
 import { Text } from "@/components/ui/Text";
 import React from "react";
 import { ScrollView, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { New } from "@/helpers/DetailHelpers";
 import ScreenHeader from "@/components/ui/ScreenHeader";
@@ -14,13 +13,11 @@ const NewDetal = () => {
   const item = data ? (JSON.parse(data as string) as New) : null;
 
   return (
-    <SafeAreaView>
+    <View style={{ flex: 1 }}>
       <ScreenHeader title="Chi tiết bài viết" />
 
-      <ScrollView>
-        <Text typography="headlineLarge" style={{ marginHorizontal: 12 }}>
-          {item?.title}
-        </Text>
+      <ScrollView style={{ margin: 12, flex: 1 }}>
+        <Text typography="headlineLarge">{item?.title}</Text>
 
         <View
           style={{
@@ -61,10 +58,8 @@ const NewDetal = () => {
             {item?.link}
           </Text>
         </Text>
-
-        <View style={{ height: 48 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

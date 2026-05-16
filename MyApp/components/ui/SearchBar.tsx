@@ -1,5 +1,5 @@
 import React from "react";
-import { View, TextInput, TouchableOpacity, Dimensions } from "react-native";
+import { View, TextInput, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/ThemeContext";
 
@@ -8,6 +8,8 @@ type SearchBarProps = {
   onChange: (text: string) => void;
   onSearchPress?: () => void;
   autoFocus?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 };
 
 export const SearchBar = ({
@@ -15,9 +17,10 @@ export const SearchBar = ({
   onChange,
   onSearchPress,
   autoFocus = false,
+  onFocus,
+  onBlur,
 }: SearchBarProps) => {
   const { theme } = useTheme();
-  const screenWidth = Dimensions.get("window").width;
 
   return (
     <View>
@@ -29,15 +32,19 @@ export const SearchBar = ({
           paddingVertical: 10,
           paddingHorizontal: 16,
           marginTop: 4,
-          width: screenWidth - 24,
+          width: "100%",
           color: theme.text.primary,
         }}
         value={value}
         onChangeText={onChange}
         autoCapitalize="none"
         returnKeyType="search"
-        placeholder={"Tìm kiếm theo mã chứng khoán, tên công ty..."}
-        onBlur={onSearchPress}
+        placeholder="Tìm kiếm theo mã chứng khoán, tên công ty..."
+        onBlur={() => {
+          if (value.trim() !== "") onSearchPress?.();
+          onBlur?.();
+        }}
+        onFocus={onFocus}
         autoFocus={autoFocus}
       />
 

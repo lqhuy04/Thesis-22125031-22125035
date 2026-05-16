@@ -6,17 +6,6 @@ from agentic_ai.analyze.nodes.article import article_agent
 from agentic_ai.analyze.nodes.fundamental_analysis import fundamental_analysis_agent
 from agentic_ai.analyze.nodes.technical_analysis import technical_analysis_agent
 
-def route_to_agents(state: AgentState) -> list[str]:
-    plan = state.get("plan", {})
-    task_to_node = {
-        "article_agent": "article_agent",
-        "fundamental_analysis_agent": "fundamental_analysis_agent",
-        "technical_analysis_agent": "technical_analysis_agent",
-    }
-    nodes = [task_to_node[t] for t in plan if t in task_to_node]
-    print(f"[Router/Agents] Nodes: {nodes}")
-    return nodes
-
 def build_graph() -> StateGraph:
     graph = StateGraph(AgentState)
 
@@ -28,15 +17,10 @@ def build_graph() -> StateGraph:
 
     graph.add_edge("__start__","orchestrator")
 
-    graph.add_conditional_edges(
-        "orchestrator",
-        route_to_agents,
-        {
-            "article_agent": "article_agent",
-            "fundamental_analysis_agent": "fundamental_analysis_agent",
-            "technical_analysis_agent": "technical_analysis_agent",
-        },
-    )
+    graph.add_edge("orchestrator", "article_agent"),
+    graph.add_edge("orchestrator", "fundamental_analysis_agent"),
+    graph.add_edge("orchestrator", "technical_analysis_agent"),
+
     graph.add_edge("article_agent", "aggregator")
     graph.add_edge("fundamental_analysis_agent", "aggregator")
     graph.add_edge("technical_analysis_agent", "aggregator")

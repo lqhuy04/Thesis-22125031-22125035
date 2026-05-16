@@ -82,7 +82,7 @@ export type New = {
   stock_symbol: string;
   description: string;
   time: string;
-  image_url: string;
+  thumbnail: string;
   published_at: string;
   content: string;
   source: string;

@@ -1,35 +1,46 @@
 import { useTheme } from "@/hooks/ThemeContext";
-import React from "react";
+import React, { useMemo } from "react";
 import { Image, TouchableOpacity, View } from "react-native";
 import { Text } from "./Text";
 import { SearchStockItem } from "@/helpers/SearchHelper";
-import { router } from "expo-router";
 
 interface SearchResultItemProps {
   item: SearchStockItem;
+  onPress: () => void;
 }
 
-const SearchResultItem = ({ item }: SearchResultItemProps) => {
+const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
   const { theme } = useTheme();
+
+  const currentPrice = useMemo(() => {
+    if (!item.current_price) return 0;
+    return item.current_price;
+  }, [item.current_price]);
+
+  const priceChange = useMemo(() => {
+    if (!item.price_change) return 0;
+    return item.price_change;
+  }, [item.price_change]);
+
+  const perPriceChange = useMemo(() => {
+    if (!item.per_price_change) return 0;
+    return item.per_price_change;
+  }, [item.per_price_change]);
 
   return (
     <TouchableOpacity
-      onPress={() => {
-        router.push({
-          pathname: "/Detail",
-          params: { data: item.symbol },
-        });
-      }}
+      onPress={onPress}
       style={{
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: theme.background.surface,
-        borderRadius: 4,
+        backgroundColor: theme.background.bg,
+        borderRadius: 12,
         flexDirection: "row",
         alignItems: "center",
-        marginTop: 16,
+        marginTop: 8,
         borderWidth: 1,
         borderColor: theme.border.default,
+        marginHorizontal: 12,
       }}
     >
       <Image
@@ -48,23 +59,33 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
         <Text typography="labelLarge" color={theme.text.primary}>
           {item.symbol}
         </Text>
-        <Text typography="bodySmall" color={theme.text.primary}>
+        <Text
+          typography="bodySmall"
+          color={theme.text.primary}
+          numberOfLines={1}
+        >
           {item.company_name}
         </Text>
       </View>
 
-      <View>
+      <View style={{ alignItems: "flex-end", marginRight: 4 }}>
         <Text typography="labelLarge" color={theme.text.primary}>
-          {item.current_price}
+          {currentPrice}
         </Text>
         <Text
           typography="bodySmall"
-          color={item.price_change >= 0 ? theme.base.success : theme.base.error}
+          color={
+            priceChange > 0
+              ? theme.base.success
+              : priceChange === 0
+                ? theme.base.warning
+                : theme.base.error
+          }
           style={{ textAlign: "right" }}
         >
           {"("}
-          {item.price_change >= 0 ? "+" : ""}
-          {item.price_change}
+          {priceChange > 0 ? "+" : ""}
+          {priceChange >= 0 ? priceChange : priceChange * -1}
           {")"}
         </Text>
       </View>
@@ -76,19 +97,28 @@ const SearchResultItem = ({ item }: SearchResultItemProps) => {
           paddingHorizontal: 8,
           paddingVertical: 4,
           backgroundColor:
-            item.per_price_change >= 0
+            perPriceChange > 0
               ? theme.base.success + "36"
-              : theme.base.error + "36",
+              : perPriceChange === 0
+                ? theme.base.warning + "36"
+                : theme.base.error + "36",
         }}
       >
         <Text
           typography="labelMedium"
           color={
-            item.per_price_change >= 0 ? theme.base.success : theme.base.error
+            perPriceChange > 0
+              ? theme.base.success
+              : perPriceChange === 0
+                ? theme.base.warning
+                : theme.base.error
           }
         >
-          {item.per_price_change >= 0 ? "▲" : "▼"}
-          {item.per_price_change.toFixed(2)}%
+          {perPriceChange > 0 ? "▲" : perPriceChange === 0 ? "" : "▼"}
+          {perPriceChange >= 0
+            ? perPriceChange?.toFixed(2)
+            : (perPriceChange * -1).toFixed(2)}
+          %
         </Text>
       </View>
     </TouchableOpacity>
