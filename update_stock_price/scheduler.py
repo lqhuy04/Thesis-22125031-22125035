@@ -21,6 +21,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Capture subprocess output to files for debugging
+ws_1m_log = open("ws_1m.log", "a")
+ws_1d_log = open("ws_1d.log", "a")
+
 VN_TZ = timezone(timedelta(hours=7))
 
 # Giờ giao dịch (giờ Việt Nam)
@@ -56,19 +60,27 @@ def start_websockets():
     global ws_1m_process, ws_1d_process
 
     if not ws_1m_process or ws_1m_process.poll() is not None:
+        if ws_1m_process and ws_1m_process.poll() is not None:
+            logger.warning(f"⚠ WebSocket 1m crashed with return code {ws_1m_process.returncode}")
         logger.info("▶ Starting websocket_stock_price_1m.py")
         ws_1m_process = subprocess.Popen(
             [sys.executable, "websocket_stock_price_1m.py"],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
+            stdout=ws_1m_log,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
         )
 
     if not ws_1d_process or ws_1d_process.poll() is not None:
+        if ws_1d_process and ws_1d_process.poll() is not None:
+            logger.warning(f"⚠ WebSocket 1d crashed with return code {ws_1d_process.returncode}")
         logger.info("▶ Starting websocket_stock_price_1d.py")
         ws_1d_process = subprocess.Popen(
             [sys.executable, "websocket_stock_price_1d.py"],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
+            stdout=ws_1d_log,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
         )
 
 
@@ -126,42 +138,46 @@ def main():
     logger.info("Scheduler started. Waiting for market hours (VN UTC+7)...")
 
     while True:
-        now   = now_vn()
-        today = now.date().isoformat()
-        h, m  = hm(now)
+        try:
+            now   = now_vn()
+            today = now.date().isoformat()
+            h, m  = hm(now)
 
-        if is_trading_day(now):
-            in_session = (
-                (h, m) >= (MARKET_OPEN_H,  MARKET_OPEN_M) and
-                (h, m) <  (MARKET_CLOSE_H, MARKET_CLOSE_M)
-            )
-            after_close = (h, m) >= (MARKET_CLOSE_H, MARKET_CLOSE_M)
+            if is_trading_day(now):
+                in_session = (
+                    (h, m) >= (MARKET_OPEN_H,  MARKET_OPEN_M) and
+                    (h, m) <  (MARKET_CLOSE_H, MARKET_CLOSE_M)
+                )
+                after_close = (h, m) >= (MARKET_CLOSE_H, MARKET_CLOSE_M)
 
-            # 1️⃣  Trong phiên → đảm bảo cả 2 WebSocket đang chạy
-            if in_session:
-                start_websockets()
+                # 1️⃣  Trong phiên → đảm bảo cả 2 WebSocket đang chạy
+                if in_session:
+                    start_websockets()
 
-            # 2️⃣  Hết phiên → tắt cả 2 WebSocket
-            elif after_close:
-                stop_websockets()
+                # 2️⃣  Hết phiên → tắt cả 2 WebSocket
+                elif after_close:
+                    stop_websockets()
 
-                # 3️⃣  Chạy standardize đúng 1 lần lúc ≥ 15:35
-                if (
-                    standardize_done_today != today and
-                    (h, m) >= (STANDARDIZE_H, STANDARDIZE_M)
-                ):
-                    run_standardize()
-                    standardize_done_today = today
+                    # 3️⃣  Chạy standardize đúng 1 lần lúc ≥ 15:35
+                    if (
+                        standardize_done_today != today and
+                        (h, m) >= (STANDARDIZE_H, STANDARDIZE_M)
+                    ):
+                        run_standardize()
+                        standardize_done_today = today
 
-            # Trước giờ mở → chắc chắn WebSocket không chạy
+                # Trước giờ mở → chắc chắn WebSocket không chạy
+                else:
+                    stop_websockets()
+
             else:
+                # Cuối tuần / ngày nghỉ
                 stop_websockets()
 
-        else:
-            # Cuối tuần / ngày nghỉ
-            stop_websockets()
-
-        time.sleep(30)  # kiểm tra mỗi 30 giây
+            time.sleep(30)  # kiểm tra mỗi 30 giây
+        except Exception as e:
+            logger.error(f"❌ Scheduler error: {e}", exc_info=True)
+            time.sleep(30)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import os
 import json
 import logging
 import requests
+import sys
 from typing import Optional
 from datetime import datetime
 import time
@@ -200,13 +201,16 @@ def parse_tick(message) -> Optional[dict]:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_market_data(message) -> None:
-    tick = parse_tick(message)
-    if tick is None:
-        return
-    
-    # Log individual tick for debugging
-    logger.debug(f"[TICK] {tick['symbol']} at {tick['trading_time']} close={tick['close']}")
-    update_buffer(tick)
+    try:
+        tick = parse_tick(message)
+        if tick is None:
+            return
+        
+        # Log individual tick for debugging
+        logger.debug(f"[TICK] {tick['symbol']} at {tick['trading_time']} close={tick['close']}")
+        update_buffer(tick)
+    except Exception as e:
+        logger.error(f"❌ Error processing market data: {e}", exc_info=True)
 
 def get_error(error) -> None:
     logger.error(f"Stream error: {error}")
@@ -225,8 +229,12 @@ def main():
     else:
         logger.info(f"Loaded {len(allowed_symbols)} HOSE symbols for websocket filtering.")
 
-    mm = MarketDataStream(config, MarketDataClient(config))
-    mm.start(get_market_data, get_error, "B:ALL")
+    try:
+        mm = MarketDataStream(config, MarketDataClient(config))
+        mm.start(get_market_data, get_error, "B:ALL")
+    except Exception as e:
+        logger.error(f"❌ Failed to start MarketDataStream: {e}", exc_info=True)
+        return
 
     logger.info("Stream started. Press Ctrl+C to stop.")
     try:
@@ -235,27 +243,34 @@ def main():
         REFRESH_INTERVAL = 60 * 60  # seconds
         last_minute = None
         while True:
-            now = datetime.now()
-            current_minute = now.replace(second=0, microsecond=0).isoformat()[:16]
+            try:
+                now = datetime.now()
+                current_minute = now.replace(second=0, microsecond=0).isoformat()[:16]
 
-            # Flush closed minutes once per minute (even if no incoming ticks)
-            if current_minute != last_minute:
-                flush_stale_candles(current_minute)
-                last_minute = current_minute
+                # Flush closed minutes once per minute (even if no incoming ticks)
+                if current_minute != last_minute:
+                    try:
+                        flush_stale_candles(current_minute)
+                    except Exception as e:
+                        logger.error(f"❌ Error in flush_stale_candles: {e}", exc_info=True)
+                    last_minute = current_minute
 
-            # Refresh HOSE allowlist periodically
-            if time.time() - last_refresh > REFRESH_INTERVAL:
-                try:
-                    allowed = get_hose_symbols()
-                    if allowed:
-                        allowed_symbols.clear()
-                        allowed_symbols.update(allowed)
-                        logger.info(f"Refreshed HOSE symbol list: {len(allowed_symbols)} symbols")
-                    last_refresh = time.time()
-                except Exception as e:
-                    logger.warning(f"Failed to refresh HOSE symbols: {e}")
+                # Refresh HOSE allowlist periodically
+                if time.time() - last_refresh > REFRESH_INTERVAL:
+                    try:
+                        allowed = get_hose_symbols()
+                        if allowed:
+                            allowed_symbols.clear()
+                            allowed_symbols.update(allowed)
+                            logger.info(f"Refreshed HOSE symbol list: {len(allowed_symbols)} symbols")
+                        last_refresh = time.time()
+                    except Exception as e:
+                        logger.warning(f"Failed to refresh HOSE symbols: {e}")
 
-            time.sleep(1)
+                time.sleep(1)
+            except Exception as e:
+                logger.error(f"❌ Error in main loop: {e}", exc_info=True)
+                time.sleep(5)  # Wait before retrying
     except KeyboardInterrupt:
         logger.info(f"Shutting down... Flushing {len(candle_buffer)} remaining candles from candle_buffer...")
         if candle_buffer:
@@ -274,4 +289,8 @@ def main():
         logger.info("Stopped.")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger.critical(f"❌ Unhandled exception in main: {e}", exc_info=True)
+        sys.exit(1)

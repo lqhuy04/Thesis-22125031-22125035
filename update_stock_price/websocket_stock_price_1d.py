@@ -4,6 +4,7 @@ import re
 import os
 import json
 import logging
+import sys
 import threading
 import time
 from typing import Optional
@@ -133,12 +134,15 @@ def flush_active_candles() -> None:
 
 def periodic_flush_thread() -> None:
     """Periodically flush active candles every FLUSH_INTERVAL_SECS seconds."""
-    while not periodic_flush_stop.is_set():
-        time.sleep(FLUSH_INTERVAL_SECS)
-        flush_active_candles()
-        if batch_flush_buffer:
-            logger.info(f"[PERIODIC FLUSH] Flushing {len(batch_flush_buffer)} active candles...")
-            flush_batch()
+    try:
+        while not periodic_flush_stop.is_set():
+            time.sleep(FLUSH_INTERVAL_SECS)
+            flush_active_candles()
+            if batch_flush_buffer:
+                logger.info(f"[PERIODIC FLUSH] Flushing {len(batch_flush_buffer)} active candles...")
+                flush_batch()
+    except Exception as e:
+        logger.error(f"❌ Error in periodic_flush_thread: {e}", exc_info=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PARSE
@@ -184,10 +188,13 @@ def parse_tick(message) -> Optional[dict]:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_market_data(message) -> None:
-    tick = parse_tick(message)
-    if tick is None:
-        return
-    update_buffer(tick)
+    try:
+        tick = parse_tick(message)
+        if tick is None:
+            return
+        update_buffer(tick)
+    except Exception as e:
+        logger.error(f"❌ Error processing market data: {e}", exc_info=True)
 
 def get_error(error) -> None:
     logger.error(f"Stream error: {error}")
@@ -204,8 +211,13 @@ def main():
     flush_thread.start()
     logger.info(f"Periodic flush thread started (flush every {FLUSH_INTERVAL_SECS}s)")
 
-    mm = MarketDataStream(config, MarketDataClient(config))
-    mm.start(get_market_data, get_error, "B:ALL")
+    try:
+        mm = MarketDataStream(config, MarketDataClient(config))
+        mm.start(get_market_data, get_error, "B:ALL")
+    except Exception as e:
+        logger.error(f"❌ Failed to start MarketDataStream: {e}", exc_info=True)
+        periodic_flush_stop.set()
+        return
 
     logger.info("Stream started. Press Ctrl+C to stop.")
     try:
@@ -222,4 +234,8 @@ def main():
         logger.info("Stopped.")
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger.critical(f"❌ Unhandled exception in main: {e}", exc_info=True)
+        sys.exit(1)

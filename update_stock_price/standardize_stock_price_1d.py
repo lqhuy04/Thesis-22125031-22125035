@@ -1,6 +1,8 @@
 import os
+import re
 import time
 import logging
+import requests
 from datetime import date, timedelta
 from dotenv import load_dotenv
 from supabase import create_client
@@ -22,11 +24,11 @@ class Config:
 config = Config()
 client = fc_md_client.MarketDataClient(config)
 
-SYMBOL        = "VNM"
 TABLE         = "Stock_Price_1d"
 KEEP_DAYS     = 365 * 5     # Giữ lại 5 năm dữ liệu daily
 CHUNK_DAYS    = 30
 SLEEP_SECONDS = 1.1
+SYMBOL_REGEX  = re.compile(r'^[A-Z0-9]{3}$')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,11 +42,59 @@ supabase = create_client(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
+# SYMBOL MANAGEMENT
+# ═════════════════════════════════════════════════════════════════════════════
+
+def get_ssi_access_token() -> str:
+    """Get access token from SSI API using consumer credentials."""
+    try:
+        url = "https://fc-data.ssi.com.vn/api/v2/Market/AccessToken"
+        payload = {
+            "consumerID": config.consumerID,
+            "consumerSecret": config.consumerSecret,
+        }
+        response = requests.post(url, json=payload, timeout=10)
+        response.raise_for_status()
+
+        data = response.json()
+        access_token = data.get("data", {}).get("accessToken", "")
+        if not access_token:
+            raise ValueError("No access token in response")
+
+        return access_token
+    except Exception as e:
+        logger.error(f"Failed to get SSI access token: {e}")
+        return ""
+
+def get_hose_symbols() -> set[str]:
+    """Fetch HOSE symbols from SSI API and keep only symbols with 3 characters."""
+    try:
+        access_token = get_ssi_access_token()
+        if not access_token:
+            return set()
+
+        url = "https://fc-data.ssi.com.vn/api/v2/Market/Securities?Market=HOSE&PageSize=1000"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        data = response.json()
+        symbols = {
+            str(item.get("Symbol") or "").strip().upper()
+            for item in (data.get("data") or [])
+            if str(item.get("Symbol") or "").strip().upper()
+        }
+        return {symbol for symbol in symbols if SYMBOL_REGEX.match(symbol)}
+    except Exception as e:
+        logger.error(f"Failed to fetch HOSE symbols from SSI API: {e}")
+        return set()
+
+# ═════════════════════════════════════════════════════════════════════════════
 # SSI DATA
 # ═════════════════════════════════════════════════════════════════════════════
 
-def fetch_daily_ohlc(from_date: str, to_date: str) -> list[dict]:
-    req  = model.daily_ohlc(SYMBOL, from_date, to_date, 1, 100, "HOSE")
+def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
+    req  = model.daily_ohlc(symbol, from_date, to_date, 1, 100, "HOSE")
     data = client.daily_ohlc(config, req)
 
     if isinstance(data, dict):
@@ -54,9 +104,6 @@ def fetch_daily_ohlc(from_date: str, to_date: str) -> list[dict]:
     else:
         logger.error(f"Unexpected response type: {type(data)}")
         return []
-
-    if rows:
-        logger.info(f"[DEBUG] First raw row: {rows[0]}")
 
     result = []
     for r in rows:
@@ -72,7 +119,7 @@ def fetch_daily_ohlc(from_date: str, to_date: str) -> list[dict]:
             dd, mm, yyyy = parts
             iso_date = f"{yyyy}-{mm}-{dd}"
         else:
-            logger.warning(f"Cannot parse date: {trading_date!r}, skipping")
+            logger.warning(f"[{symbol}] Cannot parse date: {trading_date!r}, skipping")
             continue
 
         def _float(key_variants: list[str]) -> float:
@@ -86,7 +133,7 @@ def fetch_daily_ohlc(from_date: str, to_date: str) -> list[dict]:
             return 0.0
 
         result.append({
-            "symbol":       SYMBOL,
+            "symbol":       symbol,
             "trading_time": f"{iso_date}T14:45:00",
             "open":         _float(["Open"])   / 1000,
             "high":         _float(["High"])   / 1000,
@@ -106,13 +153,13 @@ def upsert_candles(candles: list[dict]) -> None:
         return
     supabase.table(TABLE).upsert(candles, on_conflict="symbol,trading_time").execute()
 
-def delete_old_candles(cutoff_iso: str) -> None:
+def delete_old_candles(symbol: str, cutoff_iso: str) -> None:
     supabase.table(TABLE) \
         .delete() \
-        .eq("symbol", SYMBOL) \
+        .eq("symbol", symbol) \
         .lt("trading_time", cutoff_iso) \
         .execute()
-    logger.info(f"[{SYMBOL}] Deleted candles older than {cutoff_iso}")
+    logger.info(f"[{symbol}] Deleted candles older than {cutoff_iso}")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
@@ -123,17 +170,29 @@ def main():
     today_str  = today.strftime("%d/%m/%Y")
     cutoff_iso = (today - timedelta(days=KEEP_DAYS)).isoformat()
 
-    logger.info(f"=== End-of-day sync [{SYMBOL}]: {today_str} ===")
+    logger.info(f"=== Starting daily sync: {today_str} ===")
 
-    # Daily chỉ cần fetch ngày hôm nay (1 chunk, không cần loop)
-    candles = fetch_daily_ohlc(today_str, today_str)
-    logger.info(f"[{SYMBOL}] Fetched {len(candles)} candles")
+    symbols = get_hose_symbols()
+    logger.info(f"Fetched {len(symbols)} HOSE symbols")
 
-    upsert_candles(candles)
-    logger.info(f"[{SYMBOL}] Upserted {len(candles)} candles")
+    if not symbols:
+        logger.warning("No symbols to process")
+        return
 
-    delete_old_candles(cutoff_iso)
+    all_candles = []
+    for symbol in sorted(symbols):
+        try:
+            candles = fetch_daily_ohlc(symbol, today_str, today_str)
+            if candles:
+                logger.info(f"[{symbol}] Fetched {len(candles)} candles")
+                all_candles.extend(candles)
+                upsert_candles(candles)
+            delete_old_candles(symbol, cutoff_iso)
+            time.sleep(SLEEP_SECONDS)  # Rate limiting
+        except Exception as e:
+            logger.error(f"[{symbol}] Error processing: {e}")
 
+    logger.info(f"Total candles processed: {len(all_candles)}")
     logger.info("=== Done ===")
 
 if __name__ == "__main__":
