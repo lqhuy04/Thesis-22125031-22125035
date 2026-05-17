@@ -761,7 +761,7 @@ class MarketService:
                 return []
 
             result = supabase.table("BI_Profile") \
-                .select("stock_id, symbol, company_name, exchange") \
+                .select("stock_id, symbol, company_name, exchange, logo") \
                 .or_(
                     f"symbol.ilike.%{keyword}%,company_name.ilike.%{keyword}%"
                 ) \
@@ -802,7 +802,7 @@ class MarketService:
     def get_current_stock_price(symbol: str) -> Dict[str, Any]:
         try:
             query = supabase.table("BI_Profile") \
-                .select("stock_id, symbol, company_name, exchange") \
+                .select("stock_id, symbol, company_name, exchange, logo") \
                 .eq("symbol", symbol.upper())
             
             result = query.execute()
@@ -832,6 +832,7 @@ class MarketService:
                 "symbol": stock['symbol'],
                 "company_name": stock['company_name'],
                 "exchange": stock['exchange'],
+                "logo": stock['logo'],
                 "PriceChange": price['price_change'],
                 "PerPriceChange": price['per_price_change'],
                 "CeilingPrice": price['ceiling_price'],

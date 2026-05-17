@@ -45,7 +45,7 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
     >
       <Image
         source={{
-          uri: "https://ibrand.vn/wp-content/uploads/2024/08/vinamilk-logo_brandlogos.net_quayf.png",
+          uri: "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
         }}
         style={{
           marginRight: 8,

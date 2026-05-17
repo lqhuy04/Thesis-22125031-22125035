@@ -84,76 +84,148 @@ const SearchResultItem = ({
           paddingVertical: 12,
           backgroundColor: theme.background.bg,
           borderRadius: 12,
-          flexDirection: "row",
-          alignItems: "center",
+
           marginHorizontal: 12,
         }}
       >
-        <Image
-          source={{
-            uri: "https://ibrand.vn/wp-content/uploads/2024/08/vinamilk-logo_brandlogos.net_quayf.png",
-          }}
+        <View
           style={{
-            marginRight: 8,
-            width: 48,
-            height: 48,
-            borderRadius: 4,
-            backgroundColor: theme.background.bg,
-            borderWidth: 1,
-            borderColor: theme.border.default,
+            flexDirection: "row",
+            alignItems: "center",
           }}
-        />
-
-        <View style={{ flex: 1, marginRight: 12 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginBottom: 2,
+        >
+          <Image
+            source={{
+              uri: "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
             }}
-          >
-            <Text typography="titleMedium" color={theme.text.primary}>
-              {displayData?.symbol}
-            </Text>
+            style={{
+              marginRight: 8,
+              width: 48,
+              height: 48,
+              borderRadius: 4,
+              backgroundColor: theme.background.bg,
+            }}
+          />
 
-            {displayData?.company_name?.length > 0 ? (
-              <View
-                style={{
-                  paddingVertical: 2,
-                  paddingHorizontal: 4,
-                  borderRadius: 2,
-                  backgroundColor: theme.text.primary + "36",
-                  marginLeft: 8,
-                }}
-              >
-                <Text typography="bodySmall" color={theme.text.primary}>
-                  {displayData?.exchange}
-                </Text>
-              </View>
-            ) : null}
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 2,
+              }}
+            >
+              <Text typography="titleMedium" color={theme.text.primary}>
+                {displayData?.symbol}
+              </Text>
+
+              {displayData?.company_name?.length > 0 ? (
+                <View
+                  style={{
+                    paddingVertical: 2,
+                    paddingHorizontal: 4,
+                    borderRadius: 2,
+                    backgroundColor: theme.text.primary + "36",
+                    marginLeft: 8,
+                  }}
+                >
+                  <Text typography="bodySmall" color={theme.text.primary}>
+                    {displayData?.exchange}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            <Text typography="bodyMedium" color={theme.text.primary + "80"}>
+              {displayData?.company_name}
+            </Text>
           </View>
-          <Text typography="bodyMedium" color={theme.text.primary + "80"}>
-            {displayData?.company_name}
-          </Text>
+
+          <TouchableOpacity onPress={toggleFavorite}>
+            {isFavorite ? (
+              <FontAwesome name="star" size={24} color={theme.base.warning} />
+            ) : (
+              <FontAwesome name="star-o" size={24} color={theme.base.warning} />
+            )}
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={toggleFavorite}>
-          {isFavorite ? (
-            <FontAwesome name="star" size={24} color={theme.base.warning} />
-          ) : (
-            <FontAwesome name="star-o" size={24} color={theme.base.warning} />
-          )}
-        </TouchableOpacity>
+        <View
+          style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}
+        >
+          <Text typography="headlineSmall" color={theme.text.primary}>
+            {displayData?.CurrentPrice?.toLocaleString("vi-VN", {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })}
+          </Text>
+
+          <View
+            style={{
+              marginHorizontal: 8,
+              borderRadius: 4,
+              paddingHorizontal: 4,
+              paddingBottom: 2,
+              paddingTop: 1,
+              backgroundColor:
+                displayData?.PriceChange > 0
+                  ? theme.base.success + "36"
+                  : displayData?.PriceChange === 0
+                    ? theme.base.warning + "36"
+                    : theme.base.error + "36",
+            }}
+          >
+            <Text
+              typography="labelMedium"
+              color={
+                displayData?.PriceChange > 0
+                  ? theme.base.success
+                  : displayData?.PriceChange === 0
+                    ? theme.base.warning
+                    : theme.base.error
+              }
+            >
+              {displayData?.PriceChange > 0
+                ? "▲"
+                : displayData?.PriceChange === 0
+                  ? ""
+                  : "▼"}
+              {displayData?.PriceChange >= 0
+                ? displayData?.PriceChange?.toFixed(1)
+                : (displayData?.PriceChange * -1).toFixed(1)}
+            </Text>
+          </View>
+
+          <Text
+            typography="labelSmall"
+            color={
+              displayData?.PerPriceChange > 0
+                ? theme.base.success
+                : displayData?.PerPriceChange === 0
+                  ? theme.base.warning
+                  : theme.base.error
+            }
+          >
+            {displayData?.PerPriceChange > 0
+              ? "▲"
+              : displayData?.PerPriceChange === 0
+                ? ""
+                : "▼"}
+            {displayData?.PerPriceChange >= 0
+              ? displayData?.PerPriceChange?.toFixed(1)
+              : (displayData?.PerPriceChange * -1).toFixed(1)}
+            %
+          </Text>
+        </View>
       </View>
 
       <View
         style={{
           marginHorizontal: 12,
           marginVertical: 12,
-          backgroundColor: theme.base.primary + "16",
+          backgroundColor: theme.background.bg,
           paddingVertical: 8,
           paddingHorizontal: 12,
-          borderRadius: 4,
+          borderRadius: 12,
         }}
       >
         {isMarketIndex ? null : (
@@ -165,8 +237,8 @@ const SearchResultItem = ({
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text typography="titleSmall">Sàn</Text>
-              <Text typography="labelLarge" color={theme.base.error}>
+              <Text typography="bodyMedium">Sàn</Text>
+              <Text typography="titleMedium" color={theme.base.error}>
                 {displayData?.FloorPrice}
               </Text>
             </View>
@@ -177,8 +249,8 @@ const SearchResultItem = ({
                 alignItems: "center",
               }}
             >
-              <Text typography="titleSmall">Tham chiếu</Text>
-              <Text typography="labelLarge" color={theme.base.warning}>
+              <Text typography="bodyMedium">Tham chiếu</Text>
+              <Text typography="titleMedium" color={theme.base.warning}>
                 {displayData?.RefPrice}
               </Text>
             </View>
@@ -189,8 +261,8 @@ const SearchResultItem = ({
                 alignItems: "flex-end",
               }}
             >
-              <Text typography="titleSmall">Trần</Text>
-              <Text typography="labelLarge" color={theme.base.success}>
+              <Text typography="bodyMedium">Trần</Text>
+              <Text typography="titleMedium" color={theme.base.success}>
                 {displayData?.CeilingPrice}
               </Text>
             </View>
@@ -208,18 +280,27 @@ const SearchResultItem = ({
             style={{
               flexDirection: "row",
               justifyContent: "space-between",
-              marginBottom: 4,
             }}
           >
-            <Text typography="titleSmall">Khối lượng giao dịch</Text>
-            <Text typography="bodyMedium">{displayData?.TotalMatchVol} cp</Text>
+            <Text typography="bodyMedium">Khối lượng giao dịch</Text>
+            <Text typography="titleMedium">
+              {displayData?.TotalMatchVol} cp
+            </Text>
           </View>
+
+          <View
+            style={{
+              borderBottomWidth: 1,
+              borderBottomColor: theme.border.default,
+              marginVertical: 8,
+            }}
+          />
 
           <View
             style={{ flexDirection: "row", justifyContent: "space-between" }}
           >
-            <Text typography="titleSmall">Giá trị giao dịch</Text>
-            <Text typography="bodyMedium">
+            <Text typography="bodyMedium">Giá trị giao dịch</Text>
+            <Text typography="titleMedium">
               {(Number(displayData?.TotalMatchVal) / 1000000000).toFixed(2)} tỷ
               đồng
             </Text>

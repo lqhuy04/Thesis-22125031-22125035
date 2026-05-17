@@ -5,6 +5,7 @@ export type SearchStockItem = {
   stock_id: string;
   symbol: string;
   company_name: string;
+  logo: string;
   exchange: string;
   current_price: number;
   price_change: number;
