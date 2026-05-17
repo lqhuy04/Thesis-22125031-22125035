@@ -4,13 +4,16 @@ import { Modal, Pressable, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
 import { router, useFocusEffect } from "expo-router";
-import { removeSession } from "@/helpers/api/TokenStorage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { getProfile, UserProfile } from "@/helpers/AuthenticationHelper";
+import {
+  getProfile,
+  logOut,
+  UserProfile,
+} from "@/helpers/AuthenticationHelper";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface MenuItemProps {
@@ -298,8 +301,8 @@ const Profile = () => {
                   backgroundColor: theme.base.error,
                 }}
                 onPress={async () => {
+                  await logOut();
                   setConfirmLogout(false);
-                  await removeSession();
                   router.replace("/Authentication");
                 }}
               >

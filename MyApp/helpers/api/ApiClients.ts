@@ -1,50 +1,96 @@
-import { getSession, refreshSession, Session } from "./TokenStorage";
-import { getBaseUrl } from "./base";
+import { getSession, saveSession } from "./TokenStorage";
 import { authEvents, AUTH_EXPIRED_EVENT } from "./authEvents";
+import { getBaseUrl } from "./base";
 
-// Mutex để tránh refresh bị gọi nhiều lần song song
-let refreshPromise: Promise<Session | null> | null = null;
+// Mutex state
+let isRefreshing = false;
+let refreshSubscribers: ((token: string) => void)[] = [];
 
-export const sendMessage = async <T = any>(
+const subscribeTokenRefresh = (cb: (token: string) => void) => {
+  refreshSubscribers.push(cb);
+};
+
+const onRefreshSuccess = (newToken: string) => {
+  refreshSubscribers.forEach((cb) => cb(newToken));
+  refreshSubscribers = [];
+};
+
+export const sendMessage = async (
   endpoint: string,
   options: RequestInit = {},
-  _isRetry = false, // tránh vòng lặp vô tận
-): Promise<T> => {
+) => {
+  const baseUrl = await getBaseUrl();
   const session = await getSession();
   const token = session?.token;
+  const refresh_token = session?.refresh_token;
 
-  const headers = {
+  const buildHeaders = (accessToken?: string) => ({
     Accept: "application/json",
     "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
+    ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
     ...(options.headers || {}),
-  };
+  });
 
-  const baseUrl = await getBaseUrl();
+  const response = await fetch(baseUrl + endpoint, {
+    ...options,
+    headers: buildHeaders(token),
+  });
 
-  const response = await fetch(baseUrl + endpoint, { ...options, headers });
-
-  if (response.status === 401) {
-    if (_isRetry) {
-      authEvents.emit(AUTH_EXPIRED_EVENT);
-      throw new Error("Unauthorized");
-    }
-
-    if (!refreshPromise) {
-      refreshPromise = refreshSession().finally(() => {
-        refreshPromise = null;
-      });
-    }
-
-    const newSession = await refreshPromise;
-
-    if (!newSession) {
-      authEvents.emit(AUTH_EXPIRED_EVENT);
-      throw new Error("Unauthorized");
-    }
-
-    return sendMessage<T>(endpoint, options, true); // ← pass T vào recursive call
+  if (response.status !== 401) {
+    return response.json();
   }
 
-  return response.json() as Promise<T>;
+  // --- 401: cần refresh token ---
+
+  // Nếu đang có request khác đang refresh, chờ nó xong
+  if (isRefreshing) {
+    return new Promise((resolve, reject) => {
+      subscribeTokenRefresh(async (newToken) => {
+        try {
+          const retryResponse = await fetch(baseUrl + endpoint, {
+            ...options,
+            headers: buildHeaders(newToken),
+          });
+          resolve(retryResponse.json());
+        } catch (err) {
+          reject(err);
+        }
+      });
+    });
+  }
+
+  // Request đầu tiên bắt đầu refresh
+  isRefreshing = true;
+
+  try {
+    const refreshResponse = await fetch(baseUrl + "api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token }),
+    });
+
+    if (!refreshResponse.ok) {
+      authEvents.emit(AUTH_EXPIRED_EVENT);
+      throw new Error("Session expired. Please login again.");
+    }
+
+    const refreshData = await refreshResponse.json();
+    const newToken = refreshData?.data.token;
+    const newRefreshToken = refreshData?.data.refresh_token ?? refresh_token;
+
+    await saveSession({ token: newToken, refresh_token: newRefreshToken });
+
+    // Thông báo cho tất cả request đang chờ
+    onRefreshSuccess(newToken);
+
+    // Retry chính request này
+    const retryResponse = await fetch(baseUrl + endpoint, {
+      ...options,
+      headers: buildHeaders(newToken),
+    });
+
+    return retryResponse.json();
+  } finally {
+    isRefreshing = false;
+  }
 };

@@ -16,7 +16,7 @@ const SESSION_KEYS = {
   REFRESH_TOKEN: "refresh_token",
 } as const;
 
-const isTokenExpired = (token: string): boolean => {
+export const isTokenExpired = (token: string): boolean => {
   try {
     const decoded = jwtDecode<JwtPayload>(token);
 
@@ -46,11 +46,6 @@ export const getSession = async (): Promise<Session | null> => {
 
   if (!token || !refresh_token) return null;
 
-  if (isTokenExpired(token)) {
-    await removeSession();
-    return null;
-  }
-
   return { token, refresh_token };
 };
 
@@ -62,17 +57,19 @@ export const removeSession = async () => {
 };
 
 export const refreshSession = async (): Promise<Session | null> => {
-  const refresh_token = await SecureStore.getItemAsync(
-    SESSION_KEYS.REFRESH_TOKEN,
-  );
+  const session = await getSession();
+  const refresh_token = session?.refresh_token;
+
   if (!refresh_token) return null;
 
   try {
     const baseUrl = await getBaseUrl();
-
-    const response = await fetch(`${baseUrl}/api/auth/refresh`, {
+    const response = await fetch(`${baseUrl}api/auth/refresh`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
       body: JSON.stringify({ refresh_token }),
     });
 
@@ -81,10 +78,17 @@ export const refreshSession = async (): Promise<Session | null> => {
       return null;
     }
 
-    const data = await response.json();
+    const result = await response.json();
+    const { errorCode, data } = result || {};
+
+    if (errorCode !== 0) {
+      await removeSession();
+      return null;
+    }
+
     const newSession: Session = {
       token: data.token,
-      refresh_token: data.refresh_token ?? refresh_token,
+      refresh_token: data.refresh_token,
     };
 
     await saveSession(newSession);

@@ -1,5 +1,5 @@
 import { sendMessage } from "./api/ApiClients";
-import { saveSession, removeSession } from "./api/TokenStorage";
+import { saveSession, removeSession, getSession } from "./api/TokenStorage";
 
 // Get Profile ------------------------------------------------------------
 export type UserProfile = {
@@ -398,6 +398,36 @@ export const resetPassword = async ({
 };
 
 // Log out ------------------------------------------------------------
-export const logout = async () => {
-  await removeSession();
+export const logOut = async (): Promise<{
+  status: boolean;
+}> => {
+  try {
+    const refresh_token = await getSession().then(
+      (session) => session?.refresh_token,
+    );
+
+    const result = await sendMessage("api/auth/logout", {
+      method: "POST",
+      body: JSON.stringify({ refresh_token }),
+    });
+
+    const { errorCode } = result || {};
+
+    if (errorCode === 0) {
+      await removeSession();
+
+      return {
+        status: true,
+      };
+    } else {
+      return {
+        status: false,
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+    };
+  }
 };

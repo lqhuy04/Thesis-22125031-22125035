@@ -1,7 +1,7 @@
 import { Redirect } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { View } from "react-native";
-import { getSession } from "@/helpers/api/TokenStorage";
+import { getSession, isTokenExpired } from "@/helpers/api/TokenStorage";
 
 export default function Index() {
   const [loading, setLoading] = useState(false);
@@ -11,9 +11,9 @@ export default function Index() {
     const checkAuth = async () => {
       setLoading(true);
       const session = await getSession();
-      const token = session?.token;
+      const refresh_token = session?.refresh_token;
 
-      if (token != null) {
+      if (refresh_token != null && !isTokenExpired(refresh_token)) {
         setIsLoggedIn(true);
       }
 
