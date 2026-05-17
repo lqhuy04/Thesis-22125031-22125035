@@ -143,7 +143,10 @@ class AuthService:
         if not result.data:
             raise ValueError("Failed to reset password")
         
-        return {"message": "Password reset successfully"}
+        # Revoke all sessions (logout everywhere) after password change
+        revoked = await RedisSessionService.revoke_all_sessions(user["id"])
+
+        return {"message": "Password reset successfully", "sessions_revoked": bool(revoked)}
     
     @staticmethod
     async def forgot_password(email: str):
@@ -232,8 +235,12 @@ class AuthService:
         if not result.data:
             raise ValueError("Failed to reset password")
         
+        # Revoke all sessions (logout everywhere) after password change
+        revoked = await RedisSessionService.revoke_all_sessions(user["id"])
+
         return {
             "message": "Password reset successfully",
+            "sessions_revoked": bool(revoked),
         }
     
     @staticmethod
