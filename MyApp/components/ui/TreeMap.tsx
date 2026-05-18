@@ -7,11 +7,15 @@ import {
   TouchableOpacity,
   Pressable,
   StyleSheet,
+  Image,
 } from "react-native";
 import Svg, { Rect, Text as SvgText } from "react-native-svg";
+import { hierarchy, treemap, treemapSquarify } from "d3-hierarchy";
 import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
 import { CurrentPriceData } from "@/helpers/DetailHelpers";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TreeNode {
   label: string;
@@ -27,41 +31,37 @@ interface LayoutRect extends TreeNode {
   height: number;
 }
 
-function squarify(
-  data: TreeNode[],
-  x: number,
-  y: number,
+// ─── D3 layout ────────────────────────────────────────────────────────────────
+
+function computeLayout(
+  nodes: TreeNode[],
   width: number,
   height: number,
 ): LayoutRect[] {
-  const rects: LayoutRect[] = [];
-  const total = data.reduce((s, n) => s + n.value, 0);
-  if (total === 0 || data.length === 0) return rects;
+  if (!nodes.length || width <= 0 || height <= 0) return [];
 
-  const sorted = [...data].sort((a, b) => b.value - a.value);
-  let curX = x,
-    curY = y,
-    remW = width,
-    remH = height,
-    usedValue = 0;
+  const root = hierarchy<{ children?: TreeNode[] }>({ children: nodes })
+    .sum((d) => (d as any).value ?? 0)
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
 
-  sorted.forEach((node) => {
-    const ratio = node.value / (total - usedValue);
-    usedValue += node.value;
-    if (remW >= remH) {
-      const rw = remW * ratio;
-      rects.push({ ...node, x: curX, y: curY, width: rw, height: remH });
-      curX += rw;
-      remW -= rw;
-    } else {
-      const rh = remH * ratio;
-      rects.push({ ...node, x: curX, y: curY, width: remW, height: rh });
-      curY += rh;
-      remH -= rh;
-    }
+  treemap<{ children?: TreeNode[] }>()
+    .tile(treemapSquarify)
+    .size([width, height])
+    .paddingInner(0)(root);
+
+  return root.leaves().map((leaf) => {
+    const l = leaf as any;
+    return {
+      ...(leaf.data as unknown as TreeNode),
+      x: l.x0,
+      y: l.y0,
+      width: l.x1 - l.x0,
+      height: l.y1 - l.y0,
+    };
   });
-  return rects;
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getFontSize(
   rectWidth: number,
@@ -90,6 +90,8 @@ function formatVol(vol: number): string {
   if (vol >= 1_000) return (vol / 1_000).toFixed(2) + " nghìn cp";
   return vol.toLocaleString() + " cp";
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 interface Props {
   data: CurrentPriceData[];
@@ -148,8 +150,9 @@ export const TreeMap: React.FC<Props> = ({
     [data, perColor],
   );
 
+  // ← d3-hierarchy treemapSquarify thay vì tự viết
   const rects = useMemo(
-    () => squarify(nodes, 0, 0, chartW, chartH),
+    () => computeLayout(nodes, chartW, chartH),
     [nodes, chartW, chartH],
   );
 
@@ -253,7 +256,20 @@ export const TreeMap: React.FC<Props> = ({
           >
             {/* Header */}
             <View style={styles.popupHeader}>
-              <View>
+              <Image
+                source={{
+                  uri:
+                    selectedItem?.logo ||
+                    "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
+                }}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 2,
+                  marginRight: 12,
+                }}
+              />
+              <View style={{ flex: 1 }}>
                 <Text
                   style={[styles.popupSymbol, { color: theme.text?.primary }]}
                 >
@@ -377,7 +393,6 @@ const styles = StyleSheet.create({
   },
   popupHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "flex-start",
   },
   popupSymbol: { fontSize: 20, fontWeight: "bold" },

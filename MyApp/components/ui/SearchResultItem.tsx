@@ -45,7 +45,9 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
     >
       <Image
         source={{
-          uri: "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
+          uri:
+            item.logo ||
+            "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
         }}
         style={{
           marginRight: 8,
@@ -68,7 +70,7 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
         </Text>
       </View>
 
-      <View style={{ alignItems: "flex-end", marginRight: 4 }}>
+      <View style={{ alignItems: "flex-start", marginRight: 4 }}>
         <Text typography="labelLarge" color={theme.text.primary}>
           {currentPrice}
         </Text>
@@ -94,8 +96,10 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
         style={{
           marginLeft: 8,
           borderRadius: 4,
-          paddingHorizontal: 8,
-          paddingVertical: 4,
+          width: 70,
+          paddingVertical: 6,
+          alignItems: "center",
+          justifyContent: "center",
           backgroundColor:
             perPriceChange > 0
               ? theme.base.success + "36"
@@ -114,7 +118,18 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
                 : theme.base.error
           }
         >
-          {perPriceChange > 0 ? "▲" : perPriceChange === 0 ? "" : "▼"}
+          <Text
+            typography="labelSmall"
+            color={
+              perPriceChange > 0
+                ? theme.base.success
+                : perPriceChange === 0
+                  ? theme.base.warning
+                  : theme.base.error
+            }
+          >
+            {perPriceChange > 0 ? "▲" : perPriceChange === 0 ? "" : "▼"}{" "}
+          </Text>
           {perPriceChange >= 0
             ? perPriceChange?.toFixed(2)
             : (perPriceChange * -1).toFixed(2)}

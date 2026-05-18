@@ -11,6 +11,7 @@ import { CurrentPriceData } from "@/helpers/DetailHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
 import { getIndustryMovement } from "@/helpers/MarketHelpers";
 import { Text } from "../ui/Text";
+import { router } from "expo-router";
 
 const IndustryMovementSection = () => {
   const { theme } = useTheme();
@@ -57,16 +58,12 @@ const IndustryMovementSection = () => {
           typography="titleMedium"
           color={theme.base.primary}
           onPress={() => {
-            // router.push({
-            //   pathname: "/AllNews",
-            //   params: {
-            //     data: JSON.stringify({
-            //       title: categoryArticles[chosenIndex].category_name,
-            //       category_id: categoryArticles[chosenIndex].category_id,
-            //       type: "category",
-            //     }),
-            //   },
-            // });
+            router.push({
+              pathname: "/IndustryMovement",
+              params: {
+                industry: categories[chosenIndex],
+              },
+            });
           }}
         >
           Xem tất cả
@@ -135,7 +132,7 @@ const IndustryMovementSection = () => {
         <TreeMap
           data={data}
           width={screenWidth - 24}
-          height={300}
+          height={360}
           title={categories[chosenIndex]}
           padding={1}
         />

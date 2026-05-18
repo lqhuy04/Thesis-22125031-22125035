@@ -288,7 +288,7 @@ class AuthService:
             # Verify Google token
             request = google.auth.transport.requests.Request()
             id_info = google.oauth2.id_token.verify_oauth2_token(
-                token, request, valid_client_ids
+                token, request, valid_client_ids, clock_skew_in_seconds=10
             )
             
             # Extract user information

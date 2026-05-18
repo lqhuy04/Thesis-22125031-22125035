@@ -158,6 +158,7 @@ class SectorStockMovementItem(BaseModel):
     """A stock movement item in an industry group."""
     stock_id: str = Field(..., description="Stock UUID")
     symbol: str = Field(..., description="Stock symbol")
+    logo: str = Field("", description="Logo")
     company_name: str = Field("", description="Company name")
     exchange: str = Field("", description="Exchange code")
     PriceChange: float = Field(0.0, description="Price change")

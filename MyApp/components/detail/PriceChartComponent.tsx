@@ -200,129 +200,152 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
 
   return (
     <View style={{ marginTop: 12 }}>
-      <DetailHeader symbol={symbol} isMarketIndex={isMarketIndex} />
+      <DetailHeader
+        symbol={symbol}
+        isMarketIndex={isMarketIndex}
+        chart={
+          <View
+            style={{
+              backgroundColor: theme.background.bg,
+              borderRadius: 12,
+              margin: 12,
+              padding: 12,
+            }}
+          >
+            {loading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={theme.base.primary} />
+              </View>
+            ) : (
+              <TradingViewChart
+                prices={chartPriceData}
+                volumes={chartVolumeData}
+                maData={chartMAData}
+                bollData={chartBOLLData}
+                macdData={chartMACDData}
+                rsiData={chartRSIData}
+                kdjData={chartKDJData}
+                timeframe={timeFrame}
+                chartType={chartType}
+                showVolume={indicatorState.volume}
+                technicalIndicatorMode1={indicatorState.mode1}
+                technicalIndicatorMode2={indicatorState.mode2}
+              />
+            )}
 
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="small" color={theme.base.primary} />
-        </View>
-      ) : (
-        <TradingViewChart
-          prices={chartPriceData}
-          volumes={chartVolumeData}
-          maData={chartMAData}
-          bollData={chartBOLLData}
-          macdData={chartMACDData}
-          rsiData={chartRSIData}
-          kdjData={chartKDJData}
-          timeframe={timeFrame}
-          chartType={chartType}
-          showVolume={indicatorState.volume}
-          technicalIndicatorMode1={indicatorState.mode1}
-          technicalIndicatorMode2={indicatorState.mode2}
-        />
-      )}
+            <View style={styles.toolbar}>
+              {/* Chart type toggle */}
+              <TouchableOpacity
+                onPress={() =>
+                  setChartType(chartType === "area" ? "candle" : "area")
+                }
+                style={[
+                  styles.iconBtn,
+                  {
+                    backgroundColor: theme.background.surface,
+                    borderColor: theme.border.default,
+                  },
+                ]}
+              >
+                {chartType === "area" ? (
+                  <MaterialCommunityIcons
+                    name="chart-timeline-variant"
+                    size={18}
+                    color="black"
+                  />
+                ) : (
+                  <MaterialIcons
+                    name="candlestick-chart"
+                    size={18}
+                    color="black"
+                  />
+                )}
+              </TouchableOpacity>
 
-      <View style={styles.toolbar}>
-        {/* Chart type toggle */}
-        <TouchableOpacity
-          onPress={() => setChartType(chartType === "area" ? "candle" : "area")}
-          style={[
-            styles.iconBtn,
-            {
-              backgroundColor: theme.background.surface,
-              borderColor: theme.border.default,
-            },
-          ]}
-        >
-          {chartType === "area" ? (
-            <MaterialCommunityIcons
-              name="chart-timeline-variant"
-              size={18}
-              color="black"
-            />
-          ) : (
-            <MaterialIcons name="candlestick-chart" size={18} color="black" />
-          )}
-        </TouchableOpacity>
+              {/* Timeframe button */}
+              <TouchableOpacity
+                onPress={() => setShowTimeframeSheet(true)}
+                style={[
+                  styles.iconBtn,
+                  styles.rowBtn,
+                  {
+                    backgroundColor: theme.background.surface,
+                    borderColor: theme.border.default,
+                  },
+                ]}
+              >
+                <MaterialIcons name="date-range" size={18} color="black" />
+                <Text style={styles.btnLabel}>{selectedLabel}</Text>
+              </TouchableOpacity>
 
-        {/* Timeframe button */}
-        <TouchableOpacity
-          onPress={() => setShowTimeframeSheet(true)}
-          style={[
-            styles.iconBtn,
-            styles.rowBtn,
-            {
-              backgroundColor: theme.background.surface,
-              borderColor: theme.border.default,
-            },
-          ]}
-        >
-          <MaterialIcons name="date-range" size={18} color="black" />
-          <Text style={styles.btnLabel}>{selectedLabel}</Text>
-        </TouchableOpacity>
+              {/* Indicator button */}
+              <TouchableOpacity
+                onPress={() => setShowIndicatorSheet(true)}
+                style={[
+                  styles.iconBtn,
+                  styles.rowBtn,
+                  {
+                    backgroundColor:
+                      activeIndicatorCount > 0
+                        ? `${theme.base?.primary ?? "#1a56db"}18`
+                        : theme.background.surface,
+                    borderColor:
+                      activeIndicatorCount > 0
+                        ? (theme.base?.primary ?? "#1a56db")
+                        : theme.border.default,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="finance"
+                  size={18}
+                  color={
+                    activeIndicatorCount > 0
+                      ? (theme.base?.primary ?? "#1a56db")
+                      : "black"
+                  }
+                />
+                {activeIndicatorCount > 0 && (
+                  <View
+                    style={[
+                      styles.badge,
+                      { backgroundColor: theme.base?.primary ?? "#1a56db" },
+                    ]}
+                  >
+                    <Text style={styles.badgeText}>{activeIndicatorCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
 
-        {/* Indicator button */}
-        <TouchableOpacity
-          onPress={() => setShowIndicatorSheet(true)}
-          style={[
-            styles.iconBtn,
-            styles.rowBtn,
-            {
-              backgroundColor:
-                activeIndicatorCount > 0
-                  ? `${theme.base?.primary ?? "#1a56db"}18`
-                  : theme.background.surface,
-              borderColor:
-                activeIndicatorCount > 0
-                  ? (theme.base?.primary ?? "#1a56db")
-                  : theme.border.default,
-            },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="finance"
-            size={18}
-            color={
-              activeIndicatorCount > 0
-                ? (theme.base?.primary ?? "#1a56db")
-                : "black"
-            }
-          />
-          {activeIndicatorCount > 0 && (
-            <View
-              style={[
-                styles.badge,
-                { backgroundColor: theme.base?.primary ?? "#1a56db" },
-              ]}
-            >
-              <Text style={styles.badgeText}>{activeIndicatorCount}</Text>
+              <View style={{ flex: 1 }} />
+
+              {/* Expand button */}
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/TradingViewScreen",
+                    params: { data: JSON.stringify({ symbol: symbol }) },
+                  })
+                }
+                style={[
+                  styles.iconBtn,
+                  styles.rowBtn,
+                  {
+                    backgroundColor: theme.background.surface,
+                    borderColor: theme.border.default,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name="arrow-expand"
+                  size={18}
+                  color="black"
+                />
+              </TouchableOpacity>
             </View>
-          )}
-        </TouchableOpacity>
-
-        <View style={{ flex: 1 }} />
-
-        {/* Expand button */}
-        <TouchableOpacity
-          onPress={() =>
-            router.push({
-              pathname: "/TradingViewScreen",
-              params: { data: JSON.stringify({ symbol: symbol }) },
-            })
-          }
-          style={[
-            styles.iconBtn,
-            styles.rowBtn,
-            {
-              backgroundColor: theme.background.surface,
-              borderColor: theme.border.default,
-            },
-          ]}
-        >
-          <MaterialCommunityIcons name="arrow-expand" size={18} color="black" />
-        </TouchableOpacity>
-      </View>
+          </View>
+        }
+      />
 
       <TimeframeBottomSheet
         visible={showTimeframeSheet}
@@ -351,8 +374,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    marginVertical: 8,
-    marginHorizontal: 12,
+    marginTop: 12,
   },
   iconBtn: {
     borderRadius: 2,

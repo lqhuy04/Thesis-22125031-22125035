@@ -229,6 +229,7 @@ export const fetchStockDataByTimeFrame = async (
 export type CurrentPriceData = {
   stock_id: string;
   symbol: string;
+  logo: string;
   company_name: string;
   exchange: string;
   PriceChange: number;

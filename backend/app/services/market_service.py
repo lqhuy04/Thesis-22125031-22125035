@@ -872,7 +872,7 @@ class MarketService:
 
             profile_result = (
                 supabase.table("BI_Profile")
-                .select("stock_id, symbol, company_name, exchange, industry_name")
+                .select("stock_id, symbol, company_name, exchange, industry_name, logo")
                 .ilike("industry_name", f"%{keyword}%")
                 .execute()
             )
@@ -912,9 +912,10 @@ class MarketService:
                     continue
 
                 items.append({
-                    "stock_id": profile.get("stock_id"),
+                    "stock_id": profile.get("stock_id") or "",
                     "symbol": symbol,
                     "company_name": profile.get("company_name") or "",
+                    "logo": profile.get("logo") or "",
                     "exchange": profile.get("exchange") or "",
                     "PriceChange": MarketService._to_float(price.get("price_change")),
                     "PerPriceChange": MarketService._to_float(price.get("per_price_change")),

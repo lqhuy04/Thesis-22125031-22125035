@@ -13,15 +13,17 @@ import {
   deleteStockFromFavorite,
 } from "@/helpers/ProfileHelpers";
 
-interface SearchResultItemProps {
+interface DetailHeaderProps {
   symbol: string;
+  chart: React.JSX.Element;
   isMarketIndex?: boolean;
 }
 
-const SearchResultItem = ({
+const DetailHeader = ({
   symbol,
+  chart,
   isMarketIndex = false,
-}: SearchResultItemProps) => {
+}: DetailHeaderProps) => {
   const { theme } = useTheme();
 
   const [data, setData] = useState<any>(null);
@@ -62,6 +64,9 @@ const SearchResultItem = ({
   const displayData = useMemo(() => {
     if (!data) return null;
     return {
+      logo: isMarketIndex
+        ? "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png"
+        : data?.logo,
       symbol: isMarketIndex ? data?.IndexId : data?.symbol,
       company_name: isMarketIndex ? data?.IndexName : data?.company_name,
       exchange: isMarketIndex ? "" : data?.exchange,
@@ -96,7 +101,9 @@ const SearchResultItem = ({
         >
           <Image
             source={{
-              uri: "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
+              uri:
+                displayData?.logo ||
+                "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
             }}
             style={{
               marginRight: 8,
@@ -140,13 +147,26 @@ const SearchResultItem = ({
             </Text>
           </View>
 
-          <TouchableOpacity onPress={toggleFavorite}>
-            {isFavorite ? (
-              <FontAwesome name="star" size={24} color={theme.base.warning} />
-            ) : (
-              <FontAwesome name="star-o" size={24} color={theme.base.warning} />
-            )}
-          </TouchableOpacity>
+          <View
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <TouchableOpacity onPress={toggleFavorite}>
+              {isFavorite ? (
+                <FontAwesome name="star" size={24} color={theme.base.warning} />
+              ) : (
+                <FontAwesome
+                  name="star-o"
+                  size={24}
+                  color={theme.base.warning}
+                />
+              )}
+            </TouchableOpacity>
+
+            <Text typography="bodySmall">{"Theo dõi"}</Text>
+          </View>
         </View>
 
         <View
@@ -218,10 +238,12 @@ const SearchResultItem = ({
         </View>
       </View>
 
+      {chart}
+
       <View
         style={{
           marginHorizontal: 12,
-          marginVertical: 12,
+          marginBottom: 12,
           backgroundColor: theme.background.bg,
           paddingVertical: 8,
           paddingHorizontal: 12,
@@ -311,4 +333,4 @@ const SearchResultItem = ({
   );
 };
 
-export default SearchResultItem;
+export default DetailHeader;
