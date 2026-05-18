@@ -68,23 +68,15 @@ class ConfidenceScores(BaseModel):
         )
     )
 
-    signal_consistency: Literal[0, 1, 2] = Field(
-        description=(
-            "Mức độ đồng thuận của các nguồn CÓ DỮ LIỆU với recommendation đã chọn.\n"
-            "  2 = Tất cả nguồn có dữ liệu đều ủng hộ recommendation\n"
-            "  1 = Phần lớn ủng hộ, một nguồn trái chiều hoặc trung lập\n"
-            "  0 = Các nguồn mâu thuẫn nhau, recommendation là phán đoán trong uncertainty\n"
-            "\n"
-            "Ví dụ khi recommendation = 'Mua':\n"
-            "  technical bullish + fundamental tốt + news tích cực → 2\n"
-            "  technical bullish + fundamental tốt + news trung lập → 1\n"
-            "  technical bullish + fundamental xấu → 0\n"
-            "\n"
-            "Ví dụ khi recommendation = 'Chờ':\n"
-            "  tín hiệu mixed, không bên nào áp đảo → 1 hoặc 2\n"
-            "  dữ liệu quá sơ sài để kết luận → 0"
-        )
+    signal_consistency: Literal[0, 1, 2, 3] = Field(
+    description=(
+        "Mức độ đồng thuận của các nguồn CÓ DỮ LIỆU với recommendation.\n"
+        "  3 = Tất cả nguồn có dữ liệu đều ủng hộ\n"
+        "  2 = Phần lớn ủng hộ, một nguồn trung lập\n"
+        "  1 = Phần lớn ủng hộ, một nguồn trái chiều\n"
+        "  0 = Các nguồn mâu thuẫn nhau\n"
     )
+)
 
 
 class InvestmentRecommendation(BaseModel):
@@ -134,15 +126,22 @@ class InvestmentRecommendation(BaseModel):
     )
 
     tactical_suggestion: str = Field(
-        description=(
-            "Gợi ý chiến thuật bổ sung:\n"
-            "  - Khung thời gian phù hợp với khẩu vị rủi ro của user\n"
-            "  - 1–2 rủi ro chính CỤ THỂ từ dữ liệu (không nói chung chung)\n"
-            "  - Điều kiện để re-evaluate nếu recommendation = 'Chờ'\n"
-            "  - Disclaimer: 'Đây là gợi ý tham khảo, không phải lời khuyên đầu tư. "
-            "Quyết định cuối cùng thuộc về nhà đầu tư.'"
-        )
+    description=(
+        "Gợi ý chiến thuật bổ sung. PHẢI bao gồm đủ 4 phần theo thứ tự:\n"
+        "  1. Khung thời gian phù hợp với khẩu vị rủi ro của user\n"
+        "  2. 1–2 rủi ro CỤ THỂ từ data (không nói chung chung, phải dẫn số liệu)\n"
+        "  3. Điều kiện re-evaluate:\n"
+        "     - Nếu recommendation = 'Chờ': PHẢI dùng ĐÚNG vùng giá trong entry_price_hint.\n"
+        "       Ví dụ: nếu entry_price_hint = 'theo dõi vùng 25.00–26.00' thì\n"
+        "       điều kiện re-evaluate là 'nếu giá về vùng 25.00–26.00 VÀ ...'\n"
+        "     - Nếu recommendation = 'Mua': PHẢI dùng ĐÚNG mức TP/SL trong exit_price_hint.\n"
+        "       Ví dụ: nếu exit_price_hint = 'TP1: 30.00 | TP2: 32.00 | SL: đóng cửa dưới 27.00' thì\n"
+        "       tactical_suggestion phải nhắc lại đúng các mức này, không được tự đặt số khác.\n"
+        "     KHÔNG được tự đặt mức giá khác với entry_price_hint hoặc exit_price_hint.\n"
+        "  4. Disclaimer: 'Đây là gợi ý tham khảo, không phải lời khuyên đầu tư. "
+        "Quyết định cuối cùng thuộc về nhà đầu tư.'"
     )
+)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -172,15 +171,15 @@ def _compute_data_quality(results: dict) -> int:
 # ─────────────────────────────────────────────────────────────
 
 WEIGHTS = {
-    "signal_strength":    0.35,
-    "signal_consistency": 0.35,
-    "data_quality":       0.30,  # tăng từ 0.20 → 0.30 để penalize dữ liệu thiếu
+    "signal_strength":    0.40,  # tăng — đây là chỉ số quan trọng nhất
+    "signal_consistency": 0.35,  # giữ
+    "data_quality":       0.25,  # giảm nhẹ — data_quality giờ granular hơn
 }
 
 MAX_VALUES = {
     "signal_strength":    3,
-    "signal_consistency": 2,
-    "data_quality":       2,
+    "signal_consistency": 3,
+    "data_quality":       3,  # 3 nguồn tối đa
 }
 
 
@@ -212,7 +211,7 @@ Nhiệm vụ:
     2. Phân tích cơ bản (fundamental_analysis_agent)
     3. Phân tích kỹ thuật (technical_analysis_agent)
 - Đưa ra recommendation CHỈ gồm "Mua" hoặc "Chờ"
-- Nếu tín hiệu yếu, tiêu cực, hoặc mâu thuẫn → "Chờ"
+- Đánh giá KHÁCH QUAN, không thiên vị "Chờ" — nếu tín hiệu đủ rõ thì mạnh dạn khuyến nghị "Mua"
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PHẦN I — ĐỌC TÍN HIỆU
@@ -228,32 +227,66 @@ RSI (14):
   > 70    → overbought — cảnh báo điều chỉnh
 
 MACD:
-  macd > signal và histogram tăng → bullish, động lượng mạnh
-  macd < signal và histogram giảm → bearish, động lượng yếu
+  macd > signal và histogram > 0    → bullish, động lượng mạnh
+  macd < signal và histogram < 0    → bearish, động lượng yếu
   giao cắt lên signal               → tín hiệu Mua
   giao cắt xuống signal             → tín hiệu thận trọng
 
 Bollinger Bands:
   Giá gần upper BB → mạnh, nhưng cảnh báo không mua đuổi
   Giá gần lower BB → yếu, có thể tìm điểm hồi
+  Giá trong vùng giữa BB + xu hướng tăng → tích cực, còn dư địa tăng
 
 Moving Average:
   Giá > MA20 → ngắn hạn tích cực | < MA20 → yếu
   Giá > MA50 → trung hạn tốt    | < MA50 → xấu
-  MA20 cắt lên MA50 (Golden Cross)  → bullish mạnh
-  MA20 cắt xuống MA50 (Death Cross) → bearish mạnh
+  MA20 > MA50 (Golden Cross)  → bullish mạnh
+  MA20 < MA50 (Death Cross)   → bearish mạnh
 
 KDJ:
-  K, D, J < 20 → oversold | > 80 → overbought
-  K cắt lên D   → bullish  | cắt xuống → thận trọng
+  K, D, J < 20 → oversold — bullish tiềm năng
+  K, D, J > 80 → overbought — thận trọng
+  K cắt lên D  → bullish  | cắt xuống → thận trọng
+
+────────────────────────────────────────────────────────
+ĐẾM ĐIỂM KỸ THUẬT (dùng để quyết định bullish/bearish):
+
+Mỗi tín hiệu sau tính 1 điểm bullish:
+  + RSI trong vùng 45–70
+  + RSI < 30 (oversold, tiềm năng hồi)
+  + MACD > Signal
+  + Histogram > 0
+  + Giá > SMA20
+  + SMA20 > SMA50
+  + Giá trong vùng giữa BB (không quá mua, còn dư địa)
+  + KDJ K < 20 (oversold)
+  + KDJ K cắt lên D
+
+≥ 5/9 điểm bullish → Technical BULLISH
+3–4/9 điểm         → Technical TRUNG TÍNH
+< 3/9 điểm         → Technical BEARISH
 
 ────────────────────────────────────────────────────────
 B. CƠ BẢN
 
-Định giá  : PE < 10 rẻ / 10–18 hợp lý / > 20 đắt
-Sinh lời  : ROE > 20% rất tốt / 15–20% tốt / < 10% yếu
-Đòn bẩy   : D/E < 0.5 an toàn / 0.5–1 trung bình / > 1 rủi ro
+Định giá  : PE < 10 rẻ (tốt) / 10–18 hợp lý (trung tính) / > 20 đắt (xấu)
+Sinh lời  : ROE > 20% rất tốt / 15–20% tốt / 10–15% trung bình / < 10% yếu
+Đòn bẩy   : D/E < 0.5 an toàn / 0.5–1.5 chấp nhận được / > 1.5 cần theo dõi
 Tăng trưởng: doanh thu & lợi nhuận tăng YoY → tích cực
+
+⚠️ Với ngành ngân hàng/bất động sản: D/E cao là đặc thù ngành,
+   KHÔNG tự động coi là rủi ro nếu ROE và dòng tiền vẫn tốt.
+
+ĐẾM ĐIỂM CƠ BẢN:
+  + PE < 18 → tốt
+  + ROE > 15% → tốt
+  + Doanh thu tăng YoY → tốt
+  + Lợi nhuận tăng YoY → tốt
+  + CFO > 0 → tốt
+
+≥ 3/5 điểm → Fundamental TỐT
+2/5 điểm   → Fundamental TRUNG BÌNH
+< 2/5 điểm → Fundamental YẾU
 
 ────────────────────────────────────────────────────────
 C. TIN TỨC
@@ -270,14 +303,33 @@ PHẦN II — QUYẾT ĐỊNH RECOMMENDATION
 
 Chỉ có 2 lựa chọn: "Mua" hoặc "Chờ"
 
-Hướng dẫn:
-  Technical bullish + Fundamental tốt + News ít nhất trung lập → "Mua"
-  Bất kỳ trường hợp còn lại (mixed, yếu, tiêu cực, thiếu dữ liệu) → "Chờ"
+NGUYÊN TẮC CHÍNH:
+  "Mua"  = Technical BULLISH + (Fundamental TỐT hoặc News ít nhất trung lập)
+  "Mua"  = Technical BULLISH + Fundamental TỐT (kể cả khi News tiêu cực nhẹ)
+  "Chờ" = Technical BEARISH bất kể các nguồn khác
+  "Chờ" = Technical TRUNG TÍNH + Fundamental YẾU + News tiêu cực
+  "Chờ" = News tiêu cực RÕ RÀNG (thua lỗ, vi phạm, bán ròng mạnh)
+
+⚠️ KHÔNG tự động chọn "Chờ" chỉ vì có một yếu tố rủi ro.
+   Mọi cổ phiếu đều có rủi ro — nhiệm vụ là cân bằng tổng thể.
+
+VÍ DỤ "MUA":
+  RSI=54, MACD>Signal, histogram>0, SMA20>SMA50, giá trong BB
+  → 5/9 điểm bullish → Technical BULLISH
+  PE=9.79 (tốt), ROE=18% (tốt), doanh thu +50% (tốt), CFO>0 (tốt)
+  → 4/5 điểm → Fundamental TỐT
+  News: trung lập → không chặn
+  → Recommendation: "Mua" ✓
+
+VÍ DỤ "CHỜ":
+  RSI=37, MACD<Signal, SMA20<SMA50
+  → 1/9 điểm bullish → Technical BEARISH
+  → Recommendation: "Chờ" dù Fundamental tốt ✓
 
 Điều chỉnh theo khẩu vị rủi ro:
-  Rủi ro thấp    → ngưỡng để chọn "Mua" cao hơn (cần cả 3 nguồn đồng thuận)
-  Ngắn hạn       → ưu tiên technical hơn fundamental
-  Thu nhập thụ động → ưu tiên ROE cao, D/E thấp, cổ tức ổn định
+  Ngắn hạn          → ưu tiên Technical, chấp nhận Fundamental trung bình
+  Rủi ro thấp       → cần thêm 1 điểm bullish so với ngưỡng thông thường
+  Thu nhập thụ động → ưu tiên ROE cao, CFO dương, cổ tức ổn định
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PHẦN III — CHẤM ĐIỂM CONFIDENCE
@@ -294,25 +346,14 @@ Bạn chỉ chấm signal_strength và signal_consistency.
 ────────────────────────────────────────────────────────
 1. SIGNAL_STRENGTH (0–3): Số nguồn có tín hiệu RÕ RÀNG
 
-Đếm từng nguồn độc lập với chiều Mua/Chờ:
-
-  [Technical rõ ràng]: ≥50% chỉ báo có sẵn đồng thuận một chiều
-    Ví dụ: RSI=65, MACD>signal, giá>MA20 → 3/3 bullish → rõ ràng ✓
-    Ví dụ: RSI=40, MACD>signal, giá<MA20 → 1/3 bullish → không rõ ✗
-
-  [Fundamental rõ ràng]: ≥50% chỉ số ở mức tốt HOẶC xấu rõ ràng
-    Ví dụ: PE=12(tốt), ROE=18%(tốt), D/E=0.4(tốt) → rõ ràng tốt ✓
-    Ví dụ: PE=15(trung lập), ROE=12%(trung lập) → không rõ ✗
-
-  [News rõ ràng]: sentiment tích cực RÕ RÀNG hoặc tiêu cực RÕ RÀNG
-    Tin trung lập không tính là rõ ràng.
+  [Technical rõ ràng]: ≥ 5/9 điểm bullish HOẶC < 3/9 điểm (bearish rõ)
+  [Fundamental rõ ràng]: ≥ 3/5 điểm TỐT hoặc < 2/5 điểm YẾU rõ ràng
+  [News rõ ràng]: sentiment tích cực hoặc tiêu cực RÕ RÀNG (trung lập không tính)
 
   → signal_strength = số nguồn đạt tiêu chí (0, 1, 2, hoặc 3)
 
 ────────────────────────────────────────────────────────
 2. SIGNAL_CONSISTENCY (0–2): Đồng thuận với recommendation
-
-Sau khi chọn recommendation, đếm nguồn CÓ DỮ LIỆU ủng hộ nó:
 
   2 = Tất cả nguồn có dữ liệu đều ủng hộ recommendation
   1 = Phần lớn ủng hộ, một nguồn trái chiều hoặc trung lập
@@ -337,7 +378,6 @@ entry_price_hint — LUÔN CỐ GẮNG ĐIỀN nếu có đủ dữ liệu kỹ 
     → Vùng giá cần về để có thể xem xét vào lệnh (điều kiện re-entry)
     → Dựa trên: support gần nhất (lower BB, MA50, đáy swing)
     → Ngôn ngữ rõ ràng là "theo dõi" chứ không phải "mua ngay"
-    → Ví dụ: "Theo dõi nếu giá điều chỉnh về vùng 43,000–45,000 (MA50)"
     → None nếu không đủ dữ liệu kỹ thuật để xác định vùng hỗ trợ
 
 exit_price_hint:
@@ -346,7 +386,16 @@ exit_price_hint:
   - TP dựa trên: upper BB, đỉnh swing, MA kháng cự gần nhất
   - SL dựa trên ĐIỀU KIỆN: "đóng cửa dưới X" thay vì chỉ nêu mức giá
   - Mọi con số phải có trong dữ liệu đầu vào — KHÔNG bịa
-  - None nếu recommendation = "Chờ" (chưa vào lệnh thì chưa cần exit)
+  - None nếu recommendation = "Chờ"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHẦN V — TACTICAL SUGGESTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+tactical_suggestion PHẢI bao gồm đủ 4 phần theo thứ tự:
+  1. Khung thời gian phù hợp với khẩu vị rủi ro của user
+  2. 1–2 rủi ro CỤ THỂ từ data (không nói chung chung, phải dẫn số liệu)
+  3. Điều kiện cụ thể để re-evaluate (giá bao nhiêu, chỉ báo nào cần đổi chiều)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 QUY TẮC BẮT BUỘC:
@@ -354,7 +403,9 @@ QUY TẮC BẮT BUỘC:
   ✓ Nếu nguồn nào không có dữ liệu → bỏ qua, không suy đoán
   ✓ exit_price_hint luôn = None khi recommendation = "Chờ"
   ✓ entry_price_hint khi "Chờ" dùng ngôn ngữ "theo dõi", không phải "mua"
-  ✓ Disclaimer trong tactical_suggestion là bắt buộc
+  ✓ KHÔNG thiên vị "Chờ" — đánh giá khách quan theo điểm số
+  ✓ Mức giá trong tactical_suggestion PHẢI nhất quán với entry_price_hint (khi Chờ) 
+    và exit_price_hint (khi Mua) — không được tự đặt số khác
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 

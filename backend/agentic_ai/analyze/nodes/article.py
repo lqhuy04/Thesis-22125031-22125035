@@ -37,7 +37,12 @@ def article_agent(state: AgentState) -> AgentState:
     filtered = result
     if from_date or to_date:
         start = datetime.fromisoformat(from_date) if from_date else None
-        end = datetime.fromisoformat(to_date) if to_date else None
+        if to_date:
+            end = datetime.fromisoformat(to_date)
+            if end.hour == 0 and end.minute == 0 and end.second == 0:
+                end = end.replace(hour=23, minute=59, second=59)
+        else:
+            end = None
 
         filtered = [
             article for article in result
@@ -65,6 +70,8 @@ def article_agent(state: AgentState) -> AgentState:
     )
 
     summary = response.choices[0].message.content
+
+    print("[Article Analysis Agent] Output:", summary)
 
     return {
         "agent_results": {
