@@ -26,6 +26,7 @@ TABLE         = "Stock_Price_1m"
 SLEEP_SECONDS = 1.1
 SYMBOL_SKIP_SUFFIX_RE = re.compile(r"\d{4}$")
 SYMBOL_3CHAR_RE = re.compile(r'^[A-Z0-9]{3}$')
+ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -110,8 +111,12 @@ def get_all_symbols(access_token: str) -> list[str]:
         return []
 
 def filter_symbols(symbols: list[str]) -> list[str]:
-    """Return only 3-character HOSE symbols (skip ones ending with 4-digit suffix)."""
-    return [s for s in symbols if SYMBOL_3CHAR_RE.match(s) and not SYMBOL_SKIP_SUFFIX_RE.search(s)]
+    """Return only 3-character HOSE symbols (skip ones ending with 4-digit suffix) and allowed indices."""
+    filtered = [s for s in symbols if (SYMBOL_3CHAR_RE.match(s) and not SYMBOL_SKIP_SUFFIX_RE.search(s)) or s in ALLOWED_INDICES]
+    # Add allowed indices if not already present
+    filtered_set = set(filtered)
+    filtered.extend([idx for idx in ALLOWED_INDICES if idx not in filtered_set])
+    return sorted(filtered)
 
 def _aggregate_intraday_minutes(rows: list[dict]) -> list[dict]:
     """Aggregate raw SSI trade rows into 1m candles without synthetic gap fill."""
@@ -161,10 +166,10 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str, access_token:
             result.append({
                 "symbol":       symbol,
                 "trading_time": f"{yyyy}-{mm}-{dd}T{raw_time[:5]}:00",
-                "open":         float(r.get("Open")   or 0) / 1000,
-                "high":         float(r.get("High")   or 0) / 1000,
-                "low":          float(r.get("Low")    or 0) / 1000,
-                "close":        float(r.get("Close")  or 0) / 1000,
+                "open":         float(r.get("Open")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+                "high":         float(r.get("High")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+                "low":          float(r.get("Low")    or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+                "close":        float(r.get("Close")  or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
                 "volume":       float(r.get("Volume") or 0),
             })
 
@@ -198,21 +203,13 @@ def main():
         logger.error("No SSI access token found. Exiting.")
         return
 
-    symbols = get_all_symbols(access_token)
-    if not symbols:
-        logger.error("No symbols found. Exiting.")
-        return
-
-    symbols = filter_symbols(symbols)
-    if not symbols:
-        logger.error("No symbols left after filtering. Exiting.")
-        return
+    symbols = list(ALLOWED_INDICES)
+    logger.info(f"Processing {len(symbols)} indices: {symbols}")
 
     today     = date.today()
     to_date   = today.strftime("%d/%m/%Y")
     from_date = (today - timedelta(days=30)).strftime("%d/%m/%Y")
 
-    logger.info(f"Processing {len(symbols)} HOSE symbols (without 4-digit suffix)...")
     logger.info(f"Date range: {from_date} → {to_date}")
     
     total_candles_fetched = 0

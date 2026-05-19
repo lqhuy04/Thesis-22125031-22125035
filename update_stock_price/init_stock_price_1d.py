@@ -31,6 +31,7 @@ YEARS_BACK    = 5           # Số năm lấy dữ liệu lịch sử
 RESUME_AFTER_SYMBOL = "CVPB2513"
 SYMBOL_SKIP_SUFFIX_RE = re.compile(r"\d{4}$")
 SYMBOL_3CHAR_RE = re.compile(r'^[A-Z0-9]{3}$')
+ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -92,7 +93,7 @@ def get_all_symbols() -> list[str]:
         return []
 
 def filter_symbols(symbols: list[str]) -> list[str]:
-    """Return only 3-character HOSE symbols; keep resume marker behavior if present."""
+    """Return only 3-character HOSE symbols and allowed indices; keep resume marker behavior if present."""
     start_index = 0
 
     if RESUME_AFTER_SYMBOL in symbols:
@@ -102,8 +103,12 @@ def filter_symbols(symbols: list[str]) -> list[str]:
         logger.warning(f"Resume symbol {RESUME_AFTER_SYMBOL} not found; starting from beginning")
 
     remaining = symbols[start_index:]
-    # Keep only 3-char alphanumeric symbols (HOSE tickers)
-    return [s for s in remaining if SYMBOL_3CHAR_RE.match(s) and not SYMBOL_SKIP_SUFFIX_RE.search(s)]
+    # Keep only 3-char alphanumeric symbols (HOSE tickers) or allowed indices
+    filtered = [s for s in remaining if (SYMBOL_3CHAR_RE.match(s) and not SYMBOL_SKIP_SUFFIX_RE.search(s)) or s in ALLOWED_INDICES]
+    # Add allowed indices if not already present
+    filtered_set = set(filtered)
+    filtered.extend([idx for idx in ALLOWED_INDICES if idx not in filtered_set])
+    return sorted(filtered)
 
 def generate_chunks(start: date, end: date, chunk_days: int):
     """Yield (from_date, to_date) tuples in DD/MM/YYYY, each <= chunk_days apart."""
@@ -165,13 +170,16 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
                         pass
             return 0.0
 
+        # Indices remain the same, divide by 1000 for HOSE stocks
+        multiplier = 1 if symbol in ALLOWED_INDICES else 1/1000
+
         result.append({
             "symbol":       symbol,
             "trading_time": f"{iso_date}T14:45:00",
-            "open":         _float(["Open"])   / 1000,
-            "high":         _float(["High"])   / 1000,
-            "low":          _float(["Low"])    / 1000,
-            "close":        _float(["Close"])  / 1000,
+            "open":         _float(["Open"])   * multiplier,
+            "high":         _float(["High"])   * multiplier,
+            "low":          _float(["Low"])    * multiplier,
+            "close":        _float(["Close"])  * multiplier,
             "volume":       _float(["Volume"]),
         })
 
@@ -191,15 +199,8 @@ def upsert_candles(candles: list[dict]) -> None:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def main():
-    symbols = get_all_symbols()
-    if not symbols:
-        logger.error("No symbols found. Exiting.")
-        return
-
-    symbols = filter_symbols(symbols)
-    if not symbols:
-        logger.error("No symbols left after filtering. Exiting.")
-        return
+    symbols = list(ALLOWED_INDICES)
+    logger.info(f"Init daily OHLC for {len(symbols)} indices: {symbols}")
 
     today      = date.today()
     start_date = today.replace(year=today.year - YEARS_BACK)
@@ -207,7 +208,7 @@ def main():
     total_chunks = len(chunks)
 
     logger.info(
-        f"Init daily OHLC for {len(symbols)} symbols: {start_date} → {today} "
+        f"Date range: {start_date} → {today} "
         f"({total_chunks} chunks × {CHUNK_DAYS}d, delay={SLEEP_SECONDS}s)"
     )
 

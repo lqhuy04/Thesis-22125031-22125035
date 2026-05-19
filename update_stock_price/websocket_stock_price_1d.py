@@ -28,6 +28,7 @@ config = Config()
 
 TABLE        = "Stock_Price_1d"
 SYMBOL_REGEX = re.compile(r'^[A-Z0-9]{3}$')
+ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -159,7 +160,7 @@ def parse_tick(message) -> Optional[dict]:
         bar     = json.loads(content) if isinstance(content, str) else content
 
         symbol = str(bar.get("Symbol") or "").strip().upper()
-        if not SYMBOL_REGEX.match(symbol):
+        if not (SYMBOL_REGEX.match(symbol) or symbol in ALLOWED_INDICES):
             return None
 
         trading_time_str = bar.get("Time")        or bar.get("time")        or ""
@@ -173,10 +174,10 @@ def parse_tick(message) -> Optional[dict]:
         return {
             "symbol":       symbol,
             "trading_time": trading_time,
-            "open":         float(bar.get("Open")   or 0) / 1000,
-            "high":         float(bar.get("High")   or 0) / 1000,
-            "low":          float(bar.get("Low")    or 0) / 1000,
-            "close":        float(bar.get("Close")  or 0) / 1000,
+            "open":         float(bar.get("Open")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "high":         float(bar.get("High")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "low":          float(bar.get("Low")    or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "close":        float(bar.get("Close")  or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
             "volume":       float(bar.get("Volume") or 0),
         }
     except Exception as e:

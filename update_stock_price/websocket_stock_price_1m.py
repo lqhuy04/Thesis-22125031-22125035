@@ -29,6 +29,7 @@ config = Config()
 
 TABLE        = "Stock_Price_1m"
 SYMBOL_REGEX = re.compile(r'^[A-Z0-9]{3}$')
+ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,11 +64,11 @@ def get_ssi_access_token() -> str:
         return ""
 
 def get_hose_symbols() -> set[str]:
-    """Fetch HOSE symbols from SSI API and keep only symbols with 3 characters."""
+    """Fetch HOSE symbols from SSI API and keep only symbols with 3 characters, plus allowed indices."""
     try:
         access_token = get_ssi_access_token()
         if not access_token:
-            return set()
+            return ALLOWED_INDICES.copy()
 
         url = "https://fc-data.ssi.com.vn/api/v2/Market/Securities?Market=HOSE&PageSize=1000"
         headers = {"Authorization": f"Bearer {access_token}"}
@@ -80,10 +81,13 @@ def get_hose_symbols() -> set[str]:
             for item in (data.get("data") or [])
             if str(item.get("Symbol") or "").strip().upper()
         }
-        return {symbol for symbol in symbols if SYMBOL_REGEX.match(symbol)}
+        filtered = {symbol for symbol in symbols if SYMBOL_REGEX.match(symbol)}
+        # Add allowed indices
+        filtered.update(ALLOWED_INDICES)
+        return filtered
     except Exception as e:
         logger.error(f"Failed to fetch HOSE symbols from SSI API: {e}")
-        return set()
+        return ALLOWED_INDICES.copy()
 
 # ═════════════════════════════════════════════════════════════════════════════
 # IN-MEMORY CANDLE BUFFER
@@ -171,7 +175,7 @@ def parse_tick(message) -> Optional[dict]:
         bar     = json.loads(content) if isinstance(content, str) else content
 
         symbol = str(bar.get("Symbol") or "").strip().upper()
-        if not SYMBOL_REGEX.match(symbol):
+        if not (SYMBOL_REGEX.match(symbol) or symbol in ALLOWED_INDICES):
             return None
         if allowed_symbols and symbol not in allowed_symbols:
             return None
@@ -187,10 +191,10 @@ def parse_tick(message) -> Optional[dict]:
         return {
             "symbol":       symbol,
             "trading_time": trading_time,
-            "open":         float(bar.get("Open")   or 0) / 1000,
-            "high":         float(bar.get("High")   or 0) / 1000,
-            "low":          float(bar.get("Low")    or 0) / 1000,
-            "close":        float(bar.get("Close")  or 0) / 1000,
+            "open":         float(bar.get("Open")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "high":         float(bar.get("High")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "low":          float(bar.get("Low")    or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "close":        float(bar.get("Close")  or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
             "volume":       float(bar.get("Volume") or 0),
         }
     except Exception as e:
