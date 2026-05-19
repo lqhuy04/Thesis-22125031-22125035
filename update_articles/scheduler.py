@@ -73,8 +73,8 @@ def run_article_fetch():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    global articles_done_today
-    logger.info("Scheduler started. Waiting for midnight (VN UTC+7)...")
+    global articles_done_week
+    logger.info("Scheduler started. Waiting for weekly schedule (VN UTC+7)...")
 
     while True:
         now   = now_vn()
