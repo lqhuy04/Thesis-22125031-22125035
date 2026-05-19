@@ -14,6 +14,9 @@ Tab "TT niêm yết"  → listing date, exchange, IPO price, listed volume,
 "Công ty con"      → subsidiaries (name, code, capital, ownership %)
 "Công ty liên kết" → associates  (name, code, capital, ownership %)
 
+When running in database mode, the crawler reads symbols from BI_Profile
+and updates profile/contact fields that need refresh.
+
 Output
 ──────
   <SYMBOL>_company_profile.csv
@@ -32,10 +35,21 @@ import pandas as pd
 import time
 import re
 import os
+import traceback
 from typing import Dict, List, Optional
 from dotenv import load_dotenv
+from supabase import create_client, Client
 
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, "..", ".env"))
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in backend/.env")
+
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -58,6 +72,20 @@ def _clean_number(text: str) -> Optional[float]:
 def _clean_int(text: str) -> Optional[int]:
     val = _clean_number(text)
     return int(val) if val is not None else None
+
+
+def _normalize_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized if normalized else None
+
+
+def _collapse_whitespace(text: Optional[str]) -> Optional[str]:
+    if text is None:
+        return None
+    collapsed = re.sub(r"\s+", " ", text).strip()
+    return collapsed if collapsed else None
 
 
 # ──────────────────────────────────────────────────────────────
@@ -240,7 +268,6 @@ class SSICompanyProfileCrawler:
 
         except Exception as exc:
             print(f"Symbol search error: {exc}")
-            import traceback
             traceback.print_exc()
             return False
 
@@ -283,15 +310,195 @@ class SSICompanyProfileCrawler:
             print(f"Tab click error ({tab_label}): {exc}")
         return False
 
-    def _wait_for_tab_panel(self, panel_id: str, timeout: int = 8) -> bool:
-        """Wait for a tab-panel to become visible (not display:none / hidden)."""
-        try:
-            WebDriverWait(self.driver, timeout).until(
-                lambda d: d.find_element(By.ID, panel_id).get_attribute("data-headlessui-state") == "selected"
-            )
-            return True
-        except Exception:
-            return False
+    def _get_selected_profile_panel(self) -> Optional[object]:
+        """Return the currently active panel inside #company-profile-info."""
+        panels = self.driver.find_elements(
+            By.CSS_SELECTOR,
+            "#company-profile-info .company-profile-subtask[data-headlessui-state='selected']"
+        )
+        return panels[0] if panels else None
+
+    def _extract_company_basic_rows(self, panel, field_map: Dict[str, tuple]) -> Dict:
+        """Extract rows from .company-basic-info using a Vietnamese label map."""
+        info: Dict = {}
+        rows = panel.find_elements(By.CSS_SELECTOR, ".company-basic-info")
+
+        for row in rows:
+            divs = row.find_elements(By.XPATH, "./div")
+            if len(divs) < 2:
+                continue
+
+            label = divs[0].text.strip()
+            value = divs[1].text.strip()
+
+            for vn_label, (key, dtype) in field_map.items():
+                if vn_label not in label:
+                    continue
+                if dtype == 'float':
+                    info[key] = _clean_number(value)
+                elif dtype == 'int':
+                    info[key] = _clean_int(value)
+                else:
+                    info[key] = value
+                break
+
+        return info
+
+    def _scroll_window_to_load_more(self, steps: int = 8, pause: float = 0.6) -> None:
+        """Scroll the page so lazy-rendered cards/rows can mount."""
+        last_height = -1
+        for _ in range(steps):
+            try:
+                height = self.driver.execute_script("return document.body.scrollHeight") or 0
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(pause)
+                if height == last_height:
+                    break
+                last_height = height
+            except Exception:
+                break
+
+    def _scroll_scrollable_descendants(self, root, rounds: int = 8, pause: float = 0.6) -> None:
+        """Scroll any overflow container inside a section until its rendered content stabilizes."""
+        last_marker = None
+        for _ in range(rounds):
+            try:
+                marker = self.driver.execute_script(
+                    """
+                    const root = arguments[0];
+                    const nodes = [root, ...root.querySelectorAll('*')].filter((el) => {
+                        const style = window.getComputedStyle(el);
+                        const overflowY = style.overflowY || style.overflow;
+                        return /(auto|scroll)/.test(overflowY) && el.scrollHeight > el.clientHeight + 2;
+                    });
+                    nodes.forEach((el) => { el.scrollTop = el.scrollHeight; });
+                    return nodes.map((el) => `${el.scrollHeight}:${el.scrollTop}`).join('|');
+                    """,
+                    root,
+                )
+                self._scroll_window_to_load_more(steps=2, pause=0.25)
+                time.sleep(pause)
+                if marker == last_marker:
+                    break
+                last_marker = marker
+            except Exception:
+                break
+
+    def _scroll_to_extract_all_table_rows(self, container, max_rounds: int = 20) -> List[Dict]:
+        """
+        Scroll through a virtual table, capturing all rows at each position.
+        Deduplicates by (company_name, sub_symbol) to avoid virtual scroll artifacts.
+        Returns list of extracted row dicts.
+        """
+        seen_keys = set()
+        all_records = []
+        last_count = -1
+        stable_rounds = 0
+
+        for round_num in range(max_rounds):
+            try:
+                tbody = container.find_elements(By.CSS_SELECTOR, "tbody tr")
+                
+                for row in tbody:
+                    try:
+                        tds = row.find_elements(By.TAG_NAME, "td")
+                        if len(tds) < 4:
+                            continue
+                        
+                        company_name = tds[0].text.strip()
+                        sub_symbol = tds[1].text.strip()
+                        
+                        if not company_name or not sub_symbol:
+                            continue
+                        
+                        key = (company_name, sub_symbol)
+                        if key not in seen_keys:
+                            seen_keys.add(key)
+                            all_records.append({
+                                'company_name':            company_name,
+                                'sub_symbol':              sub_symbol,
+                                'charter_capital_billion': _clean_number(tds[2].text.strip()),
+                                'ownership_pct':           _clean_number(tds[3].text.strip().replace('%', '')),
+                            })
+                    except Exception:
+                        pass
+
+                current_count = len(seen_keys)
+                
+                if current_count == last_count:
+                    stable_rounds += 1
+                    if stable_rounds >= 3:
+                        break
+                else:
+                    stable_rounds = 0
+                    last_count = current_count
+
+                scroll_containers = container.find_elements(By.CSS_SELECTOR, ".scrollbar-container")
+                for sc in scroll_containers:
+                    self.driver.execute_script("arguments[0].scrollTop += 1000;", sc)
+
+                time.sleep(0.5)
+            except Exception as exc:
+                print(f"Extract rows round {round_num} error: {exc}")
+                break
+
+        return all_records
+
+    def _scroll_to_extract_all_leaders(self, container, max_rounds: int = 20) -> List[Dict]:
+        """
+        Scroll through a virtual leader list, capturing all leaders at each position.
+        Deduplicates by (full_name, position) to avoid virtual scroll artifacts.
+        Returns list of extracted leader dicts.
+        """
+        seen_keys = set()
+        all_leaders = []
+        last_count = -1
+        stable_rounds = 0
+
+        for round_num in range(max_rounds):
+            try:
+                groups = container.find_elements(By.CSS_SELECTOR, ".leader-group")
+                
+                for group in groups:
+                    try:
+                        paras = group.find_elements(By.TAG_NAME, "p")
+                        if len(paras) >= 2:
+                            full_name = paras[0].text.strip()
+                            position = paras[1].text.strip()
+                            
+                            if not full_name or not position:
+                                continue
+                            
+                            key = (full_name, position)
+                            if key not in seen_keys:
+                                seen_keys.add(key)
+                                all_leaders.append({
+                                    'full_name': full_name,
+                                    'position':  position,
+                                })
+                    except Exception:
+                        pass
+
+                current_count = len(seen_keys)
+                
+                if current_count == last_count:
+                    stable_rounds += 1
+                    if stable_rounds >= 3:
+                        break
+                else:
+                    stable_rounds = 0
+                    last_count = current_count
+
+                scroll_containers = container.find_elements(By.CSS_SELECTOR, ".scrollbar-container")
+                for sc in scroll_containers:
+                    self.driver.execute_script("arguments[0].scrollTop += 1000;", sc)
+
+                time.sleep(0.5)
+            except Exception as exc:
+                print(f"Extract leaders round {round_num} error: {exc}")
+                break
+
+        return all_leaders
 
     # ── section extractors ───────────────────────────────────
 
@@ -302,19 +509,14 @@ class SSICompanyProfileCrawler:
             self._click_tab_in_panel("#company-profile-info", "Giới thiệu")
             time.sleep(1.5)
 
-            # Find the currently active tab panel (avoid hardcoded headlessui IDs)
-            panels = self.driver.find_elements(
-                By.CSS_SELECTOR,
-                "#company-profile-info .company-profile-subtask[data-headlessui-state='selected']"
-            )
-            if not panels:
+            panel = self._get_selected_profile_panel()
+            if not panel:
                 return info
-            panel = panels[0]
 
             # Overview text
             try:
                 overview = panel.find_element(By.CSS_SELECTOR, ".company-over-view")
-                info['description'] = overview.text.strip()
+                info['description'] = _collapse_whitespace(overview.text)
             except NoSuchElementException:
                 info['description'] = None
 
@@ -335,7 +537,15 @@ class SSICompanyProfileCrawler:
                         value = spans[1].text.strip()
                         for vn_label, key in contact_map.items():
                             if vn_label in label:
-                                info[key] = value
+                                if key == "website":
+                                    try:
+                                        anchor = spans[1].find_element(By.TAG_NAME, "a")
+                                        href = _normalize_text(anchor.get_attribute("href"))
+                                        info[key] = href or value
+                                    except Exception:
+                                        info[key] = value
+                                else:
+                                    info[key] = value
                                 break
             except Exception:
                 pass
@@ -352,14 +562,9 @@ class SSICompanyProfileCrawler:
             self._click_tab_in_panel("#company-profile-info", "TT cơ bản")
             time.sleep(1.5)
 
-            # Try to locate the visible panel for TT cơ bản
-            panels = self.driver.find_elements(
-                By.CSS_SELECTOR,
-                "#company-profile-info .company-profile-subtask[data-headlessui-state='selected']"
-            )
-            if not panels:
+            panel = self._get_selected_profile_panel()
+            if not panel:
                 return info
-            panel = panels[0]
 
             field_map = {
                 'Mã SIC':             ('sic_code',               'str'),
@@ -371,22 +576,7 @@ class SSICompanyProfileCrawler:
                 'Số lượng chi nhánh': ('branch_count',           'int'),
             }
 
-            rows = panel.find_elements(By.CSS_SELECTOR, ".company-basic-info")
-            for row in rows:
-                divs = row.find_elements(By.XPATH, "./div")
-                if len(divs) < 2:
-                    continue
-                label = divs[0].text.strip()
-                value = divs[1].text.strip()
-                for vn_label, (key, dtype) in field_map.items():
-                    if vn_label in label:
-                        if dtype == 'float':
-                            info[key] = _clean_number(value)
-                        elif dtype == 'int':
-                            info[key] = _clean_int(value)
-                        else:
-                            info[key] = value
-                        break
+            info.update(self._extract_company_basic_rows(panel, field_map))
 
         except Exception as exc:
             print(f"Basic info tab error: {exc}")
@@ -400,13 +590,9 @@ class SSICompanyProfileCrawler:
             self._click_tab_in_panel("#company-profile-info", "TT niêm yết")
             time.sleep(1.5)
 
-            panels = self.driver.find_elements(
-                By.CSS_SELECTOR,
-                "#company-profile-info .company-profile-subtask[data-headlessui-state='selected']"
-            )
-            if not panels:
+            panel = self._get_selected_profile_panel()
+            if not panel:
                 return info
-            panel = panels[0]
 
             field_map = {
                 'Ngày niêm yết':    ('listing_date',     'str'),
@@ -417,22 +603,7 @@ class SSICompanyProfileCrawler:
                 'SLCP lưu hành':    ('shares_outstanding','int'),
             }
 
-            rows = panel.find_elements(By.CSS_SELECTOR, ".company-basic-info")
-            for row in rows:
-                divs = row.find_elements(By.XPATH, "./div")
-                if len(divs) < 2:
-                    continue
-                label = divs[0].text.strip()
-                value = divs[1].text.strip()
-                for vn_label, (key, dtype) in field_map.items():
-                    if vn_label in label:
-                        if dtype == 'float':
-                            info[key] = _clean_number(value)
-                        elif dtype == 'int':
-                            info[key] = _clean_int(value)
-                        else:
-                            info[key] = value
-                        break
+            info.update(self._extract_company_basic_rows(panel, field_map))
 
         except Exception as exc:
             print(f"Listing info tab error: {exc}")
@@ -441,31 +612,23 @@ class SSICompanyProfileCrawler:
 
     def _get_leaders(self) -> List[Dict]:
         """Extract leadership data from 'Ban lãnh đạo' section."""
-        leaders = []
         try:
             panel = self.driver.find_element(By.ID, "leader-company")
-            groups = panel.find_elements(By.CSS_SELECTOR, ".leader-group")
-            for group in groups:
-                try:
-                    paras = group.find_elements(By.TAG_NAME, "p")
-                    if len(paras) >= 2:
-                        full_name = paras[0].text.strip()
-                        position  = paras[1].text.strip()
-                        # Skip empty rows (invisible / placeholder divs)
-                        if full_name and position:
-                            leaders.append({
-                                'full_name': full_name,
-                                'position':  position,
-                            })
-                except Exception:
-                    continue
+            self._scroll_window_to_load_more()
+            self._scroll_scrollable_descendants(panel)
+            
+            # Scroll and collect all leader data during scrolling
+            leaders = self._scroll_to_extract_all_leaders(panel)
+            print(f"  Leaders collected: {len(leaders)} unique")
+            
+            return leaders
         except Exception as exc:
             print(f"Leaders extraction error: {exc}")
-        return leaders
+            return []
 
     def _get_subsidiaries(self) -> List[Dict]:
         """Extract Công ty con + Công ty liên kết from the sub-company section."""
-        records = []
+        all_records = []
 
         def _parse_sub_table(container_id: str, rel_type: str):
             try:
@@ -483,25 +646,234 @@ class SSICompanyProfileCrawler:
                 if not active_panels:
                     return
 
-                tbody = active_panels[0].find_elements(By.CSS_SELECTOR, "tbody tr")
-                for row in tbody:
-                    tds = row.find_elements(By.TAG_NAME, "td")
-                    if len(tds) < 4:
-                        continue
-                    records.append({
-                        'company_name':            tds[0].text.strip(),
-                        'sub_symbol':              tds[1].text.strip(),
-                        'charter_capital_billion': _clean_number(tds[2].text.strip()),
-                        'ownership_pct':           _clean_number(tds[3].text.strip().replace('%', '')),
-                        'relationship_type':       rel_type,
-                    })
+                self._scroll_window_to_load_more()
+                self._scroll_scrollable_descendants(active_panels[0])
+                
+                # Scroll and collect all row data during scrolling
+                rows = self._scroll_to_extract_all_table_rows(active_panels[0])
+                print(f"  {rel_type} collected: {len(rows)} unique")
+                
+                # Add relationship type to each record
+                for row in rows:
+                    row['relationship_type'] = rel_type
+                    all_records.append(row)
+                        
             except Exception as exc:
                 print(f"Subsidiary table error ({rel_type}): {exc}")
 
         _parse_sub_table("sub-company", "subsidiary")
         _parse_sub_table("sub-company", "associate")
 
-        return records
+        return all_records
+
+    def _get_stock_id(self, symbol: str) -> Optional[str]:
+        """Lookup stock_id from Stock table by symbol."""
+        try:
+            result = (
+                supabase.table("Stock")
+                .select("id")
+                .eq("stock_symbol", symbol.upper())
+                .limit(1)
+                .execute()
+            )
+            rows = result.data or []
+            if rows:
+                return rows[0].get("id")
+            print(f"  Warning: No Stock entry found for {symbol}")
+            return None
+        except Exception as exc:
+            print(f"  Stock lookup error for {symbol}: {exc}")
+            return None
+
+    def _update_profile_row(self, profile: Dict) -> bool:
+        """Update contact fields, description, and key profile metrics in BI_Profile."""
+        symbol = (profile.get("symbol") or "").strip().upper()
+        if not symbol:
+            return False
+
+        try:
+            current_result = (
+                supabase.table("BI_Profile")
+                .select(
+                    "description,email,phone,website,fax,"
+                    "sic_code,industry_name,icb_code,founded_date,"
+                    "charter_capital_billion,employee_count,branch_count,"
+                    "listing_date,exchange,ipo_price,listed_volume,"
+                    "market_cap_billion,shares_outstanding"
+                )
+                .eq("symbol", symbol)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:
+            print(f"BI_Profile lookup error for {symbol}: {exc}")
+            return False
+
+        current_row = (current_result.data or [{}])[0]
+        payload = {}
+
+        for field in ("email", "phone", "website", "fax"):
+            current_value = _normalize_text(current_row.get(field))
+            new_value = _normalize_text(profile.get(field))
+            if new_value and not current_value:
+                payload[field] = new_value
+
+        current_description = _normalize_text(current_row.get("description"))
+        new_description = _normalize_text(profile.get("description"))
+        if new_description:
+            should_refresh_description = False
+            if not current_description:
+                should_refresh_description = True
+            else:
+                longer_enough = len(new_description) > len(current_description) + 20
+                significantly_longer = len(current_description) > 0 and len(new_description) >= int(len(current_description) * 1.2)
+                should_refresh_description = longer_enough or significantly_longer
+
+            if should_refresh_description:
+                payload["description"] = new_description
+
+        # Refresh structured profile fields when crawled data is present and differs.
+        text_fields = (
+            "sic_code",
+            "industry_name",
+            "icb_code",
+            "founded_date",
+            "listing_date",
+            "exchange",
+        )
+        float_fields = (
+            "charter_capital_billion",
+            "ipo_price",
+            "market_cap_billion",
+        )
+        int_fields = (
+            "employee_count",
+            "branch_count",
+            "listed_volume",
+            "shares_outstanding",
+        )
+
+        for field in text_fields:
+            new_value = _normalize_text(profile.get(field))
+            current_value = _normalize_text(current_row.get(field))
+            if new_value and new_value != current_value:
+                payload[field] = new_value
+
+        for field in float_fields:
+            new_value = profile.get(field)
+            current_value = current_row.get(field)
+            if new_value is None:
+                continue
+            try:
+                new_float = float(new_value)
+            except (TypeError, ValueError):
+                continue
+
+            current_float = None
+            if current_value is not None:
+                try:
+                    current_float = float(current_value)
+                except (TypeError, ValueError):
+                    current_float = None
+
+            if current_float is None or abs(new_float - current_float) > 1e-9:
+                payload[field] = new_float
+
+        for field in int_fields:
+            new_value = profile.get(field)
+            current_value = current_row.get(field)
+            if new_value is None:
+                continue
+            try:
+                new_int = int(new_value)
+            except (TypeError, ValueError):
+                continue
+
+            current_int = None
+            if current_value is not None:
+                try:
+                    current_int = int(current_value)
+                except (TypeError, ValueError):
+                    current_int = None
+
+            if current_int is None or new_int != current_int:
+                payload[field] = new_int
+
+        if not payload:
+            return False
+
+        try:
+            result = (
+                supabase.table("BI_Profile")
+                .update(payload)
+                .eq("symbol", symbol)
+                .execute()
+            )
+            updated_rows = getattr(result, "data", None) or []
+            if updated_rows:
+                print(f"  Updated BI_Profile fields for {symbol}: {', '.join(payload.keys())}")
+                return True
+
+            print(f"  No BI_Profile row updated for {symbol}")
+            return False
+        except Exception as exc:
+            print(f"  BI_Profile update error for {symbol}: {exc}")
+            return False
+
+    def _insert_leaders(self, stock_id: str, leaders: List[Dict]) -> bool:
+        """Delete old leaders for stock_id and insert new ones."""
+        if not stock_id or not leaders:
+            return True
+        
+        try:
+            # Delete old leaders
+            supabase.table("BI_Leader").delete().eq("stock_id", stock_id).execute()
+            
+            # Insert new leaders
+            records = [
+                {
+                    "stock_id": stock_id,
+                    "full_name": leader.get("full_name"),
+                    "position": leader.get("position"),
+                }
+                for leader in leaders
+            ]
+            result = supabase.table("BI_Leader").insert(records).execute()
+            inserted = len(getattr(result, "data", []) or [])
+            print(f"  Inserted {inserted} leaders for stock_id {stock_id[:8]}…")
+            return True
+        except Exception as exc:
+            print(f"  BI_Leader insert error for stock_id {stock_id[:8]}…: {exc}")
+            return False
+
+    def _insert_subsidiaries(self, stock_id: str, subsidiaries: List[Dict]) -> bool:
+        """Delete old subsidiaries for stock_id and insert new ones."""
+        if not stock_id or not subsidiaries:
+            return True
+        
+        try:
+            # Delete old subsidiaries
+            supabase.table("BI_Subsidiary").delete().eq("stock_id", stock_id).execute()
+            
+            # Insert new subsidiaries
+            records = [
+                {
+                    "stock_id": stock_id,
+                    "company_name": sub.get("company_name"),
+                    "sub_symbol": sub.get("sub_symbol"),
+                    "charter_capital_billion": sub.get("charter_capital_billion"),
+                    "ownership_pct": sub.get("ownership_pct"),
+                    "relationship_type": sub.get("relationship_type"),
+                }
+                for sub in subsidiaries
+            ]
+            result = supabase.table("BI_Subsidiary").insert(records).execute()
+            inserted = len(getattr(result, "data", []) or [])
+            print(f"  Inserted {inserted} subsidiaries/associates for stock_id {stock_id[:8]}…")
+            return True
+        except Exception as exc:
+            print(f"  BI_Subsidiary insert error for stock_id {stock_id[:8]}…: {exc}")
+            return False
 
     def _get_company_name(self) -> str:
         """
@@ -657,31 +1029,42 @@ FROM '{sym}_subsidiaries.csv' DELIMITER ',' CSV HEADER;
 
 def _load_all_symbols() -> List[str]:
     """
-    Read all_symbols_raw.txt (same directory) and return a filtered list of
-    stock symbols, excluding any symbol that ends with 4 or more digits
+    Read symbols from BI_Profile and return a filtered list of stock symbols,
+    excluding any symbol that ends with 4 or more digits
     (i.e. bond / derivative instruments such as CACB2502, BAB122032, …).
     """
-    symbols_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "all_symbols_raw.txt")
-    content = ""
-    with open(symbols_file, encoding="utf-8-sig", errors="replace") as f:
-        try:
-            content = f.read()
-        except UnicodeDecodeError:
-            pass
+    try:
+        symbols: List[str] = []
+        page = 0
+        page_size = 1000
 
-    # Retry with utf-16 if utf-8-sig failed (file starts with 0xFF 0xFE BOM)
-    if not content or content.startswith('\x00') or '\ufffd' in content[:20]:
-        with open(symbols_file, encoding="utf-16") as f:
-            content = f.read()
+        while True:
+            offset = page * page_size
+            result = (
+                supabase.table("BI_Profile")
+                .select("symbol")
+                .offset(offset)
+                .limit(page_size)
+                .execute()
+            )
+            rows = result.data or []
+            if not rows:
+                break
 
-    # The file contains a Python-list literal on one of its lines
-    match = re.search(r'\[.*?\]', content, re.DOTALL)
-    if not match:
-        raise ValueError("Could not find symbol list in all_symbols_raw.txt")
+            for row in rows:
+                symbol = _normalize_text(row.get("symbol"))
+                if symbol:
+                    symbols.append(symbol.upper())
 
-    raw_list: List[str] = eval(match.group())            # safe: known file format
-    filtered = [s for s in raw_list if not re.search(r'\d{4,}$', s)]
-    return filtered
+            if len(rows) < page_size:
+                break
+
+            page += 1
+
+        filtered = [s for s in symbols if not re.search(r'\d{4,}$', s)]
+        return sorted(set(filtered))
+    except Exception as exc:
+        raise RuntimeError(f"Could not load symbol list from BI_Profile: {exc}") from exc
 
 
 PROGRESS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "crawl_progress.txt")
@@ -701,19 +1084,28 @@ def _mark_done(symbol: str) -> None:
         f.write(symbol.upper() + "\n")
 
 
-def main():
-    output_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
+def main(force: bool = False):
+    """Batch crawl all symbols from BI_Profile and update database tables.
+    
+    Args:
+        force: If True, crawl all symbols and overwrite existing data.
+               If False, skip symbols in crawl_progress.txt.
+    """
     symbols = _load_all_symbols()
     done = _load_progress()
 
-    remaining = [s for s in symbols if s.upper() not in done]
-    print(f"Total symbols      : {len(symbols)}")
-    print(f"Already completed  : {len(done)}")
-    print(f"Remaining to crawl : {len(remaining)}")
+    if force:
+        remaining = symbols
+        print(f"Force mode: crawling all {len(symbols)} symbols and overwriting data.")
+    else:
+        remaining = [s for s in symbols if s.upper() not in done]
+        print(f"Total symbols      : {len(symbols)}")
+        print(f"Already completed  : {len(done)}")
+        print(f"Remaining to crawl : {len(remaining)}")
 
-    if not remaining:
-        print("All symbols have already been crawled.")
-        return
+        if not remaining:
+            print("All symbols have already been crawled.")
+            return
 
     crawler = SSICompanyProfileCrawler(headless=False)
     try:
@@ -724,6 +1116,13 @@ def main():
 
                 if not result['profile']:
                     print(f"  No data collected for {symbol}, skipping.")
+                    continue
+
+                # ── Get stock_id for this symbol ──
+                stock_id = crawler._get_stock_id(symbol)
+                if not stock_id:
+                    print(f"  Skipping {symbol}: no Stock entry found")
+                    _mark_done(symbol)
                     continue
 
                 # ── print summary ──
@@ -743,24 +1142,61 @@ def main():
 
                 if result['subsidiaries']:
                     print(f"\nSubsidiaries / Associates ({len(result['subsidiaries'])} entries):")
-                    for sub in result['subsidiaries']:
+                    for sub in result['subsidiaries'][:5]:
                         print(f"  [{sub['relationship_type']:10s}] {sub['sub_symbol']:8s} {sub['company_name']} ({sub['ownership_pct']}%)")
+                    if len(result['subsidiaries']) > 5:
+                        print(f"  … and {len(result['subsidiaries']) - 5} more")
 
-                # ── export CSVs ──
-                export_to_csv(result, symbol, output_dir)
+                # ── Update database tables ──
+                print("\nUpdating database…")
+                crawler._update_profile_row(result["profile"])
+                crawler._insert_leaders(stock_id, result['leaders'])
+                crawler._insert_subsidiaries(stock_id, result['subsidiaries'])
 
                 # ── mark as done so restarts skip it ──
                 _mark_done(symbol)
+                print(f"✓ {symbol} completed and marked done.")
 
             except Exception as exc:
                 print(f"  ERROR crawling {symbol}: {exc}")
-                import traceback
                 traceback.print_exc()
 
     finally:
         crawler.close()
-        print("Browser closed.")
+        print("\nBrowser closed.")
+        print("Batch crawl completed.")
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--symbol", type=str, default=None, help="Crawl a single symbol only, e.g. VHM")
+    parser.add_argument("--force", action="store_true", help="Crawl all symbols and overwrite existing data")
+    args = parser.parse_args()
+
+    if args.symbol:
+        crawler = SSICompanyProfileCrawler(headless=False)
+        try:
+            symbol = args.symbol.strip().upper()
+            print(f"Crawling single symbol: {symbol}")
+            result = crawler.crawl(symbol)
+
+            if result.get('profile'):
+                # Get stock_id
+                stock_id = crawler._get_stock_id(symbol)
+                if stock_id:
+                    print("\nUpdating database…")
+                    crawler._update_profile_row(result["profile"])
+                    crawler._insert_leaders(stock_id, result['leaders'])
+                    crawler._insert_subsidiaries(stock_id, result['subsidiaries'])
+                    print(f"✓ {symbol} completed and database updated.")
+                else:
+                    print(f"No Stock entry found for {symbol}, skipping database update.")
+            else:
+                print(f"No data collected for {symbol}.")
+        finally:
+            crawler.close()
+            print("Browser closed.")
+    else:
+        main(force=args.force)
