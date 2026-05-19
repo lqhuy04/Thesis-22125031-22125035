@@ -43,21 +43,262 @@ def _signal(value, low, high) -> str:
     return "Trung tính"
 
 
+# ─────────────────────────────────────────────────────────────
+# Pre-computed scoring — đếm bullish points trong code thay vì LLM
+# ─────────────────────────────────────────────────────────────
+
+def _compute_technical_score(records: list[dict]) -> dict:
+    """
+    Đếm bullish points theo đúng 9 quy tắc trong aggregator prompt.
+    Trả về: {score, max_score, classification, signals: [...], trend_info: {...}}
+    """
+    if not records:
+        return {
+            "score": 0,
+            "max_score": 9,
+            "classification": "NO_DATA",
+            "signals": [],
+            "trend_info": {},
+        }
+
+    latest = records[-1]
+
+    rsi      = _clean(latest.get("rsi_14"))
+    macd     = _clean(latest.get("macd"))
+    macd_sig = _clean(latest.get("macd_signal"))
+    macd_h   = _clean(latest.get("macd_histogram"))
+    bb_upper = _clean(latest.get("bb_upper"))
+    bb_lower = _clean(latest.get("bb_lower"))
+    close    = _clean(latest.get("close"))
+    kdj_k    = _clean(latest.get("kdj_k"))
+    kdj_d    = _clean(latest.get("kdj_d"))
+    sma_20   = _clean(latest.get("sma_20"))
+    sma_50   = _clean(latest.get("sma_50"))
+
+    signals: list[str] = []
+    score = 0
+
+    # 1. RSI vùng 45–70
+    if rsi is not None and 45 <= rsi <= 70:
+        score += 1
+        signals.append(f"RSI={rsi:.1f} trong vùng 45–70 (đà tăng lành mạnh)")
+    # 2. RSI < 30 oversold
+    if rsi is not None and rsi < 30:
+        score += 1
+        signals.append(f"RSI={rsi:.1f} oversold (tiềm năng hồi)")
+    # 3. MACD > Signal
+    if macd is not None and macd_sig is not None and macd > macd_sig:
+        score += 1
+        signals.append(f"MACD ({macd:.4f}) > Signal ({macd_sig:.4f})")
+    # 4. Histogram > 0
+    if macd_h is not None and macd_h > 0:
+        score += 1
+        signals.append(f"MACD Histogram dương ({macd_h:.4f})")
+    # 5. Giá > SMA20
+    if close is not None and sma_20 is not None and close > sma_20:
+        score += 1
+        signals.append(f"Giá ({close:.2f}) > SMA20 ({sma_20:.2f})")
+    # 6. SMA20 > SMA50
+    if sma_20 is not None and sma_50 is not None and sma_20 > sma_50:
+        score += 1
+        signals.append(f"SMA20 > SMA50 (xu hướng ngắn–trung hạn tích cực)")
+    # 7. Giá trong vùng giữa BB (không quá mua)
+    if (close is not None and bb_upper is not None and bb_lower is not None
+            and close < bb_upper * 0.99 and close > bb_lower * 1.01):
+        score += 1
+        signals.append("Giá trong vùng giữa Bollinger Band (còn dư địa)")
+    # 8. KDJ K < 20 oversold
+    if kdj_k is not None and kdj_k < 20:
+        score += 1
+        signals.append(f"KDJ K={kdj_k:.1f} oversold")
+    # 9. KDJ K cắt lên D — cần ≥ 2 records để xác định
+    if len(records) >= 2:
+        prev = records[-2]
+        prev_k = _clean(prev.get("kdj_k"))
+        prev_d = _clean(prev.get("kdj_d"))
+        if (kdj_k is not None and kdj_d is not None
+                and prev_k is not None and prev_d is not None
+                and prev_k <= prev_d and kdj_k > kdj_d):
+            score += 1
+            signals.append("KDJ K vừa cắt lên D (tín hiệu mua)")
+
+    # ─── Classification ───
+    if score >= 5:
+        classification = "BULLISH"
+    elif score >= 3:
+        classification = "TRUNG TÍNH"
+    else:
+        classification = "BEARISH"
+
+    # ─── Thêm trend info: hướng của RSI/MACD trong N nến gần nhất ───
+    trend_info = _compute_trend_info(records)
+
+    return {
+        "score": score,
+        "max_score": 9,
+        "classification": classification,
+        "signals": signals,
+        "trend_info": trend_info,
+    }
+
+
+def _compute_trend_info(records: list[dict]) -> dict:
+    """
+    Phân tích xu hướng của các indicator trong N nến gần nhất.
+    Quan trọng cho ngắn hạn — không chỉ giá trị mà cả động lượng.
+    """
+    info: dict = {}
+    n = min(len(records), 10)
+    if n < 2:
+        return info
+
+    window = records[-n:]
+
+    # RSI direction
+    rsi_vals = [_clean(r.get("rsi_14")) for r in window]
+    rsi_vals = [v for v in rsi_vals if v is not None]
+    if len(rsi_vals) >= 2:
+        delta = rsi_vals[-1] - rsi_vals[0]
+        if delta > 3:
+            info["rsi_direction"] = f"RSI đang TĂNG ({rsi_vals[0]:.1f} → {rsi_vals[-1]:.1f})"
+        elif delta < -3:
+            info["rsi_direction"] = f"RSI đang GIẢM ({rsi_vals[0]:.1f} → {rsi_vals[-1]:.1f})"
+        else:
+            info["rsi_direction"] = f"RSI đi ngang quanh {rsi_vals[-1]:.1f}"
+
+    # MACD histogram direction
+    hist_vals = [_clean(r.get("macd_histogram")) for r in window]
+    hist_vals = [v for v in hist_vals if v is not None]
+    if len(hist_vals) >= 2:
+        if hist_vals[-1] > hist_vals[0] and hist_vals[-1] > 0:
+            info["macd_momentum"] = "MACD Histogram tăng và dương — động lượng tăng mạnh dần"
+        elif hist_vals[-1] > hist_vals[0]:
+            info["macd_momentum"] = "MACD Histogram đang cải thiện (chưa dương)"
+        elif hist_vals[-1] < hist_vals[0] and hist_vals[-1] < 0:
+            info["macd_momentum"] = "MACD Histogram giảm và âm — động lượng bearish mạnh dần"
+        else:
+            info["macd_momentum"] = "MACD Histogram đang yếu đi"
+
+    # MACD cross recent
+    macds = [(_clean(r.get("macd")), _clean(r.get("macd_signal"))) for r in window]
+    cross_idx = None
+    cross_type = None
+    for i in range(1, len(macds)):
+        m0, s0 = macds[i-1]
+        m1, s1 = macds[i]
+        if None in (m0, s0, m1, s1):
+            continue
+        if m0 <= s0 and m1 > s1:
+            cross_idx, cross_type = i, "golden"
+        elif m0 >= s0 and m1 < s1:
+            cross_idx, cross_type = i, "death"
+    if cross_idx is not None:
+        bars_ago = len(macds) - 1 - cross_idx
+        kind = "MACD Golden Cross" if cross_type == "golden" else "MACD Death Cross"
+        info["macd_cross"] = f"{kind} cách đây {bars_ago} nến"
+
+    # SMA cross recent (golden / death cross)
+    smas = [(_clean(r.get("sma_20")), _clean(r.get("sma_50"))) for r in window]
+    sma_cross_idx = None
+    sma_cross_type = None
+    for i in range(1, len(smas)):
+        a0, b0 = smas[i-1]
+        a1, b1 = smas[i]
+        if None in (a0, b0, a1, b1):
+            continue
+        if a0 <= b0 and a1 > b1:
+            sma_cross_idx, sma_cross_type = i, "golden"
+        elif a0 >= b0 and a1 < b1:
+            sma_cross_idx, sma_cross_type = i, "death"
+    if sma_cross_idx is not None:
+        bars_ago = len(smas) - 1 - sma_cross_idx
+        kind = "Golden Cross (SMA20 cắt lên SMA50)" if sma_cross_type == "golden" else "Death Cross (SMA20 cắt xuống SMA50)"
+        info["sma_cross"] = f"{kind} cách đây {bars_ago} nến"
+
+    # Divergence đơn giản: giá vs RSI trên window
+    closes = [_clean(r.get("close")) for r in window]
+    closes = [c for c in closes if c is not None]
+    if len(closes) >= 3 and len(rsi_vals) >= 3:
+        price_delta = closes[-1] - closes[0]
+        rsi_delta = rsi_vals[-1] - rsi_vals[0]
+        if price_delta > 0 and rsi_delta < -3:
+            info["divergence"] = "Bearish divergence: giá tăng nhưng RSI giảm"
+        elif price_delta < 0 and rsi_delta > 3:
+            info["divergence"] = "Bullish divergence: giá giảm nhưng RSI tăng"
+
+    return info
+
+
+def _compute_price_position(
+    close: float | None,
+    bb_upper: float | None,
+    bb_lower: float | None,
+    rsi: float | None,
+) -> str:
+    """
+    Vị trí giá so với kháng cự / hỗ trợ — dùng cho deterministic Mua/Chờ rule.
+      "near_resistance" : giá ≥ 98% upper BB HOẶC RSI > 70
+      "near_support"    : giá ≤ 102% lower BB
+      "mid"             : ở giữa
+      "unknown"         : thiếu dữ liệu
+    """
+    if close is None:
+        return "unknown"
+    if rsi is not None and rsi > 70:
+        return "near_resistance"
+    if bb_upper is not None and close >= bb_upper * 0.98:
+        return "near_resistance"
+    if bb_lower is not None and close <= bb_lower * 1.02:
+        return "near_support"
+    if bb_upper is None and bb_lower is None:
+        return "unknown"
+    return "mid"
+
+
 def _format_technical_output(
     symbol: str,
     interval: str,
     records: list[dict],
     current_price: float | None = None,
     current_price_time: datetime | None = None,
-) -> str:
+) -> dict:
+    """
+    Trả về dict gồm:
+      - display: markdown để hiển thị / log
+      - signal: BULLISH | TRUNG TÍNH | BEARISH | NO_DATA
+      - score: int
+      - max_score: int
+      - signals: danh sách tín hiệu cụ thể đã thỏa mãn
+      - trend_info: hướng RSI, MACD, cross, divergence
+      - current_price: giá hiện tại để aggregator dùng cho entry/exit hint
+    """
     if not records:
-        return "Không đủ dữ liệu để phân tích kỹ thuật."
+        return {
+            "display": "Không đủ dữ liệu để phân tích kỹ thuật.",
+            "signal": "NO_DATA",
+            "score": 0,
+            "max_score": 9,
+            "signals": [],
+            "trend_info": {},
+            "price_position": "unknown",
+            "current_price": None,
+        }
 
     latest = records[-1]
     oldest = records[0]
 
     closes = [r["close"] for r in records if _clean(r.get("close")) is not None]
     price_trend = "Tăng" if len(closes) >= 2 and closes[-1] > closes[0] else "Giảm"
+
+    score_info = _compute_technical_score(records)
+
+    # Vị trí giá so với kháng cự/hỗ trợ — quyết định Mua/Chờ deterministic
+    price_position = _compute_price_position(
+        close=_clean(latest.get("close")),
+        bb_upper=_clean(latest.get("bb_upper")),
+        bb_lower=_clean(latest.get("bb_lower")),
+        rsi=_clean(latest.get("rsi_14")),
+    )
 
     rsi       = latest.get("rsi_14")
     macd      = latest.get("macd")
@@ -81,7 +322,6 @@ def _format_technical_output(
     c_sma_20   = _clean(sma_20)
     c_sma_50   = _clean(sma_50)
 
-    # Giá hiện tại: ưu tiên 1m, fallback về close của candle cuối
     display_price = current_price if current_price is not None else c_close
     display_time = (
         current_price_time.strftime("%H:%M %d/%m/%Y")
@@ -108,10 +348,29 @@ def _format_technical_output(
         else ""
     )
 
-    return f"""
+    trend_lines = "\n".join(f"- {v}" for v in score_info["trend_info"].values()) or "- (không có)"
+    signals_lines = "\n".join(f"  ✓ {s}" for s in score_info["signals"]) or "  (không có tín hiệu bullish)"
+
+    position_label = {
+        "near_resistance": "Gần KHÁNG CỰ (upper BB hoặc RSI cao)",
+        "near_support":    "Gần HỖ TRỢ (lower BB)",
+        "mid":             "Vùng giữa",
+        "unknown":         "Không xác định",
+    }.get(price_position, "Không xác định")
+
+    display = f"""
 ## Phân tích kỹ thuật — {symbol} ({interval})
 Khoảng thời gian: {oldest["TradingDate"]} {oldest["Time"]} → {latest["TradingDate"]} {latest["Time"]}
 Số phiên: {len(records)}
+
+### Đánh giá tổng hợp (pre-computed)
+- Phân loại: **{score_info["classification"]}** ({score_info["score"]}/{score_info["max_score"]} điểm bullish)
+- Vị trí giá: **{position_label}** (`price_position={price_position}`)
+- Tín hiệu bullish đã thỏa mãn:
+{signals_lines}
+
+### Xu hướng động lượng (last 10 nến)
+{trend_lines}
 
 ### Giá hiện tại (cập nhật lúc {display_time})
 - Giá: {_fmt(display_price, ",.2f")} đồng
@@ -139,6 +398,21 @@ Số phiên: {len(records)}
 - SMA20: {_fmt(sma_20, ",.2f")} | SMA50: {_fmt(sma_50, ",.2f")}
 - Tín hiệu: {sma_trend}
 """.strip()
+
+    return {
+        "display": display,
+        "signal": score_info["classification"],
+        "score": score_info["score"],
+        "max_score": score_info["max_score"],
+        "signals": score_info["signals"],
+        "trend_info": score_info["trend_info"],
+        "price_position": price_position,
+        "current_price": _clean(display_price),
+        "bb_upper": c_bb_upper,
+        "bb_lower": c_bb_lower,
+        "sma_20": c_sma_20,
+        "sma_50": c_sma_50,
+    }
 
 
 def technical_analysis_agent(state: AgentState) -> AgentState:
@@ -175,14 +449,23 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
     df = pd.DataFrame(current_rows)
 
     if df.empty:
-        return {"agent_results": {"technical_analysis_agent": "Không có dữ liệu thị trường."}}
+        return {"agent_results": {"technical_analysis_agent": {
+            "display": "Không có dữ liệu thị trường.",
+            "signal": "NO_DATA",
+            "score": 0,
+            "max_score": 9,
+            "signals": [],
+            "trend_info": {},
+            "price_position": "unknown",
+            "current_price": None,
+        }}}
 
     # 3. Sort
     if "trading_time" in df.columns:
         df["_dt"] = df["trading_time"].apply(_parse_dt)
         df = df.sort_values("_dt").reset_index(drop=True)
 
-    # 4. Tính indicators trên toàn bộ df trước khi filter (đảm bảo warm-up đủ)
+    # 4. Tính indicators trên toàn bộ df trước khi filter
     indicators = TechnicalIndicatorsService.calculate_all_indicators(df)
 
     # 5. Gộp giá + indicators thành records
@@ -214,11 +497,21 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
         r.pop("_dt", None)
 
     if not records:
-        return {"agent_results": {"technical_analysis_agent": "Không có dữ liệu trong khoảng thời gian được chỉ định."}}
+        return {"agent_results": {"technical_analysis_agent": {
+            "display": "Không có dữ liệu trong khoảng thời gian được chỉ định.",
+            "signal": "NO_DATA",
+            "score": 0,
+            "max_score": 9,
+            "signals": [],
+            "trend_info": {},
+            "price_position": "unknown",
+            "current_price": None,
+        }}}
 
     output = _format_technical_output(symbol, interval, records, current_price, current_price_time)
 
-    print("[Technical Analysis Agent] Output:", output)
+    print("[Technical Analysis Agent] Output:", output["display"])
+    print(f"[Technical Analysis Agent] Signal: {output['signal']} ({output['score']}/{output['max_score']})")
 
     return {
         "agent_results": {

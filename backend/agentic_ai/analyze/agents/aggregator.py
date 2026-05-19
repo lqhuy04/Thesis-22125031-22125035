@@ -1,37 +1,26 @@
 """
 aggregator.py — Aggregator Agent
 
-Tổng hợp dữ liệu từ:
-    + article_agent
-    + fundamental_analysis_agent
-    + technical_analysis_agent
+Tổng hợp dữ liệu đã PRE-COMPUTED từ:
+    + article_agent              → {sentiment, summary, key_events}
+    + fundamental_analysis_agent → {signal, score, signals, weaknesses, is_bank_or_finance}
+    + technical_analysis_agent   → {signal, score, signals, trend_info, price_position,
+                                    current_price, bb_*, sma_*}
 
-Chỉ trả về "Mua" hoặc "Chờ" — không hỗ trợ short/bán khống.
+Pre-computed bởi CODE (LLM không can thiệp):
+    + signal_strength : float 0–3, weight theo SCORE RATIO của từng nguồn
+    + data_quality    : int 0–3, số nguồn có dữ liệu
+    + target_prices   : tp1_min, tp2_min, sl_max theo PERIOD
+    + min_rr_required : tỷ lệ Reward:Risk tối thiểu theo period
 
-────────────────────────────────────────────────────────
-THIẾT KẾ CONFIDENCE:
+LLM chỉ làm:
+    + Chọn recommendation theo rule deterministic dựa trên signal + price_position
+    + Chấm signal_consistency (0–3)
+    + Sinh entry/exit_price_hint thỏa mãn target_prices + min_rr
+    + Sinh tactical_suggestion với rủi ro phù hợp context recommendation
+    + Trích key_evidence từ pre-computed signals (không bịa)
 
-  Confidence = f(signal_strength, signal_consistency, data_quality)
-
-  Hoàn toàn độc lập với chiều Mua/Chờ của recommendation.
-  Câu hỏi confidence trả lời:
-    "Các nguồn thông tin có đủ bằng chứng rõ ràng và đồng thuận
-     với recommendation được đưa ra không?"
-
-  Công thức:
-    confidence = signal_strength   * 0.35
-               + signal_consistency * 0.35
-               + data_quality       * 0.30
-
-  Lý do tăng trọng số data_quality lên 0.30:
-    Nếu dữ liệu rỗng/sơ sài, confidence không nên cao dù LLM
-    chấm signal_strength và signal_consistency cao.
-
-  Mỗi thành phần chuẩn hóa về [0, 1] trước khi nhân trọng số.
-
-  data_quality được tính từ CODE (đếm khách quan số nguồn có dữ liệu),
-  không để LLM tự chấm — tránh circular reasoning.
-────────────────────────────────────────────────────────
+CONFIDENCE = 0.40 * signal_strength/3 + 0.35 * signal_consistency/3 + 0.25 * data_quality/3
 """
 
 import json
@@ -43,63 +32,173 @@ from agentic_ai.analyze.state import AgentState
 
 
 # ─────────────────────────────────────────────────────────────
+# 🎯 Period-based profit targets — đảm bảo TP/SL realistic
+# ─────────────────────────────────────────────────────────────
+
+# Default theo period dùng KHI user không nhập target/max_loss
+# (median VN-Index benchmark, không phải best case)
+DEFAULT_TARGETS_BY_PERIOD = {
+    "short_term": {"target_profit_pct": 10.0, "max_loss_pct": 5.0},
+    "mid_term":   {"target_profit_pct": 20.0, "max_loss_pct": 10.0},
+    "long_term":  {"target_profit_pct": 40.0, "max_loss_pct": 15.0},
+}
+
+# Floor / ceiling để chặn input vô lý từ user
+TARGET_BOUNDS = {
+    "target_profit_pct": (3.0, 200.0),   # tối thiểu 3%, tối đa 200%
+    "max_loss_pct":      (2.0, 30.0),    # tối thiểu 2%, tối đa 30%
+}
+
+# RR sàn — kể cả user chấp nhận trade tệ, system không khuyến nghị
+# Mua nếu reward < 1× risk (lỗ kỳ vọng > lời kỳ vọng)
+MIN_RR_FLOOR = 1.0
+
+
+def _normalize_period(risk_appetite: dict) -> str:
+    """Chuẩn hóa period về short_term / mid_term / long_term."""
+    raw = (risk_appetite.get("period") or risk_appetite.get("investment_horizon") or "")
+    raw = str(raw).lower()
+    if "short" in raw or "ngắn" in raw or "ngan" in raw:
+        return "short_term"
+    if "long" in raw or "dài" in raw or "dai" in raw:
+        return "long_term"
+    return "mid_term"
+
+
+def _clamp(value: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, value))
+
+
+def _resolve_targets(risk_appetite: dict, period: str) -> dict:
+    """
+    Lấy target_profit_pct / max_loss_pct từ user, fallback theo period nếu thiếu.
+    Clamp vào bounds hợp lệ. Trả về %.
+    """
+    defaults = DEFAULT_TARGETS_BY_PERIOD[period]
+
+    try:
+        target_profit_pct = float(risk_appetite.get("target_profit_pct"))
+    except (TypeError, ValueError):
+        target_profit_pct = defaults["target_profit_pct"]
+
+    try:
+        max_loss_pct = float(risk_appetite.get("max_loss_pct"))
+    except (TypeError, ValueError):
+        max_loss_pct = defaults["max_loss_pct"]
+
+    target_profit_pct = _clamp(target_profit_pct, *TARGET_BOUNDS["target_profit_pct"])
+    max_loss_pct      = _clamp(max_loss_pct,      *TARGET_BOUNDS["max_loss_pct"])
+
+    return {
+        "target_profit_pct": target_profit_pct,
+        "max_loss_pct":      max_loss_pct,
+    }
+
+
+def _compute_target_prices(
+    current_price: float | None,
+    target_profit_pct: float,
+    max_loss_pct: float,
+) -> dict:
+    """
+    Tính TP1/TP2/SL từ kỳ vọng của user.
+      TP2 = current * (1 + target_profit)  ← target user nhập, full exit
+      TP1 = current * (1 + target_profit * 0.5)  ← partial exit ở giữa đường
+      SL  = current * (1 - max_loss)
+      min_rr = max(MIN_RR_FLOOR, target_profit / max_loss) — user tự quyết RR
+    """
+    if current_price is None or current_price <= 0:
+        return {}
+
+    tp1_pct = target_profit_pct * 0.5
+    tp2_pct = target_profit_pct
+    sl_pct  = max_loss_pct
+
+    raw_rr = tp2_pct / sl_pct if sl_pct > 0 else MIN_RR_FLOOR
+    min_rr = round(max(MIN_RR_FLOOR, raw_rr), 2)
+
+    return {
+        "tp1_min": round(current_price * (1 + tp1_pct / 100), 2),
+        "tp2_min": round(current_price * (1 + tp2_pct / 100), 2),
+        "sl_max":  round(current_price * (1 - sl_pct  / 100), 2),
+        "min_rr":  min_rr,
+        "tp1_pct": round(tp1_pct, 2),
+        "tp2_pct": round(tp2_pct, 2),
+        "sl_pct":  round(sl_pct, 2),
+    }
+
+
+# ─────────────────────────────────────────────────────────────
 # 📦 Structured Output Schema
 # ─────────────────────────────────────────────────────────────
 
 class ConfidenceScores(BaseModel):
-    """
-    Hai chiều đánh giá do LLM chấm.
-    data_quality do CODE tính khách quan — không có trong schema này.
-    """
-
-    signal_strength: Literal[0, 1, 2, 3] = Field(
+    signal_consistency: Literal[0, 1, 2, 3] = Field(
         description=(
-            "Số nguồn có tín hiệu RÕ RÀNG — tín hiệu không mơ hồ, không thiếu dữ liệu quan trọng.\n"
-            "Đếm độc lập với chiều Mua/Chờ:\n"
-            "  3 = Tất cả các nguồn đều có tín hiệu rõ ràng\n"
-            "  2 = Phần lớn các nguồn có tín hiệu rõ ràng\n"
-            "  1 = Chỉ một nguồn có tín hiệu rõ ràng\n"
-            "  0 = Không nguồn nào có tín hiệu rõ ràng\n"
+            "Mức độ đồng thuận của các nguồn CÓ DỮ LIỆU với recommendation.\n"
+            "  3 = Tất cả nguồn có dữ liệu đều ủng hộ\n"
+            "  2 = Phần lớn ủng hộ, một nguồn trung lập\n"
+            "  1 = Phần lớn ủng hộ, một nguồn trái chiều\n"
+            "  0 = Các nguồn mâu thuẫn\n"
             "\n"
-            "Tiêu chí 'rõ ràng' cho từng nguồn:\n"
-            "  Technical: ≥50% chỉ báo đồng thuận một chiều (bullish hoặc bearish)\n"
-            "  Fundamental: ≥50% chỉ số đánh giá được ở mức tốt hoặc xấu rõ ràng\n"
-            "  News: sentiment rõ ràng tích cực hoặc tiêu cực (không trung lập)"
+            "NGOẠI LỆ ngắn hạn: nếu recommendation dựa chủ yếu vào Technical,\n"
+            "Fundamental trái chiều KHÔNG bị coi là 'trái chiều' — tính như trung lập."
         )
     )
-
-    signal_consistency: Literal[0, 1, 2, 3] = Field(
-    description=(
-        "Mức độ đồng thuận của các nguồn CÓ DỮ LIỆU với recommendation.\n"
-        "  3 = Tất cả nguồn có dữ liệu đều ủng hộ\n"
-        "  2 = Phần lớn ủng hộ, một nguồn trung lập\n"
-        "  1 = Phần lớn ủng hộ, một nguồn trái chiều\n"
-        "  0 = Các nguồn mâu thuẫn nhau\n"
-    )
-)
 
 
 class InvestmentRecommendation(BaseModel):
     summary: str = Field(
         description=(
-            "Phân tích tổng thể tình hình cổ phiếu từ các nguồn có dữ liệu: "
-            "tin tức, phân tích cơ bản, kỹ thuật. "
-            "Nêu các điểm nổi bật, không liệt kê lại toàn bộ số liệu."
+            "Phân tích tổng thể CHI TIẾT — 7–12 câu, viết liền mạch như 1 đoạn văn\n"
+            "(KHÔNG heading, KHÔNG bullet). BẮT BUỘC đủ 4 phần theo thứ tự:\n"
+            "\n"
+            "  [1] BỐI CẢNH CƠ BẢN — 2 câu (≥ 3 con số):\n"
+            "      Câu 1: 2–3 chỉ số định giá/sinh lời có SỐ\n"
+            "             (PE, ROE, P/B, EPS).\n"
+            "      Câu 2: 1–2 chỉ số tăng trưởng/dòng tiền (revenue YoY, profit YoY, CFO)\n"
+            "             KÈM sự kiện news quan trọng từ article.key_events\n"
+            "             (insider mua/bán, target giá tổ chức, kết quả KD).\n"
+            "             Nếu article.sentiment = 'KHÔNG CÓ TIN' → viết:\n"
+            "             'không có tin tức đáng chú ý trong kỳ'.\n"
+            "\n"
+            "  [2] TÌNH HÌNH KỸ THUẬT — 3 câu (≥ 5 con số):\n"
+            "      Câu 1: phân loại technical (BULLISH/BEARISH/TRUNG TÍNH) kèm\n"
+            "             score X/9 và price_position.\n"
+            "      Câu 2: 3 chỉ báo có SỐ — RSI=X, MACD state (so với Signal kèm số),\n"
+            "             MACD Histogram. Thêm cross gần đây trong trend_info\n"
+            "             (Golden/Death cross cách N nến) nếu có.\n"
+            "      Câu 3: vị trí giá hiện tại so với SMA20, SMA50, upper/lower BB.\n"
+            "\n"
+            "  [3] LÝ DO RECOMMENDATION — 1–2 câu:\n"
+            "      Giải thích tại sao 'Mua' / 'Chờ' dựa trên rule period.\n"
+            "      Nếu period = short_term: BẮT BUỘC chứa cụm\n"
+            "      'ưu tiên tín hiệu kỹ thuật, fundamental chỉ tham khảo'.\n"
+            "\n"
+            "  [4] HÀNH ĐỘNG TIẾP THEO — 1 câu:\n"
+            "      Điều kiện CỤ THỂ cần theo dõi, có SỐ — đồng bộ entry_price_hint.\n"
+            "\n"
+            "TUYỆT ĐỐI KHÔNG bịa số ngoài input. Mọi con số phải lấy từ\n"
+            "technical.{current_price, bb_*, sma_*, signals, trend_info},\n"
+            "fundamental.signals/weaknesses, hoặc article.key_events."
         )
     )
 
     recommendation: Literal["Mua", "Chờ"] = Field(
-        description=(
-            "Hành động đề xuất. Chỉ có 2 lựa chọn:\n"
-            "  'Mua'  = Tín hiệu đủ rõ ràng và tích cực để xem xét vào lệnh\n"
-            "  'Chờ' = Tín hiệu mixed, yếu, hoặc tiêu cực — không nên vào lệnh lúc này"
-        )
+        description="Hành động đề xuất. Chỉ có 'Mua' hoặc 'Chờ'."
     )
 
-    reasoning: str = Field(
+    key_evidence: list[str] = Field(
         description=(
-            "Giải thích logic rõ ràng cho recommendation, có dẫn chứng số liệu cụ thể. "
-            "Giải thích tại sao chấm signal_strength và signal_consistency như vậy."
+            "3–5 bullet ngắn (mỗi bullet ≤ 25 từ).\n"
+            "PHÂN BỔ BẮT BUỘC theo nguồn (nếu có data):\n"
+            "  • ÍT NHẤT 1 bullet từ technical.signals/trend_info — luôn có nếu\n"
+            "    technical.signal != NO_DATA\n"
+            "  • ÍT NHẤT 1 bullet từ fundamental.signals/weaknesses — luôn có nếu\n"
+            "    fundamental.signal != NO_DATA\n"
+            "  • ÍT NHẤT 1 bullet từ article.key_events — BẮT BUỘC nếu\n"
+            "    article.sentiment != 'KHÔNG CÓ TIN' VÀ key_events không rỗng\n"
+            "CẤM bịa số liệu/sự kiện ngoài input."
         )
     )
 
@@ -107,93 +206,151 @@ class InvestmentRecommendation(BaseModel):
 
     entry_price_hint: str | None = Field(
         description=(
-            "Vùng giá vào lệnh hoặc vùng theo dõi, dạng chuỗi tự nhiên.\n"
-            "Nếu recommendation = 'Mua': vùng giá xem xét mua vào ngay.\n"
-            "  Ví dụ: 'Có thể xem xét mua ở vùng 45,000–47,000 (gần MA20 và lower BB)'\n"
-            "Nếu recommendation = 'Chờ': vùng giá cần về để xem xét vào lệnh (nếu đủ dữ liệu kỹ thuật).\n"
-            "  Ví dụ: 'Theo dõi nếu giá điều chỉnh về vùng 43,000–45,000 (support MA50)'\n"
-            "None nếu không đủ dữ liệu kỹ thuật để xác định vùng hỗ trợ."
+            "Vùng giá CỤ THỂ — BẮT BUỘC có SỐ thực (2 chữ số thập phân).\n"
+            "CẤM viết chung chung như 'vùng hỗ trợ' / 'vùng kháng cự' /\n"
+            "'theo dõi diễn biến giá' mà không có số.\n"
+            "\n"
+            "Dữ liệu cần dùng từ technical_analysis_agent:\n"
+            "  current_price, bb_upper, bb_lower, sma_20, sma_50\n"
+            "\n"
+            "Format BẮT BUỘC: 'theo dõi vùng X.XX – Y.YY (<lý do kỹ thuật>)'\n"
+            "                  hoặc 'có thể mua quanh X.XX – Y.YY (<lý do>)'\n"
+            "\n"
+            "Logic chọn vùng theo recommendation + price_position:\n"
+            "  • 'Mua' + price_position ∈ {mid, near_support}:\n"
+            "      vùng = [current_price × 0.98, current_price × 1.02]\n"
+            "      lý do: 'gần giá hiện tại, hỗ trợ tại SMA20=<sma_20>'\n"
+            "  • 'Chờ' + price_position = near_resistance (pullback):\n"
+            "      vùng = [min(SMA20, lower_BB), max(SMA20, lower_BB)]\n"
+            "      lý do: 'chờ pullback về SMA20=<sma_20> / lower BB=<bb_lower>'\n"
+            "  • 'Chờ' + technical = BEARISH (chờ đảo chiều):\n"
+            "      vùng = [lower_BB, SMA20]\n"
+            "      lý do: 'chờ tín hiệu đảo chiều quanh lower BB=<bb_lower>\n"
+            "             và xác nhận trên SMA20=<sma_20>'\n"
+            "  • 'Chờ' + technical = TRUNG TÍNH:\n"
+            "      vùng = [SMA20 × 0.98, SMA20 × 1.02]\n"
+            "      lý do: 'theo dõi quanh SMA20=<sma_20>'\n"
+            "\n"
+            "Ví dụ ĐÚNG : 'Theo dõi vùng 26.40 – 26.80 (chờ tín hiệu đảo chiều\n"
+            "              quanh lower BB=26.40 và xác nhận trên SMA20=26.80)'\n"
+            "Ví dụ SAI  : 'Theo dõi nếu giá điều chỉnh về vùng hỗ trợ.'\n"
+            "\n"
+            "Trả None CHỈ KHI cả bb_lower, sma_20, current_price đều null."
         )
     )
 
     exit_price_hint: str | None = Field(
         description=(
-            "Vùng chốt lời và mức cắt lỗ tham khảo, dạng chuỗi tự nhiên.\n"
-            "Chỉ điền nếu recommendation = 'Mua' VÀ đã có entry_price_hint.\n"
-            "Ví dụ: 'TP1: 52,000 (upper BB) | TP2: 56,000 (đỉnh swing) | SL: đóng cửa dưới 43,000'\n"
-            "None nếu recommendation = 'Chờ' — chưa vào lệnh thì chưa cần exit."
+            "TP/SL dạng chuỗi tự nhiên — chỉ khi 'Mua'.\n"
+            "QUY TẮC BẮT BUỘC:\n"
+            "  - TP1 PHẢI ≥ target_prices.tp1_min (system đã tính theo period)\n"
+            "  - TP2 PHẢI ≥ target_prices.tp2_min nếu khoảng cách kỹ thuật cho phép\n"
+            "  - SL KHÔNG được thấp hơn target_prices.sl_max\n"
+            "  - (TP2 - entry) / (entry - SL) PHẢI ≥ target_prices.min_rr (RR ≥ 1:2)\n"
+            "Nếu BB upper / đỉnh swing CAO HƠN tp1_min → dùng giá đó.\n"
+            "Nếu CAO HƠN không có → vẫn dùng tp1_min với chú thích "
+            "'target +X% theo period'.\n"
+            "Format: 'TP1: <X> (<lý do kỹ thuật>) | TP2: <Y> (...) | SL: đóng cửa dưới <Z>'.\n"
+            "None khi 'Chờ'."
         )
     )
 
-    tactical_suggestion: str = Field(
-    description=(
-        "Gợi ý chiến thuật bổ sung. PHẢI bao gồm đủ 4 phần theo thứ tự:\n"
-        "  1. Khung thời gian phù hợp với khẩu vị rủi ro của user\n"
-        "  2. 1–2 rủi ro CỤ THỂ từ data (không nói chung chung, phải dẫn số liệu)\n"
-        "  3. Điều kiện re-evaluate:\n"
-        "     - Nếu recommendation = 'Chờ': PHẢI dùng ĐÚNG vùng giá trong entry_price_hint.\n"
-        "       Ví dụ: nếu entry_price_hint = 'theo dõi vùng 25.00–26.00' thì\n"
-        "       điều kiện re-evaluate là 'nếu giá về vùng 25.00–26.00 VÀ ...'\n"
-        "     - Nếu recommendation = 'Mua': PHẢI dùng ĐÚNG mức TP/SL trong exit_price_hint.\n"
-        "       Ví dụ: nếu exit_price_hint = 'TP1: 30.00 | TP2: 32.00 | SL: đóng cửa dưới 27.00' thì\n"
-        "       tactical_suggestion phải nhắc lại đúng các mức này, không được tự đặt số khác.\n"
-        "     KHÔNG được tự đặt mức giá khác với entry_price_hint hoặc exit_price_hint.\n"
-        "  4. Disclaimer: 'Đây là gợi ý tham khảo, không phải lời khuyên đầu tư. "
-        "Quyết định cuối cùng thuộc về nhà đầu tư.'"
-    )
-)
-
 
 # ─────────────────────────────────────────────────────────────
-# 🧮 Tính data_quality từ code (khách quan, không để LLM tự chấm)
+# 🧮 Pre-computed metrics
 # ─────────────────────────────────────────────────────────────
+
+def _has_data(src_data) -> bool:
+    if not isinstance(src_data, dict):
+        return bool(src_data)
+    if src_data.get("signal") == "NO_DATA":
+        return False
+    if src_data.get("sentiment") == "KHÔNG CÓ TIN":
+        return False
+    return True
+
 
 def _compute_data_quality(results: dict) -> int:
-    """
-    Đếm số nguồn có dữ liệu thực sự (không rỗng/None/lỗi).
-    Trả về 0, 1, hoặc 2 — chuẩn hóa thành [0, 1] khi tính confidence.
-
-    2 = ≥2 nguồn có dữ liệu
-    1 = đúng 1 nguồn có dữ liệu
-    0 = không nguồn nào có dữ liệu
-    """
     sources = ["article_agent", "fundamental_analysis_agent", "technical_analysis_agent"]
-    count = 0
-    for src in sources:
-        data = results.get(src)
-        if data and data not in ({}, [], "", None):
-            count += 1
-    return min(count, 2)  # cap ở 2
+    return sum(1 for src in sources if _has_data(results.get(src)))
+
+
+# Sentiment → strength contribution (0–1)
+_SENTIMENT_STRENGTH = {
+    "TÍCH CỰC RÕ RÀNG": 1.0,
+    "TIÊU CỰC RÕ RÀNG": 1.0,
+    "TÍCH CỰC NHẸ":     0.4,
+    "TIÊU CỰC NHẸ":     0.4,
+    "TRUNG LẬP":        0.0,
+    "KHÔNG CÓ TIN":     0.0,
+}
+
+
+def _compute_signal_strength(results: dict) -> float:
+    """
+    Weighted signal_strength ∈ [0.0, 3.0]:
+    Mỗi nguồn đóng góp 0–1 theo MỨC ĐỘ mạnh của signal, không phải chỉ "có rõ ràng hay không".
+
+      Technical BULLISH/BEARISH → tech.score / 9         (5/9 = 0.56)
+      Fundamental TỐT          → fund.score / 5
+      Fundamental YẾU          → (max - score) / 5       (đo độ "yếu" rõ ràng)
+      News                     → mapping bảng _SENTIMENT_STRENGTH
+
+    Tổng = tech + fund + article, max 3.0.
+    """
+    total = 0.0
+
+    tech = results.get("technical_analysis_agent") or {}
+    if isinstance(tech, dict):
+        signal = tech.get("signal")
+        score = tech.get("score") or 0
+        mx = tech.get("max_score") or 9
+        if mx > 0:
+            if signal == "BULLISH":
+                total += score / mx
+            elif signal == "BEARISH":
+                total += (mx - score) / mx
+
+    fund = results.get("fundamental_analysis_agent") or {}
+    if isinstance(fund, dict):
+        signal = fund.get("signal")
+        score = fund.get("score") or 0
+        mx = fund.get("max_score") or 5
+        if mx > 0:
+            if signal == "TỐT":
+                total += score / mx
+            elif signal == "YẾU":
+                total += (mx - score) / mx
+
+    article = results.get("article_agent") or {}
+    if isinstance(article, dict):
+        total += _SENTIMENT_STRENGTH.get(article.get("sentiment"), 0.0)
+
+    return round(min(3.0, total), 3)
 
 
 # ─────────────────────────────────────────────────────────────
-# 🧮 Tính confidence tổng hợp
+# 🧮 Confidence
 # ─────────────────────────────────────────────────────────────
 
 WEIGHTS = {
-    "signal_strength":    0.40,  # tăng — đây là chỉ số quan trọng nhất
-    "signal_consistency": 0.35,  # giữ
-    "data_quality":       0.25,  # giảm nhẹ — data_quality giờ granular hơn
+    "signal_strength":    0.40,
+    "signal_consistency": 0.35,
+    "data_quality":       0.25,
 }
 
 MAX_VALUES = {
     "signal_strength":    3,
     "signal_consistency": 3,
-    "data_quality":       3,  # 3 nguồn tối đa
+    "data_quality":       3,
 }
 
 
-def calculate_confidence(scores: ConfidenceScores, data_quality: int) -> float:
-    """
-    Tính confidence ∈ [0.0, 1.0].
-
-    signal_strength và signal_consistency do LLM chấm.
-    data_quality do code tính khách quan.
-    """
+def calculate_confidence(signal_strength: float, signal_consistency: int, data_quality: int) -> float:
     confidence = (
-        (scores.signal_strength    / MAX_VALUES["signal_strength"])    * WEIGHTS["signal_strength"]
-        + (scores.signal_consistency / MAX_VALUES["signal_consistency"]) * WEIGHTS["signal_consistency"]
-        + (data_quality              / MAX_VALUES["data_quality"])       * WEIGHTS["data_quality"]
+        (signal_strength    / MAX_VALUES["signal_strength"])    * WEIGHTS["signal_strength"]
+        + (signal_consistency / MAX_VALUES["signal_consistency"]) * WEIGHTS["signal_consistency"]
+        + (data_quality       / MAX_VALUES["data_quality"])       * WEIGHTS["data_quality"]
     )
     return round(min(1.0, confidence), 2)
 
@@ -205,207 +362,164 @@ def calculate_confidence(scores: ConfidenceScores, data_quality: int) -> float:
 AGGREGATOR_SYSTEM_PROMPT = """
 Bạn là chuyên gia phân tích chứng khoán Việt Nam với kinh nghiệm thực tế.
 
-Nhiệm vụ:
-- Tổng hợp dữ liệu từ các nguồn được cung cấp (nếu có):
-    1. Tin tức (article_agent)
-    2. Phân tích cơ bản (fundamental_analysis_agent)
-    3. Phân tích kỹ thuật (technical_analysis_agent)
-- Đưa ra recommendation CHỈ gồm "Mua" hoặc "Chờ"
-- Đánh giá KHÁCH QUAN, không thiên vị "Chờ" — nếu tín hiệu đủ rõ thì mạnh dạn khuyến nghị "Mua"
-
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN I — ĐỌC TÍN HIỆU
+DỮ LIỆU ĐẦU VÀO — đã PRE-CLASSIFIED bởi hệ thống
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-A. KỸ THUẬT
+Bạn TUYỆT ĐỐI KHÔNG đếm/chấm lại tín hiệu thô — chỉ dùng các trường có sẵn:
 
-RSI (14):
-  < 30    → oversold, có thể hồi — bullish nhẹ
-  30–45   → yếu — bearish
-  45–55   → trung lập
-  55–70   → mạnh — bullish
-  > 70    → overbought — cảnh báo điều chỉnh
+▸ technical_analysis_agent:
+    signal         : BULLISH | TRUNG TÍNH | BEARISH | NO_DATA
+    score          : 0–9
+    signals        : danh sách tín hiệu bullish đã detect
+    trend_info     : {rsi_direction, macd_momentum, macd_cross, sma_cross, divergence}
+    price_position : near_resistance | near_support | mid | unknown
+    current_price, bb_upper, bb_lower, sma_20, sma_50
 
-MACD:
-  macd > signal và histogram > 0    → bullish, động lượng mạnh
-  macd < signal và histogram < 0    → bearish, động lượng yếu
-  giao cắt lên signal               → tín hiệu Mua
-  giao cắt xuống signal             → tín hiệu thận trọng
+▸ fundamental_analysis_agent:
+    signal         : TỐT | TRUNG BÌNH | YẾU | DỮ LIỆU THIẾU | NO_DATA
+    score          : 0–5
+    signals, weaknesses, is_bank_or_finance
 
-Bollinger Bands:
-  Giá gần upper BB → mạnh, nhưng cảnh báo không mua đuổi
-  Giá gần lower BB → yếu, có thể tìm điểm hồi
-  Giá trong vùng giữa BB + xu hướng tăng → tích cực, còn dư địa tăng
-
-Moving Average:
-  Giá > MA20 → ngắn hạn tích cực | < MA20 → yếu
-  Giá > MA50 → trung hạn tốt    | < MA50 → xấu
-  MA20 > MA50 (Golden Cross)  → bullish mạnh
-  MA20 < MA50 (Death Cross)   → bearish mạnh
-
-KDJ:
-  K, D, J < 20 → oversold — bullish tiềm năng
-  K, D, J > 80 → overbought — thận trọng
-  K cắt lên D  → bullish  | cắt xuống → thận trọng
-
-────────────────────────────────────────────────────────
-ĐẾM ĐIỂM KỸ THUẬT (dùng để quyết định bullish/bearish):
-
-Mỗi tín hiệu sau tính 1 điểm bullish:
-  + RSI trong vùng 45–70
-  + RSI < 30 (oversold, tiềm năng hồi)
-  + MACD > Signal
-  + Histogram > 0
-  + Giá > SMA20
-  + SMA20 > SMA50
-  + Giá trong vùng giữa BB (không quá mua, còn dư địa)
-  + KDJ K < 20 (oversold)
-  + KDJ K cắt lên D
-
-≥ 5/9 điểm bullish → Technical BULLISH
-3–4/9 điểm         → Technical TRUNG TÍNH
-< 3/9 điểm         → Technical BEARISH
-
-────────────────────────────────────────────────────────
-B. CƠ BẢN
-
-Định giá  : PE < 10 rẻ (tốt) / 10–18 hợp lý (trung tính) / > 20 đắt (xấu)
-Sinh lời  : ROE > 20% rất tốt / 15–20% tốt / 10–15% trung bình / < 10% yếu
-Đòn bẩy   : D/E < 0.5 an toàn / 0.5–1.5 chấp nhận được / > 1.5 cần theo dõi
-Tăng trưởng: doanh thu & lợi nhuận tăng YoY → tích cực
-
-⚠️ Với ngành ngân hàng/bất động sản: D/E cao là đặc thù ngành,
-   KHÔNG tự động coi là rủi ro nếu ROE và dòng tiền vẫn tốt.
-
-ĐẾM ĐIỂM CƠ BẢN:
-  + PE < 18 → tốt
-  + ROE > 15% → tốt
-  + Doanh thu tăng YoY → tốt
-  + Lợi nhuận tăng YoY → tốt
-  + CFO > 0 → tốt
-
-≥ 3/5 điểm → Fundamental TỐT
-2/5 điểm   → Fundamental TRUNG BÌNH
-< 2/5 điểm → Fundamental YẾU
-
-────────────────────────────────────────────────────────
-C. TIN TỨC
-
-Tích cực rõ ràng : tăng trưởng, cổ tức, mở rộng, mua vào của insider
-Tích cực nhẹ    : tin ngành tốt, vĩ mô ổn định
-Trung lập        : tin thị trường chung, không ảnh hưởng trực tiếp
-Tiêu cực nhẹ    : áp lực ngành, vĩ mô bất lợi
-Tiêu cực rõ ràng: thua lỗ, bán ròng mạnh, kiện tụng, vi phạm
+▸ article_agent:
+    sentiment      : TÍCH CỰC RÕ RÀNG | TÍCH CỰC NHẸ | TRUNG LẬP
+                   | TIÊU CỰC NHẸ | TIÊU CỰC RÕ RÀNG | KHÔNG CÓ TIN
+    summary, key_events
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN II — QUYẾT ĐỊNH RECOMMENDATION
+QUY TẮC QUYẾT ĐỊNH RECOMMENDATION (deterministic)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Chỉ có 2 lựa chọn: "Mua" hoặc "Chờ"
+BƯỚC 1 — đọc period từ risk_appetite và áp rule TƯƠNG ỨNG.
 
-NGUYÊN TẮC CHÍNH:
-  "Mua"  = Technical BULLISH + (Fundamental TỐT hoặc News ít nhất trung lập)
-  "Mua"  = Technical BULLISH + Fundamental TỐT (kể cả khi News tiêu cực nhẹ)
-  "Chờ" = Technical BEARISH bất kể các nguồn khác
-  "Chờ" = Technical TRUNG TÍNH + Fundamental YẾU + News tiêu cực
-  "Chờ" = News tiêu cực RÕ RÀNG (thua lỗ, vi phạm, bán ròng mạnh)
+━━━━ NGẮN HẠN (period = short_term / ngắn hạn) ━━━━
+Technical là YẾU TỐ QUYẾT ĐỊNH. Fundamental chỉ tham khảo bối cảnh.
 
-⚠️ KHÔNG tự động chọn "Chờ" chỉ vì có một yếu tố rủi ro.
-   Mọi cổ phiếu đều có rủi ro — nhiệm vụ là cân bằng tổng thể.
+  technical.signal = BULLISH:
+    + price_position = "mid" hoặc "near_support":
+        → recommendation = "Mua"
+        → entry quanh current_price ± 2%
+    + price_position = "near_resistance":
+        → recommendation = "Chờ"  ⚠️ BẮT BUỘC, KHÔNG ĐƯỢC Mua dù score cao
+        → entry hint: vùng pullback về SMA20 / lower BB
+        → Lý do: vào ở đỉnh sẽ vi phạm min_rr — chờ pullback để có RR đẹp hơn
+    + price_position = "unknown":
+        → recommendation = "Mua" với entry thận trọng (gần current_price)
+    + NGOẠI LỆ: article.sentiment = "TIÊU CỰC RÕ RÀNG" → "Chờ" (bất kể technical)
 
-VÍ DỤ "MUA":
-  RSI=54, MACD>Signal, histogram>0, SMA20>SMA50, giá trong BB
-  → 5/9 điểm bullish → Technical BULLISH
-  PE=9.79 (tốt), ROE=18% (tốt), doanh thu +50% (tốt), CFO>0 (tốt)
-  → 4/5 điểm → Fundamental TỐT
-  News: trung lập → không chặn
-  → Recommendation: "Mua" ✓
+  technical.signal = BEARISH:
+    → "Chờ" (bất kể fundamental tốt đến đâu)
 
-VÍ DỤ "CHỜ":
-  RSI=37, MACD<Signal, SMA20<SMA50
-  → 1/9 điểm bullish → Technical BEARISH
-  → Recommendation: "Chờ" dù Fundamental tốt ✓
+  technical.signal = TRUNG TÍNH:
+    + price_position = "near_resistance":
+      → "Chờ" (BẮT BUỘC — không mua đuổi dù momentum tốt,
+       vì RR sau khi vào sẽ kém do giá đã sát đỉnh range)
+    + Có Golden Cross MACD ≤ 3 nến HOẶC macd_momentum = "tăng mạnh dần",
+      VÀ price_position ∈ {mid, near_support}:
+      → "Mua" (entry thận trọng quanh current_price)
+    + Ngược lại → "Chờ"
 
-Điều chỉnh theo khẩu vị rủi ro:
-  Ngắn hạn          → ưu tiên Technical, chấp nhận Fundamental trung bình
-  Rủi ro thấp       → cần thêm 1 điểm bullish so với ngưỡng thông thường
-  Thu nhập thụ động → ưu tiên ROE cao, CFO dương, cổ tức ổn định
+  technical.signal = NO_DATA:
+    → "Chờ"
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN III — CHẤM ĐIỂM CONFIDENCE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+━━━━ TRUNG/DÀI HẠN (period = mid_term / long_term) ━━━━
+Cân bằng cả 3 nguồn:
 
-⚠️ NGUYÊN TẮC CỐT LÕI:
-Confidence đo MỨC ĐỘ TIN CẬY vào recommendation, không đo chiều tích cực/tiêu cực.
-"Chờ" với đủ bằng chứng rõ ràng → confidence CAO.
-"Mua" với dữ liệu mơ hồ → confidence THẤP.
+  "Mua" = technical BULLISH + fundamental TỐT/TRUNG BÌNH + news ≥ TRUNG LẬP
+  "Mua" = technical BULLISH + fundamental TỐT (kể cả news TIÊU CỰC NHẸ)
+  "Chờ" = technical BEARISH (bất kể nguồn khác)
+  "Chờ" = technical TRUNG TÍNH + fundamental YẾU + news TIÊU CỰC
+  "Chờ" = news TIÊU CỰC RÕ RÀNG
 
-LƯU Ý: data_quality được hệ thống tính tự động từ code — bạn KHÔNG cần chấm điểm này.
-Bạn chỉ chấm signal_strength và signal_consistency.
+━━━━ ĐIỀU CHỈNH THEO risk_tolerance ━━━━
+  cautious   → technical.signal = BULLISH chỉ khi score ≥ 6/9 (siết chặt). Score 5/9
+               vẫn coi là TRUNG TÍNH.
+  balanced   → giữ ngưỡng mặc định 5/9 cho BULLISH.
+  aggressive → chấp nhận score ≥ 4/9 coi như BULLISH (mở rộng).
 
-────────────────────────────────────────────────────────
-1. SIGNAL_STRENGTH (0–3): Số nguồn có tín hiệu RÕ RÀNG
-
-  [Technical rõ ràng]: ≥ 5/9 điểm bullish HOẶC < 3/9 điểm (bearish rõ)
-  [Fundamental rõ ràng]: ≥ 3/5 điểm TỐT hoặc < 2/5 điểm YẾU rõ ràng
-  [News rõ ràng]: sentiment tích cực hoặc tiêu cực RÕ RÀNG (trung lập không tính)
-
-  → signal_strength = số nguồn đạt tiêu chí (0, 1, 2, hoặc 3)
-
-────────────────────────────────────────────────────────
-2. SIGNAL_CONSISTENCY (0–2): Đồng thuận với recommendation
-
-  2 = Tất cả nguồn có dữ liệu đều ủng hộ recommendation
-  1 = Phần lớn ủng hộ, một nguồn trái chiều hoặc trung lập
-  0 = Các nguồn mâu thuẫn, recommendation là best guess trong uncertainty
+━━━━ ĐIỀU CHỈNH THEO preference ━━━━
+  growth   → khi cân nhắc "Mua" trung/dài hạn, ưu tiên fundamental signal = TỐT.
+             Nếu fundamental = YẾU mà period > short_term → nghiêng "Chờ".
+  income   → ưu tiên ROE cao (>15%), CFO dương, cổ tức ổn định trong
+             fundamental.signals. Nếu thiếu các yếu tố này → nghiêng "Chờ".
+  balanced → không điều chỉnh.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN IV — ENTRY / EXIT PRICE HINT
+QUY TẮC ENTRY / EXIT PRICE — bắt buộc theo target_prices
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-entry_price_hint — LUÔN CỐ GẮNG ĐIỀN nếu có đủ dữ liệu kỹ thuật:
+Hệ thống cung cấp `target_prices` (đã tính theo period):
+    tp1_min  = current_price * (1 + tp1_pct)
+    tp2_min  = current_price * (1 + tp2_pct)
+    sl_max   = current_price * (1 - sl_pct)
+    min_rr   = tỷ lệ Reward:Risk tối thiểu
 
-  Nếu recommendation = "Mua":
-    → Vùng giá xem xét vào lệnh ngay
-    → Dựa trên: lower BB, MA20, MA50, đáy swing gần nhất
-    → Ngôn ngữ theo confidence:
-        ≥ 0.7 → "Có thể xem xét mua ở vùng X–Y (lý do kỹ thuật)"
-        0.4–0.7 → "Nếu giá giữ trên vùng X–Y, có thể xem xét"
-        < 0.4  → None
-    → Nếu giá đang gần upper BB hoặc RSI > 65 → cảnh báo "không mua đuổi, chờ giá về vùng X–Y"
+Khi recommendation = "Mua":
+  entry:
+    - price_position = "mid" / "near_support": entry quanh current_price (vùng ±1–2%)
+    - price_position = "unknown": entry hẹp quanh current_price
+  TP1:
+    - Lấy max(tp1_min, upper BB nếu CAO HƠN tp1_min)
+    - Nếu BB upper THẤP HƠN tp1_min → vẫn dùng tp1_min và chú thích
+      "(target +X% theo khẩu vị, vượt qua upper BB)"
+  TP2:
+    - Lấy max(tp2_min, đỉnh swing/MA kháng cự lớn hơn)
+    - Nếu không có cơ sở kỹ thuật → chỉ điền tp2_min với chú thích
+  SL:
+    - Dùng dạng ĐIỀU KIỆN: "đóng cửa dưới <giá>"
+    - <giá> = max(sl_max, SMA50 / lower BB / đáy swing gần nhất)
+    - KHÔNG được < sl_max
 
-  Nếu recommendation = "Chờ":
-    → Vùng giá cần về để có thể xem xét vào lệnh (điều kiện re-entry)
-    → Dựa trên: support gần nhất (lower BB, MA50, đáy swing)
-    → Ngôn ngữ rõ ràng là "theo dõi" chứ không phải "mua ngay"
-    → None nếu không đủ dữ liệu kỹ thuật để xác định vùng hỗ trợ
+  KIỂM TRA RR cuối cùng (dùng TP2 vì TP1 thường là partial exit):
+    rr = (TP2 - entry) / (entry - SL)
+    Nếu rr < target_prices.min_rr → ĐỔI recommendation thành "Chờ" và
+    để exit_price_hint = None
 
-exit_price_hint:
-  - Chỉ điền nếu recommendation = "Mua" VÀ đã có entry_price_hint
-  - Gồm: take profit (TP1, TP2 nếu có) và stop loss (SL)
-  - TP dựa trên: upper BB, đỉnh swing, MA kháng cự gần nhất
-  - SL dựa trên ĐIỀU KIỆN: "đóng cửa dưới X" thay vì chỉ nêu mức giá
-  - Mọi con số phải có trong dữ liệu đầu vào — KHÔNG bịa
-  - None nếu recommendation = "Chờ"
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN V — TACTICAL SUGGESTION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-tactical_suggestion PHẢI bao gồm đủ 4 phần theo thứ tự:
-  1. Khung thời gian phù hợp với khẩu vị rủi ro của user
-  2. 1–2 rủi ro CỤ THỂ từ data (không nói chung chung, phải dẫn số liệu)
-  3. Điều kiện cụ thể để re-evaluate (giá bao nhiêu, chỉ báo nào cần đổi chiều)
+Khi recommendation = "Chờ":
+  entry: vùng pullback ("theo dõi nếu giá điều chỉnh về …")
+  exit_price_hint: None (chưa vào lệnh thì chưa có exit)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-QUY TẮC BẮT BUỘC:
-  ✓ Không bịa số liệu ngoài dữ liệu được cung cấp
-  ✓ Nếu nguồn nào không có dữ liệu → bỏ qua, không suy đoán
-  ✓ exit_price_hint luôn = None khi recommendation = "Chờ"
-  ✓ entry_price_hint khi "Chờ" dùng ngôn ngữ "theo dõi", không phải "mua"
-  ✓ KHÔNG thiên vị "Chờ" — đánh giá khách quan theo điểm số
-  ✓ Mức giá trong tactical_suggestion PHẢI nhất quán với entry_price_hint (khi Chờ) 
-    và exit_price_hint (khi Mua) — không được tự đặt số khác
+SIGNAL_CONSISTENCY (0–3) — chỉ chấm phần này
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Dựa trên recommendation đã chọn:
+  3 = Tất cả nguồn có dữ liệu ủng hộ recommendation
+  2 = Phần lớn ủng hộ, một nguồn trung lập
+  1 = Phần lớn ủng hộ, một nguồn trái chiều
+  0 = Mâu thuẫn
+
+NGOẠI LỆ ngắn hạn: Fundamental trái chiều với Technical → coi như TRUNG LẬP.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+KEY_EVIDENCE — 3–5 bullet trích từ pre-computed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CẤM:
+  - Bịa số liệu (PE, ROE, %, mức giá không có trong input)
+  - Cường điệu hóa (RSI=54 → KHÔNG nói "đà tăng mạnh")
+  - Trích từ news ngoài key_events
+
+ĐƯỢC:
+  - Trích nguyên văn từ technical.signals[], trend_info{}, fundamental.signals[],
+    fundamental.weaknesses[], article.key_events[]
+  - Diễn giải ngắn các số đã có trong input
+
+Reasoning PHẢI dựa trên các bullet này — không tự thêm thông tin.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUMMARY — gộp bối cảnh + lý do recommendation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Summary là field DUY NHẤT chứa giải thích cho user. Phải gồm:
+  • Bối cảnh cổ phiếu (fundamental nổi bật, news quan trọng)
+  • Tình hình kỹ thuật (signal, price_position)
+  • Lý do recommendation — trích từ key_evidence
+  • Với khẩu vị ngắn hạn: PHẢI nói rõ "ưu tiên tín hiệu kỹ thuật"
+
+Viết liền mạch như 1 đoạn văn 3–5 câu. KHÔNG dùng heading, KHÔNG bullet.
+KHÔNG trùng lặp với key_evidence (key_evidence là dữ kiện rời, summary là diễn giải).
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 
@@ -420,20 +534,58 @@ def aggregator_agent(state: AgentState) -> AgentState:
 
     client = _get_openai_client()
 
-    results      = state.get("agent_results", {})
+    results       = state.get("agent_results", {})
     risk_appetite = state.get("risk_appetite", {})
-    user_input   = state.get("user_input", "")
+    user_input    = state.get("user_input", "")
 
-    # Tính data_quality từ code — không để LLM tự chấm
-    data_quality = _compute_data_quality(results)
+    # ─── Pre-compute objective scores + targets ───
+    period          = _normalize_period(risk_appetite)
+    data_quality    = _compute_data_quality(results)
+    signal_strength = _compute_signal_strength(results)
+
+    tech = results.get("technical_analysis_agent") or {}
+    current_price = tech.get("current_price") if isinstance(tech, dict) else None
+    price_position = tech.get("price_position", "unknown") if isinstance(tech, dict) else "unknown"
+
+    # Targets từ user (fallback theo period nếu thiếu)
+    user_targets = _resolve_targets(risk_appetite, period)
+    target_prices = _compute_target_prices(
+        current_price,
+        user_targets["target_profit_pct"],
+        user_targets["max_loss_pct"],
+    )
+
+    # Khẩu vị bổ sung — đưa vào prompt nếu user cung cấp
+    risk_tolerance = str(risk_appetite.get("risk_tolerance") or "balanced").lower()
+    preference     = str(risk_appetite.get("preference")     or "balanced").lower()
 
     analysis_message = f"""
-DỮ LIỆU PHÂN TÍCH:
+DỮ LIỆU PHÂN TÍCH (đã pre-classified):
 
 {json.dumps(results, ensure_ascii=False, indent=2)}
 
 ────────────────────────
-KHẨU VỊ RỦI RO:
+PRE-COMPUTED SCORES (do hệ thống tính, KHÔNG đếm lại):
+
+- period:           "{period}"
+- signal_strength:  {signal_strength}/3.0 (weighted theo score ratio)
+- data_quality:     {data_quality}/3
+- price_position:   "{price_position}"
+- risk_tolerance:   "{risk_tolerance}"  (cautious | balanced | aggressive)
+- preference:       "{preference}"      (growth | income | balanced)
+
+────────────────────────
+TARGET PRICES — đã lấy từ kỳ vọng USER (hard constraint cho entry/exit):
+
+User nhập:
+  target_profit_pct: {user_targets["target_profit_pct"]}%
+  max_loss_pct:      {user_targets["max_loss_pct"]}%
+
+Tính ra:
+{json.dumps(target_prices, ensure_ascii=False, indent=2) if target_prices else "(chưa có current_price — không tính được)"}
+
+────────────────────────
+KHẨU VỊ RỦI RO (RAW từ user, chỉ để tham chiếu):
 
 {json.dumps(risk_appetite, ensure_ascii=False, indent=2)}
 
@@ -445,8 +597,7 @@ YÊU CẦU:
 
     try:
         response = client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
-            temperature=0.2,
+            model="gpt-5-mini",
             messages=[
                 {"role": "system", "content": AGGREGATOR_SYSTEM_PROMPT},
                 {"role": "user",   "content": analysis_message},
@@ -456,33 +607,38 @@ YÊU CẦU:
 
         parsed: InvestmentRecommendation = response.choices[0].message.parsed
 
-        # Confidence: signal_strength + signal_consistency từ LLM, data_quality từ code
-        confidence = calculate_confidence(parsed.scores, data_quality)
+        signal_consistency = parsed.scores.signal_consistency
+        confidence = calculate_confidence(signal_strength, signal_consistency, data_quality)
 
         output = {
             "summary":         parsed.summary,
             "recommendation":  parsed.recommendation,
-            "reasoning":       parsed.reasoning,
+            "key_evidence":    parsed.key_evidence,
             "confidence":      confidence,
             "confidence_breakdown": {
-                # Điểm gốc
-                "signal_strength":    parsed.scores.signal_strength,     # 0–3 (LLM)
-                "signal_consistency": parsed.scores.signal_consistency,  # 0–2 (LLM)
-                "data_quality":       data_quality,                      # 0–2 (code)
-                # Đóng góp sau chuẩn hóa và nhân trọng số
+                "signal_strength":    signal_strength,
+                "signal_consistency": signal_consistency,
+                "data_quality":       data_quality,
                 "signal_strength_contribution":    round(
-                    parsed.scores.signal_strength / MAX_VALUES["signal_strength"] * WEIGHTS["signal_strength"], 3
+                    signal_strength / MAX_VALUES["signal_strength"] * WEIGHTS["signal_strength"], 3
                 ),
                 "signal_consistency_contribution": round(
-                    parsed.scores.signal_consistency / MAX_VALUES["signal_consistency"] * WEIGHTS["signal_consistency"], 3
+                    signal_consistency / MAX_VALUES["signal_consistency"] * WEIGHTS["signal_consistency"], 3
                 ),
                 "data_quality_contribution":       round(
                     data_quality / MAX_VALUES["data_quality"] * WEIGHTS["data_quality"], 3
                 ),
             },
-            "entry_price_hint": parsed.entry_price_hint,
-            "exit_price_hint":  parsed.exit_price_hint,
-            "tactical_suggestion": parsed.tactical_suggestion,
+            "entry_price_hint":    parsed.entry_price_hint,
+            "exit_price_hint":     parsed.exit_price_hint,
+            "meta": {
+                "period":         period,
+                "price_position": price_position,
+                "risk_tolerance": risk_tolerance,
+                "preference":     preference,
+                "user_targets":   user_targets,
+                "target_prices":  target_prices,
+            },
         }
 
         print("[Aggregator] Output:")
@@ -494,13 +650,12 @@ YÊU CẦU:
         print(f"[Aggregator] Error: {str(e)}")
 
         fallback = {
-            "summary":         "Không thể phân tích dữ liệu",
+            "summary":         "Lỗi hệ thống — không thể phân tích dữ liệu lúc này. Vui lòng thử lại sau.",
             "recommendation":  "Chờ",
-            "reasoning":       "Lỗi hệ thống",
+            "key_evidence":    [],
             "confidence":      0.0,
             "entry_price_hint": None,
             "exit_price_hint":  None,
-            "tactical_suggestion": "Vui lòng thử lại sau.",
         }
 
         return {"error": str(e), "final_output": fallback}

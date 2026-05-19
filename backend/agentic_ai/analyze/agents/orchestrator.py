@@ -75,7 +75,11 @@ NGUYÊN TẮC QUAN TRỌNG
 
 - Không suy đoán symbol nếu không có trong input
 - Các ngày phải đúng format YYYY-MM-DD
-- Luôn gọi đủ cả 3 agent: article, fundamental, technical
+- Plan chỉ chứa params cho hai agent cần range thời gian:
+    + article_agent           → from_date, to_date
+    + technical_analysis_agent → interval, from_date, to_date
+  fundamental_analysis_agent không có trong plan vì nó luôn lấy dữ liệu
+  mới nhất theo symbol, không cần from/to/interval. Graph vẫn chạy đủ 3.
 """
  
 ORCHESTRATOR_USER_PROMPT = """Hôm nay là {today}.
