@@ -47,7 +47,7 @@ const Home = () => {
         pointerEvents="none"
       >
         <View style={{ flex: 1, backgroundColor: theme.base.primary }} />
-        <View style={{ flex: 1, backgroundColor: theme.background.bg }} />
+        <View style={{ flex: 1, backgroundColor: theme.background.surface }} />
       </View>
 
       <ScrollView
@@ -68,7 +68,7 @@ const Home = () => {
         <View
           style={{
             flex: 1,
-            backgroundColor: theme.background.bg,
+            backgroundColor: theme.background.surface,
             borderTopLeftRadius: 12,
             borderTopRightRadius: 12,
             paddingVertical: 12,

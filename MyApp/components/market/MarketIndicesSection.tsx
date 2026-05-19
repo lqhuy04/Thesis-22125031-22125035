@@ -9,6 +9,7 @@ import {
 import { Text } from "../ui/Text";
 import { getMarketIndices, MarketIndex } from "@/helpers/MarketHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import { router } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
@@ -114,6 +115,7 @@ const SkeletonCard = () => {
 
 const MarketIndicesSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [indices, setIndices] = useState<MarketIndex[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -137,7 +139,9 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
 
   return (
     <View style={{ marginLeft: 12 }}>
-      <Text typography="titleMedium">Thị trường hôm nay</Text>
+      <Text typography="titleMedium" color={theme.text.primary}>
+        {t("home.marketToday")}
+      </Text>
 
       {loading ? (
         // Hiện 2 skeleton card lúc loading
@@ -167,15 +171,17 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                 width: CARD_WIDTH,
                 marginRight: CARD_GAP,
                 marginTop: 12,
-                borderRadius: 8,
-                backgroundColor: theme.base.primary + "12",
+                borderRadius: 12,
+                backgroundColor: theme.background.primarySurface,
                 borderWidth: 1,
                 borderColor: theme.base.primary,
                 padding: 12,
                 paddingBottom: 6,
               }}
             >
-              <Text typography="bodyMedium">{item.IndexName}</Text>
+              <Text typography="bodyMedium" color={theme.text.primary}>
+                {item.IndexName}
+              </Text>
 
               <View
                 style={{
@@ -184,12 +190,14 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                   marginTop: 4,
                 }}
               >
-                <Text typography="titleLarge">{item.IndexValue}</Text>
+                <Text typography="titleLarge" color={theme.text.primary}>
+                  {item.IndexValue}
+                </Text>
                 <View
                   style={{
                     borderRadius: 4,
-                    paddingVertical: 1,
-                    paddingHorizontal: 4,
+                    paddingVertical: 2,
+                    paddingHorizontal: 6,
                     backgroundColor:
                       Number(item.Change) > 0
                         ? theme.base.success + "33"
@@ -200,20 +208,59 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                   <Text
                     typography="labelLarge"
                     color={
-                      item.Change < 0 ? theme.base.error : theme.base.success
+                      item.Change < 0
+                        ? theme.base.error
+                        : item.Change > 0
+                          ? theme.base.success
+                          : theme.base.warning
                     }
                   >
-                    {item.Change}
+                    <Text
+                      typography="labelSmall"
+                      color={
+                        item.Change < 0
+                          ? theme.base.error
+                          : item.Change > 0
+                            ? theme.base.success
+                            : theme.base.warning
+                      }
+                    >
+                      {item.Change > 0
+                        ? "▲"
+                        : item.Change === 0
+                          ? ""
+                          : "▼"}{" "}
+                    </Text>
+                    {item.Change >= 0 ? item.Change : item.Change * -1}
                   </Text>
                 </View>
                 <Text
-                  typography="labelLarge"
+                  typography="labelMedium"
                   color={
-                    item.Change < 0 ? theme.base.error : theme.base.success
+                    item.RatioChange < 0
+                      ? theme.base.error
+                      : item.RatioChange > 0
+                        ? theme.base.success
+                        : theme.base.warning
                   }
                   style={{ marginLeft: 8 }}
                 >
-                  {item.RatioChange}%
+                  <Text
+                    typography="labelSmall"
+                    color={
+                      item.Change < 0
+                        ? theme.base.error
+                        : item.Change > 0
+                          ? theme.base.success
+                          : theme.base.warning
+                    }
+                  >
+                    {item.Change > 0 ? "▲" : item.Change === 0 ? "" : "▼"}{" "}
+                  </Text>
+                  {item.RatioChange >= 0
+                    ? item.RatioChange
+                    : item.RatioChange * -1}
+                  %
                 </Text>
               </View>
 
@@ -222,8 +269,11 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                 color={theme.text.primary + "80"}
                 style={{ marginTop: 4 }}
               >
-                {(Number(item.TotalVol) / 1000000).toFixed(0)} triệu cổ phiếu -{" "}
-                {(Number(item.TotalVal) / 1000000000).toFixed(2)} tỷ đồng
+                {(Number(item.TotalVol) / 1000000).toFixed(0)}{" "}
+                {t("home.millionShares")}
+                {"   "}|{"   "}
+                {(Number(item.TotalVal) / 1000000000).toFixed(2)}{" "}
+                {t("home.billion")}
               </Text>
 
               {(() => {
@@ -278,7 +328,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
               >
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Text typography="bodySmall" color={theme.base.success}>
-                    {item.Advances} mã
+                    {item.Advances} {t("home.ticker")}
                   </Text>
                   <MaterialIcons
                     name="arrow-drop-up"
@@ -288,7 +338,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Text typography="bodySmall" color={theme.base.warning}>
-                    {item.NoChanges} mã
+                    {item.NoChanges} {t("home.ticker")}
                   </Text>
                   <View
                     style={{
@@ -301,7 +351,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Text typography="bodySmall" color={theme.base.error}>
-                    {item.Declines} mã
+                    {item.Declines} {t("home.ticker")}
                   </Text>
                   <MaterialIcons
                     name="arrow-drop-down"

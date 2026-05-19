@@ -2,6 +2,7 @@ import React from "react";
 import { View, TextInput, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 type SearchBarProps = {
   value: string;
@@ -21,6 +22,7 @@ export const SearchBar = ({
   onBlur,
 }: SearchBarProps) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   return (
     <View>
@@ -39,7 +41,8 @@ export const SearchBar = ({
         onChangeText={onChange}
         autoCapitalize="none"
         returnKeyType="search"
-        placeholder="Tìm kiếm theo mã chứng khoán, tên công ty..."
+        placeholder={t("common.searchPlaceholder")}
+        placeholderTextColor={theme.text.primary}
         onBlur={() => {
           if (value.trim() !== "") onSearchPress?.();
           onBlur?.();

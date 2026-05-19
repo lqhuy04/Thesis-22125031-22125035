@@ -14,6 +14,7 @@ import { hierarchy, treemap, treemapSquarify } from "d3-hierarchy";
 import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
 import { CurrentPriceData } from "@/helpers/DetailHelpers";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,17 +79,20 @@ function getFontSize(
   );
 }
 
-function formatVal(val: number): string {
+function formatVal(val: number, t: (k: string) => string): string {
   if (val >= 1_000_000_000_000)
-    return (val / 1_000_000_000_000).toFixed(2) + " nghìn tỷ";
-  if (val >= 1_000_000_000) return (val / 1_000_000_000).toFixed(2) + " tỷ";
+    return (val / 1_000_000_000_000).toFixed(2) + " " + t("treeMap.trillion");
+  if (val >= 1_000_000_000)
+    return (val / 1_000_000_000).toFixed(2) + " " + t("treeMap.billion");
   return val.toLocaleString();
 }
 
-function formatVol(vol: number): string {
-  if (vol >= 1_000_000) return (vol / 1_000_000).toFixed(2) + " triệu cp";
-  if (vol >= 1_000) return (vol / 1_000).toFixed(2) + " nghìn cp";
-  return vol.toLocaleString() + " cp";
+function formatVol(vol: number, t: (k: string) => string): string {
+  if (vol >= 1_000_000)
+    return (vol / 1_000_000).toFixed(2) + " " + t("treeMap.millionShares");
+  if (vol >= 1_000)
+    return (vol / 1_000).toFixed(2) + " " + t("treeMap.thousandShares");
+  return vol.toLocaleString() + " " + t("treeMap.shares");
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -108,6 +112,7 @@ export const TreeMap: React.FC<Props> = ({
   padding = 2,
   title,
 }) => {
+  const { t } = useLocalization();
   const { theme } = useTheme();
   const [selectedItem, setSelectedItem] = useState<CurrentPriceData | null>(
     null,
@@ -292,12 +297,18 @@ export const TreeMap: React.FC<Props> = ({
               </TouchableOpacity>
             </View>
 
-            <View style={styles.divider} />
+            <View
+              style={{
+                height: 1,
+                backgroundColor: theme.border.default,
+                marginVertical: 14,
+              }}
+            />
 
             {/* Rows */}
             <View style={styles.row}>
               <Text style={[styles.rowLabel, { color: theme.text?.primary }]}>
-                Giá:
+                {t("treeMap.price")}
               </Text>
               <View
                 style={{ flexDirection: "row", gap: 8, alignItems: "center" }}
@@ -339,19 +350,19 @@ export const TreeMap: React.FC<Props> = ({
 
             <View style={styles.row}>
               <Text style={[styles.rowLabel, { color: theme.text?.primary }]}>
-                Giá trị GD:
+                {t("treeMap.tradingValue")}
               </Text>
               <Text style={[styles.rowValue, { color: theme.text?.primary }]}>
-                {selectedItem ? formatVal(selectedItem.TotalMatchVal) : ""}
+                {selectedItem ? formatVal(selectedItem.TotalMatchVal, t) : ""}
               </Text>
             </View>
 
             <View style={styles.row}>
               <Text style={[styles.rowLabel, { color: theme.text?.primary }]}>
-                Khối lượng GD:
+                {t("treeMap.tradingVolume")}
               </Text>
               <Text style={[styles.rowValue, { color: theme.text?.primary }]}>
-                {selectedItem ? formatVol(selectedItem.TotalMatchVol) : ""}
+                {selectedItem ? formatVol(selectedItem.TotalMatchVol, t) : ""}
               </Text>
             </View>
 
@@ -366,7 +377,7 @@ export const TreeMap: React.FC<Props> = ({
                 });
               }}
             >
-              <Text style={styles.ctaText}>Xem chi tiết</Text>
+              <Text style={styles.ctaText}>{t("treeMap.viewDetail")}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -398,7 +409,6 @@ const styles = StyleSheet.create({
   popupSymbol: { fontSize: 20, fontWeight: "bold" },
   popupCompany: { fontSize: 13, marginTop: 2, maxWidth: 240 },
   closeBtn: { padding: 4 },
-  divider: { height: 1, backgroundColor: "#00000015", marginVertical: 14 },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",

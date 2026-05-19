@@ -6,6 +6,7 @@ import { getWatchlist, WatchItem } from "@/helpers/ProfileHelpers";
 import Entypo from "@expo/vector-icons/Entypo";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 const totalQty = (item: WatchItem) =>
   item.history.reduce((s, h) => s + h.amount, 0);
@@ -20,6 +21,7 @@ type Props = {
 
 const HomeAssetSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [data, setData] = useState<WatchItem[]>([]);
 
   const totalAsset = useMemo(
@@ -40,9 +42,6 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
     () => (totalCostAll === 0 ? 0 : totalPnl / totalCostAll),
     [totalPnl, totalCostAll],
   );
-
-  const isProfit = totalPnl >= 0;
-  const sign = isProfit ? "+" : "";
 
   const fetchData = useCallback(async () => {
     getWatchlist().then((res) => {
@@ -78,8 +77,8 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
           marginBottom: 12,
         }}
       >
-        <Text typography="titleSmall" color={theme.text.onPrimary}>
-          Tài sản ròng
+        <Text typography="titleMedium" color={theme.text.onPrimary}>
+          {t("home.asset")}
         </Text>
         <Entypo
           name="chevron-small-right"
@@ -96,15 +95,21 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
         {totalAsset.toLocaleString("vi-VN")} đ
       </Text>
 
-      <Text typography="bodySmall" color={theme.text.onPrimary}>
-        Khoản đầu tư của bạn đang:{" "}
+      <Text typography="bodyMedium" color={theme.text.onPrimary}>
+        {t("home.yourInvestment")}
         <Text
-          typography="bodySmall"
-          color={isProfit ? theme.base.success : theme.base.error}
+          typography="labelLarge"
+          color={
+            totalPnl > 0
+              ? theme.base.success
+              : totalPnl < 0
+                ? theme.base.error
+                : theme.base.warning
+          }
           style={{ fontWeight: "bold" }}
         >
-          {sign}
-          {totalPnl.toLocaleString("vi-VN")} đ ({sign}
+          {totalPnl > 0 ? "+" : ""}
+          {totalPnl.toLocaleString("vi-VN")} đ ({totalPnl > 0 ? "+" : ""}
           {totalPnlPct.toFixed(2)}%)
         </Text>
       </Text>

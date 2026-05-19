@@ -16,9 +16,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
     <TouchableOpacity
       style={{
         padding: 12,
-        backgroundColor: theme.base.primary + "12",
-        borderRadius: 12,
-        marginBottom: 8,
+        marginBottom: 4,
         flexDirection: "row",
         alignItems: "center",
       }}
@@ -39,6 +37,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
           typography="labelLarge"
           style={{ marginBottom: 4 }}
           numberOfLines={2}
+          color={theme.text.primary}
         >
           {newItem.title}
         </Text>

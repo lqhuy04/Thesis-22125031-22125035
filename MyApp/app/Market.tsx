@@ -11,22 +11,27 @@ import IndustryMovementSection from "@/components/market/IndustryMovementSection
 import TodayHighlightSection from "@/components/market/TodayHighlightSection";
 import { router } from "expo-router";
 import { Text } from "@/components/ui/Text";
-import { SafeAreaView } from "react-native-safe-area-context";
-
-const TABS = [
-  { key: "market", label: "Thị trường" },
-  { key: "news", label: "Tin tức" },
-];
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 const Market = () => {
+  const { t } = useLocalization();
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<"market" | "news">("market");
 
+  const TABS = [
+    { key: "market", label: t("market.tabMarket") },
+    { key: "news", label: t("market.tabNews") },
+  ];
+
+  const insets = useSafeAreaInsets();
+
   return (
-    <SafeAreaView
+    <View
       style={{
         flex: 1,
         backgroundColor: theme.background.surface,
+        paddingTop: insets.top,
       }}
     >
       {/* Search Bar */}
@@ -43,7 +48,7 @@ const Market = () => {
       <View
         style={{
           flexDirection: "row",
-          marginVertical: 12,
+          marginVertical: 16,
           marginHorizontal: 12,
           gap: 8,
         }}
@@ -56,7 +61,7 @@ const Market = () => {
               onPress={() => setActiveTab(tab.key as "market" | "news")}
               style={{
                 flex: 1,
-                paddingVertical: 8,
+                paddingVertical: 6,
                 alignItems: "center",
                 borderRadius: 8,
                 backgroundColor: isActive ? theme.base.primary : "transparent",
@@ -67,7 +72,7 @@ const Market = () => {
               }}
             >
               <Text
-                typography="labelLarge"
+                typography="bodyLarge"
                 color={isActive ? theme.text.onPrimary : theme.text.primary}
               >
                 {tab.label}
@@ -91,7 +96,6 @@ const Market = () => {
       <ScrollView
         style={{
           display: activeTab === "news" ? "flex" : "none",
-          backgroundColor: theme.background.bg,
           flex: 1,
         }}
       >
@@ -101,7 +105,7 @@ const Market = () => {
         <MacroEcomNewsSection />
         <AllNewsSection />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

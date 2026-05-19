@@ -15,40 +15,43 @@ import Market from "./Market";
 import Chatbot from "./Chatbot";
 import { Text } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const TAB_COUNT = 4;
 const TAB_WIDTH = SCREEN_WIDTH / TAB_COUNT;
 const INDICATOR_WIDTH = 48;
 
-const TABS = [
-  {
-    name: "Home",
-    label: "Tổng quan",
-    icon: "home-outline" as const,
-    component: <Home />,
-  },
-  {
-    name: "Market",
-    label: "Thị trường",
-    icon: "storefront-outline" as const,
-    component: <Market />,
-  },
-  {
-    name: "Profile",
-    label: "Hồ sơ",
-    icon: "person-outline" as const,
-    component: <Profile />,
-  },
-  {
-    name: "Chatbot",
-    label: "Chatbot",
-    icon: "chatbubble-ellipses-outline" as const,
-    component: <Chatbot />,
-  },
-];
-
 const Tabs = () => {
+  const { t } = useLocalization();
+
+  const TABS = [
+    {
+      name: "Home",
+      label: t("tabs.home"),
+      icon: "home-outline" as const,
+      component: <Home />,
+    },
+    {
+      name: "Market",
+      label: t("tabs.market"),
+      icon: "storefront-outline" as const,
+      component: <Market />,
+    },
+    {
+      name: "Profile",
+      label: t("tabs.profile"),
+      icon: "person-outline" as const,
+      component: <Profile />,
+    },
+    {
+      name: "Chatbot",
+      label: t("tabs.chatbot"),
+      icon: "chatbubble-ellipses-outline" as const,
+      component: <Chatbot />,
+    },
+  ];
+
   const insets = useSafeAreaInsets();
 
   const { theme } = useTheme();
@@ -107,8 +110,8 @@ const Tabs = () => {
         style={[
           styles.tabBar,
           {
-            backgroundColor: "#fff",
-            borderTopColor: "#e5e5e5",
+            backgroundColor: theme.background.bg,
+            borderTopColor: theme.border.default,
             paddingBottom: insets.bottom,
             height: 60 + insets.bottom, // tự động mở rộng
           },
@@ -139,7 +142,7 @@ const Tabs = () => {
               activeOpacity={0.7}
             >
               <Ionicons name={tab.icon} size={24} color={color} />
-              <Text typography="bodyMedium" color={color}>
+              <Text typography="labelLarge" color={color}>
                 {tab.label}
               </Text>
             </TouchableOpacity>

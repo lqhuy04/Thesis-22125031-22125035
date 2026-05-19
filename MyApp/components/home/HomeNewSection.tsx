@@ -16,6 +16,7 @@ import {
 } from "@/helpers/MarketHelpers";
 import NewsItem from "../ui/NewsItem";
 import { router } from "expo-router";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 type Props = {
   registerRefresh?: (fn: () => Promise<void>) => () => void;
@@ -92,6 +93,7 @@ const NewsItemSkeleton = () => {
 };
 
 const HomeNewSection = ({ registerRefresh }: Props) => {
+  const { t } = useLocalization();
   const { theme } = useTheme();
   const [articles, setArticles] = useState<New[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,12 +103,12 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
 
   const categories = useMemo(
     () => [
-      { id: "business", name: "Doanh nghiệp" },
-      { id: "macro", name: "Kinh tế - Vĩ mô" },
-      { id: "bank", name: "Ngân hàng" },
-      { id: "real-estate", name: "Bất động sản" },
+      { id: "business", name: t("home.categoryBusiness") },
+      { id: "macro", name: t("home.categoryMacro") },
+      { id: "bank", name: t("home.categoryBank") },
+      { id: "real-estate", name: t("home.categoryRealEstate") },
     ],
-    [],
+    [t],
   );
 
   const [chosenCategory, setChosenCategory] = useState<string>(
@@ -144,102 +146,124 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
   const onViewAll = useCallback(() => {
     const params =
       chosenCategory === "business"
-        ? { data: JSON.stringify({ title: "Doanh nghiệp", type: "business" }) }
+        ? {
+            data: JSON.stringify({
+              title: t("home.newsTitleBusiness"),
+              type: "business",
+            }),
+          }
         : chosenCategory === "macro"
           ? {
               data: JSON.stringify({
-                title: "Tin tức kinh tế - vĩ mô",
+                title: t("home.newsTitleMacro"),
                 type: "macro",
               }),
             }
           : chosenCategory === "bank"
             ? {
                 data: JSON.stringify({
-                  title: "Ngân hàng",
+                  title: t("home.newsTitleBank"),
                   category_id: bankId,
                   type: "category",
                 }),
               }
             : {
                 data: JSON.stringify({
-                  title: "Bất động sản",
+                  title: t("home.newsTitleRealEstate"),
                   category_id: realEstateId,
                   type: "category",
                 }),
               };
 
     router.push({ pathname: "/AllNews", params });
-  }, [chosenCategory]);
+  }, [chosenCategory, t]);
 
   return (
     <View style={{ marginHorizontal: 12, marginTop: 24 }}>
-      <Text typography="titleMedium" style={{ marginBottom: 8 }}>
-        Hôm nay có gì hot?
+      <Text
+        typography="titleMedium"
+        color={theme.text.primary}
+        style={{ marginBottom: 12 }}
+      >
+        {t("home.hotToday")}
       </Text>
 
-      {/* Category chips */}
-      <FlatList
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        data={categories}
-        style={{ marginBottom: 8 }}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() => setChosenCategory(item.id)}
-            style={{
-              backgroundColor:
-                chosenCategory === item.id
-                  ? theme.base.primary + "12"
-                  : theme.text.secondary + "80",
-              borderWidth: 2,
-              borderColor:
-                chosenCategory === item.id
-                  ? theme.base.primary + "80"
-                  : theme.text.secondary + "80",
-              paddingVertical: 4,
-              paddingHorizontal: 8,
-              borderRadius: 16,
-              marginRight: 8,
-              marginBottom: 8,
-            }}
-          >
-            <Text
-              typography="labelMedium"
-              color={
-                chosenCategory === item.id
-                  ? theme.base.primary
-                  : theme.text.primary
-              }
+      <View
+        style={{
+          backgroundColor: theme.background.bg,
+          padding: 12,
+          borderRadius: 12,
+        }}
+      >
+        {/* Category chips */}
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={categories}
+          style={{ marginBottom: 8 }}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => setChosenCategory(item.id)}
+              style={{
+                backgroundColor:
+                  chosenCategory === item.id
+                    ? theme.base.primary
+                    : theme.background.primarySurface,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
+                borderRadius: 16,
+                marginRight: 8,
+              }}
             >
-              {item.name}
-            </Text>
-          </TouchableOpacity>
+              <Text
+                typography="labelLarge"
+                color={
+                  chosenCategory === item.id
+                    ? theme.text.onPrimary
+                    : theme.text.primary
+                }
+              >
+                {item.name}
+              </Text>
+            </TouchableOpacity>
+          )}
+        />
+
+        {/* News list hoặc skeleton */}
+        {loading ? (
+          <>
+            <NewsItemSkeleton />
+            <NewsItemSkeleton />
+            <NewsItemSkeleton />
+          </>
+        ) : (
+          articles.map((item, index) => (
+            <>
+              {index !== 0 ? (
+                <View
+                  style={{
+                    height: 1,
+                    width: "100%",
+                    backgroundColor: theme.border.default,
+                  }}
+                />
+              ) : null}
+              <NewsItem key={index.toString()} newItem={item} />
+            </>
+          ))
         )}
-      />
 
-      {/* News list hoặc skeleton */}
-      {loading ? (
-        <>
-          <NewsItemSkeleton />
-          <NewsItemSkeleton />
-          <NewsItemSkeleton />
-        </>
-      ) : (
-        articles.map((item, index) => (
-          <NewsItem key={index.toString()} newItem={item} />
-        ))
-      )}
-
-      <TouchableOpacity onPress={onViewAll} style={{ marginTop: 12 }}>
-        <Text
-          typography="labelLarge"
-          color={theme.base.primary}
-          style={{ alignSelf: "center" }}
-        >
-          Xem tất cả
-        </Text>
-      </TouchableOpacity>
+        <TouchableOpacity onPress={onViewAll} style={{ marginTop: 8 }}>
+          <Text
+            typography="labelLarge"
+            color={theme.base.primary}
+            style={{ alignSelf: "center" }}
+          >
+            {t("home.viewAll")}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

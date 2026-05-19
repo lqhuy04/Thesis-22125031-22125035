@@ -18,7 +18,7 @@ const TodayHighlightCard = ({ item }: Props) => {
   return (
     <View
       style={{
-        backgroundColor: theme.base.primary + "10",
+        backgroundColor: theme.background.primarySurface,
         borderRadius: 8,
         borderColor: theme.base.primary,
         borderWidth: 1,
@@ -41,13 +41,17 @@ const TodayHighlightCard = ({ item }: Props) => {
         }}
       >
         <View style={{ flex: 1, marginRight: 12 }}>
-          <Text typography="titleMedium">{item.symbol}</Text>
+          <Text typography="titleMedium" color={theme.text.primary}>
+            {item.symbol}
+          </Text>
           <Text numberOfLines={1} color={theme.text.primary + "88"}>
             {item.company_name}
           </Text>
         </View>
         <View style={{ marginRight: 16 }}>
-          <Text typography="titleSmall">{item.CurrentPrice}</Text>
+          <Text typography="titleSmall" color={theme.text.primary}>
+            {item.CurrentPrice}
+          </Text>
           <Text
             color={
               item.PriceChange >= 0 ? theme.base.success : theme.base.error
@@ -132,7 +136,9 @@ const TodayHighlightCard = ({ item }: Props) => {
                 }
               />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text numberOfLines={2}>{item.title}</Text>
+                <Text numberOfLines={2} color={theme.text.primary}>
+                  {item.title}
+                </Text>
               </View>
             </TouchableOpacity>
           );

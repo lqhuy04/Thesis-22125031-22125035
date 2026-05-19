@@ -1,6 +1,6 @@
 import { useTheme } from "@/hooks/ThemeContext";
 import React, { useCallback, useState } from "react";
-import { Modal, Pressable, TouchableOpacity, View } from "react-native";
+import { Modal, Pressable, Switch, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
 import { router, useFocusEffect } from "expo-router";
@@ -14,14 +14,15 @@ import {
   logOut,
   UserProfile,
 } from "@/helpers/AuthenticationHelper";
+import { Language, useLocalization } from "@/hooks/LocalizationContext";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface MenuItemProps {
   label: string;
   icon: React.ReactNode;
   onPress: () => void;
+  trailing?: React.ReactNode; // thêm prop này
 }
-
 interface MenuSectionProps {
   title: string;
   items: MenuItemProps[];
@@ -39,7 +40,8 @@ const Divider = ({ borderColor }: { borderColor: string }) => (
   />
 );
 
-const MenuItem = ({ label, icon, onPress }: MenuItemProps) => {
+const MenuItem = ({ label, icon, onPress, trailing }: MenuItemProps) => {
+  const { theme } = useTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -57,10 +59,19 @@ const MenuItem = ({ label, icon, onPress }: MenuItemProps) => {
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text typography="bodyLarge">{label}</Text>
+        <Text color={theme.text.primary} typography="bodyLarge">
+          {label}
+        </Text>
       </View>
 
-      <MaterialCommunityIcons name="chevron-right" size={24} color="black" />
+      {/* Thay chevron cứng bằng trailing slot */}
+      {trailing ?? (
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={24}
+          color={theme.text.primary}
+        />
+      )}
     </TouchableOpacity>
   );
 };
@@ -73,6 +84,7 @@ const MenuSection = ({ title, items }: MenuSectionProps) => {
       <Text
         typography="titleMedium"
         style={{ marginHorizontal: 12, marginTop: 24, marginBottom: 8 }}
+        color={theme.text.primary}
       >
         {title}
       </Text>
@@ -103,6 +115,10 @@ const Profile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
+  const { toggleTheme, isDark } = useTheme();
+  const { language, setLanguage, t } = useLocalization();
+  const [showLangSheet, setShowLangSheet] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       getProfile()
@@ -119,7 +135,7 @@ const Profile = () => {
 
   const managementItems: MenuItemProps[] = [
     {
-      label: "Quản lý tài sản",
+      label: t("profile.assetManagement"),
       icon: (
         <MaterialIcons
           name="attach-money"
@@ -130,7 +146,7 @@ const Profile = () => {
       onPress: () => router.push("/WatchListStock"),
     },
     {
-      label: "Khẩu vị rủi ro",
+      label: t("profile.riskAppetite"),
       icon: (
         <Ionicons
           name="bar-chart-outline"
@@ -141,7 +157,7 @@ const Profile = () => {
       onPress: () => router.push("/RiskAppetite"),
     },
     {
-      label: "Danh sách theo dõi",
+      label: t("profile.favorite"),
       icon: <AntDesign name="stock" size={20} color={theme.base.primary} />,
       onPress: () => router.push("/Favorite"),
     },
@@ -149,7 +165,7 @@ const Profile = () => {
 
   const systemItems: MenuItemProps[] = [
     {
-      label: "Chế độ tối",
+      label: t("profile.darkMode"),
       icon: (
         <MaterialCommunityIcons
           name="theme-light-dark"
@@ -157,10 +173,22 @@ const Profile = () => {
           color={theme.base.primary}
         />
       ),
-      onPress: () => router.push("/WatchListStock"),
+      onPress: toggleTheme, // tap cả row cũng toggle được
+      trailing: (
+        <Switch
+          trackColor={{
+            false: theme.background.primarySurface,
+            true: theme.background.primarySurface,
+          }}
+          thumbColor={isDark ? theme.base.primary : theme.text.onPrimary}
+          onValueChange={toggleTheme}
+          value={isDark}
+          style={{ transform: [{ scale: 0.8 }] }}
+        />
+      ),
     },
     {
-      label: "Ngôn ngữ",
+      label: t("profile.language"),
       icon: (
         <Ionicons
           name="language-outline"
@@ -168,13 +196,32 @@ const Profile = () => {
           color={theme.base.primary}
         />
       ),
-      onPress: () => router.push("/WatchListStock"),
+      onPress: () => setShowLangSheet(true),
+      trailing: (
+        // hiển thị label ngôn ngữ hiện tại + chevron
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <Text
+            typography="bodyMedium"
+            style={{ opacity: 0.8 }}
+            color={theme.text.primary}
+          >
+            {language === "vi" ? "Tiếng Việt" : "English"}
+          </Text>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={24}
+            color={theme.text.primary}
+          />
+        </View>
+      ),
     },
   ];
 
   const accountItems: MenuItemProps[] = [
     {
-      label: profile?.has_password ? "Đổi mật khẩu" : "Đặt mật khẩu",
+      label: profile?.has_password
+        ? t("profile.changePass")
+        : t("profile.createPass"),
       icon: (
         <MaterialIcons name="password" size={20} color={theme.base.primary} />
       ),
@@ -187,7 +234,7 @@ const Profile = () => {
         }),
     },
     {
-      label: "Đăng xuất",
+      label: t("profile.logOut"),
       icon: (
         <MaterialIcons name="logout" size={20} color={theme.base.primary} />
       ),
@@ -213,7 +260,7 @@ const Profile = () => {
       >
         <View
           style={{
-            backgroundColor: theme.base.primary + "12",
+            backgroundColor: theme.background.primarySurface,
             width: 48,
             height: 48,
             borderRadius: 24,
@@ -223,23 +270,99 @@ const Profile = () => {
             justifyContent: "center",
           }}
         >
-          <FontAwesome6
-            name="user"
-            size={20}
-            color={theme.base.primary + "80"}
-          />
+          <FontAwesome6 name="user" size={20} color={theme.base.primary} />
         </View>
 
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text typography="titleMedium">{profile?.email}</Text>
-          <Text typography="bodyMedium">{profile?.user_id}</Text>
+          <Text typography="titleMedium" color={theme.text.primary}>
+            {profile?.email}
+          </Text>
+          <Text typography="bodyMedium" color={theme.text.primary}>
+            {profile?.user_id}
+          </Text>
         </View>
       </View>
 
       {/* Menu sections */}
-      <MenuSection title="Quản lý" items={managementItems} />
-      <MenuSection title="Hệ thống" items={systemItems} />
-      <MenuSection title="Tài khoản" items={accountItems} />
+      <MenuSection title={t("profile.management")} items={managementItems} />
+      <MenuSection title={t("profile.system")} items={systemItems} />
+      <MenuSection title={t("profile.account")} items={accountItems} />
+
+      {/* Language Bottom Sheet */}
+      <Modal
+        visible={showLangSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLangSheet(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.45)",
+            justifyContent: "flex-end",
+          }}
+          onPress={() => setShowLangSheet(false)}
+        >
+          <Pressable
+            style={{
+              backgroundColor: theme.background.bg,
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              padding: 20,
+              gap: 8,
+            }}
+          >
+            <Text
+              typography="titleLarge"
+              style={{ marginBottom: 8, alignSelf: "center" }}
+              color={theme.text.primary}
+            >
+              {t("profile.language")}
+            </Text>
+
+            {[
+              { value: "vi", label: "Tiếng Việt" },
+              { value: "en", label: "English" },
+            ].map((opt) => (
+              <TouchableOpacity
+                key={opt.value}
+                onPress={() => {
+                  setLanguage(opt.value as Language);
+                  setShowLangSheet(false);
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingVertical: 14,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  backgroundColor:
+                    language === opt.value
+                      ? theme.base.primary + "18"
+                      : "transparent",
+                }}
+              >
+                <Text typography="bodyLarge" color={theme.text.primary}>
+                  {opt.label}
+                </Text>
+                {language === opt.value && (
+                  <MaterialIcons
+                    name="check"
+                    size={20}
+                    color={theme.base.primary}
+                  />
+                )}
+              </TouchableOpacity>
+            ))}
+
+            {/* Safe area bottom padding */}
+            <View style={{ height: 16 }} />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Logout Modal */}
 
       <Modal
         visible={confirmLogout}
@@ -268,12 +391,15 @@ const Profile = () => {
               gap: 8,
             }}
           >
-            <Text typography="titleLarge">Đăng xuất</Text>
+            <Text typography="titleLarge" color={theme.text.primary}>
+              {t("profile.logOut")}
+            </Text>
             <Text
               typography="bodyLarge"
               style={{ opacity: 0.6, marginBottom: 8 }}
+              color={theme.text.primary}
             >
-              Bạn có chắc muốn đăng xuất khỏi tài khoản không?
+              {t("profile.logoutConfirm")}
             </Text>
 
             <View style={{ flexDirection: "row", gap: 10 }}>
@@ -289,7 +415,9 @@ const Profile = () => {
                 }}
                 onPress={() => setConfirmLogout(false)}
               >
-                <Text typography="titleMedium">Huỷ</Text>
+                <Text typography="titleMedium" color={theme.text.primary}>
+                  {t("profile.cancel")}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -306,8 +434,8 @@ const Profile = () => {
                   router.replace("/Authentication");
                 }}
               >
-                <Text typography="titleMedium" color="#fff">
-                  Đăng xuất
+                <Text typography="titleMedium" color={theme.text.onPrimary}>
+                  {t("profile.logOut")}
                 </Text>
               </TouchableOpacity>
             </View>

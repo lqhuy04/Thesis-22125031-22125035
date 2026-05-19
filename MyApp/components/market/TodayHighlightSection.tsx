@@ -10,6 +10,7 @@ import { Text } from "../ui/Text";
 import { getTodayHighlights, TodayHighlight } from "@/helpers/MarketHelpers";
 import TodayHighlightCard from "../ui/TodayHighlightCard";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const ITEM_WIDTH = SCREEN_WIDTH - 24;
@@ -21,6 +22,7 @@ const TodayHighlightSection = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   useEffect(() => {
     getTodayHighlights().then((result) => {
@@ -38,7 +40,9 @@ const TodayHighlightSection = () => {
 
   return (
     <View style={{ marginHorizontal: 12 }}>
-      <Text typography="titleMedium">{"Tiêu điểm hôm nay"}</Text>
+      <Text typography="titleMedium" color={theme.text.primary}>
+        {t("market.todayHighlight")}
+      </Text>
 
       <FlatList
         ref={flatListRef}
@@ -47,7 +51,7 @@ const TodayHighlightSection = () => {
         data={data}
         keyExtractor={(item) => item.stock_id}
         renderItem={({ item }) => <TodayHighlightCard item={item} />}
-        style={{ marginTop: 8 }}
+        style={{ marginTop: 12 }}
         // Carousel config
         snapToInterval={SNAP_INTERVAL}
         snapToAlignment="start"
