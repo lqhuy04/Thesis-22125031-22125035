@@ -6,12 +6,14 @@ import { router } from "expo-router";
 import { New } from "@/helpers/DetailHelpers";
 import { getNewsByCategoryId } from "@/helpers/MarketHelpers";
 import NewsItem from "../ui/NewsItem";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 const CategoriesNewsSection = () => {
   const realEstateId = "afb4b18d-dc88-4ed0-b17b-28792868b460";
   const bankId = "1fbbad10-a283-47e8-b126-8360ffa225ae";
   const consumerGoodsId = "00341b34-8a12-4642-afd7-ae4664253b96";
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   const [categoryArticles, setCategoryArticles] = useState<
     {
@@ -31,9 +33,9 @@ const CategoriesNewsSection = () => {
       ]);
 
       const categories = [
-        { id: realEstateId, name: "Bất động sản" },
-        { id: bankId, name: "Ngân hàng" },
-        { id: consumerGoodsId, name: "Hàng tiêu dùng" },
+        { id: realEstateId, name: t("market.categoryRealEstate") },
+        { id: bankId, name: t("market.categoryBank") },
+        { id: consumerGoodsId, name: t("market.categoryConsumerGoods") },
       ];
 
       const formatted = results.map((res, index) => {
@@ -57,10 +59,10 @@ const CategoriesNewsSection = () => {
     };
 
     fetchData();
-  }, []);
+  }, [t]);
 
   return categoryArticles.length === 0 ? null : (
-    <View style={{ marginTop: 16, marginHorizontal: 12 }}>
+    <View style={{ marginTop: 24, marginHorizontal: 12 }}>
       <View
         style={{
           flexDirection: "row",
@@ -69,7 +71,9 @@ const CategoriesNewsSection = () => {
           marginBottom: 8,
         }}
       >
-        <Text typography="titleMedium">{"Tin tức theo nhóm ngành"}</Text>
+        <Text typography="titleMedium" color={theme.text.primary}>
+          {t("market.newsByIndustry")}
+        </Text>
         <Text
           typography="titleMedium"
           color={theme.base.primary}
@@ -86,58 +90,73 @@ const CategoriesNewsSection = () => {
             });
           }}
         >
-          Xem tất cả
+          {t("market.viewAll")}
         </Text>
       </View>
 
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          flexWrap: "wrap",
-          marginBottom: 12,
+          backgroundColor: theme.background.bg,
+          padding: 12,
+          borderRadius: 12,
         }}
       >
-        {categoryArticles.map((item, index) => {
-          return (
-            <TouchableOpacity
-              key={item.category_id}
-              onPress={() => setChosenIndex(index)}
-              style={{
-                backgroundColor:
-                  chosenIndex === index
-                    ? theme.base.primary + "12"
-                    : theme.text.secondary + "80",
-                borderWidth: 2,
-                borderColor:
-                  chosenIndex === index
-                    ? theme.base.primary + "80"
-                    : theme.text.secondary + "80",
-                paddingVertical: 4,
-                paddingHorizontal: 8,
-                borderRadius: 16,
-                marginRight: 8,
-                marginBottom: 8,
-              }}
-            >
-              <Text
-                typography="labelMedium"
-                color={
-                  chosenIndex === index
-                    ? theme.base.primary
-                    : theme.text.primary
-                }
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            flexWrap: "wrap",
+            marginBottom: 4,
+          }}
+        >
+          {categoryArticles.map((item, index) => {
+            return (
+              <TouchableOpacity
+                key={index.toString()}
+                onPress={() => setChosenIndex(index)}
+                style={{
+                  backgroundColor:
+                    chosenIndex === index
+                      ? theme.base.primary
+                      : theme.background.primarySurface,
+                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  borderRadius: 16,
+                  marginRight: 8,
+                }}
               >
-                {item.category_name}
-              </Text>
-            </TouchableOpacity>
+                <Text
+                  typography="labelLarge"
+                  color={
+                    chosenIndex === index
+                      ? theme.text.onPrimary
+                      : theme.text.primary
+                  }
+                >
+                  {item.category_name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {categoryArticles[chosenIndex].news.map((item, index) => {
+          return (
+            <View key={index.toString()}>
+              {index !== 0 ? (
+                <View
+                  style={{
+                    height: 1,
+                    width: "100%",
+                    backgroundColor: theme.border.default,
+                  }}
+                />
+              ) : null}
+              <NewsItem key={index.toString()} newItem={item} />
+            </View>
           );
         })}
       </View>
-
-      {categoryArticles[chosenIndex].news.map((item, index) => {
-        return <NewsItem key={index.toString()} newItem={item} />;
-      })}
     </View>
   );
 };

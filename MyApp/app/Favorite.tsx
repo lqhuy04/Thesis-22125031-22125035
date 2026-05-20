@@ -12,6 +12,7 @@ import {
 import { Text } from "@/components/ui/Text";
 import { router, useFocusEffect } from "expo-router";
 import ScreenHeader from "@/components/ui/ScreenHeader";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
@@ -188,16 +189,15 @@ const Favorite = () => {
       >
         <Image
           source={{
-            uri: "https://ibrand.vn/wp-content/uploads/2024/08/vinamilk-logo_brandlogos.net_quayf.png",
+            uri:
+              item.logo ||
+              "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
           }}
           style={{
             marginRight: 8,
-            width: 48,
-            height: 48,
-            borderRadius: 4,
-            backgroundColor: theme.background.bg,
-            borderWidth: 1,
-            borderColor: theme.border.default,
+            width: 40,
+            height: 40,
+            borderRadius: 2,
           }}
         />
 
@@ -212,30 +212,18 @@ const Favorite = () => {
             <Text typography="titleMedium" color={theme.text.primary}>
               {item.symbol}
             </Text>
-
-            {item.company_name?.length > 0 && (
-              <View
-                style={{
-                  paddingVertical: 2,
-                  paddingHorizontal: 4,
-                  borderRadius: 2,
-                  backgroundColor: theme.text.primary + "36",
-                  marginLeft: 8,
-                }}
-              >
-                <Text typography="bodySmall" color={theme.text.primary}>
-                  {item.exchange}
-                </Text>
-              </View>
-            )}
           </View>
 
-          <Text typography="bodyMedium" color={theme.text.primary + "80"}>
+          <Text
+            typography="bodyMedium"
+            color={theme.text.primary + "80"}
+            numberOfLines={1}
+          >
             {item.company_name}
           </Text>
         </View>
 
-        <View style={{ alignItems: "flex-end" }}>
+        <View style={{ alignItems: "flex-start" }}>
           <Text typography="labelLarge" color={theme.text.primary}>
             {item.CurrentPrice}
           </Text>
@@ -264,9 +252,11 @@ const Favorite = () => {
     );
   };
 
+  const { t } = useLocalization();
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
-      <ScreenHeader title="Danh sách cổ phiếu theo dõi" />
+      <ScreenHeader title={t("profile.favoriteList")} />
 
       {loading ? (
         <View style={{ paddingTop: 12 }}>

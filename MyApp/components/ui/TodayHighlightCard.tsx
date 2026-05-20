@@ -54,7 +54,11 @@ const TodayHighlightCard = ({ item }: Props) => {
           </Text>
           <Text
             color={
-              item.PriceChange >= 0 ? theme.base.success : theme.base.error
+              item.PriceChange > 0
+                ? theme.base.success
+                : item.PriceChange < 0
+                  ? theme.base.error
+                  : theme.base.warning
             }
           >
             {"("}
@@ -72,19 +76,28 @@ const TodayHighlightCard = ({ item }: Props) => {
                 : theme.base.error + "18",
             flexDirection: "row",
             alignItems: "center",
+            borderRadius: 6,
           }}
         >
           <MaterialIcons
             name={item.PriceChange >= 0 ? "arrow-drop-up" : "arrow-drop-down"}
             size={28}
             color={
-              item.PriceChange >= 0 ? theme.base.success : theme.base.error
+              item.PriceChange > 0
+                ? theme.base.success
+                : item.PriceChange < 0
+                  ? theme.base.error
+                  : theme.base.warning
             }
           />
           <Text
             typography="titleSmall"
             color={
-              item.PriceChange >= 0 ? theme.base.success : theme.base.error
+              item.PriceChange > 0
+                ? theme.base.success
+                : item.PriceChange < 0
+                  ? theme.base.error
+                  : theme.base.warning
             }
           >
             {item.PerPriceChange}%
@@ -110,6 +123,8 @@ const TodayHighlightCard = ({ item }: Props) => {
                 flexDirection: "row",
                 alignItems: "center",
                 marginTop: 12,
+                flex: 1,
+                justifyContent: "center",
               }}
               onPress={() => {
                 router.push({

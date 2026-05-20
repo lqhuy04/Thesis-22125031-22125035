@@ -104,6 +104,7 @@ const Market = () => {
         <CategoriesNewsSection />
         <MacroEcomNewsSection />
         <AllNewsSection />
+        <View style={{ height: 12 }} />
       </ScrollView>
     </View>
   );

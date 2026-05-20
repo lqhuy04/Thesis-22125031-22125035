@@ -6,9 +6,11 @@ import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
 import NewsItem from "../ui/NewsItem";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 const MacroEcomNewsSection = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [articles, setArticles] = useState<New[]>([]);
 
   useEffect(() => {
@@ -20,7 +22,7 @@ const MacroEcomNewsSection = () => {
   }, []);
 
   return (
-    <View style={{ marginTop: 16, marginHorizontal: 12 }}>
+    <View style={{ marginTop: 24, marginHorizontal: 12 }}>
       <View
         style={{
           flexDirection: "row",
@@ -29,7 +31,10 @@ const MacroEcomNewsSection = () => {
           marginBottom: 12,
         }}
       >
-        <Text typography="titleMedium">{"Tin tức kinh tế - vĩ mô"}</Text>
+        <Text typography="titleMedium" color={theme.text.primary}>
+          {t("market.macroNews")}
+        </Text>
+
         <Text
           typography="titleMedium"
           color={theme.base.primary}
@@ -38,20 +43,41 @@ const MacroEcomNewsSection = () => {
               pathname: "/AllNews",
               params: {
                 data: JSON.stringify({
-                  title: "Tin tức kinh tế - vĩ mô",
+                  title: t("market.macroNews"),
                   type: "macro",
                 }),
               },
             });
           }}
         >
-          Xem tất cả
+          {t("market.viewAll")}
         </Text>
       </View>
 
-      {articles.map((item, index) => {
-        return <NewsItem key={index.toString()} newItem={item} />;
-      })}
+      <View
+        style={{
+          backgroundColor: theme.background.bg,
+          paddingHorizontal: 12,
+          borderRadius: 12,
+        }}
+      >
+        {articles.map((item, index) => {
+          return (
+            <View key={index.toString()}>
+              {index !== 0 ? (
+                <View
+                  style={{
+                    height: 1,
+                    width: "100%",
+                    backgroundColor: theme.border.default,
+                  }}
+                />
+              ) : null}
+              <NewsItem key={index.toString()} newItem={item} />
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 };

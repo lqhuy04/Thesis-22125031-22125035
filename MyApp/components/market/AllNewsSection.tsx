@@ -6,9 +6,11 @@ import { router } from "expo-router";
 import { New } from "@/helpers/DetailHelpers";
 import { getAllNews } from "@/helpers/MarketHelpers";
 import NewsItem from "../ui/NewsItem";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 const AllNewsSection = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [articles, setArticles] = useState<New[]>([]);
 
   useEffect(() => {
@@ -29,7 +31,9 @@ const AllNewsSection = () => {
             justifyContent: "space-between",
           }}
         >
-          <Text typography="titleMedium">{"Toàn cảnh thị trường"}</Text>
+          <Text typography="titleMedium" color={theme.text.primary}>
+            {t("market.marketOverview")}
+          </Text>
           <Text
             typography="titleMedium"
             color={theme.base.primary}
@@ -38,21 +42,42 @@ const AllNewsSection = () => {
                 pathname: "/AllNews",
                 params: {
                   data: JSON.stringify({
-                    title: "Toàn cảnh thị trường",
+                    title: t("market.marketOverview"),
                     type: "all",
                   }),
                 },
               });
             }}
           >
-            Xem tất cả
+            {t("market.viewAll")}
           </Text>
         </View>
       </View>
 
-      {articles.map((item, index) => {
-        return <NewsItem key={index.toString()} newItem={item} />;
-      })}
+      <View
+        style={{
+          backgroundColor: theme.background.bg,
+          paddingHorizontal: 12,
+          borderRadius: 12,
+        }}
+      >
+        {articles.map((item, index) => {
+          return (
+            <View key={index.toString()}>
+              {index !== 0 ? (
+                <View
+                  style={{
+                    height: 1,
+                    width: "100%",
+                    backgroundColor: theme.border.default,
+                  }}
+                />
+              ) : null}
+              <NewsItem key={index.toString()} newItem={item} />
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 };

@@ -15,8 +15,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
   return (
     <TouchableOpacity
       style={{
-        padding: 12,
-        marginBottom: 4,
+        marginVertical: 12,
         flexDirection: "row",
         alignItems: "center",
       }}

@@ -239,7 +239,7 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
           </>
         ) : (
           articles.map((item, index) => (
-            <>
+            <View key={index.toString()}>
               {index !== 0 ? (
                 <View
                   style={{
@@ -250,7 +250,7 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
                 />
               ) : null}
               <NewsItem key={index.toString()} newItem={item} />
-            </>
+            </View>
           ))
         )}
 

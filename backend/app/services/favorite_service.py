@@ -78,7 +78,7 @@ class FavoriteService:
                 try:
                     profile_result = (
                         supabase.table("BI_Profile")
-                        .select("stock_id, symbol, company_name, exchange")
+                        .select("stock_id, symbol, company_name, exchange, logo")
                         .in_("stock_id", stock_ids)
                         .execute()
                     )
@@ -131,6 +131,7 @@ class FavoriteService:
                     "symbol":       symbol,
                     "company_name": profile.get("company_name", ""),
                     "exchange":     profile.get("exchange", ""),
+                    "logo":         profile.get("logo", ""),
                     "PriceChange":    price_change,
                     "PerPriceChange": per_price_change,
                     "CeilingPrice":   ceiling_price,
