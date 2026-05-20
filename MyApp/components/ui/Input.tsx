@@ -39,6 +39,7 @@ export const Input = ({
           <Text
             typography="labelLarge"
             style={{ opacity: 0.55, marginLeft: 2 }}
+            color={theme.text.primary}
           >
             {label}
             {required && (

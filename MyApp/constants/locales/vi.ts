@@ -108,4 +108,26 @@ export default {
   common: {
     searchPlaceholder: "Tìm kiếm theo mã chứng khoán, tên công ty...",
   },
+  changePass: {
+    titleChange: "Đổi mật khẩu",
+    titleSet: "Đặt mật khẩu",
+    currentPass: "Mật khẩu hiện tại",
+    currentPassPlaceholder: "Nhập mật khẩu hiện tại",
+    newPass: "Mật khẩu mới",
+    newPassPlaceholder: "Nhập mật khẩu mới",
+    confirmPass: "Xác nhận mật khẩu mới",
+    confirmPassPlaceholder: "Nhập lại mật khẩu mới để xác nhận",
+    confirm: "Xác nhận",
+    successChange: "Đổi mật khẩu thành công!",
+    successSet: "Đặt mật khẩu thành công!",
+    errorMismatch: "Mật khẩu xác nhận không khớp.",
+    errorSamePass: "Mật khẩu mới phải khác mật khẩu hiện tại.",
+    errorFailed:
+      "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu hiện tại.",
+    validateMinLength: "Mật khẩu phải có ít nhất 8 ký tự.",
+    validateNumber: "Mật khẩu phải chứa ít nhất 1 chữ số.",
+    validateLower: "Mật khẩu phải chứa ít nhất 1 chữ thường.",
+    validateUpper: "Mật khẩu phải chứa ít nhất 1 chữ in hoa.",
+    validateSpecial: "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.",
+  },
 };
