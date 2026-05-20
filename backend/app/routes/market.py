@@ -7,7 +7,7 @@ import uuid
 from supabase_auth import Any
 from app.services.market_service import MarketService
 from app.services.ssi_service import get_ssi_service
-from app.models.market_data_schemas import SectorStockMovementResponse, IndexImpactResponse
+from app.models.market_data_schemas import SectorStockMovementResponse, IndexImpactResponse, InvestingIdeaResponse
 
 
 router = APIRouter(prefix="/api", tags=["Market Data"])
@@ -172,6 +172,28 @@ async def get_top_index_impact_stocks(
         "errorDesc": "" if result else "No impact data found for the specified index",
         "requestId": request_id,
         "result": bool(result),
+    }
+
+
+@router.get("/investing-idea", response_model=InvestingIdeaResponse)
+async def get_investing_idea(
+    limit: int = Query(100, ge=1, le=100, description="Number of stocks per list"),
+):
+    request_id = str(uuid.uuid4())
+    payload = MarketService.get_investing_ideas(limit=limit)
+
+    has_data = (
+        bool(payload.get("trend", {}).get("top_gainers"))
+        or bool(payload.get("trend", {}).get("top_decliners"))
+        or bool(payload.get("trend", {}).get("top_volume"))
+    )
+
+    return {
+        "data": payload,
+        "errorCode": 0 if has_data else 500001,
+        "errorDesc": "" if has_data else "No investing idea data found",
+        "requestId": request_id,
+        "result": has_data,
     }
 
 @router.get("/test", response_model=Any)

@@ -1041,6 +1041,121 @@ class MarketService:
         return [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
 
     @staticmethod
+    def _get_value_by_candidate_keys(row: Dict[str, Any], candidate_keys: List[str]) -> float:
+        for key in candidate_keys:
+            if key in row and row.get(key) is not None:
+                return MarketService._to_float(row.get(key))
+        return 0.0
+
+    @staticmethod
+    def _fetch_all_rows(table: str, select_fields: str = "*") -> List[Dict[str, Any]]:
+        page_size = 1000
+        offset = 0
+        rows: List[Dict[str, Any]] = []
+
+        while True:
+            response = (
+                supabase.table(table)
+                .select(select_fields)
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+
+            batch = response.data if response.data else []
+            if not batch:
+                break
+
+            rows.extend(batch)
+
+            if len(batch) < page_size:
+                break
+
+            offset += page_size
+
+        return rows
+
+    @staticmethod
+    def get_investing_ideas(limit: int = 100) -> Dict[str, Any]:
+        """
+        Build investing ideas payload for two tabs:
+        - trend: top gainers, decliners, and top volume
+        - community: currently empty placeholders for compatibility
+        
+        Excludes UPCOM exchange; only includes HOSE and HNX.
+        """
+        try:
+            limit = max(1, min(limit, 100))
+
+            profiles = MarketService._fetch_all_rows(
+                "BI_Profile",
+                "symbol, company_name, logo, exchange"
+            )
+            prices = MarketService._fetch_all_rows("Current_Stock_Price", "*")
+
+            profile_by_symbol: Dict[str, Dict[str, Any]] = {}
+            for profile in profiles:
+                symbol = str(profile.get("symbol") or "").upper().strip()
+                if not symbol or len(symbol) > 3:
+                    continue
+                exchange = str(profile.get("exchange") or "").upper().strip()
+                if exchange == "UPCOM":
+                    continue
+                profile_by_symbol[symbol] = profile
+
+            items: List[Dict[str, Any]] = []
+            for price in prices:
+                symbol = str(price.get("symbol") or "").upper().strip()
+                if not symbol or len(symbol) > 3:
+                    continue
+
+                if symbol not in profile_by_symbol:
+                    continue
+
+                profile = profile_by_symbol[symbol]
+                item = {
+                    "logo": profile.get("logo") or "",
+                    "symbol": symbol,
+                    "company_name": profile.get("company_name") or "",
+                    "current_price": MarketService._to_float(price.get("current_price")),
+                    "price_change": MarketService._to_float(price.get("price_change")),
+                    "per_price_change": MarketService._to_float(price.get("per_price_change")),
+                    "_total_match_vol": MarketService._to_float(price.get("total_match_vol")),
+                }
+                items.append(item)
+
+            # Keep only fields requested by API contract.
+            def public_row(row: Dict[str, Any]) -> Dict[str, Any]:
+                return {
+                    "logo": row["logo"],
+                    "symbol": row["symbol"],
+                    "company_name": row["company_name"],
+                    "current_price": row["current_price"],
+                    "price_change": row["price_change"],
+                    "per_price_change": row["per_price_change"],
+                }
+
+            top_gainers = sorted(items, key=lambda x: x["per_price_change"], reverse=True)[:limit]
+            top_decliners = sorted(items, key=lambda x: x["per_price_change"])[:limit]
+            top_volume = sorted(items, key=lambda x: x["_total_match_vol"], reverse=True)[:limit]
+
+            return {
+                "trend": {
+                    "top_gainers": [public_row(x) for x in top_gainers],
+                    "top_decliners": [public_row(x) for x in top_decliners],
+                    "top_volume": [public_row(x) for x in top_volume],
+                },
+            }
+        except Exception as e:
+            print(f"Error fetching investing ideas: {e}")
+            return {
+                "trend": {
+                    "top_gainers": [],
+                    "top_decliners": [],
+                    "top_volume": [],
+                },
+            }
+
+    @staticmethod
     def get_top_index_impact_stocks(index_id: str, limit: int = 10) -> List[Dict[str, Any]]:
         """
         Get top stocks impacting an index.
