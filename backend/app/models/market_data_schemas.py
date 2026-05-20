@@ -202,3 +202,33 @@ class IndexImpactResponse(BaseModel):
     errorDesc: str = Field("", description="Error description")
     requestId: str = Field(..., description="Unique request identifier")
     result: bool = Field(..., description="Whether the request was successful")
+
+
+class InvestingIdeaStockItem(BaseModel):
+    """A stock row for investing idea tabs."""
+    logo: str = Field("", description="Company logo URL")
+    symbol: str = Field(..., description="Stock symbol")
+    company_name: str = Field("", description="Company name")
+    current_price: float = Field(0.0, description="Current price")
+    price_change: float = Field(0.0, description="Price change")
+    per_price_change: float = Field(0.0, description="Percent price change")
+
+
+class InvestingIdeaTrendTab(BaseModel):
+    """Trend tab: gainers, decliners, and volume leaders."""
+    top_gainers: List[InvestingIdeaStockItem] = Field(default=[], description="Top gainers")
+    top_decliners: List[InvestingIdeaStockItem] = Field(default=[], description="Top decliners")
+    top_volume: List[InvestingIdeaStockItem] = Field(default=[], description="Top matched volume")
+
+class InvestingIdeaData(BaseModel):
+    """Payload for investing idea endpoint."""
+    trend: InvestingIdeaTrendTab = Field(default_factory=InvestingIdeaTrendTab)
+
+
+class InvestingIdeaResponse(BaseModel):
+    """Response for investing idea endpoint."""
+    data: InvestingIdeaData = Field(default_factory=InvestingIdeaData)
+    errorCode: int = Field(0, description="Error code (0 for success)")
+    errorDesc: str = Field("", description="Error description")
+    requestId: str = Field(..., description="Unique request identifier")
+    result: bool = Field(..., description="Whether the request was successful")
