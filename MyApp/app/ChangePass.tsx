@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -12,8 +13,8 @@ import ScreenHeader from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { Input } from "@/components/ui/Input";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
-import { useLocalSearchParams } from "expo-router";
-import { resetPassword } from "@/helpers/AuthenticationHelper";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { resetPassword, logOut } from "@/helpers/AuthenticationHelper";
 import { useLocalization } from "@/hooks/LocalizationContext";
 
 type FormData = {
@@ -38,11 +39,12 @@ const ChangePass = () => {
 
   const { theme } = useTheme();
   const { t } = useLocalization();
+  const router = useRouter();
   const { control, handleSubmit, reset, watch } = useForm<FormData>();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [newPassError, setNewPassError] = useState<string | undefined>();
   const [confirmPassError, setConfirmPassError] = useState<
@@ -87,7 +89,6 @@ const ChangePass = () => {
     if (newPassErr || confirmErr) return;
 
     setError("");
-    setSuccess(false);
 
     if (has_password && data.newPass === data.currentPass) {
       return setError(t("changePass.errorSamePass"));
@@ -102,13 +103,19 @@ const ChangePass = () => {
     setLoading(false);
 
     if (res.status) {
-      setSuccess(true);
       reset();
       setNewPassError(undefined);
       setConfirmPassError(undefined);
+      setShowSuccessModal(true);
     } else {
       setError(t("changePass.errorFailed"));
     }
+  };
+
+  const handleSuccessConfirm = async () => {
+    setShowSuccessModal(false);
+    await logOut();
+    router.replace("/Authentication");
   };
 
   return (
@@ -200,35 +207,6 @@ const ChangePass = () => {
           </View>
         )}
 
-        {success && (
-          <View
-            style={[
-              styles.banner,
-              {
-                backgroundColor: theme.base.success + "15",
-                borderColor: theme.base.success + "40",
-              },
-            ]}
-          >
-            <SimpleLineIcons
-              name="check"
-              size={13}
-              color={theme.base.success}
-            />
-            <Text
-              typography="labelLarge"
-              color={theme.base.success}
-              style={{ flex: 1 }}
-            >
-              {t(
-                has_password
-                  ? "changePass.successChange"
-                  : "changePass.successSet",
-              )}
-            </Text>
-          </View>
-        )}
-
         <TouchableOpacity
           style={[
             styles.button,
@@ -251,6 +229,76 @@ const ChangePass = () => {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.background.bg,
+                borderColor: theme.border.default,
+              },
+            ]}
+          >
+            {/* Icon */}
+            <View
+              style={[
+                styles.iconCircle,
+                { backgroundColor: theme.base.success + "20" },
+              ]}
+            >
+              <SimpleLineIcons
+                name="check"
+                size={28}
+                color={theme.base.success}
+              />
+            </View>
+
+            {/* Title */}
+            <Text
+              typography="titleLarge"
+              color={theme.text.primary}
+              style={{ textAlign: "center" }}
+            >
+              {t(
+                has_password
+                  ? "changePass.successChange"
+                  : "changePass.successSet",
+              )}
+            </Text>
+
+            {/* Body */}
+            <Text
+              typography="bodyMedium"
+              color={theme.text.secondary}
+              style={{ textAlign: "center" }}
+            >
+              {t("changePass.successLogoutNotice")}
+            </Text>
+
+            {/* CTA */}
+            <TouchableOpacity
+              style={[
+                styles.modalButton,
+                { backgroundColor: theme.base.primary },
+              ]}
+              onPress={handleSuccessConfirm}
+              activeOpacity={0.8}
+            >
+              <Text typography="titleLarge" color={theme.text.onPrimary}>
+                {t("changePass.successConfirmBtn")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -271,6 +319,37 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   button: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalCard: {
+    width: "100%",
+    borderRadius: 20,
+    borderWidth: 0.5,
+    padding: 24,
+    alignItems: "center",
+    gap: 16,
+  },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  modalButton: {
+    width: "100%",
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",

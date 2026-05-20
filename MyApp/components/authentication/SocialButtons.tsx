@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import {
-  Alert,
   ActivityIndicator,
   StyleSheet,
   TouchableOpacity,
   View,
+  Modal,
 } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
@@ -15,6 +15,7 @@ import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { socialLogin } from "@/helpers/AuthenticationHelper";
 import { router } from "expo-router";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 GoogleSignin.configure({
   webClientId:
@@ -25,7 +26,15 @@ GoogleSignin.configure({
 
 const SocialButtons = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [loadingProvider, setLoadingProvider] = useState<"google" | null>(null);
+  const [errorModal, setErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const showError = (message: string) => {
+    setErrorMessage(message);
+    setErrorModal(true);
+  };
 
   const onPressGoogle = async () => {
     try {
@@ -36,12 +45,12 @@ const SocialButtons = () => {
       if (idToken) {
         await handleSocialLogin("google", idToken);
       } else {
-        Alert.alert("Đăng nhập thất bại", "Không nhận được idToken.");
+        showError(t("auth.noIdToken"));
         setLoadingProvider(null);
       }
     } catch (e: any) {
       if (e?.code !== statusCodes.SIGN_IN_CANCELLED) {
-        Alert.alert("Đăng nhập thất bại", "Vui lòng thử lại.");
+        showError(t("auth.tryAgain"));
       }
       setLoadingProvider(null);
     }
@@ -54,7 +63,7 @@ const SocialButtons = () => {
       if (res.status) {
         router.replace("/Tabs");
       } else {
-        Alert.alert("Đăng nhập thất bại", "Vui lòng thử lại.");
+        showError(t("auth.tryAgain"));
       }
     } finally {
       setLoadingProvider(null);
@@ -65,6 +74,47 @@ const SocialButtons = () => {
 
   return (
     <View style={{ gap: 10, marginTop: 8 }}>
+      {/* Error Modal */}
+      <Modal
+        visible={errorModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.overlay}>
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.background.bg }]}
+          >
+            <Text
+              typography="titleLarge"
+              color={theme.text.primary}
+              style={{ textAlign: "center" }}
+            >
+              {t("auth.signInFailed")}
+            </Text>
+            <Text
+              typography="bodyMedium"
+              color={theme.text.primary}
+              style={{ opacity: 0.6, textAlign: "center", marginTop: 8 }}
+            >
+              {errorMessage}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.modalButton,
+                { backgroundColor: theme.base.primary },
+              ]}
+              onPress={() => setErrorModal(false)}
+              activeOpacity={0.8}
+            >
+              <Text typography="titleMedium" color={theme.text.onPrimary}>
+                {t("auth.retry")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Divider */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
         <View
@@ -74,8 +124,12 @@ const SocialButtons = () => {
             backgroundColor: theme.border.default,
           }}
         />
-        <Text typography="labelLarge" style={{ opacity: 0.4 }}>
-          hoặc
+        <Text
+          typography="labelLarge"
+          color={theme.text.primary}
+          style={{ opacity: 0.4 }}
+        >
+          {t("auth.or")}
         </Text>
         <View
           style={{
@@ -105,7 +159,9 @@ const SocialButtons = () => {
         ) : (
           <FontAwesome name="google" size={18} color="#EA4335" />
         )}
-        <Text typography="titleMedium">Đăng nhập với Google</Text>
+        <Text typography="titleMedium" color={theme.text.primary}>
+          {t("auth.signInWithGoogle")}
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -120,6 +176,27 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderRadius: 12,
     paddingVertical: 12,
+  },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 32,
+  },
+  modalCard: {
+    width: "100%",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    gap: 4,
+  },
+  modalButton: {
+    marginTop: 16,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 40,
+    alignItems: "center",
   },
 });
 

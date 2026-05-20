@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   View,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   ActivityIndicator,
   Modal,
@@ -20,21 +19,20 @@ interface SignUpComponentProps {
   onSuccess: () => void;
 }
 
-const validateEmail = (value: string): string | undefined => {
+const validateEmail = (value: string, t: (k: string) => string) => {
   if (!value) return undefined;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(value)) return "Email không đúng định dạng.";
+  if (!emailRegex.test(value)) return t("auth.emailInvalid");
   return undefined;
 };
 
-const validatePassword = (value: string): string | undefined => {
+const validatePassword = (value: string, t: (k: string) => string) => {
   if (!value) return undefined;
-  if (value.length < 8) return "Mật khẩu phải có ít nhất 8 ký tự.";
-  if (!/[0-9]/.test(value)) return "Mật khẩu phải chứa ít nhất 1 chữ số.";
-  if (!/[a-z]/.test(value)) return "Mật khẩu phải chứa ít nhất 1 chữ thường.";
-  if (!/[A-Z]/.test(value)) return "Mật khẩu phải chứa ít nhất 1 chữ in hoa.";
-  if (!/[^a-zA-Z0-9]/.test(value))
-    return "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.";
+  if (value.length < 8) return t("changePass.validateMinLength");
+  if (!/[0-9]/.test(value)) return t("changePass.validateNumber");
+  if (!/[a-z]/.test(value)) return t("changePass.validateLower");
+  if (!/[A-Z]/.test(value)) return t("changePass.validateUpper");
+  if (!/[^a-zA-Z0-9]/.test(value)) return t("changePass.validateSpecial");
   return undefined;
 };
 
@@ -46,6 +44,7 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [confirmError, setConfirmError] = useState<string | undefined>();
+  const [errorModal, setErrorModal] = useState(false);
 
   const email = watch("email");
   const password = watch("password");
@@ -55,13 +54,13 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
     !!email &&
     !!password &&
     !!confirmPassword &&
-    !validateEmail(email) &&
-    !validatePassword(password) &&
+    !validateEmail(email, t) &&
+    !validatePassword(password, t) &&
     password === confirmPassword;
 
   const onSubmit = (formData: any) => {
-    const emailErr = validateEmail(formData.email);
-    const pwdError = validatePassword(formData.password);
+    const emailErr = validateEmail(formData.email, t);
+    const pwdError = validatePassword(formData.password, t);
     const confirmErr =
       formData.confirmPassword !== formData.password
         ? "Mật khẩu xác nhận không khớp."
@@ -86,10 +85,7 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
           });
           onSuccess();
         } else {
-          Alert.alert(
-            "Sign Up Failed",
-            "Invalid email, phone number, or password.",
-          );
+          setErrorModal(true);
         }
       })
       .finally(() => {
@@ -99,14 +95,16 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
 
   // Validate live khi user sửa lại
   const handleEmailChange = (value: string) => {
-    setEmailError(validateEmail(value));
+    setEmailError(validateEmail(value, t));
   };
 
   const handlePasswordChange = (value: string) => {
-    setPasswordError(validatePassword(value));
+    setPasswordError(validatePassword(value, t));
     if (confirmPassword) {
       setConfirmError(
-        value !== confirmPassword ? "Mật khẩu xác nhận không khớp." : undefined,
+        value !== confirmPassword
+          ? t("auth.confirmPasswordMismatch")
+          : undefined,
       );
     }
   };
@@ -119,24 +117,16 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
 
   return (
     <View style={styles.container}>
-      {/* Loading Modal */}
-      <Modal
-        visible={loading}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-      >
-        <View style={styles.overlay}>
-          <ActivityIndicator size="large" color={theme.base.primary} />
-        </View>
-      </Modal>
-
       {/* Header */}
       <Text typography="headlineSmall" color={theme.text.primary}>
         {t("auth.signUp")}
       </Text>
-      <Text typography="bodyMedium" style={{ opacity: 0.5, marginTop: 4 }}>
-        Tạo tài khoản để bắt đầu 🚀
+      <Text
+        typography="bodyLarge"
+        color={theme.text.primary}
+        style={{ opacity: 0.8, marginTop: 4 }}
+      >
+        {t("auth.signUpWelcome")}
       </Text>
 
       {/* Card */}
@@ -158,11 +148,6 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
           errorMessage={emailError}
           onChangeText={handleEmailChange}
         />
-
-        <View
-          style={[styles.divider, { backgroundColor: theme.border.default }]}
-        />
-
         <Input
           control={control}
           name="password"
@@ -199,12 +184,57 @@ const SignUpComponent = ({ onSuccess }: SignUpComponentProps) => {
         activeOpacity={0.8}
         disabled={!isFormValid}
       >
-        <Text typography="titleLarge" color={theme.text.onPrimary}>
-          {t("auth.signUp")}
-        </Text>
+        {loading ? (
+          <ActivityIndicator color={theme.text.onPrimary} />
+        ) : (
+          <Text typography="titleLarge" color={theme.text.onPrimary}>
+            {t("auth.signUp")}
+          </Text>
+        )}
       </TouchableOpacity>
 
       <SocialButtons />
+
+      {/* Error Modal */}
+      <Modal
+        visible={errorModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.overlay}>
+          <View
+            style={[styles.modalCard, { backgroundColor: theme.background.bg }]}
+          >
+            <Text
+              typography="titleLarge"
+              color={theme.text.primary}
+              style={{ textAlign: "center" }}
+            >
+              {t("auth.signUpFailedTitle")}
+            </Text>
+            <Text
+              typography="bodyMedium"
+              color={theme.text.primary}
+              style={{ opacity: 0.6, textAlign: "center", marginTop: 8 }}
+            >
+              {t("auth.signUpFailedBody")}
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.modalButton,
+                { backgroundColor: theme.base.primary },
+              ]}
+              onPress={() => setErrorModal(false)}
+              activeOpacity={0.8}
+            >
+              <Text typography="titleMedium" color={theme.text.onPrimary}>
+                {t("auth.retry")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -219,17 +249,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 0.5,
     padding: 16,
-    gap: 4,
+    gap: 12,
     marginTop: 8,
-  },
-  divider: {
-    height: 0.5,
-    opacity: 0.6,
-    marginVertical: 4,
   },
   button: {
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: "center",
     marginTop: 4,
   },
@@ -237,6 +262,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
+    alignItems: "center",
+  },
+  modalCard: {
+    width: "100%",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    gap: 4,
+  },
+  modalButton: {
+    marginTop: 16,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 40,
     alignItems: "center",
   },
 });

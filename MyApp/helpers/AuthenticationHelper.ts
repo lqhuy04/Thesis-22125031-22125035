@@ -40,10 +40,10 @@ export const getProfile = async (): Promise<{
 // Sign In ------------------------------------------------------------
 
 export const signIn = async ({
-  username,
+  email,
   password,
 }: {
-  username: string;
+  email: string;
   password: string;
 }): Promise<{
   status: boolean;
@@ -53,7 +53,7 @@ export const signIn = async ({
     const result = await sendMessage("api/auth/login", {
       method: "POST",
       body: JSON.stringify({
-        email: username,
+        email: email,
         password: password,
       }),
     });

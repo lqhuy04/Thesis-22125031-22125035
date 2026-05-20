@@ -38,7 +38,7 @@ export const Input = ({
           {/* Label */}
           <Text
             typography="labelLarge"
-            style={{ opacity: 0.55, marginLeft: 2 }}
+            style={{ opacity: 0.8, marginLeft: 2 }}
             color={theme.text.primary}
           >
             {label}

@@ -28,12 +28,22 @@ const SignInComponent = () => {
   const [submittedUsername, setSubmittedUsername] = useState("");
 
   const onSubmit = (formData: any) => {
+    const email = formData?.username?.trim() ?? "";
+    const password = formData?.password?.trim() ?? "";
+
+    // Reset modals trước mỗi lần submit
+    setErrorModal(false);
+    setUnverifiedModal(false);
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !password || !emailRegex.test(email)) {
+      setErrorModal(true);
+      return;
+    }
+
     setLoading(true);
-    setSubmittedUsername(formData?.username ?? "");
-    signIn({
-      username: formData?.username,
-      password: formData?.password,
-    })
+    setSubmittedUsername(email);
+    signIn({ email, password })
       .then((response) => {
         if (response.status) {
           router.replace("/Tabs");
@@ -52,18 +62,6 @@ const SignInComponent = () => {
 
   return (
     <View style={styles.container}>
-      {/* Loading Modal */}
-      <Modal
-        visible={loading}
-        transparent
-        animationType="fade"
-        statusBarTranslucent
-      >
-        <View style={styles.overlay}>
-          <ActivityIndicator size="large" color={theme.base.primary} />
-        </View>
-      </Modal>
-
       {/* Unverified Account Modal */}
       <Modal
         visible={unverifiedModal}
@@ -76,13 +74,13 @@ const SignInComponent = () => {
             style={[styles.modalCard, { backgroundColor: theme.background.bg }]}
           >
             <Text typography="titleLarge" style={{ textAlign: "center" }}>
-              Tài khoản chưa xác thực
+              {t("auth.unverifiedTitle")}
             </Text>
             <Text
               typography="bodyMedium"
               style={{ opacity: 0.6, textAlign: "center", marginTop: 8 }}
             >
-              Vui lòng xác thực email trước khi đăng nhập.
+              {t("auth.unverifiedBody")}
             </Text>
             <TouchableOpacity
               style={[
@@ -103,7 +101,7 @@ const SignInComponent = () => {
               activeOpacity={0.8}
             >
               <Text typography="titleMedium" color={theme.text.onPrimary}>
-                Đi đến xác thực
+                {t("auth.goToVerify")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -121,14 +119,19 @@ const SignInComponent = () => {
           <View
             style={[styles.modalCard, { backgroundColor: theme.background.bg }]}
           >
-            <Text typography="titleLarge" style={{ textAlign: "center" }}>
-              Đăng nhập thất bại
+            <Text
+              typography="titleLarge"
+              color={theme.text.primary}
+              style={{ textAlign: "center" }}
+            >
+              {t("auth.signInFailedTitle")}
             </Text>
             <Text
               typography="bodyMedium"
+              color={theme.text.primary}
               style={{ opacity: 0.6, textAlign: "center", marginTop: 8 }}
             >
-              Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.
+              {t("auth.signInFailedBody")}
             </Text>
             <TouchableOpacity
               style={[
@@ -139,7 +142,7 @@ const SignInComponent = () => {
               activeOpacity={0.8}
             >
               <Text typography="titleMedium" color={theme.text.onPrimary}>
-                Thử lại
+                {t("auth.retry")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -150,8 +153,12 @@ const SignInComponent = () => {
       <Text typography="headlineSmall" color={theme.text.primary}>
         {t("auth.signIn")}
       </Text>
-      <Text typography="bodyMedium" style={{ opacity: 0.5, marginTop: 4 }}>
-        Chào mừng bạn trở lại 👋
+      <Text
+        typography="bodyLarge"
+        color={theme.text.primary}
+        style={{ opacity: 0.8, marginTop: 4 }}
+      >
+        {t("auth.welcome")}
       </Text>
 
       {/* Card */}
@@ -196,10 +203,15 @@ const SignInComponent = () => {
         onPress={handleSubmit(onSubmit)}
         style={[styles.button, { backgroundColor: theme.base.primary }]}
         activeOpacity={0.8}
+        disabled={loading}
       >
-        <Text typography="titleLarge" color={theme.text.onPrimary}>
-          {t("auth.signIn")}
-        </Text>
+        {loading ? (
+          <ActivityIndicator color={theme.text.onPrimary} />
+        ) : (
+          <Text typography="titleLarge" color={theme.text.onPrimary}>
+            {t("auth.signIn")}
+          </Text>
+        )}
       </TouchableOpacity>
 
       <SocialButtons />
@@ -217,12 +229,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 0.5,
     padding: 16,
-    gap: 4,
+    gap: 12,
     marginTop: 8,
   },
   button: {
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: "center",
     marginTop: 4,
   },
