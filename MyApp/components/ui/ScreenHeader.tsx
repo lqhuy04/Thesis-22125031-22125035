@@ -27,10 +27,18 @@ const ScreenHeader = ({ hiddenBack = false, title, onPressBack }: Props) => {
     >
       {!hiddenBack && (
         <TouchableOpacity
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 14,
+            backgroundColor: theme.border.default,
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 12,
+          }}
           onPress={() =>
             onPressBack != null ? onPressBack() : router.dismiss()
           }
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <MaterialIcons
             name="chevron-left"
@@ -41,7 +49,7 @@ const ScreenHeader = ({ hiddenBack = false, title, onPressBack }: Props) => {
         </TouchableOpacity>
       )}
 
-      <Text typography="titleMedium" color={theme.text.primary}>
+      <Text typography="titleLarge" color={theme.text.primary}>
         {title}
       </Text>
     </View>

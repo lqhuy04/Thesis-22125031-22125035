@@ -1,14 +1,10 @@
 import React, { useState, useCallback, useRef } from "react";
 import { useTheme } from "@/hooks/ThemeContext";
 import MarketIndicesSection from "@/components/market/MarketIndicesSection";
-import {
-  ScrollView,
-  View,
-  RefreshControl,
-  ActivityIndicator,
-} from "react-native";
+import { ScrollView, View, RefreshControl } from "react-native";
 import HomeAssetSection from "@/components/home/HomeAssetSection";
 import HomeNewSection from "@/components/home/HomeNewSection";
+import LinearGradient from "react-native-linear-gradient";
 
 const Home = () => {
   const { theme } = useTheme();
@@ -42,11 +38,49 @@ const Home = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          flex: 1,
         }}
         pointerEvents="none"
       >
-        <View style={{ flex: 1, backgroundColor: theme.base.primary }} />
+        {/* Gradient phía trên */}
+        <LinearGradient
+          colors={[
+            "#4B2FC9",
+            "#613DE4",
+            "#7B5CFF",
+            "#9D8CFF",
+            "#7B5CFF",
+            "#613DE4",
+            "#4B2FC9",
+          ]}
+          locations={[0, 0.1, 0.24, 0.5, 0.76, 0.82, 1]}
+          useAngle
+          angle={12}
+          angleCenter={{ x: 0.5, y: 0.5 }}
+          style={{
+            height: 280,
+          }}
+        />
+
+        {/* Gradient nối tiếp xuống dưới */}
+        <LinearGradient
+          colors={[
+            "#4B2FC9",
+            "#613DE4",
+            "#7B5CFF",
+            "#9D8CFF",
+            "#7B5CFF",
+            "#613DE4",
+            "#4B2FC9",
+          ]}
+          locations={[0, 0.1, 0.24, 0.5, 0.76, 0.82, 1]}
+          useAngle
+          angle={168}
+          angleCenter={{ x: 0.5, y: 0.5 }}
+          style={{
+            flex: 1,
+          }}
+        />
+
         <View style={{ flex: 1, backgroundColor: theme.background.surface }} />
       </View>
 
@@ -56,13 +90,6 @@ const Home = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {refreshing ? (
-          <ActivityIndicator
-            color={theme.text.onPrimary}
-            style={{ alignSelf: "center" }}
-          />
-        ) : null}
-
         <HomeAssetSection registerRefresh={registerRefresh} />
 
         <View
@@ -77,6 +104,7 @@ const Home = () => {
         >
           <MarketIndicesSection registerRefresh={registerRefresh} />
           <HomeNewSection registerRefresh={registerRefresh} />
+          <View style={{ height: 24 }} />
         </View>
       </ScrollView>
     </View>

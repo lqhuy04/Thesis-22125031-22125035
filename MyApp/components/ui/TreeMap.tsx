@@ -118,9 +118,8 @@ export const TreeMap: React.FC<Props> = ({
     null,
   );
 
-  const titleHeight = title ? 28 : 0;
   const chartW = width;
-  const chartH = height - titleHeight;
+  const chartH = height - 24;
 
   const perText = (item: CurrentPriceData) => {
     const sign = item.PerPriceChange > 0 ? "+" : "";
@@ -166,12 +165,9 @@ export const TreeMap: React.FC<Props> = ({
       {title && (
         <Text
           style={{
-            textAlign: "center",
-            fontWeight: "bold",
-            height: titleHeight,
-            lineHeight: titleHeight,
             fontSize: 16,
             color: theme.text?.primary,
+            marginTop: 8,
           }}
         >
           {title}

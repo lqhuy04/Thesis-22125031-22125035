@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { TouchableOpacity, View } from "react-native";
+import { Dimensions, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { getWatchlist, WatchItem } from "@/helpers/ProfileHelpers";
-import Entypo from "@expo/vector-icons/Entypo";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalization } from "@/hooks/LocalizationContext";
@@ -59,60 +58,60 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
 
   const insets = useSafeAreaInsets();
 
+  const screenWidth = Dimensions.get("window").width;
+
   return (
     <View
       style={{
         alignItems: "center",
-        justifyContent: "center",
-        paddingBottom: 48,
-        paddingTop: 36 + insets.top,
-        backgroundColor: theme.base.primary,
+        height: 280,
       }}
     >
+      <View style={{ height: 20 + insets.top }} />
+
       <TouchableOpacity
         onPress={() => router.push("/WatchListStock")}
+        activeOpacity={1}
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginBottom: 12,
+          borderRadius: 12,
+          backgroundColor: theme.background.bg + "36",
+          borderWidth: 1,
+          borderColor: theme.background.bg,
+          padding: 24,
+          width: screenWidth - 48,
         }}
       >
-        <Text typography="titleMedium" color={theme.text.onPrimary}>
+        <Text typography="titleMedium" color={theme.text.primary}>
           {t("home.asset")}
         </Text>
-        <Entypo
-          name="chevron-small-right"
-          size={20}
-          color={theme.text.onPrimary}
-        />
-      </TouchableOpacity>
 
-      <Text
-        typography="headlineLarge"
-        color={theme.text.onPrimary}
-        style={{ marginBottom: 12 }}
-      >
-        {totalAsset.toLocaleString("vi-VN")} đ
-      </Text>
-
-      <Text typography="bodyMedium" color={theme.text.onPrimary}>
-        {t("home.yourInvestment")}
         <Text
-          typography="labelLarge"
-          color={
-            totalPnl > 0
-              ? theme.base.success
-              : totalPnl < 0
-                ? theme.base.error
-                : theme.base.warning
-          }
-          style={{ fontWeight: "bold" }}
+          typography="headlineLarge"
+          style={{ marginVertical: 8, fontSize: 36, lineHeight: 48 }}
+          color={theme.text.primary}
         >
-          {totalPnl > 0 ? "+" : ""}
-          {totalPnl.toLocaleString("vi-VN")} đ ({totalPnl > 0 ? "+" : ""}
-          {totalPnlPct.toFixed(2)}%)
+          {totalAsset.toLocaleString("vi-VN")} đ
         </Text>
-      </Text>
+
+        <Text typography="bodyMedium" color={theme.text.primary}>
+          {t("home.yourInvestment")}
+          <Text
+            typography="labelLarge"
+            color={
+              totalPnl > 0
+                ? theme.base.success
+                : totalPnl < 0
+                  ? theme.base.error
+                  : theme.base.warning
+            }
+            style={{ fontWeight: "bold" }}
+          >
+            {totalPnl > 0 ? "+" : ""}
+            {totalPnl.toLocaleString("vi-VN")} đ ({totalPnl > 0 ? "+" : ""}
+            {totalPnlPct.toFixed(2)}%)
+          </Text>
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };

@@ -91,6 +91,7 @@ const Market = () => {
       >
         <MarketIndicesSection />
         <IndustryMovementSection />
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       <ScrollView
@@ -104,7 +105,7 @@ const Market = () => {
         <CategoriesNewsSection />
         <MacroEcomNewsSection />
         <AllNewsSection />
-        <View style={{ height: 12 }} />
+        <View style={{ height: 24 }} />
       </ScrollView>
     </View>
   );

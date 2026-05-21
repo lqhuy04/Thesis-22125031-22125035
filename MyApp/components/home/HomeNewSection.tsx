@@ -79,10 +79,7 @@ const NewsItemSkeleton = () => {
         borderBottomColor: theme.text.primary + "10",
       }}
     >
-      {/* Thumbnail */}
       <Box w={80} h={80} />
-
-      {/* Text lines */}
       <View style={{ flex: 1, justifyContent: "center", gap: 6 }}>
         <Box w="90%" h={13} />
         <Box w="70%" h={13} />
@@ -97,6 +94,9 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
   const [articles, setArticles] = useState<New[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const cache = useRef<Record<string, New[]>>({});
+  const abortRef = useRef<AbortController | null>(null);
 
   const realEstateId = "afb4b18d-dc88-4ed0-b17b-28792868b460";
   const bankId = "1fbbad10-a283-47e8-b126-8360ffa225ae";
@@ -115,33 +115,67 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
     categories[0].id,
   );
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      let result;
-      if (chosenCategory === "business") {
-        result = await getBusinessNews(3);
-      } else if (chosenCategory === "macro") {
-        result = await getMacroEcomNews(3);
-      } else if (chosenCategory === "bank") {
-        result = await getNewsByCategoryId(bankId, 3);
-      } else {
-        result = await getNewsByCategoryId(realEstateId, 3);
+  const fetchData = useCallback(
+    async (forceRefresh = false) => {
+      const key = chosenCategory;
+
+      // Cache hit — chỉ skip nếu không phải force refresh
+      if (!forceRefresh && cache.current[key]) {
+        setArticles(cache.current[key]);
+        setLoading(false);
+        return;
       }
 
-      if (result?.status) {
-        setArticles(result.data);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [chosenCategory]);
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
+      setLoading(true);
+
+      try {
+        let result;
+        if (key === "business") {
+          result = await getBusinessNews(3);
+        } else if (key === "macro") {
+          result = await getMacroEcomNews(3);
+        } else if (key === "bank") {
+          result = await getNewsByCategoryId(bankId, 3);
+        } else {
+          result = await getNewsByCategoryId(realEstateId, 3);
+        }
+
+        if (controller.signal.aborted) return;
+
+        if (result?.status) {
+          cache.current[key] = result.data;
+          setArticles(result.data);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    },
+    [chosenCategory],
+  );
+
+  // Đổi category — dùng cache nếu có
   useEffect(() => {
-    fetchData();
-    const unregister = registerRefresh?.(fetchData);
+    fetchData(false);
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, [fetchData]);
+
+  // Pull-to-refresh — luôn fetch mới và invalidate cache
+  useEffect(() => {
+    const refreshFn = async () => {
+      delete cache.current[chosenCategory];
+      await fetchData(true);
+    };
+    const unregister = registerRefresh?.(refreshFn);
     return () => unregister?.();
-  }, [fetchData, registerRefresh]);
+  }, [registerRefresh, fetchData, chosenCategory]);
 
   const onViewAll = useCallback(() => {
     const params =
@@ -181,7 +215,7 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
   return (
     <View style={{ marginHorizontal: 12, marginTop: 24 }}>
       <Text
-        typography="titleMedium"
+        typography="titleLarge"
         color={theme.text.primary}
         style={{ marginBottom: 12 }}
       >
@@ -208,19 +242,24 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
               style={{
                 backgroundColor:
                   chosenCategory === item.id
-                    ? theme.base.primary
-                    : theme.background.primarySurface,
-                paddingVertical: 6,
+                    ? theme.base.primary + "20"
+                    : theme.border.default + "80",
+                paddingVertical: 2,
                 paddingHorizontal: 12,
                 borderRadius: 16,
                 marginRight: 8,
+                borderWidth: 2,
+                borderColor:
+                  chosenCategory === item.id
+                    ? theme.base.primary + "60"
+                    : theme.border.default + "00",
               }}
             >
               <Text
-                typography="labelLarge"
+                typography="bodyMedium"
                 color={
                   chosenCategory === item.id
-                    ? theme.text.onPrimary
+                    ? theme.base.primary
                     : theme.text.primary
                 }
               >
@@ -256,7 +295,7 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
 
         <TouchableOpacity onPress={onViewAll} style={{ marginTop: 8 }}>
           <Text
-            typography="labelLarge"
+            typography="titleMedium"
             color={theme.base.primary}
             style={{ alignSelf: "center" }}
           >

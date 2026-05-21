@@ -16,18 +16,26 @@ import Chatbot from "./Chatbot";
 import { Text } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import WatchListStock from "./WatchListStock";
+import Octicons from "@expo/vector-icons/Octicons";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const TAB_COUNT = 4;
+const FEATURED_SIZE = 48;
+const TAB_BAR_HEIGHT = 60;
+const TAB_COUNT = 5;
 const TAB_WIDTH = SCREEN_WIDTH / TAB_COUNT;
 const INDICATOR_WIDTH = 48;
 
 const Tabs = () => {
   const { t } = useLocalization();
+  const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
+  const pagerRef = useRef<PagerView>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
   const TABS = [
     {
-      name: "Home",
+      name: "Overview",
       label: t("tabs.home"),
       icon: "home-outline" as const,
       component: <Home />,
@@ -39,26 +47,26 @@ const Tabs = () => {
       component: <Market />,
     },
     {
+      name: "Chatbot",
+      label: t("tabs.chatbot"),
+      icon: "chatbubble-ellipses-outline" as const,
+      component: <Chatbot />,
+      featured: true,
+    },
+    {
+      name: "Assets",
+      label: t("tabs.assets"),
+      icon: "wallet-outline" as const,
+      component: <WatchListStock />,
+    },
+    {
       name: "Profile",
       label: t("tabs.profile"),
       icon: "person-outline" as const,
       component: <Profile />,
     },
-    {
-      name: "Chatbot",
-      label: t("tabs.chatbot"),
-      icon: "chatbubble-ellipses-outline" as const,
-      component: <Chatbot />,
-    },
   ];
 
-  const insets = useSafeAreaInsets();
-
-  const { theme } = useTheme();
-  const pagerRef = useRef<PagerView>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  // Animated value: 0 → TAB_COUNT-1
   const indicatorAnim = useRef(new Animated.Value(0)).current;
 
   const animateTo = (index: number) => {
@@ -76,12 +84,6 @@ const Tabs = () => {
     animateTo(index);
   };
 
-  const handlePageSelected = (index: number) => {
-    setActiveIndex(index);
-    animateTo(index);
-  };
-
-  // Translate X: center of each tab minus half indicator width
   const translateX = indicatorAnim.interpolate({
     inputRange: TABS.map((_, i) => i),
     outputRange: TABS.map(
@@ -95,7 +97,11 @@ const Tabs = () => {
         ref={pagerRef}
         style={{ flex: 1 }}
         initialPage={0}
-        onPageSelected={(e) => handlePageSelected(e.nativeEvent.position)}
+        onPageSelected={(e) => {
+          const idx = e.nativeEvent.position;
+          setActiveIndex(idx);
+          animateTo(idx);
+        }}
         overdrag={false}
       >
         {TABS.map((tab) => (
@@ -108,21 +114,22 @@ const Tabs = () => {
       {/* Tab Bar */}
       <View
         style={[
-          styles.tabBar,
+          styles.tabBarWrapper,
           {
-            backgroundColor: theme.background.bg,
-            borderTopColor: theme.border.default,
+            height: TAB_BAR_HEIGHT + insets.bottom,
             paddingBottom: insets.bottom,
-            height: 60 + insets.bottom, // tự động mở rộng
+            backgroundColor: theme.background.bg,
+            zIndex: 1,
           },
         ]}
       >
-        {/* Animated indicator line */}
+        {/* Animated indicator — transparent khi ở Chatbot (index 2) */}
         <Animated.View
           style={[
             styles.indicator,
             {
-              backgroundColor: theme.base.primary,
+              backgroundColor:
+                activeIndex === 2 ? "transparent" : theme.base.primary,
               transform: [{ translateX }],
             },
           ]}
@@ -130,6 +137,12 @@ const Tabs = () => {
 
         {TABS.map((tab, index) => {
           const focused = activeIndex === index;
+          const isFeatured = !!tab.featured;
+
+          if (isFeatured) {
+            return <View key={tab.name} style={{ flex: 1 }} />;
+          }
+
           const color = focused
             ? theme.base.primary
             : theme.text.primary + "80";
@@ -142,23 +155,81 @@ const Tabs = () => {
               activeOpacity={0.7}
             >
               <Ionicons name={tab.icon} size={24} color={color} />
-              <Text typography="labelLarge" color={color}>
+              <Text typography="bodySmall" color={color}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
           );
         })}
       </View>
+
+      {/* Featured button nổi */}
+      <View
+        style={{
+          position: "absolute",
+          bottom: insets.bottom,
+          zIndex: 2,
+          alignSelf: "center",
+        }}
+      >
+        <View
+          style={{
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: theme.background.bg,
+            marginBottom: -2,
+          }}
+        >
+          <TouchableOpacity
+            style={styles.featuredWrapper}
+            onPress={() => handleTabPress(2)}
+            activeOpacity={0.85}
+          >
+            <View
+              style={[
+                styles.featuredCircle,
+                { backgroundColor: theme.base.primary },
+              ]}
+            >
+              <Octicons
+                name="dependabot"
+                size={32}
+                color={theme.text.onPrimary}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View
+          style={{
+            paddingVertical: 1,
+            paddingHorizontal: 4,
+            borderRadius: 8,
+            backgroundColor: theme.base.primary,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <Text typography="bodySmall" color={theme.text.onPrimary}>
+            {TABS[2].label}
+          </Text>
+        </View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  tabBar: {
+  tabBarWrapper: {
     flexDirection: "row",
-    paddingTop: 10,
-    borderTopWidth: 1,
-    position: "relative",
+    alignItems: "center",
+    overflow: "visible",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 20,
   },
   indicator: {
     position: "absolute",
@@ -172,6 +243,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 4,
+    marginTop: 12,
+  },
+  featuredWrapper: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 0,
+    marginTop: 2,
+  },
+  featuredCircle: {
+    width: FEATURED_SIZE,
+    height: FEATURED_SIZE,
+    borderRadius: FEATURED_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

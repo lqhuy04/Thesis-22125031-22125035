@@ -31,12 +31,12 @@ const SkeletonCard = () => {
       Animated.sequence([
         Animated.timing(shimmer, {
           toValue: 1,
-          duration: 800,
+          duration: 900,
           useNativeDriver: true,
         }),
         Animated.timing(shimmer, {
           toValue: 0,
-          duration: 800,
+          duration: 900,
           useNativeDriver: true,
         }),
       ]),
@@ -45,7 +45,7 @@ const SkeletonCard = () => {
 
   const opacity = shimmer.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.4, 1],
+    outputRange: [0.4, 0.85],
   });
 
   const Box = ({
@@ -63,7 +63,7 @@ const SkeletonCard = () => {
         height: h,
         marginTop: mt,
         borderRadius: 4,
-        backgroundColor: theme.text.primary + "20",
+        backgroundColor: theme.border.default,
         opacity,
       }}
     />
@@ -75,29 +75,36 @@ const SkeletonCard = () => {
         width: CARD_WIDTH,
         marginRight: CARD_GAP,
         marginTop: 12,
-        borderRadius: 8,
-        backgroundColor: theme.base.primary + "12",
-        borderWidth: 1,
-        borderColor: theme.base.primary + "40",
+        borderRadius: 12,
+        backgroundColor: theme.background.bg,
         padding: 12,
         paddingBottom: 6,
       }}
     >
+      {/* IndexName */}
       <Box w="50%" h={14} />
+
+      {/* IndexValue + Change badge + RatioChange */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          marginTop: 8,
+          marginTop: 4,
           gap: 8,
         }}
       >
-        <Box w="30%" h={22} />
-        <Box w="18%" h={20} />
-        <Box w="18%" h={14} />
+        <Box w="35%" h={24} />
+        <Box w="20%" h={20} />
+        <Box w="20%" h={14} />
       </View>
+
+      {/* TotalVol | TotalVal */}
       <Box w="80%" h={12} mt={8} />
+
+      {/* Progress bar */}
       <Box w="100%" h={4} mt={10} />
+
+      {/* Advances / NoChanges / Declines */}
       <View
         style={{
           flexDirection: "row",
@@ -139,7 +146,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
 
   return (
     <View style={{ marginLeft: 12 }}>
-      <Text typography="titleMedium" color={theme.text.primary}>
+      <Text typography="titleLarge" color={theme.text.primary}>
         {t("home.marketToday")}
       </Text>
 
@@ -172,9 +179,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                 marginRight: CARD_GAP,
                 marginTop: 12,
                 borderRadius: 12,
-                backgroundColor: theme.background.primarySurface,
-                borderWidth: 1,
-                borderColor: theme.base.primary,
+                backgroundColor: theme.background.bg,
                 padding: 12,
                 paddingBottom: 6,
               }}

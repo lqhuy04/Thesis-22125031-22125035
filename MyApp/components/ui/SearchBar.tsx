@@ -36,6 +36,7 @@ export const SearchBar = ({
           marginTop: 4,
           width: "100%",
           color: theme.text.primary,
+          backgroundColor: theme.background.bg,
         }}
         value={value}
         onChangeText={onChange}

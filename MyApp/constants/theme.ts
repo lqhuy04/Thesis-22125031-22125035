@@ -19,7 +19,7 @@ export const lightTheme = {
 
   background: {
     bg: "#FBFCFE",
-    surface: "#F5F7FC",
+    surface: "#f1f1f1",
     primarySurface: "#613de430",
   },
 

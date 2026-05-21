@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Dimensions,
@@ -13,6 +13,7 @@ import { getIndustryMovement } from "@/helpers/MarketHelpers";
 import { Text } from "../ui/Text";
 import { router } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import Entypo from "@expo/vector-icons/Entypo";
 
 const IndustryMovementSection = () => {
   const { theme } = useTheme();
@@ -21,6 +22,9 @@ const IndustryMovementSection = () => {
   const [data, setData] = useState<CurrentPriceData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [chosenIndex, setChosenIndex] = useState<number>(0);
+
+  const cache = useRef<Record<string, CurrentPriceData[]>>({});
+  const abortRef = useRef<AbortController | null>(null);
 
   const categories = useMemo(
     () => [
@@ -37,42 +41,84 @@ const IndustryMovementSection = () => {
   );
 
   useEffect(() => {
+    const key = categories[chosenIndex].value;
+
+    if (cache.current[key]) {
+      setData(cache.current[key]);
+      return;
+    }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
-    getIndustryMovement(categories[chosenIndex].value, 10).then((result) => {
+    setData([]);
+
+    getIndustryMovement(key, 10).then((result) => {
+      if (controller.signal.aborted) return;
+
       if (result?.status) {
-        setData(result?.data);
+        cache.current[key] = result.data;
+        setData(result.data);
       }
       setLoading(false);
     });
+
+    return () => {
+      controller.abort();
+    };
   }, [categories, chosenIndex]);
 
   return (
-    <View style={{ marginTop: 24, marginHorizontal: 12 }}>
+    <View
+      style={{
+        marginTop: 24,
+        marginHorizontal: 12,
+        backgroundColor: theme.background.bg,
+        padding: 12,
+        borderRadius: 12,
+      }}
+    >
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "space-between",
           marginBottom: 12,
         }}
       >
-        <Text typography="titleMedium" color={theme.text.primary}>
+        <Text
+          typography="titleLarge"
+          color={theme.text.primary}
+          style={{ marginRight: 8 }}
+        >
           {t("home.industryMovement")}
         </Text>
-        <Text
-          typography="titleMedium"
-          color={theme.base.primary}
+
+        <TouchableOpacity
           onPress={() => {
             router.push({
               pathname: "/IndustryMovement",
               params: {
-                industry: categories[chosenIndex].label,
+                industry: categories[chosenIndex].value,
               },
             });
           }}
+          style={{
+            height: 20,
+            width: 20,
+            borderRadius: 10,
+            backgroundColor: theme.border.default,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          {t("home.viewAll")}
-        </Text>
+          <Entypo
+            name="chevron-small-right"
+            size={20}
+            color={theme.text.primary}
+          />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -90,23 +136,27 @@ const IndustryMovementSection = () => {
               style={{
                 backgroundColor:
                   chosenIndex === index
-                    ? theme.base.primary
-                    : theme.background.primarySurface,
-                paddingVertical: 6,
+                    ? theme.base.primary + "20"
+                    : theme.border.default + "80",
+                paddingVertical: 2,
                 paddingHorizontal: 12,
                 borderRadius: 16,
                 marginRight: 8,
-                marginBottom: 12,
+                borderWidth: 2,
+                borderColor:
+                  chosenIndex === index
+                    ? theme.base.primary + "60"
+                    : theme.border.default + "00",
               }}
               onPress={() => {
                 setChosenIndex(index);
               }}
             >
               <Text
-                typography="labelLarge"
+                typography="bodyMedium"
                 color={
                   chosenIndex === index
-                    ? theme.text.onPrimary
+                    ? theme.base.primary
                     : theme.text.primary
                 }
               >
@@ -121,7 +171,7 @@ const IndustryMovementSection = () => {
       {loading ? (
         <View
           style={{
-            height: 300,
+            height: 360,
             alignItems: "center",
             justifyContent: "center",
           }}
@@ -131,7 +181,7 @@ const IndustryMovementSection = () => {
       ) : (
         <TreeMap
           data={data}
-          width={screenWidth - 24}
+          width={screenWidth - 48}
           height={360}
           title={categories[chosenIndex].label}
           padding={1}

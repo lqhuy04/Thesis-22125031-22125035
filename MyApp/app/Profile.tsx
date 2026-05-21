@@ -135,17 +135,6 @@ const Profile = () => {
 
   const managementItems: MenuItemProps[] = [
     {
-      label: t("profile.assetManagement"),
-      icon: (
-        <MaterialIcons
-          name="attach-money"
-          size={20}
-          color={theme.base.primary}
-        />
-      ),
-      onPress: () => router.push("/WatchListStock"),
-    },
-    {
       label: t("profile.riskAppetite"),
       icon: (
         <Ionicons

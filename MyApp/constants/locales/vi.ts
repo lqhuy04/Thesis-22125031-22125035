@@ -50,6 +50,7 @@ export default {
     market: "Thị trường",
     profile: "Hồ sơ",
     chatbot: "Chatbot",
+    assets: "Tài sản",
   },
   home: {
     asset: "Tài sản ròng",

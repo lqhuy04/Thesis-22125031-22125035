@@ -28,7 +28,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
     >
       <Image
         source={{ uri: newItem.thumbnail }}
-        style={{ width: 64, height: 64, borderRadius: 8, marginRight: 12 }}
+        style={{ width: 92, height: 64, borderRadius: 8, marginRight: 12 }}
       />
 
       <View style={{ flex: 1 }}>

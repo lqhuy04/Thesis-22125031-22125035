@@ -54,6 +54,7 @@ export default {
     market: "Market",
     profile: "Profile",
     chatbot: "Chatbot",
+    assets: "Assets",
   },
   home: {
     asset: "Net Assets",
