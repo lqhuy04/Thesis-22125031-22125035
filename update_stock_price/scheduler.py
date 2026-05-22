@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 # Capture subprocess output to files for debugging
 ws_1m_log = open("ws_1m.log", "a")
 ws_1d_log = open("ws_1d.log", "a")
+ws_index_log = open("ws_index.log", "a")
 
 VN_TZ = timezone(timedelta(hours=7))
 
@@ -37,6 +38,7 @@ TRADING_DAYS = {0, 1, 2, 3, 4}
 
 ws_1m_process:          subprocess.Popen | None = None
 ws_1d_process:          subprocess.Popen | None = None
+ws_index_process:       subprocess.Popen | None = None
 standardize_done_today: str = ""   # "YYYY-MM-DD" của ngày đã chạy standardize
 
 
@@ -57,7 +59,7 @@ def hm(dt: datetime) -> tuple[int, int]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def start_websockets():
-    global ws_1m_process, ws_1d_process
+    global ws_1m_process, ws_1d_process, ws_index_process
 
     if not ws_1m_process or ws_1m_process.poll() is not None:
         if ws_1m_process and ws_1m_process.poll() is not None:
@@ -83,11 +85,23 @@ def start_websockets():
             bufsize=1,
         )
 
+    if not ws_index_process or ws_index_process.poll() is not None:
+        if ws_index_process and ws_index_process.poll() is not None:
+            logger.warning(f"⚠ WebSocket index crashed with return code {ws_index_process.returncode}")
+        logger.info("▶ Starting websocket_market_index.py")
+        ws_index_process = subprocess.Popen(
+            [sys.executable, "websocket_market_index.py"],
+            stdout=ws_index_log,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+
 
 def stop_websockets():
-    global ws_1m_process, ws_1d_process
+    global ws_1m_process, ws_1d_process, ws_index_process
 
-    for name, proc in [("1m", ws_1m_process), ("1d", ws_1d_process)]:
+    for name, proc in [("1m", ws_1m_process), ("1d", ws_1d_process), ("index", ws_index_process)]:
         if proc and proc.poll() is None:
             logger.info(f"⏹ Stopping WebSocket {name} process")
             proc.terminate()
@@ -98,6 +112,7 @@ def stop_websockets():
 
     ws_1m_process = None
     ws_1d_process = None
+    ws_index_process = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
