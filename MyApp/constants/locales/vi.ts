@@ -123,6 +123,7 @@ export default {
   common: {
     searchPlaceholder: "Tìm kiếm theo mã chứng khoán, tên công ty...",
     cancel: "Huỷ",
+    searchHistory: "Lịch sử tìm kiếm",
   },
   changePass: {
     titleChange: "Đổi mật khẩu",

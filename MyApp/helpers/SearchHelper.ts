@@ -1,5 +1,4 @@
 import { sendMessage } from "./api/ApiClients";
-import * as SecureStore from "expo-secure-store";
 
 export type SearchStockItem = {
   stock_id: string;
@@ -30,33 +29,44 @@ export const searchStocks = async (
   }
 };
 
-const HISTORY_KEY = "search_history";
+// Search History
+export const saveSearchHistory = async (
+  symbol: string,
+): Promise<{
+  status: boolean;
+}> => {
+  try {
+    const result = await sendMessage("api/search-history", {
+      method: "POST",
+      body: JSON.stringify({ symbol }),
+    });
 
-export const getSearchHistory = async (): Promise<SearchStockItem[]> => {
-  const raw = await SecureStore.getItemAsync(HISTORY_KEY);
-  return raw ? JSON.parse(raw) : [];
+    const { errorCode } = result || {};
+    return { status: errorCode === 0 };
+  } catch (error) {
+    console.error(error);
+    return { status: false };
+  }
 };
 
-export const addToSearchHistory = async (item: SearchStockItem) => {
-  const history = await getSearchHistory();
-
-  // Nếu trùng mã thì không lưu
-  const isDuplicate = history.some((h) => h.symbol === item.symbol);
-  if (isDuplicate) return;
-
-  // Nếu đã đủ 5 thì bỏ mã cũ nhất (cuối mảng)
-  const trimmed = history.length >= 5 ? history.slice(0, 4) : history;
-
-  const updated = [item, ...trimmed];
-  await SecureStore.setItemAsync(HISTORY_KEY, JSON.stringify(updated));
+export type SearchHistoryItem = {
+  symbol: string;
+  current_price: number;
+  per_price_change: number;
 };
 
-export const removeFromSearchHistory = async (symbol: string) => {
-  const history = await getSearchHistory();
-  const updated = history.filter((h) => h.symbol !== symbol);
-  await SecureStore.setItemAsync(HISTORY_KEY, JSON.stringify(updated));
-};
+export const getSearchHistory = async (): Promise<SearchHistoryItem[]> => {
+  try {
+    const result = await sendMessage("api/search-history");
 
-export const clearSearchHistory = async () => {
-  await SecureStore.deleteItemAsync(HISTORY_KEY);
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return data as SearchHistoryItem[];
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };

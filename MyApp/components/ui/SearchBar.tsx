@@ -9,8 +9,6 @@ type SearchBarProps = {
   onChange: (text: string) => void;
   onSearchPress?: () => void;
   autoFocus?: boolean;
-  onFocus?: () => void;
-  onBlur?: () => void;
 };
 
 export const SearchBar = ({
@@ -18,62 +16,62 @@ export const SearchBar = ({
   onChange,
   onSearchPress,
   autoFocus = false,
-  onFocus,
-  onBlur,
 }: SearchBarProps) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
 
   return (
     <View>
-      {/* Kính lúp bên trái */}
-      <Ionicons
-        name="search-outline"
-        size={20}
-        color={theme.text.primary}
-        style={{ position: "absolute", left: 12, top: 12, zIndex: 1 }}
-      />
+      <View>
+        <TextInput
+          style={{
+            borderWidth: 1,
+            borderColor: theme.border.default,
+            borderRadius: 8,
+            paddingVertical: 10,
+            paddingLeft: 44,
+            width: "100%",
+            color: theme.text.primary,
+            backgroundColor: theme.background.bg,
+          }}
+          value={value}
+          onChangeText={onChange}
+          autoCapitalize="none"
+          returnKeyType="search"
+          placeholder={t("common.searchPlaceholder")}
+          placeholderTextColor={theme.text.primary}
+          onBlur={() => {
+            if (value.trim() !== "") onSearchPress?.();
+          }}
+          autoFocus={autoFocus}
+        />
 
-      <TextInput
-        style={{
-          borderWidth: 1,
-          borderColor: theme.border.default,
-          borderRadius: 8,
-          paddingVertical: 10,
-          paddingLeft: 44,
-          paddingRight: value ? 44 : 16,
-          marginTop: 4,
-          width: "100%",
-          color: theme.text.primary,
-          backgroundColor: theme.background.bg,
-        }}
-        value={value}
-        onChangeText={onChange}
-        autoCapitalize="none"
-        returnKeyType="search"
-        placeholder={t("common.searchPlaceholder")}
-        placeholderTextColor={theme.text.primary}
-        onBlur={() => {
-          if (value.trim() !== "") onSearchPress?.();
-          onBlur?.();
-        }}
-        onFocus={onFocus}
-        autoFocus={autoFocus}
-      />
+        {/* Kính lúp bên trái */}
+        <Ionicons
+          name="search-outline"
+          size={20}
+          color={theme.text.primary}
+          style={{ position: "absolute", left: 12, bottom: 10, zIndex: 1 }}
+        />
 
-      {/* Nút xoá bên phải — chỉ hiện khi có text */}
-      {value ? (
-        <TouchableOpacity
-          onPress={() => onChange("")}
-          style={{ position: "absolute", right: 12, top: 12 }}
-        >
-          <Ionicons
-            name="close-circle"
-            size={20}
-            color={theme.text.primary + "80"}
-          />
-        </TouchableOpacity>
-      ) : null}
+        {/* Nút xoá bên phải — chỉ hiện khi có text */}
+        {value ? (
+          <TouchableOpacity
+            onPress={() => onChange("")}
+            style={{
+              position: "absolute",
+              right: 12,
+              bottom: 10,
+            }}
+          >
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={theme.text.primary + "80"}
+            />
+          </TouchableOpacity>
+        ) : null}
+      </View>
     </View>
   );
 };

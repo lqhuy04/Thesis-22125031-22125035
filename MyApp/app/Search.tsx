@@ -1,13 +1,41 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Animated, FlatList, TouchableOpacity, View } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { SearchBar } from "@/components/ui/SearchBar";
 import SearchResultItem from "@/components/ui/SearchResultItem";
-import { SearchStockItem, searchStocks } from "@/helpers/SearchHelper";
+import {
+  getSearchHistory,
+  saveSearchHistory,
+  SearchHistoryItem,
+  SearchStockItem,
+  searchStocks,
+} from "@/helpers/SearchHelper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Text } from "@/components/ui/Text";
 import { useLocalization } from "@/hooks/LocalizationContext";
+
+function chunkArray<T>(arr: T[], size: number = 3): (T | any)[][] {
+  const result: (T | any)[][] = [];
+
+  for (let i = 0; i < arr.length; i += size) {
+    const chunk: (T | any)[] = arr.slice(i, i + size);
+
+    while (chunk.length < size) {
+      chunk.push({});
+    }
+
+    result.push(chunk);
+  }
+
+  return result;
+}
 
 const useShimmer = () => {
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -109,6 +137,62 @@ const SearchResultSkeleton = ({
   );
 };
 
+const SearchHistorySkeleton = () => {
+  const { theme } = useTheme();
+  const opacity = useShimmer();
+
+  return (
+    <View>
+      <View
+        style={{
+          flexWrap: "wrap",
+          flexDirection: "row",
+          marginHorizontal: 12,
+          gap: 8,
+          marginTop: 12,
+        }}
+      >
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Animated.View
+            key={i}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              height: 52,
+              borderRadius: 8,
+              backgroundColor: theme.background.bg,
+              opacity,
+            }}
+          />
+        ))}
+      </View>
+      <View
+        style={{
+          flexWrap: "wrap",
+          flexDirection: "row",
+          marginHorizontal: 12,
+          gap: 8,
+          marginTop: 12,
+        }}
+      >
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Animated.View
+            key={i}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              height: 52,
+              borderRadius: 8,
+              backgroundColor: theme.background.bg,
+              opacity,
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  );
+};
+
 const SearchResultSkeletonList = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
@@ -152,11 +236,28 @@ const SearchResultSkeletonList = () => {
 const Search = () => {
   const { t } = useLocalization();
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [text, setText] = useState("");
   const [searchResults, setSearchResults] = useState<SearchStockItem[]>([]);
-  const [isFocused, setIsFocused] = useState(false);
-  const insets = useSafeAreaInsets();
+  const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
+
+  const showHistory = useMemo(() => {
+    return searchResults.length === 0 && !text;
+  }, [searchResults.length, text]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setHistoryLoading(true);
+      getSearchHistory().then((history) => {
+        setSearchHistory(history);
+        setHistoryLoading(false);
+      });
+    }, []),
+  );
+
+  const distributedHistories = chunkArray(searchHistory, 3);
 
   const onSearch = () => {
     setLoading(true);
@@ -167,14 +268,12 @@ const Search = () => {
   };
 
   const handleSelectItem = useCallback(async (item: SearchStockItem) => {
+    await saveSearchHistory(item.symbol);
     router.push({
       pathname: "/Detail",
       params: { data: item.symbol },
     });
   }, []);
-
-  const handleFocus = () => setIsFocused(true);
-  const handleBlur = () => setIsFocused(false);
 
   return (
     <View style={{ backgroundColor: theme.background.surface, flex: 1 }}>
@@ -184,7 +283,7 @@ const Search = () => {
           paddingRight: 12,
           paddingLeft: 12,
           backgroundColor: theme.background.bg,
-          paddingTop: insets.top,
+          paddingTop: insets.top + 12,
           paddingBottom: 12,
           flexDirection: "row",
           alignItems: "center",
@@ -204,8 +303,6 @@ const Search = () => {
             }}
             onSearchPress={onSearch}
             autoFocus={true}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
           />
         </View>
 
@@ -218,6 +315,97 @@ const Search = () => {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {showHistory &&
+        (historyLoading ? (
+          <>
+            <Text
+              typography="titleMedium"
+              color={theme.text.primary}
+              style={{ marginLeft: 12, marginTop: 12 }}
+            >
+              {t("common.searchHistory")}
+            </Text>
+            <SearchHistorySkeleton />
+          </>
+        ) : (
+          <View>
+            <Text
+              typography="titleMedium"
+              color={theme.text.primary}
+              style={{ marginLeft: 12, marginTop: 12 }}
+            >
+              {t("common.searchHistory")}
+            </Text>
+
+            <View>
+              {distributedHistories.map((item, index) => (
+                <View
+                  key={index.toString()}
+                  style={{
+                    flexWrap: "wrap",
+                    flexDirection: "row",
+                    marginHorizontal: 12,
+                    marginTop: 12,
+                    gap: 8,
+                  }}
+                >
+                  {item.map((subItem, subIndex) =>
+                    subItem?.symbol != null ? (
+                      <TouchableOpacity
+                        onPress={() =>
+                          router.push({
+                            pathname: "/Detail",
+                            params: { data: subItem?.symbol },
+                          })
+                        }
+                        key={subIndex.toString() + index.toString()}
+                        style={{
+                          backgroundColor: theme.background.bg,
+                          padding: 10,
+                          borderRadius: 8,
+                          flex: 1,
+                        }}
+                      >
+                        <Text
+                          color={theme.text.primary}
+                          typography="titleSmall"
+                          style={{ marginBottom: 4 }}
+                        >
+                          {subItem?.symbol}
+                        </Text>
+
+                        <Text
+                          color={
+                            subItem?.per_price_change > 0
+                              ? theme.base.success
+                              : subItem?.per_price_change < 0
+                                ? theme.base.error
+                                : theme.base.warning
+                          }
+                          typography="bodySmall"
+                        >
+                          {subItem?.current_price}{" "}
+                          {subItem?.per_price_change >= 0 ? "+" : ""}
+                          {subItem?.per_price_change}%
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        key={subIndex.toString() + index.toString()}
+                        style={{
+                          padding: 10,
+                          borderRadius: 8,
+                          flex: 1,
+                        }}
+                      ></TouchableOpacity>
+                    ),
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        ))}
 
       {loading ? (
         <SearchResultSkeletonList />

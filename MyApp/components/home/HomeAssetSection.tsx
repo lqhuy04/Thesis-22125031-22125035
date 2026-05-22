@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Dimensions, TouchableOpacity, View } from "react-native";
+import { Dimensions, Platform, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { getWatchlist, WatchItem } from "@/helpers/ProfileHelpers";
 import { router } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalization } from "@/hooks/LocalizationContext";
 
 const totalQty = (item: WatchItem) =>
@@ -56,19 +55,16 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
     return () => unregister?.();
   }, [fetchData, registerRefresh]);
 
-  const insets = useSafeAreaInsets();
-
   const screenWidth = Dimensions.get("window").width;
 
   return (
     <View
       style={{
         alignItems: "center",
-        height: 280,
+        justifyContent: "center",
+        height: Platform.OS === "ios" ? 280 : 240,
       }}
     >
-      <View style={{ height: 20 + insets.top }} />
-
       <TouchableOpacity
         onPress={() => router.push("/WatchListStock")}
         activeOpacity={1}

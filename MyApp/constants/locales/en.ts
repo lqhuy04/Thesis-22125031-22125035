@@ -127,6 +127,7 @@ export default {
   common: {
     searchPlaceholder: "Search by stock ticker, company name...",
     cancel: "Cancel",
+    searchHistory: "Search history",
   },
   changePass: {
     titleChange: "Change Password",
