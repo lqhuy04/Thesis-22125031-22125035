@@ -165,7 +165,9 @@ const DetailHeader = ({
               )}
             </TouchableOpacity>
 
-            <Text typography="bodySmall">{"Theo dõi"}</Text>
+            <Text typography="bodySmall" color={theme.text.primary}>
+              {"Theo dõi"}
+            </Text>
           </View>
         </View>
 
@@ -259,7 +261,9 @@ const DetailHeader = ({
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text typography="bodyMedium">Sàn</Text>
+              <Text typography="bodyMedium" color={theme.text.primary}>
+                Sàn
+              </Text>
               <Text typography="titleMedium" color={theme.base.error}>
                 {displayData?.FloorPrice}
               </Text>
@@ -271,7 +275,9 @@ const DetailHeader = ({
                 alignItems: "center",
               }}
             >
-              <Text typography="bodyMedium">Tham chiếu</Text>
+              <Text typography="bodyMedium" color={theme.text.primary}>
+                Tham chiếu
+              </Text>
               <Text typography="titleMedium" color={theme.base.warning}>
                 {displayData?.RefPrice}
               </Text>
@@ -283,7 +289,9 @@ const DetailHeader = ({
                 alignItems: "flex-end",
               }}
             >
-              <Text typography="bodyMedium">Trần</Text>
+              <Text typography="bodyMedium" color={theme.text.primary}>
+                Trần
+              </Text>
               <Text typography="titleMedium" color={theme.base.success}>
                 {displayData?.CeilingPrice}
               </Text>
@@ -304,8 +312,10 @@ const DetailHeader = ({
               justifyContent: "space-between",
             }}
           >
-            <Text typography="bodyMedium">Khối lượng giao dịch</Text>
-            <Text typography="titleMedium">
+            <Text typography="bodyMedium" color={theme.text.primary}>
+              Khối lượng giao dịch
+            </Text>
+            <Text typography="titleMedium" color={theme.text.primary}>
               {displayData?.TotalMatchVol} cp
             </Text>
           </View>
@@ -321,8 +331,10 @@ const DetailHeader = ({
           <View
             style={{ flexDirection: "row", justifyContent: "space-between" }}
           >
-            <Text typography="bodyMedium">Giá trị giao dịch</Text>
-            <Text typography="titleMedium">
+            <Text typography="bodyMedium" color={theme.text.primary}>
+              Giá trị giao dịch
+            </Text>
+            <Text typography="titleMedium" color={theme.text.primary}>
               {(Number(displayData?.TotalMatchVal) / 1000000000).toFixed(2)} tỷ
               đồng
             </Text>

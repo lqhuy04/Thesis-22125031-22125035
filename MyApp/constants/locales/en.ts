@@ -122,9 +122,11 @@ export default {
     categoryConsumerGoods: "Consumer Goods",
     macroNews: "Economy & Macro News",
     marketOverview: "Market Overview",
+    searchResult: "Search results",
   },
   common: {
     searchPlaceholder: "Search by stock ticker, company name...",
+    cancel: "Cancel",
   },
   changePass: {
     titleChange: "Change Password",

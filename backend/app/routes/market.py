@@ -133,7 +133,7 @@ async def get_industry_movement(
 async def get_market_indices():
     request_id = str(uuid.uuid4())
     vnindex_result = MarketService.get_market_index(index_id="VNINDEX")
-    hnxindex_result = MarketService.get_market_index(index_id="HNXIndex")
+    hnxindex_result = MarketService.get_market_index(index_id="HNXINDEX")
     hnxupcomindex_result = MarketService.get_market_index(index_id="HNXUpcomIndex")
     vn30_result = MarketService.get_market_index(index_id="VN30")
     vn100_result = MarketService.get_market_index(index_id="VN100")

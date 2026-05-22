@@ -31,16 +31,9 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
     <TouchableOpacity
       onPress={onPress}
       style={{
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: theme.background.bg,
-        borderRadius: 12,
+        paddingVertical: 16,
         flexDirection: "row",
         alignItems: "center",
-        marginTop: 8,
-        borderWidth: 1,
-        borderColor: theme.border.default,
-        marginHorizontal: 12,
       }}
     >
       <Image

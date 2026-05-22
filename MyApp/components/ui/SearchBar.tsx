@@ -26,13 +26,22 @@ export const SearchBar = ({
 
   return (
     <View>
+      {/* Kính lúp bên trái */}
+      <Ionicons
+        name="search-outline"
+        size={20}
+        color={theme.text.primary}
+        style={{ position: "absolute", left: 12, top: 12, zIndex: 1 }}
+      />
+
       <TextInput
         style={{
           borderWidth: 1,
           borderColor: theme.border.default,
           borderRadius: 8,
           paddingVertical: 10,
-          paddingHorizontal: 16,
+          paddingLeft: 44,
+          paddingRight: value ? 44 : 16,
           marginTop: 4,
           width: "100%",
           color: theme.text.primary,
@@ -52,12 +61,19 @@ export const SearchBar = ({
         autoFocus={autoFocus}
       />
 
-      <TouchableOpacity
-        onPress={onSearchPress}
-        style={{ position: "absolute", right: 16, top: 14 }}
-      >
-        <Ionicons name="search-outline" size={20} color={theme.text.primary} />
-      </TouchableOpacity>
+      {/* Nút xoá bên phải — chỉ hiện khi có text */}
+      {value ? (
+        <TouchableOpacity
+          onPress={() => onChange("")}
+          style={{ position: "absolute", right: 12, top: 12 }}
+        >
+          <Ionicons
+            name="close-circle"
+            size={20}
+            color={theme.text.primary + "80"}
+          />
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 };

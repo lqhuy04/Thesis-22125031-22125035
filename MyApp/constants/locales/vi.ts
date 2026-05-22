@@ -118,9 +118,11 @@ export default {
     categoryConsumerGoods: "Hàng tiêu dùng",
     macroNews: "Tin tức kinh tế - vĩ mô",
     marketOverview: "Toàn cảnh thị trường",
+    searchResult: "Kết quả tìm kiếm",
   },
   common: {
     searchPlaceholder: "Tìm kiếm theo mã chứng khoán, tên công ty...",
+    cancel: "Huỷ",
   },
   changePass: {
     titleChange: "Đổi mật khẩu",

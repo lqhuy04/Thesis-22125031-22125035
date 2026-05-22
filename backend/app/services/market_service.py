@@ -756,43 +756,38 @@ class MarketService:
     def search_stock(keyword: str) -> List[Dict[str, Any]]:
         try:
             keyword = keyword.strip()
-
             if not keyword:
                 return []
 
+            # Query 1: tìm stocks
             result = supabase.table("BI_Profile") \
                 .select("stock_id, symbol, company_name, exchange, logo") \
-                .or_(
-                    f"symbol.ilike.%{keyword}%,company_name.ilike.%{keyword}%"
-                ) \
+                .or_(f"symbol.ilike.%{keyword}%,company_name.ilike.%{keyword}%") \
+                .limit(50) \
                 .execute()
-                
-            data = result.data if result.data else []
 
-            # filter symbol <= 3
-            filtered = [
-                stock for stock in data
-                if len(stock["symbol"]) <= 3
-            ]
-            
-            for i, stock in enumerate(filtered):
-                symbol = stock["symbol"]
-                current_price_info = supabase.table("Current_Stock_Price") \
-                    .select("current_price, price_change, per_price_change") \
-                    .eq("symbol", symbol) \
-                    .execute()
+            data = result.data or []
 
-                current_price = current_price_info.data[0] if current_price_info.data else {}
-                filtered[i].update(current_price)  # update trực tiếp vào item trong list
-                
+            filtered = [s for s in data if len(s["symbol"]) <= 3]
+            if not filtered:
+                return []
 
-            # sort theo priority
-            sorted_data = sorted(
-                filtered,
-                key=lambda x: MarketService.get_priority(x, keyword)
-            )
+            # Query 2: batch lấy giá — thay vì N queries
+            symbols = [s["symbol"] for s in filtered]
+            price_result = supabase.table("Current_Stock_Price") \
+                .select("symbol, current_price, price_change, per_price_change") \
+                .in_("symbol", symbols) \
+                .execute()
 
-            return sorted_data
+            price_map = {
+                row["symbol"]: row
+                for row in (price_result.data or [])
+            }
+
+            for stock in filtered:
+                stock.update(price_map.get(stock["symbol"], {}))
+
+            return sorted(filtered, key=lambda x: MarketService.get_priority(x, keyword))
 
         except Exception as e:
             print(f"Error search stock: {e}")
