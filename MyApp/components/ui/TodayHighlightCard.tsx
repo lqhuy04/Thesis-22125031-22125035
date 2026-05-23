@@ -1,9 +1,8 @@
 import { TodayHighlight } from "@/helpers/MarketHelpers";
 import React from "react";
-import { Dimensions, TouchableOpacity, View } from "react-native";
+import { Dimensions, TouchableOpacity, View, Image } from "react-native";
 import { Text } from "./Text";
 import { useTheme } from "@/hooks/ThemeContext";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { router } from "expo-router";
 
@@ -18,20 +17,20 @@ const TodayHighlightCard = ({ item }: Props) => {
   return (
     <View
       style={{
-        backgroundColor: theme.background.primarySurface,
-        borderRadius: 8,
-        borderColor: theme.base.primary,
+        backgroundColor: theme.background.bg,
+        borderRadius: 12,
+        borderColor: theme.border.default,
         borderWidth: 1,
         marginRight: 12,
-        width: screenWidth - 24,
-        padding: 12,
+        width: screenWidth - 120,
       }}
     >
       <TouchableOpacity
         style={{
           flexDirection: "row",
           alignItems: "center",
-          width: screenWidth - 48,
+          marginHorizontal: 12,
+          marginVertical: 12,
         }}
         onPress={() => {
           router.push({
@@ -40,11 +39,23 @@ const TodayHighlightCard = ({ item }: Props) => {
           });
         }}
       >
+        <Image
+          source={{
+            uri:
+              item.logo ??
+              "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
+          }}
+          style={{ width: 36, height: 36, marginRight: 12, borderRadius: 8 }}
+        />
         <View style={{ flex: 1, marginRight: 12 }}>
-          <Text typography="titleMedium" color={theme.text.primary}>
+          <Text typography="titleSmall" color={theme.text.primary}>
             {item.symbol}
           </Text>
-          <Text numberOfLines={1} color={theme.text.primary + "88"}>
+          <Text
+            typography="bodySmall"
+            numberOfLines={1}
+            color={theme.text.primary + "88"}
+          >
             {item.company_name}
           </Text>
         </View>
@@ -60,6 +71,7 @@ const TodayHighlightCard = ({ item }: Props) => {
                   ? theme.base.error
                   : theme.base.warning
             }
+            typography="bodySmall"
           >
             {"("}
             {item.PriceChange >= 0 ? "+" : ""}
@@ -69,27 +81,19 @@ const TodayHighlightCard = ({ item }: Props) => {
         </View>
         <View
           style={{
-            paddingRight: 4,
+            paddingHorizontal: 4,
+            paddingVertical: 4,
             backgroundColor:
-              item.PriceChange >= 0
+              item.PriceChange > 0
                 ? theme.base.success + "18"
-                : theme.base.error + "18",
+                : item.PriceChange < 0
+                  ? theme.base.error + "18"
+                  : theme.base.warning + "18",
             flexDirection: "row",
             alignItems: "center",
             borderRadius: 6,
           }}
         >
-          <MaterialIcons
-            name={item.PriceChange >= 0 ? "arrow-drop-up" : "arrow-drop-down"}
-            size={28}
-            color={
-              item.PriceChange > 0
-                ? theme.base.success
-                : item.PriceChange < 0
-                  ? theme.base.error
-                  : theme.base.warning
-            }
-          />
           <Text
             typography="titleSmall"
             color={
@@ -100,21 +104,30 @@ const TodayHighlightCard = ({ item }: Props) => {
                   : theme.base.warning
             }
           >
-            {item.PerPriceChange}%
+            {item.PerPriceChange > 0
+              ? "▲"
+              : item.PerPriceChange === 0
+                ? ""
+                : "▼"}{" "}
+            {Math.abs(item.PerPriceChange).toFixed(2)}%
           </Text>
         </View>
       </TouchableOpacity>
 
       <View
         style={{
-          backgroundColor: theme.border.default,
-          height: 1,
-          width: "100%",
-          marginTop: 12,
+          borderLeftWidth: 0.5,
+          borderRightWidth: 0.5,
+          borderTopWidth: 1,
+          borderBottomWidth: 0,
+          borderColor: theme.border.default,
+          borderRadius: 12,
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          backgroundColor: theme.background.surface,
+          flex: 1,
         }}
-      />
-
-      <View>
+      >
         {item.news.map((item, index) => {
           return (
             <TouchableOpacity
@@ -122,9 +135,9 @@ const TodayHighlightCard = ({ item }: Props) => {
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                marginTop: 12,
                 flex: 1,
                 justifyContent: "center",
+                marginVertical: 6,
               }}
               onPress={() => {
                 router.push({
@@ -141,7 +154,7 @@ const TodayHighlightCard = ({ item }: Props) => {
                       ? "fall"
                       : "line"
                 }
-                size={24}
+                size={18}
                 color={
                   item?.sentiment === "positive"
                     ? theme.base.success
@@ -151,7 +164,11 @@ const TodayHighlightCard = ({ item }: Props) => {
                 }
               />
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text numberOfLines={2} color={theme.text.primary}>
+                <Text
+                  numberOfLines={2}
+                  color={theme.text.primary}
+                  typography="bodyMedium"
+                >
                   {item.title}
                 </Text>
               </View>

@@ -1,8 +1,14 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useTheme } from "@/hooks/ThemeContext";
 import MarketIndicesSection from "@/components/market/MarketIndicesSection";
 import MacroEcomNewsSection from "@/components/market/MacroEcomNewsSection";
-import { ScrollView, TouchableOpacity, View } from "react-native";
+import {
+  Animated,
+  Dimensions,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import CategoriesNewsSection from "@/components/market/CategoriesNewsSection";
 import { SearchBar } from "@/components/ui/SearchBar";
 import AllNewsSection from "@/components/market/AllNewsSection";
@@ -13,100 +19,120 @@ import { router } from "expo-router";
 import { Text } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import LinearGradient from "react-native-linear-gradient";
+import WatchlistSection from "@/components/market/WatchlistSection";
+
+const TABS = ["market", "favorites", "news"] as const;
+type Tab = (typeof TABS)[number];
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const Market = () => {
   const { t } = useLocalization();
   const { theme } = useTheme();
-  const [activeTab, setActiveTab] = useState<"market" | "news">("market");
-
-  const TABS = [
-    { key: "market", label: t("market.tabMarket") },
-    { key: "news", label: t("market.tabNews") },
-  ];
-
+  const [activeTab, setActiveTab] = useState<Tab>("market");
+  const translateX = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
+  const TAB_LABELS: Record<Tab, string> = {
+    market: t("market.tabMarket"),
+    favorites: t("market.tabFavorites"),
+    news: t("market.tabNews"),
+  };
+
+  const switchTab = (tab: Tab) => {
+    const index = TABS.indexOf(tab);
+    setActiveTab(tab);
+    Animated.spring(translateX, {
+      toValue: -index * SCREEN_WIDTH,
+      useNativeDriver: true,
+      tension: 68,
+      friction: 12,
+    }).start();
+  };
+
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: theme.background.surface,
-        paddingTop: insets.top,
-      }}
-    >
+    <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
       {/* Search Bar */}
-      <TouchableOpacity onPress={() => router.push("/Search")}>
-        <View
-          style={{ marginRight: 8, marginHorizontal: 12 }}
-          pointerEvents="none"
-        >
-          <SearchBar value={""} onChange={() => {}} />
-        </View>
-      </TouchableOpacity>
+      <LinearGradient
+        colors={["#613DE4", "#7B5CFF", "#9D8CFF"]}
+        style={{ paddingTop: insets.top + 12, paddingBottom: 12 }}
+      >
+        <TouchableOpacity onPress={() => router.push("/Search")}>
+          <View style={{ marginHorizontal: 12 }} pointerEvents="none">
+            <SearchBar value={""} onChange={() => {}} />
+          </View>
+        </TouchableOpacity>
+      </LinearGradient>
 
       {/* Tab Bar */}
       <View
         style={{
           flexDirection: "row",
-          marginVertical: 16,
-          marginHorizontal: 12,
-          gap: 8,
+          backgroundColor: theme.background.bg,
+          marginBottom: 12,
         }}
       >
         {TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
+          const isActive = activeTab === tab;
           return (
             <TouchableOpacity
-              key={tab.key}
-              onPress={() => setActiveTab(tab.key as "market" | "news")}
+              key={tab}
+              onPress={() => switchTab(tab)}
               style={{
                 flex: 1,
-                paddingVertical: 6,
+                paddingVertical: 8,
                 alignItems: "center",
-                borderRadius: 8,
-                backgroundColor: isActive ? theme.base.primary : "transparent",
-                borderWidth: 1,
-                borderColor: isActive
+                borderBottomWidth: 2,
+                borderBottomColor: isActive
                   ? theme.base.primary
-                  : theme.border.default,
+                  : "transparent",
               }}
             >
               <Text
                 typography="bodyLarge"
-                color={isActive ? theme.text.onPrimary : theme.text.primary}
+                color={isActive ? theme.base.primary : theme.text.primary}
               >
-                {tab.label}
+                {TAB_LABELS[tab]}
               </Text>
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* Tab Content - dùng display thay vì unmount để tránh gọi API lại */}
-      <ScrollView
-        style={{
-          display: activeTab === "market" ? "flex" : "none",
-          flex: 1,
-        }}
-      >
-        <MarketIndicesSection />
-        <IndustryMovementSection />
-        <View style={{ height: 24 }} />
-      </ScrollView>
+      {/* Sliding content */}
+      <View style={{ flex: 1, overflow: "hidden" }}>
+        <Animated.View
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            width: SCREEN_WIDTH * TABS.length,
+            transform: [{ translateX }],
+          }}
+        >
+          {/* Tab 0 — Market */}
+          <ScrollView style={{ width: SCREEN_WIDTH }}>
+            <MarketIndicesSection />
+            <IndustryMovementSection />
+            <View style={{ height: 24 }} />
+          </ScrollView>
 
-      <ScrollView
-        style={{
-          display: activeTab === "news" ? "flex" : "none",
-          flex: 1,
-        }}
-      >
-        <TodayHighlightSection />
-        <BusinessNewsSection />
-        <CategoriesNewsSection />
-        <MacroEcomNewsSection />
-        <AllNewsSection />
-        <View style={{ height: 24 }} />
-      </ScrollView>
+          {/* Tab 1 — Favorites */}
+          <ScrollView style={{ width: SCREEN_WIDTH }}>
+            <WatchlistSection />
+          </ScrollView>
+
+          {/* Tab 2 — News */}
+          <ScrollView style={{ width: SCREEN_WIDTH }}>
+            <TodayHighlightSection />
+            <BusinessNewsSection />
+            <CategoriesNewsSection />
+            <MacroEcomNewsSection />
+            <AllNewsSection />
+            <View style={{ height: 24 }} />
+          </ScrollView>
+        </Animated.View>
+      </View>
     </View>
   );
 };

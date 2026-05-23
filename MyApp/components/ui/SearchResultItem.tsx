@@ -39,7 +39,7 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
       <Image
         source={{
           uri:
-            item.logo ||
+            item.logo ??
             "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
         }}
         style={{

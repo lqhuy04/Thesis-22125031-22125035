@@ -13,7 +13,7 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const ITEM_WIDTH = SCREEN_WIDTH - 24;
+const ITEM_WIDTH = SCREEN_WIDTH - 120;
 const ITEM_MARGIN = 12;
 const SNAP_INTERVAL = ITEM_WIDTH + ITEM_MARGIN;
 
@@ -39,7 +39,15 @@ const TodayHighlightSection = () => {
   };
 
   return (
-    <View style={{ marginHorizontal: 12 }}>
+    <View
+      style={{
+        marginHorizontal: 12,
+        paddingLeft: 12,
+        paddingVertical: 12,
+        backgroundColor: theme.background.bg,
+        borderRadius: 12,
+      }}
+    >
       <Text typography="titleMedium" color={theme.text.primary}>
         {t("market.todayHighlight")}
       </Text>
@@ -68,7 +76,7 @@ const TodayHighlightSection = () => {
             flexDirection: "row",
             justifyContent: "center",
             alignItems: "center",
-            marginTop: 10,
+            marginTop: 12,
             gap: 6,
           }}
         >
@@ -82,7 +90,7 @@ const TodayHighlightSection = () => {
                 backgroundColor:
                   activeIndex === index
                     ? theme.base.primary
-                    : theme.base.primary + "40",
+                    : theme.background.surface,
               }}
             />
           ))}

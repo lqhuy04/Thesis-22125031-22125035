@@ -495,7 +495,7 @@ class ArticlesService:
 
             profile_result = (
                 supabase.table("BI_Profile")
-                .select("stock_id, symbol, company_name, exchange")
+                .select("stock_id, logo, symbol, company_name, exchange")
                 .in_("symbol", selected_symbols)
                 .execute()
             )
@@ -573,6 +573,7 @@ class ArticlesService:
                     {
                         "stock_id": stock_id,
                         "symbol": stock_symbol,
+                        "logo": str(profile.get("logo") or ""),
                         "company_name": str(profile.get("company_name") or ""),
                         "exchange": str(profile.get("exchange") or ""),
                         "PriceChange": to_float(price.get("price_change")),

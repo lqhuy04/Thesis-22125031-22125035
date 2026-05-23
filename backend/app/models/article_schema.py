@@ -59,6 +59,7 @@ class TodayHighlightStockItem(BaseModel):
     """One stock item in today-highlight response"""
     stock_id: str = Field(..., description="Unique stock identifier")
     symbol: str = Field("", description="Stock symbol")
+    logo: str = Field("", description="Stock logo URL")
     company_name: str = Field("", description="Company name")
     exchange: str = Field("", description="Exchange code")
     PriceChange: float = Field(0.0, description="Price change")

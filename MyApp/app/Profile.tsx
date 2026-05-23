@@ -5,7 +5,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
 import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AntDesign from "@expo/vector-icons/AntDesign";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -144,11 +143,6 @@ const Profile = () => {
         />
       ),
       onPress: () => router.push("/RiskAppetite"),
-    },
-    {
-      label: t("profile.favorite"),
-      icon: <AntDesign name="stock" size={20} color={theme.base.primary} />,
-      onPress: () => router.push("/Favorite"),
     },
   ];
 

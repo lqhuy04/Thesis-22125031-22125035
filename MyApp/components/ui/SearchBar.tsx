@@ -27,7 +27,7 @@ export const SearchBar = ({
           style={{
             borderWidth: 1,
             borderColor: theme.border.default,
-            borderRadius: 8,
+            borderRadius: 24,
             paddingVertical: 10,
             paddingLeft: 44,
             width: "100%",
