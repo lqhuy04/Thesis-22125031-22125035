@@ -88,7 +88,7 @@ const IndustryMovementSection = () => {
         }}
       >
         <Text
-          typography="titleLarge"
+          typography="titleMedium"
           color={theme.text.primary}
           style={{ marginRight: 8 }}
         >
@@ -105,9 +105,9 @@ const IndustryMovementSection = () => {
             });
           }}
           style={{
-            height: 20,
-            width: 20,
-            borderRadius: 10,
+            height: 16,
+            width: 16,
+            borderRadius: 8,
             backgroundColor: theme.border.default,
             alignItems: "center",
             justifyContent: "center",
@@ -115,7 +115,7 @@ const IndustryMovementSection = () => {
         >
           <Entypo
             name="chevron-small-right"
-            size={20}
+            size={16}
             color={theme.text.primary}
           />
         </TouchableOpacity>

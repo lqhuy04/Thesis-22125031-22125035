@@ -71,6 +71,13 @@ const Market = () => {
           flexDirection: "row",
           backgroundColor: theme.background.bg,
           marginBottom: 12,
+          // Shadow iOS
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 4,
+          // Shadow Android
+          elevation: 4,
         }}
       >
         {TABS.map((tab) => {
