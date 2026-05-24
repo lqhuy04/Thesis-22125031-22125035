@@ -14,7 +14,7 @@ import { Text } from "../ui/Text";
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 export type IndicatorMode1 = "MA" | "BOLL" | null;
-export type IndicatorMode2 = "RSI" | "KDJ" | null;
+export type IndicatorMode2 = "RSI" | "KDJ" | "MACD" | null;
 
 export interface IndicatorState {
   mode1: IndicatorMode1;
@@ -99,7 +99,8 @@ const IndicatorBottomSheet = ({
     updater(current === value ? null : value);
   };
 
-  const renderOption = (
+  // Chip giống style của TimeframeBottomSheet
+  const renderChip = (
     option: IndicatorOption,
     isSelected: boolean,
     onPress: () => void,
@@ -110,14 +111,20 @@ const IndicatorBottomSheet = ({
       style={[
         styles.optionBtn,
         {
-          borderColor: isSelected ? theme.base.primary : theme.border.default,
+          borderWidth: 2,
           backgroundColor: isSelected
-            ? `${theme.base.primary}18`
+            ? theme.base.primary + "20"
             : theme.background.surface,
+          borderColor: isSelected ? theme.base.primary + "60" : "transparent",
         },
       ]}
     >
-      <Text typography="bodyLarge">{option.label}</Text>
+      <Text
+        typography="bodyMedium"
+        color={isSelected ? theme.base.primary : theme.text.primary}
+      >
+        {option.label}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -143,30 +150,41 @@ const IndicatorBottomSheet = ({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: theme.background.surface },
+          { backgroundColor: theme.background.bg },
           { transform: [{ translateY: slideAnim }] },
         ]}
       >
+        {/* Handle */}
         <View style={styles.handle} />
 
-        {/* Header */}
-        <View style={styles.header}>
-          <Text typography="titleLarge">Chỉ báo kỹ thuật</Text>
-          <TouchableOpacity
-            onPress={() =>
-              onChangeIndicator({ mode1: null, mode2: null, volume: false })
-            }
-          >
-            <Text typography="titleMedium" color={theme.base.primary}>
-              Xoá tất cả
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Title — căn giữa như TimeframeBottomSheet */}
+        <Text
+          typography="titleMedium"
+          color={theme.text.primary}
+          style={{ textAlign: "center", marginTop: 8 }}
+        >
+          Chỉ báo kỹ thuật
+        </Text>
 
-        {/* Overlay */}
-        <View style={styles.row}>
+        {/* Divider */}
+        <View
+          style={{
+            width: "100%",
+            height: 1,
+            backgroundColor: theme.border.default,
+            marginTop: 20,
+          }}
+        />
+
+        {/* Overlay indicators: MA, BOLL */}
+        <View style={styles.sectionLabel}>
+          <Text typography="labelLarge" color={theme.text.secondary}>
+            Đường chỉ báo
+          </Text>
+        </View>
+        <View style={styles.optionsContainer}>
           {OVERLAY_INDICATORS.map((opt) =>
-            renderOption(opt, indicatorState.mode1 === opt.value, () =>
+            renderChip(opt, indicatorState.mode1 === opt.value, () =>
               toggle(indicatorState.mode1, opt.value as IndicatorMode1, (val) =>
                 onChangeIndicator({ ...indicatorState, mode1: val }),
               ),
@@ -174,11 +192,14 @@ const IndicatorBottomSheet = ({
           )}
         </View>
 
-        <View style={styles.divider} />
-
         {/* Volume */}
-        <View style={styles.row}>
-          {renderOption(VOLUME_INDICATOR, indicatorState.volume, () =>
+        <View style={styles.sectionLabel}>
+          <Text typography="labelLarge" color={theme.text.secondary}>
+            Khối lượng
+          </Text>
+        </View>
+        <View style={styles.optionsContainer}>
+          {renderChip(VOLUME_INDICATOR, indicatorState.volume, () =>
             onChangeIndicator({
               ...indicatorState,
               volume: !indicatorState.volume,
@@ -186,12 +207,15 @@ const IndicatorBottomSheet = ({
           )}
         </View>
 
-        <View style={styles.divider} />
-
-        {/* Sub indicators */}
-        <View style={styles.row}>
+        {/* Sub indicators: MACD, RSI, KDJ */}
+        <View style={styles.sectionLabel}>
+          <Text typography="labelLarge" color={theme.text.secondary}>
+            Chỉ báo phụ
+          </Text>
+        </View>
+        <View style={styles.optionsContainer}>
           {SUB_INDICATORS.map((opt) =>
-            renderOption(opt, indicatorState.mode2 === opt.value, () =>
+            renderChip(opt, indicatorState.mode2 === opt.value, () =>
               toggle(indicatorState.mode2, opt.value as IndicatorMode2, (val) =>
                 onChangeIndicator({ ...indicatorState, mode2: val }),
               ),
@@ -199,15 +223,45 @@ const IndicatorBottomSheet = ({
           )}
         </View>
 
-        {/* Done */}
-        <TouchableOpacity
-          onPress={closeSheet}
-          style={[styles.doneBtn, { backgroundColor: theme.base.primary }]}
-        >
-          <Text typography="titleLarge" color="#F2F4F7">
-            Xong
-          </Text>
-        </TouchableOpacity>
+        {/* Divider trước nút */}
+        <View
+          style={{
+            width: "100%",
+            height: 1,
+            backgroundColor: theme.border.default,
+            marginTop: 20,
+          }}
+        />
+
+        {/* Nút hành động: Xóa tất cả (trái) + Xong (phải) */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            onPress={() =>
+              onChangeIndicator({ mode1: null, mode2: null, volume: false })
+            }
+            style={[
+              styles.footerBtn,
+              {
+                borderWidth: 1.5,
+                borderColor: theme.border.default,
+                backgroundColor: theme.background.surface,
+              },
+            ]}
+          >
+            <Text typography="titleMedium" color={theme.text.primary}>
+              Xóa tất cả
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={closeSheet}
+            style={[styles.footerBtn, { backgroundColor: theme.base.primary }]}
+          >
+            <Text typography="titleMedium" color="#F2F4F7">
+              Xong
+            </Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </Modal>
   );
@@ -224,9 +278,13 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    paddingHorizontal: 20,
     paddingBottom: 36,
     paddingTop: 12,
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
   },
   handle: {
     width: 40,
@@ -236,32 +294,36 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 16,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
+  sectionLabel: {
+    marginTop: 16,
+    marginHorizontal: 12,
   },
-  row: {
+  optionsContainer: {
     flexDirection: "row",
+    marginTop: 8,
+    marginHorizontal: 12,
     gap: 8,
   },
   optionBtn: {
     paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 4,
-    borderWidth: 1.5,
-  },
-  divider: {
-    height: 1,
-    marginVertical: 12,
-    backgroundColor: "#e5e7eb",
-  },
-  doneBtn: {
-    marginTop: 24,
-    paddingVertical: 10,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     alignItems: "center",
+    justifyContent: "center",
+    minWidth: 56,
+  },
+  footer: {
+    flexDirection: "row",
+    gap: 10,
+    marginHorizontal: 12,
+    marginTop: 16,
+  },
+  footerBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

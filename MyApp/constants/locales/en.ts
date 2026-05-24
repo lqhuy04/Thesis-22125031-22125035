@@ -39,6 +39,7 @@ export default {
     screenTitle: "Stock Detail",
     newsSectionTitle: "News",
     newsSectionViewAll: "View All",
+    AIAnalyze: "AI Analysis",
   },
   fundamentalAnalysis: {
     fundamentalAnalysisMetricsSectionTitle: "Key figures",

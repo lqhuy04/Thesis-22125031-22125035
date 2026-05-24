@@ -35,6 +35,7 @@ export default {
     screenTitle: "Chi tiết cổ phiếu",
     newsSectionTitle: "Tin tức",
     newsSectionViewAll: "Xem tất cả",
+    AIAnalyze: "Phân tích AI",
   },
   fundamentalAnalysis: {
     fundamentalAnalysisMetricsSectionTitle: "Số liệu chính",

@@ -242,6 +242,14 @@ const DetailHeader = ({
 
       {chart}
 
+      <Text
+        typography="titleMedium"
+        color={theme.text.primary}
+        style={{ marginHorizontal: 12, marginVertical: 12 }}
+      >
+        {"Biến động trong ngày"}
+      </Text>
+
       <View
         style={{
           marginHorizontal: 12,
@@ -301,8 +309,8 @@ const DetailHeader = ({
 
         <View
           style={{
-            padding: 8,
-            borderRadius: 4,
+            padding: 12,
+            borderRadius: 8,
             backgroundColor: theme.background.surface,
           }}
         >
@@ -324,7 +332,7 @@ const DetailHeader = ({
             style={{
               borderBottomWidth: 1,
               borderBottomColor: theme.border.default,
-              marginVertical: 8,
+              marginVertical: 12,
             }}
           />
 
