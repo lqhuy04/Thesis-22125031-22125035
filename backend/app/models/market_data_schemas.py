@@ -220,9 +220,16 @@ class InvestingIdeaTrendTab(BaseModel):
     top_decliners: List[InvestingIdeaStockItem] = Field(default=[], description="Top decliners")
     top_volume: List[InvestingIdeaStockItem] = Field(default=[], description="Top matched volume")
 
+
+class InvestingIdeaCommunityTab(BaseModel):
+    """Community tab: most searched and most watched stocks."""
+    top_searched: List[InvestingIdeaStockItem] = Field(default=[], description="Top searched stocks")
+    top_watchlist: List[InvestingIdeaStockItem] = Field(default=[], description="Top watchlisted stocks")
+
 class InvestingIdeaData(BaseModel):
     """Payload for investing idea endpoint."""
     trend: InvestingIdeaTrendTab = Field(default_factory=InvestingIdeaTrendTab)
+    community: InvestingIdeaCommunityTab = Field(default_factory=InvestingIdeaCommunityTab)
 
 
 class InvestingIdeaResponse(BaseModel):
