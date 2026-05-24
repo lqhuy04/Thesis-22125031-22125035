@@ -4,6 +4,7 @@ Handles database operations for historical stock prices (15m, 1h, 1d intervals)
 """
 from supabase import create_client, Client
 from app.config import settings
+from collections import Counter
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from app.services.ssi_service import get_ssi_service
@@ -1074,7 +1075,7 @@ class MarketService:
         """
         Build investing ideas payload for two tabs:
         - trend: top gainers, decliners, and top volume
-        - community: currently empty placeholders for compatibility
+        - community: top searched and top watchlisted stocks
         
         Excludes UPCOM exchange; only includes HOSE and HNX.
         """
@@ -1083,23 +1084,45 @@ class MarketService:
 
             profiles = MarketService._fetch_all_rows(
                 "BI_Profile",
-                "symbol, company_name, logo, exchange"
+                "stock_id, symbol, company_name, logo, exchange"
             )
-            prices = MarketService._fetch_all_rows("Current_Stock_Price", "*")
+            prices = MarketService._fetch_all_rows(
+                "Current_Stock_Price",
+                "symbol, current_price, price_change, per_price_change, total_match_vol"
+            )
 
             profile_by_symbol: Dict[str, Dict[str, Any]] = {}
+            profile_by_stock_id: Dict[str, Dict[str, Any]] = {}
             for profile in profiles:
                 symbol = str(profile.get("symbol") or "").upper().strip()
+                stock_id = str(profile.get("stock_id") or "").strip()
                 if not symbol or len(symbol) > 3:
                     continue
                 exchange = str(profile.get("exchange") or "").upper().strip()
                 if exchange == "UPCOM":
                     continue
                 profile_by_symbol[symbol] = profile
+                if stock_id:
+                    profile_by_stock_id[stock_id] = profile
+
+            price_by_symbol: Dict[str, Dict[str, Any]] = {
+                str(price.get("symbol") or "").upper().strip(): price
+                for price in prices
+                if str(price.get("symbol") or "").strip()
+            }
+
+            def build_public_row(profile: Dict[str, Any], price: Dict[str, Any]) -> Dict[str, Any]:
+                return {
+                    "logo": profile.get("logo") or "",
+                    "symbol": str(profile.get("symbol") or "").upper().strip(),
+                    "company_name": profile.get("company_name") or "",
+                    "current_price": MarketService._to_float(price.get("current_price")),
+                    "price_change": MarketService._to_float(price.get("price_change")),
+                    "per_price_change": MarketService._to_float(price.get("per_price_change")),
+                }
 
             items: List[Dict[str, Any]] = []
-            for price in prices:
-                symbol = str(price.get("symbol") or "").upper().strip()
+            for symbol, price in price_by_symbol.items():
                 if not symbol or len(symbol) > 3:
                     continue
 
@@ -1107,16 +1130,42 @@ class MarketService:
                     continue
 
                 profile = profile_by_symbol[symbol]
-                item = {
-                    "logo": profile.get("logo") or "",
-                    "symbol": symbol,
-                    "company_name": profile.get("company_name") or "",
-                    "current_price": MarketService._to_float(price.get("current_price")),
-                    "price_change": MarketService._to_float(price.get("price_change")),
-                    "per_price_change": MarketService._to_float(price.get("per_price_change")),
-                    "_total_match_vol": MarketService._to_float(price.get("total_match_vol")),
-                }
+                item = build_public_row(profile, price)
+                item["_total_match_vol"] = MarketService._to_float(price.get("total_match_vol"))
                 items.append(item)
+
+            def build_ranked_items(stock_id_counts: Counter) -> List[Dict[str, Any]]:
+                ranked_items: List[Dict[str, Any]] = []
+                for stock_id, _count in sorted(
+                    stock_id_counts.items(),
+                    key=lambda item: (-item[1], str(profile_by_stock_id.get(item[0], {}).get("symbol") or "")),
+                )[:limit]:
+                    profile = profile_by_stock_id.get(stock_id)
+                    if not profile:
+                        continue
+
+                    symbol = str(profile.get("symbol") or "").upper().strip()
+                    if not symbol:
+                        continue
+
+                    price = price_by_symbol.get(symbol, {})
+                    ranked_items.append(build_public_row(profile, price))
+
+                return ranked_items
+
+            search_history_rows = MarketService._fetch_all_rows("Search_History", "stock_id")
+            favorite_rows = MarketService._fetch_all_rows("Favorite", "stock_id")
+
+            search_counts = Counter(
+                str(row.get("stock_id") or "").strip()
+                for row in search_history_rows
+                if row.get("stock_id") and str(row.get("stock_id") or "").strip() in profile_by_stock_id
+            )
+            favorite_counts = Counter(
+                str(row.get("stock_id") or "").strip()
+                for row in favorite_rows
+                if row.get("stock_id") and str(row.get("stock_id") or "").strip() in profile_by_stock_id
+            )
 
             # Keep only fields requested by API contract.
             def public_row(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -1132,12 +1181,18 @@ class MarketService:
             top_gainers = sorted(items, key=lambda x: x["per_price_change"], reverse=True)[:limit]
             top_decliners = sorted(items, key=lambda x: x["per_price_change"])[:limit]
             top_volume = sorted(items, key=lambda x: x["_total_match_vol"], reverse=True)[:limit]
+            top_searched = build_ranked_items(search_counts)
+            top_watchlist = build_ranked_items(favorite_counts)
 
             return {
                 "trend": {
                     "top_gainers": [public_row(x) for x in top_gainers],
                     "top_decliners": [public_row(x) for x in top_decliners],
                     "top_volume": [public_row(x) for x in top_volume],
+                },
+                "community": {
+                    "top_searched": top_searched,
+                    "top_watchlist": top_watchlist,
                 },
             }
         except Exception as e:
@@ -1147,6 +1202,10 @@ class MarketService:
                     "top_gainers": [],
                     "top_decliners": [],
                     "top_volume": [],
+                },
+                "community": {
+                    "top_searched": [],
+                    "top_watchlist": [],
                 },
             }
 
