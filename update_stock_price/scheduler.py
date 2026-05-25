@@ -1,10 +1,11 @@
 """
 scheduler.py
-Chạy liên tục, quản lý 4 tác vụ:
+Chạy liên tục, quản lý 5 tác vụ:
   1. WebSocket 1m stream  → mở đầu phiên (9:00), đóng cuối phiên (15:30)
   2. WebSocket 1d stream  → mở đầu phiên (9:00), đóng cuối phiên (15:30)
-  3. Standardize 1m       → chạy 1 lần lúc 15:35 (sau khi stream đóng)
-  4. Standardize 1d       → chạy 1 lần lúc 15:35 (cùng lúc với 1m)
+    3. Standardize 1m       → chạy 1 lần lúc 15:05 (sau khi stream đóng)
+    4. Standardize 1d       → chạy 1 lần lúc 15:05 (cùng lúc với 1m)
+    5. Standardize index    → chạy 1 lần lúc 15:05 (cùng lúc với 1m/1d)
 
 Giờ Việt Nam = UTC+7
 """
@@ -20,11 +21,6 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-# Capture subprocess output to files for debugging
-ws_1m_log = open("ws_1m.log", "a")
-ws_1d_log = open("ws_1d.log", "a")
-ws_index_log = open("ws_index.log", "a")
 
 VN_TZ = timezone(timedelta(hours=7))
 
@@ -66,9 +62,7 @@ def start_websockets():
             logger.warning(f"⚠ WebSocket 1m crashed with return code {ws_1m_process.returncode}")
         logger.info("▶ Starting websocket_stock_price_1m.py")
         ws_1m_process = subprocess.Popen(
-            [sys.executable, "websocket_stock_price_1m.py"],
-            stdout=ws_1m_log,
-            stderr=subprocess.STDOUT,
+            [sys.executable, "-u", "websocket_stock_price_1m.py"],
             text=True,
             bufsize=1,
         )
@@ -78,9 +72,7 @@ def start_websockets():
             logger.warning(f"⚠ WebSocket 1d crashed with return code {ws_1d_process.returncode}")
         logger.info("▶ Starting websocket_stock_price_1d.py")
         ws_1d_process = subprocess.Popen(
-            [sys.executable, "websocket_stock_price_1d.py"],
-            stdout=ws_1d_log,
-            stderr=subprocess.STDOUT,
+            [sys.executable, "-u", "websocket_stock_price_1d.py"],
             text=True,
             bufsize=1,
         )
@@ -90,9 +82,7 @@ def start_websockets():
             logger.warning(f"⚠ WebSocket index crashed with return code {ws_index_process.returncode}")
         logger.info("▶ Starting websocket_market_index.py")
         ws_index_process = subprocess.Popen(
-            [sys.executable, "websocket_market_index.py"],
-            stdout=ws_index_log,
-            stderr=subprocess.STDOUT,
+            [sys.executable, "-u", "websocket_market_index.py"],
             text=True,
             bufsize=1,
         )
@@ -120,17 +110,18 @@ def stop_websockets():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_standardize():
-    """Chạy song song cả 1m và 1d, đợi cả 2 xong mới tiếp tục."""
+    """Chạy song song 1m, 1d và market index, đợi cả 3 xong mới tiếp tục."""
     scripts = [
         "standardize_stock_price_1m.py",
         "standardize_stock_price_1d.py",
+        "standardize_market_index.py",
     ]
 
     procs = []
     for script in scripts:
         logger.info(f"▶ Running {script}")
         p = subprocess.Popen(
-            [sys.executable, script],
+            [sys.executable, "-u", script],
             stdout=sys.stdout,
             stderr=sys.stderr,
         )
