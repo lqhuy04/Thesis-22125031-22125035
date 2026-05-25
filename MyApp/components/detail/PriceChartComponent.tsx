@@ -9,7 +9,6 @@ import {
 import {
   TouchableOpacity,
   View,
-  Text,
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
@@ -32,6 +31,8 @@ import TimeframeBottomSheet, {
   TIMEFRAME_OPTIONS,
 } from "./TimeframeBottomsheet";
 import IndicatorBottomSheet, { IndicatorState } from "./IndicatorBottomsheet";
+import { Text } from "../ui/Text";
+import Entypo from "@expo/vector-icons/Entypo";
 
 interface Props {
   symbol: string;
@@ -212,135 +213,210 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
               padding: 12,
             }}
           >
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginBottom: 12,
+              }}
+            >
+              <Text typography="titleMedium" color={theme.text.primary}>
+                Biểu đồ:
+              </Text>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginLeft: 8,
+                  padding: 4,
+                  borderRadius: 10,
+                  backgroundColor: theme.background.surface,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => setChartType("area")}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 4,
+                    paddingHorizontal: 12,
+                    borderRadius: 6,
+                    backgroundColor:
+                      chartType === "area"
+                        ? theme.background.bg
+                        : "transparent",
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="chart-timeline-variant"
+                    size={18}
+                    color={theme.text.primary}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text typography="bodyMedium" color={theme.text.primary}>
+                    Đường
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setChartType("candle")}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 4,
+                    paddingHorizontal: 12,
+                    borderRadius: 6,
+                    backgroundColor:
+                      chartType === "candle"
+                        ? theme.background.bg
+                        : "transparent",
+                  }}
+                >
+                  <MaterialIcons
+                    name="candlestick-chart"
+                    size={18}
+                    color={theme.text.primary}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text typography="bodyMedium" color={theme.text.primary}>
+                    Nến
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ flex: 1 }} />
+              <MaterialCommunityIcons
+                name="information-slab-circle-outline"
+                size={20}
+                color={theme.text.primary}
+              />
+            </View>
+
             {loading ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="small" color={theme.base.primary} />
               </View>
             ) : (
-              <TradingViewChart
-                prices={chartPriceData}
-                volumes={chartVolumeData}
-                maData={chartMAData}
-                bollData={chartBOLLData}
-                macdData={chartMACDData}
-                rsiData={chartRSIData}
-                kdjData={chartKDJData}
-                timeframe={timeFrame}
-                chartType={chartType}
-                showVolume={indicatorState.volume}
-                technicalIndicatorMode1={indicatorState.mode1}
-                technicalIndicatorMode2={indicatorState.mode2}
-              />
+              <View>
+                <TradingViewChart
+                  prices={chartPriceData}
+                  volumes={chartVolumeData}
+                  maData={chartMAData}
+                  bollData={chartBOLLData}
+                  macdData={chartMACDData}
+                  rsiData={chartRSIData}
+                  kdjData={chartKDJData}
+                  timeframe={timeFrame}
+                  chartType={chartType}
+                  showVolume={indicatorState.volume}
+                  technicalIndicatorMode1={indicatorState.mode1}
+                  technicalIndicatorMode2={indicatorState.mode2}
+                />
+
+                <TouchableOpacity
+                  onPress={() =>
+                    router.push({
+                      pathname: "/TradingViewScreen",
+                      params: { data: JSON.stringify({ symbol: symbol }) },
+                    })
+                  }
+                  style={{
+                    backgroundColor: theme.background.surface,
+                    borderColor: theme.border.default,
+                    position: "absolute",
+                    bottom: 64,
+                    left: 12,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="arrow-expand"
+                    size={12}
+                    color={theme.text.primary}
+                  />
+                </TouchableOpacity>
+              </View>
             )}
 
             <View style={styles.toolbar}>
-              {/* Chart type toggle */}
-              <TouchableOpacity
-                onPress={() =>
-                  setChartType(chartType === "area" ? "candle" : "area")
-                }
-                style={[
-                  styles.iconBtn,
-                  {
-                    backgroundColor: theme.background.surface,
-                    borderColor: theme.border.default,
-                  },
-                ]}
-              >
-                {chartType === "area" ? (
-                  <MaterialCommunityIcons
-                    name="chart-timeline-variant"
-                    size={18}
-                    color="black"
-                  />
-                ) : (
-                  <MaterialIcons
-                    name="candlestick-chart"
-                    size={18}
-                    color="black"
-                  />
-                )}
-              </TouchableOpacity>
-
               {/* Timeframe button */}
+              <Text typography="bodyMedium" color={theme.text.primary}>
+                Chu kỳ nến:
+              </Text>
+
               <TouchableOpacity
                 onPress={() => setShowTimeframeSheet(true)}
-                style={[
-                  styles.iconBtn,
-                  styles.rowBtn,
-                  {
-                    backgroundColor: theme.background.surface,
-                    borderColor: theme.border.default,
-                  },
-                ]}
+                style={{
+                  backgroundColor: theme.background.bg,
+                  borderWidth: 1,
+                  borderColor: theme.border.default,
+                  paddingVertical: 4,
+                  paddingHorizontal: 8,
+                  borderRadius: 8,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
               >
-                <MaterialIcons name="date-range" size={18} color="black" />
-                <Text style={styles.btnLabel}>{selectedLabel}</Text>
-              </TouchableOpacity>
-
-              {/* Indicator button */}
-              <TouchableOpacity
-                onPress={() => setShowIndicatorSheet(true)}
-                style={[
-                  styles.iconBtn,
-                  styles.rowBtn,
-                  {
-                    backgroundColor:
-                      activeIndicatorCount > 0
-                        ? `${theme.base?.primary ?? "#1a56db"}18`
-                        : theme.background.surface,
-                    borderColor:
-                      activeIndicatorCount > 0
-                        ? (theme.base?.primary ?? "#1a56db")
-                        : theme.border.default,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="finance"
-                  size={18}
-                  color={
-                    activeIndicatorCount > 0
-                      ? (theme.base?.primary ?? "#1a56db")
-                      : "black"
-                  }
+                <Text
+                  typography="bodyMedium"
+                  color={theme.text.primary}
+                  style={{ marginRight: 4 }}
+                >
+                  {selectedLabel}
+                </Text>
+                <Entypo
+                  name="chevron-small-down"
+                  size={16}
+                  color={theme.text.primary}
                 />
-                {activeIndicatorCount > 0 && (
-                  <View
-                    style={[
-                      styles.badge,
-                      { backgroundColor: theme.base?.primary ?? "#1a56db" },
-                    ]}
-                  >
-                    <Text style={styles.badgeText}>{activeIndicatorCount}</Text>
-                  </View>
-                )}
               </TouchableOpacity>
 
               <View style={{ flex: 1 }} />
 
-              {/* Expand button */}
+              {/* Indicator button */}
+              <Text typography="bodyMedium" color={theme.text.primary}>
+                Chỉ báo kỹ thuật:
+              </Text>
+
               <TouchableOpacity
-                onPress={() =>
-                  router.push({
-                    pathname: "/TradingViewScreen",
-                    params: { data: JSON.stringify({ symbol: symbol }) },
-                  })
-                }
-                style={[
-                  styles.iconBtn,
-                  styles.rowBtn,
-                  {
-                    backgroundColor: theme.background.surface,
-                    borderColor: theme.border.default,
-                  },
-                ]}
+                onPress={() => setShowIndicatorSheet(true)}
+                style={{
+                  backgroundColor: theme.background.bg,
+                  borderWidth: 1,
+                  borderColor: theme.border.default,
+                  paddingVertical: 4.5,
+                  paddingHorizontal: 8,
+                  borderRadius: 8,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
               >
                 <MaterialCommunityIcons
-                  name="arrow-expand"
+                  name="finance"
                   size={18}
-                  color="black"
+                  color={theme.text.primary}
                 />
+                {activeIndicatorCount > 0 && (
+                  <View
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: theme.base.primary,
+                      marginLeft: 4,
+                    }}
+                  >
+                    <Text typography="bodySmall" color={theme.text.primary}>
+                      {activeIndicatorCount}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -398,11 +474,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-  },
-  badgeText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "700",
   },
 });
 

@@ -1,10 +1,11 @@
 import React from "react";
 import { TouchableOpacity, View, StyleSheet } from "react-native";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Text } from "./Text";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/ThemeContext";
+import Entypo from "@expo/vector-icons/Entypo";
+
 interface Props {
   title: string;
   hiddenBack?: boolean;
@@ -28,9 +29,9 @@ const ScreenHeader = ({ hiddenBack = false, title, onPressBack }: Props) => {
       {!hiddenBack && (
         <TouchableOpacity
           style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
+            width: 20,
+            height: 20,
+            borderRadius: 10,
             backgroundColor: theme.border.default,
             alignItems: "center",
             justifyContent: "center",
@@ -40,16 +41,15 @@ const ScreenHeader = ({ hiddenBack = false, title, onPressBack }: Props) => {
             onPressBack != null ? onPressBack() : router.dismiss()
           }
         >
-          <MaterialIcons
-            name="chevron-left"
-            size={24}
+          <Entypo
+            name="chevron-small-left"
+            size={16}
             color={theme.text.primary}
-            style={{ marginRight: 12 }}
           />
         </TouchableOpacity>
       )}
 
-      <Text typography="titleLarge" color={theme.text.primary}>
+      <Text typography="titleMedium" color={theme.text.primary}>
         {title}
       </Text>
     </View>

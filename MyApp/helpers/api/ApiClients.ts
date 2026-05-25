@@ -78,6 +78,11 @@ export const sendMessage = async (
     const newToken = refreshData?.data.token;
     const newRefreshToken = refreshData?.data.refresh_token ?? refresh_token;
 
+    if (!newToken || !newRefreshToken) {
+      authEvents.emit(AUTH_EXPIRED_EVENT);
+      throw new Error("Session expired. Please login again.");
+    }
+
     await saveSession({ token: newToken, refresh_token: newRefreshToken });
 
     // Thông báo cho tất cả request đang chờ

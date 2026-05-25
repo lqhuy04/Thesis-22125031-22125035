@@ -54,15 +54,15 @@ const Market = () => {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
       {/* Search Bar */}
-      <LinearGradient
-        colors={["#613DE4", "#7B5CFF", "#9D8CFF"]}
-        style={{ paddingTop: insets.top + 12, paddingBottom: 12 }}
-      >
-        <TouchableOpacity onPress={() => router.push("/Search")}>
-          <View style={{ marginHorizontal: 12 }} pointerEvents="none">
-            <SearchBar value={""} onChange={() => {}} />
-          </View>
-        </TouchableOpacity>
+
+      <LinearGradient colors={["#613DE4", "#7B5CFF", "#9D8CFF"]}>
+        <View style={{ paddingTop: insets.top + 12, paddingBottom: 12 }}>
+          <TouchableOpacity onPress={() => router.push("/Search")}>
+            <View style={{ marginHorizontal: 12 }} pointerEvents="none">
+              <SearchBar value={""} onChange={() => {}} />
+            </View>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       {/* Tab Bar */}

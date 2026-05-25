@@ -268,11 +268,11 @@ const Search = () => {
   };
 
   const handleSelectItem = useCallback(async (item: SearchStockItem) => {
-    await saveSearchHistory(item.symbol);
     router.push({
       pathname: "/Detail",
       params: { data: item.symbol },
     });
+    await saveSearchHistory(item.symbol);
   }, []);
 
   return (

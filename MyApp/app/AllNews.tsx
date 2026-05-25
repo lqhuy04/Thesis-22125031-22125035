@@ -1,6 +1,6 @@
 import NewsItem from "@/components/ui/NewsItem";
 import ScreenHeader from "@/components/ui/ScreenHeader";
-import { New } from "@/helpers/DetailHelpers";
+import { fetchNews, New } from "@/helpers/DetailHelpers";
 import {
   getAllNews,
   getBusinessNews,
@@ -96,6 +96,7 @@ const AllNews = () => {
     title = "",
     category_id = "",
     type = "",
+    symbol = "",
   } = data ? (JSON.parse(data as string) as any) : {};
 
   const [articles, setArticles] = useState<New[]>([]);
@@ -111,8 +112,10 @@ const AllNews = () => {
       promise = getBusinessNews();
     } else if (type === "all") {
       promise = getAllNews();
-    } else {
+    } else if (typeof category_id === "string" && category_id.length > 0) {
       promise = getNewsByCategoryId(String(category_id));
+    } else {
+      promise = fetchNews(symbol);
     }
 
     promise.then((result) => {
@@ -121,7 +124,7 @@ const AllNews = () => {
       }
       setLoading(false);
     });
-  }, [category_id, type]);
+  }, [category_id, symbol, type]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>

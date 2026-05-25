@@ -13,6 +13,7 @@ import {
   VolumeData,
 } from "./utils";
 import injectedJavaScript from "./trading-view-script";
+import { useTheme } from "@/hooks/ThemeContext";
 
 // ── Indicator data types ────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ const TradingViewChart = ({
   technicalIndicatorMode1,
   technicalIndicatorMode2,
 }: Props) => {
+  const { theme } = useTheme();
   const webViewRef = useRef<WebView>(null);
   const isChartReady = useRef(false);
 
@@ -85,6 +87,21 @@ const TradingViewChart = ({
         })();
         true;
       `;
+      injectScript(script);
+    },
+    [injectScript],
+  );
+
+  const setTheme = useCallback(
+    (background: string, textPrimary: string) => {
+      const script = /*javascript*/ `
+      (function() {
+        try {
+          if (window.setTheme) window.setTheme(${JSON.stringify(background)}, ${JSON.stringify(textPrimary)});
+        } catch (_e) {}
+      })();
+      true;
+    `;
       injectScript(script);
     },
     [injectScript],
@@ -156,6 +173,7 @@ const TradingViewChart = ({
         const message = JSON.parse(event.nativeEvent.data);
         if (message.type === "chart-ready") {
           isChartReady.current = true;
+          setTheme(theme.background.bg, theme.text.primary);
           // Push initial data as soon as chart signals ready
           if (prices.length > 0 && volumes.length > 0) {
             updateChartData(
@@ -178,6 +196,9 @@ const TradingViewChart = ({
       }
     },
     [
+      setTheme,
+      theme.background.bg,
+      theme.text.primary,
       prices,
       volumes,
       setVolumeVisible,
@@ -239,6 +260,11 @@ const TradingViewChart = ({
     if (!isChartReady.current) return;
     setTechnicalIndicatorMode2(technicalIndicatorMode2);
   }, [technicalIndicatorMode2, setTechnicalIndicatorMode2]);
+
+  useEffect(() => {
+    if (!isChartReady.current) return;
+    setTheme(theme.background.bg, theme.text.primary);
+  }, [theme, setTheme]);
 
   return (
     <View style={{ height: 300 }}>

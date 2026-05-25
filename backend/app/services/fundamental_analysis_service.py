@@ -12,7 +12,7 @@ class FundamentalAnalysisService:
     """Service for financial metrics database operations"""
 
     @staticmethod
-    def get_summary(symbol: str) -> Optional[Dict]:
+    async def get_summary(symbol: str) -> Optional[Dict]:
         """
         Get AI-generated fundamental summary for a specific symbol.
 
@@ -39,7 +39,7 @@ class FundamentalAnalysisService:
             raise ValueError(f"Failed to fetch fundamental summary: {str(e)}")
 
     @staticmethod
-    def get_balance_sheets(symbol: str) -> List[Dict]:
+    async def get_balance_sheets(symbol: str) -> List[Dict]:
         """
         Get balance sheets for a specific symbol
         """
@@ -56,7 +56,7 @@ class FundamentalAnalysisService:
             raise ValueError(f"Failed to fetch balance sheets: {str(e)}")
 
     @staticmethod
-    def get_cash_flows(symbol: str) -> List[Dict]:
+    async def get_cash_flows(symbol: str) -> List[Dict]:
         """
         Get cash flows for a specific symbol
         """
@@ -72,7 +72,7 @@ class FundamentalAnalysisService:
             raise ValueError(f"Failed to fetch cash flows: {str(e)}")
 
     @staticmethod
-    def get_indicators(symbol: str ) -> List[Dict]:
+    async def get_indicators(symbol: str ) -> List[Dict]:
         """
         Get financial indicators for a specific symbol
         """
@@ -88,7 +88,7 @@ class FundamentalAnalysisService:
             raise ValueError(f"Failed to fetch financial indicators: {str(e)}")
 
     @staticmethod
-    def get_income_statements(symbol: str ) -> List[Dict]:
+    async def get_income_statements(symbol: str ) -> List[Dict]:
         """
         Get income statements for a specific symbol
         """

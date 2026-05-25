@@ -91,12 +91,15 @@ export type New = {
 
 export const fetchNews = async (
   symbol: string,
+  limit?: number,
 ): Promise<{
   status: boolean;
   data: New[];
 }> => {
   try {
-    const result = await sendMessage(`api/articles/stock/${symbol}?limit=10`);
+    const result = limit
+      ? await sendMessage(`api/articles/stock/${symbol}?limit=${limit}`)
+      : await sendMessage(`api/articles/stock/${symbol}`);
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {

@@ -1,5 +1,27 @@
 export default function injectedJavaScript() {
   return /*javascript*/ `
+
+window.themeColors = {
+  background: "#ffffff",
+  textPrimary: "#333333",
+};
+
+window.setTheme = (background, textPrimary) => {
+  window.themeColors = { background, textPrimary };
+
+  // Fix thanh trắng: set background cho toàn bộ page
+  document.body.style.backgroundColor = background;
+  document.documentElement.style.backgroundColor = background;
+
+  if (!window.chart) return;
+  window.chart.applyOptions({
+    layout: {
+      background: { color: background },
+      textColor: textPrimary,
+    },
+  });
+};
+
 // Track initialization state
 window.currentSeriesType = "candle";
 window.cachedPriceData = null;
@@ -382,6 +404,9 @@ const applyScaleMargins = () => {
 };
  
 const tryInitialize = () => {
+  document.body.style.backgroundColor = window.themeColors.background;
+  document.documentElement.style.backgroundColor = window.themeColors.background;
+
   const container = document.getElementById("container");
   if (!container || typeof LightweightCharts === "undefined") return;
  
@@ -394,7 +419,11 @@ const tryInitialize = () => {
   try {
     window.chart = LightweightCharts.createChart(container, {
       localization: { timeFormatter },
-      layout: { fontSize: 10 },
+      layout: {
+        fontSize: 10,
+        background: { color: window.themeColors.background }, 
+        textColor: window.themeColors.textPrimary,             
+      },
       grid: { vertLines: { visible: false }, horzLines: { visible: false } },
       handleScroll: { vertTouchDrag: true, horzTouchDrag: true },
       rightPriceScale: { borderVisible: false, autoScale: true },

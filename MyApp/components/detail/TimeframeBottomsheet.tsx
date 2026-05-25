@@ -25,14 +25,14 @@ export const enum TIMEFRAME {
 }
 
 export const TIMEFRAME_OPTIONS = [
-  { label: "1 Phút", value: TIMEFRAME.ONE_MINUTE },
-  { label: "5 Phút", value: TIMEFRAME.FIVE_MINUTES },
-  { label: "15 Phút", value: TIMEFRAME.FIFTEEN_MINUTES },
-  { label: "30 Phút", value: TIMEFRAME.THIRTY_MINUTES },
-  { label: "1 Giờ", value: TIMEFRAME.ONE_HOUR },
-  { label: "1 Ngày", value: TIMEFRAME.ONE_DAY },
-  { label: "1 Tuần", value: TIMEFRAME.ONE_WEEK },
-  { label: "1 Tháng", value: TIMEFRAME.ONE_MONTH },
+  { label: "1 phút", value: TIMEFRAME.ONE_MINUTE },
+  { label: "5 phút", value: TIMEFRAME.FIVE_MINUTES },
+  { label: "15 phút", value: TIMEFRAME.FIFTEEN_MINUTES },
+  { label: "30 phút", value: TIMEFRAME.THIRTY_MINUTES },
+  { label: "1 giờ", value: TIMEFRAME.ONE_HOUR },
+  { label: "1 ngày", value: TIMEFRAME.ONE_DAY },
+  { label: "1 tuần", value: TIMEFRAME.ONE_WEEK },
+  { label: "1 tháng", value: TIMEFRAME.ONE_MONTH },
 ];
 
 interface Props {
@@ -115,14 +115,29 @@ const TimeframeBottomSheet = ({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: theme.background.surface ?? "#fff" },
+          { backgroundColor: theme.background.bg },
           { transform: [{ translateY: slideAnim }] },
         ]}
       >
         {/* Handle */}
         <View style={styles.handle} />
 
-        <Text typography="titleLarge">Chọn khung thời gian</Text>
+        <Text
+          typography="titleMedium"
+          color={theme.text.primary}
+          style={{ textAlign: "center", marginTop: 8 }}
+        >
+          Chọn khung thời gian
+        </Text>
+
+        <View
+          style={{
+            width: "100%",
+            height: 1,
+            backgroundColor: theme.border.default,
+            marginTop: 20,
+          }}
+        />
 
         <View style={styles.optionsContainer}>
           {TIMEFRAME_OPTIONS.slice(0, 4).map((option) => {
@@ -134,18 +149,19 @@ const TimeframeBottomSheet = ({
                 style={[
                   styles.optionBtn,
                   {
+                    borderWidth: 2,
                     backgroundColor: isSelected
-                      ? theme.base.primary
+                      ? theme.base.primary + "20"
                       : theme.background.surface,
                     borderColor: isSelected
-                      ? theme.base.primary
-                      : theme.border.default,
+                      ? theme.base.primary + "60"
+                      : "transparent",
                   },
                 ]}
               >
                 <Text
-                  typography="bodyLarge"
-                  color={isSelected ? theme.text.onPrimary : theme.text.primary}
+                  typography="bodyMedium"
+                  color={isSelected ? theme.base.primary : theme.text.primary}
                 >
                   {option.label}
                 </Text>
@@ -163,24 +179,49 @@ const TimeframeBottomSheet = ({
                 style={[
                   styles.optionBtn,
                   {
+                    borderWidth: 2,
                     backgroundColor: isSelected
-                      ? theme.base.primary
+                      ? theme.base.primary + "20"
                       : theme.background.surface,
                     borderColor: isSelected
-                      ? theme.base.primary
-                      : theme.border.default,
+                      ? theme.base.primary + "60"
+                      : "transparent",
                   },
                 ]}
               >
                 <Text
-                  typography="bodyLarge"
-                  color={isSelected ? theme.text.onPrimary : theme.text.primary}
+                  typography="bodyMedium"
+                  color={isSelected ? theme.base.primary : theme.text.primary}
                 >
                   {option.label}
                 </Text>
               </TouchableOpacity>
             );
           })}
+        </View>
+
+        <View
+          style={{
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: theme.base.success,
+            backgroundColor: theme.base.success + "24",
+            padding: 12,
+            margin: 12,
+          }}
+        >
+          <Text typography="bodyMedium" color={theme.text.primary}>
+            Chu kỳ nến cho biết mỗi cây nến thể hiện dữ liệu giá trong bao lâu.
+            Ví dụ: Khi bạn chọn chu kỳ nến 1 giờ, mỗi nến sẽ thể hiện biến động
+            giá trong 1 giờ.
+          </Text>
+          <Text
+            typography="labelLarge"
+            color={theme.base.success}
+            style={{ textAlign: "right", marginTop: 8 }}
+          >
+            Tìm hiểu thêm
+          </Text>
         </View>
       </Animated.View>
     </Modal>
@@ -198,7 +239,6 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    paddingHorizontal: 20,
     paddingBottom: 36,
     paddingTop: 12,
     elevation: 20,
@@ -223,13 +263,13 @@ const styles = StyleSheet.create({
   optionsContainer: {
     flexDirection: "row",
     marginTop: 12,
+    marginHorizontal: 12,
     gap: 8,
   },
   optionBtn: {
     paddingVertical: 4,
     paddingHorizontal: 6,
-    borderRadius: 4,
-    borderWidth: 1.5,
+    borderRadius: 16,
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
