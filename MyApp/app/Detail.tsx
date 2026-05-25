@@ -10,6 +10,8 @@ import { Text } from "@/components/ui/Text";
 import Octicons from "@expo/vector-icons/Octicons";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import IntroductionSection from "@/components/detail/IntroductionSection";
+import FinancialIndicatorsSection from "@/components/detail/FinancialIndicatorsSection";
+import NewsSection from "@/components/detail/NewsSection";
 
 const Detail = () => {
   const { theme } = useTheme();
@@ -57,19 +59,22 @@ const Detail = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
+      <ScreenHeader title={"Chi tiết cổ phiếu"} />
       <ScrollView
         style={{
           flex: 1,
           backgroundColor: theme.background.surface,
         }}
       >
-        <ScreenHeader title={"Chi tiết cổ phiếu"} />
-
         <PriceChartComponent symbol={stockSymbol} />
+
+        <NewsSection stockSymbol={stockSymbol} />
+
+        <FinancialIndicatorsSection stockSymbol={stockSymbol} />
 
         <IntroductionSection stockSymbol={stockSymbol} />
 
-        <View style={{ height: 48 }} />
+        <View style={{ height: 84 }} />
       </ScrollView>
 
       <LinearGradient
@@ -89,11 +94,7 @@ const Detail = () => {
           position: "absolute",
           bottom: insets.bottom,
           right: 12,
-          paddingVertical: 10,
-          paddingHorizontal: 12,
           borderRadius: 24,
-          flexDirection: "row",
-          alignItems: "center",
           // Shadow iOS
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 2 },
@@ -103,15 +104,24 @@ const Detail = () => {
           elevation: 4,
         }}
       >
-        <Octicons
-          name="sparkles-fill"
-          size={20}
-          color={theme.text.onPrimary}
-          style={{ marginRight: 8 }}
-        />
-        <Text typography="titleMedium" color={theme.text.onPrimary}>
-          {t("detail.AIAnalyze")}{" "}
-        </Text>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingVertical: 10,
+            paddingHorizontal: 12,
+          }}
+        >
+          <Octicons
+            name="sparkles-fill"
+            size={20}
+            color={theme.text.onPrimary}
+            style={{ marginRight: 8 }}
+          />
+          <Text typography="titleMedium" color={theme.text.onPrimary}>
+            {t("detail.AIAnalyze")}{" "}
+          </Text>
+        </View>
       </LinearGradient>
     </View>
   );

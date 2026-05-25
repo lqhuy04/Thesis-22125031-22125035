@@ -29,11 +29,15 @@ export const SessionExpiredModal = () => {
     <Modal transparent visible={visible} animationType="fade">
       <View style={styles.overlay}>
         <View style={[styles.card, { backgroundColor: theme.background.bg }]}>
-          <Text typography="titleMedium" style={{ marginBottom: 8 }}>
+          <Text
+            typography="titleLarge"
+            color={theme.text.primary}
+            style={{ marginBottom: 8 }}
+          >
             Phiên đăng nhập hết hạn
           </Text>
           <Text
-            typography="bodyMedium"
+            typography="bodyLarge"
             color={theme.text.primary + "80"}
             style={{ marginBottom: 24 }}
           >
@@ -43,7 +47,7 @@ export const SessionExpiredModal = () => {
             onPress={handleConfirm}
             style={[styles.button, { backgroundColor: theme.base.primary }]}
           >
-            <Text typography="labelLarge" color="#fff">
+            <Text typography="bodyLarge" color={theme.text.onPrimary}>
               Đăng nhập lại
             </Text>
           </TouchableOpacity>

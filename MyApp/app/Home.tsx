@@ -5,6 +5,7 @@ import { ScrollView, View, RefreshControl } from "react-native";
 import HomeAssetSection from "@/components/home/HomeAssetSection";
 import HomeNewSection from "@/components/home/HomeNewSection";
 import LinearGradient from "react-native-linear-gradient";
+import SuggestionSection from "@/components/home/SuggestionSection";
 
 const Home = () => {
   const { theme } = useTheme();
@@ -103,6 +104,7 @@ const Home = () => {
           }}
         >
           <MarketIndicesSection registerRefresh={registerRefresh} />
+          <SuggestionSection />
           <HomeNewSection registerRefresh={registerRefresh} />
           <View style={{ height: 24 }} />
         </View>

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, View, StyleSheet } from "react-native";
 import { Text } from "../ui/Text";
 import {
   CashFlows,
@@ -8,7 +8,203 @@ import {
   getFinancialIndicators,
 } from "@/helpers/FundamentalAnalysisHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
-import RevenueBarChart from "../ui/BarChart";
+
+// ─── Skeleton Primitives ───────────────────────────────────────────────────────
+
+interface SkeletonBoxProps {
+  width?: number | `${number}%`;
+  height?: number;
+  borderRadius?: number;
+  style?: object;
+  animatedValue: Animated.Value;
+  baseColor: string;
+  highlightColor: string;
+}
+
+const SkeletonBox = ({
+  width = "100%",
+  height = 16,
+  borderRadius = 6,
+  style,
+  animatedValue,
+  baseColor,
+  highlightColor,
+}: SkeletonBoxProps) => {
+  const backgroundColor = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [baseColor, highlightColor],
+  });
+
+  return (
+    <Animated.View
+      style={[{ width, height, borderRadius, backgroundColor }, style]}
+    />
+  );
+};
+
+// ─── Skeleton Row ──────────────────────────────────────────────────────────────
+
+const SkeletonRow = ({
+  animatedValue,
+  baseColor,
+  highlightColor,
+  showDivider,
+  dividerColor,
+}: {
+  animatedValue: Animated.Value;
+  baseColor: string;
+  highlightColor: string;
+  showDivider: boolean;
+  dividerColor: string;
+}) => (
+  <>
+    <View style={styles.row}>
+      <SkeletonBox
+        width="40%"
+        height={14}
+        animatedValue={animatedValue}
+        baseColor={baseColor}
+        highlightColor={highlightColor}
+      />
+      <SkeletonBox
+        width="25%"
+        height={14}
+        animatedValue={animatedValue}
+        baseColor={baseColor}
+        highlightColor={highlightColor}
+      />
+    </View>
+    {showDivider && (
+      <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+    )}
+  </>
+);
+
+// ─── Skeleton Card ─────────────────────────────────────────────────────────────
+
+const SkeletonCard = ({
+  title,
+  rowCount,
+  animatedValue,
+  cardBg,
+  baseColor,
+  highlightColor,
+  dividerColor,
+  style,
+}: {
+  title: string;
+  rowCount: number;
+  animatedValue: Animated.Value;
+  cardBg: string;
+  baseColor: string;
+  highlightColor: string;
+  dividerColor: string;
+  style?: object;
+}) => (
+  <View style={[styles.card, { backgroundColor: cardBg }, style]}>
+    {/* Section title placeholder */}
+    <SkeletonBox
+      width="45%"
+      height={16}
+      animatedValue={animatedValue}
+      baseColor={baseColor}
+      highlightColor={highlightColor}
+      style={{ marginBottom: 16 }}
+    />
+
+    {Array.from({ length: rowCount }).map((_, i) => (
+      <SkeletonRow
+        key={i}
+        animatedValue={animatedValue}
+        baseColor={baseColor}
+        highlightColor={highlightColor}
+        showDivider={i < rowCount - 1}
+        dividerColor={dividerColor}
+      />
+    ))}
+  </View>
+);
+
+// ─── Full Skeleton Layout ──────────────────────────────────────────────────────
+
+const FinancialIndicatorsSkeleton = ({
+  cardBg,
+  baseColor,
+  highlightColor,
+  dividerColor,
+}: {
+  cardBg: string;
+  baseColor: string;
+  highlightColor: string;
+  dividerColor: string;
+}) => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedValue, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: false,
+        }),
+        Animated.timing(animatedValue, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: false,
+        }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [animatedValue]);
+
+  const commonProps = {
+    animatedValue,
+    baseColor,
+    highlightColor,
+    dividerColor,
+    cardBg,
+  };
+
+  return (
+    <View style={{ marginHorizontal: 12 }}>
+      {/* Section header */}
+      <Animated.View
+        style={[
+          styles.sectionTitle,
+          {
+            backgroundColor: animatedValue.interpolate({
+              inputRange: [0, 1],
+              outputRange: [baseColor, highlightColor],
+            }),
+          },
+        ]}
+      />
+
+      {/* Định giá – 6 rows */}
+      <SkeletonCard {...commonProps} title="Định giá" rowCount={6} />
+
+      {/* Khả năng sinh lời – 5 rows */}
+      <SkeletonCard
+        {...commonProps}
+        title="Khả năng sinh lời"
+        rowCount={5}
+        style={{ marginTop: 12 }}
+      />
+
+      {/* Sức mạnh tài chính – 4 rows */}
+      <SkeletonCard
+        {...commonProps}
+        title="Sức mạnh tài chính"
+        rowCount={4}
+        style={{ marginTop: 12 }}
+      />
+    </View>
+  );
+};
+
+// ─── Main Component ────────────────────────────────────────────────────────────
 
 interface FinancialIndicatorsSectionProps {
   stockSymbol: string;
@@ -20,434 +216,244 @@ const FinancialIndicatorsSection = ({
   const { theme } = useTheme();
   const [financialIndicators, setFinancialIndicators] =
     useState<FinancialIndicators | null>(null);
-
   const [cashFlows, setCashFlows] = useState<CashFlows | null>(null);
-
-  const [annualData, setAnnualData] = useState<FinancialIndicators[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getFinancialIndicators(stockSymbol).then((res) => {
-      if (res.status) {
-        setFinancialIndicators(res.data);
-        setAnnualData(res.annualData);
-      }
-    });
+    setIsLoading(true);
+    setFinancialIndicators(null);
+    setCashFlows(null);
 
-    getCashFlows(stockSymbol).then((res) => {
-      if (res.status) {
-        setCashFlows(res.data);
-      }
-    });
+    Promise.all([
+      getFinancialIndicators(stockSymbol).then((res) => {
+        if (res.status) setFinancialIndicators(res.data);
+      }),
+      getCashFlows(stockSymbol).then((res) => {
+        if (res.status) setCashFlows(res.data);
+      }),
+    ]).finally(() => setIsLoading(false));
   }, [stockSymbol]);
 
-  return financialIndicators != null && cashFlows != null ? (
-    <View style={{ marginHorizontal: 12 }}>
-      <Text typography="headlineSmall">Định giá</Text>
+  // Derive skeleton colors from theme
+  const baseColor = theme.border.default;
+  const highlightColor = theme.background.bg;
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">P/E</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.pe_ratio.toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">P/B</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.pb_ratio.toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">EPS</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.eps.toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">BVPS</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.bvps.toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">EV/EBITDA</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.ev_ebitda.toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Vốn hoá thị trường</Text>
-        <Text typography="titleMedium">
-          {(financialIndicators?.market_cap / 1000000000).toFixed(2)} tỷ đồng
-        </Text>
-      </View>
-
-      {/** -------------------------------------------- */}
-      <Text typography="headlineSmall" style={{ marginTop: 24 }}>
-        Khả năng sinh lời
-      </Text>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginVertical: 4,
-        }}
-      >
-        <Text typography="bodyLarge">
-          Doanh thu:{" "}
-          <Text typography="titleLarge">
-            {(financialIndicators?.revenue / 1000000000).toFixed(2)} tỷ đồng
-          </Text>
-        </Text>
-
-        <Text
-          typography="titleLarge"
-          color={
-            financialIndicators?.revenue_yoy > 0
-              ? theme.base.success
-              : theme.base.error
-          }
-        >
-          {financialIndicators?.revenue_yoy > 0 ? "+" : "-"}{" "}
-          {(financialIndicators?.revenue_yoy * 100).toFixed(2)}%
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginVertical: 4,
-        }}
-      >
-        <Text typography="bodyLarge">
-          Lợi nhuận:{" "}
-          <Text typography="titleLarge">
-            {(financialIndicators?.net_income / 1000000000).toFixed(2)} tỷ đồng
-          </Text>
-        </Text>
-
-        <Text
-          typography="titleLarge"
-          color={
-            financialIndicators?.profit_yoy > 0
-              ? theme.base.success
-              : theme.base.error
-          }
-        >
-          {financialIndicators?.profit_yoy > 0 ? "+" : "-"}{" "}
-          {(financialIndicators?.profit_yoy * 100).toFixed(2)}%
-        </Text>
-      </View>
-
-      <RevenueBarChart
-        data={annualData.map((e) => {
-          return {
-            time: e?.year.toString(),
-            revenue: e?.revenue / 1000000000,
-            profit: e?.net_income / 1000000000,
-          };
-        })}
+  if (isLoading) {
+    return (
+      <FinancialIndicatorsSkeleton
+        cardBg={theme.background.bg}
+        baseColor={baseColor}
+        highlightColor={highlightColor}
+        dividerColor={theme.border.default}
       />
+    );
+  }
 
-      {/* <Text typography="titleMedium" style={{ marginTop: 12, marginBottom: 8 }}>
-        {`Lợi nhuận (Tỷ đồng)`}
-      </Text>
-      <BarChart
-        data={annualData.map((e) => {
-          return {
-            time: e?.year.toString(),
-            value: e?.net_income / 1000000000,
-          };
-        })}
-      /> */}
+  if (financialIndicators == null || cashFlows == null) return null;
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
+  return (
+    <View style={{ marginHorizontal: 12 }}>
+      <Text
+        typography="titleLarge"
+        color={theme.text.primary}
+        style={{ marginBottom: 12, marginTop: 24 }}
       >
-        <Text typography="bodyLarge">ROE</Text>
-        <Text typography="titleMedium">
-          {(financialIndicators?.roe * 100).toFixed(2)}%
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">ROA</Text>
-        <Text typography="titleMedium">
-          {(financialIndicators?.roa * 100).toFixed(2)}%
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">ROIC</Text>
-        <Text typography="titleMedium">
-          {(financialIndicators?.roic * 100).toFixed(2)}%
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Biên lợi nhuận ròng</Text>
-        <Text typography="titleMedium">
-          {(financialIndicators?.net_margin * 100).toFixed(2)}%
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Biên lợi nhuận gộp</Text>
-        <Text typography="titleMedium">
-          {(financialIndicators?.gross_margin * 100).toFixed(2)}%
-        </Text>
-      </View>
-
-      {/** -------------------------------------------- */}
-      <Text typography="headlineSmall" style={{ marginTop: 24 }}>
-        Sức mạnh tài chính
+        Chỉ tiêu tài chính
       </Text>
 
+      {/* ── Định giá ── */}
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
+          backgroundColor: theme.background.bg,
+          borderRadius: 12,
+          padding: 12,
         }}
       >
-        <Text typography="bodyLarge">Tổng nợ/VCSH</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.debt_to_equity.toFixed(2)}
+        <Text
+          typography="titleMedium"
+          color={theme.text.primary}
+          style={{ marginBottom: 12 }}
+        >
+          Định giá
         </Text>
+
+        {[
+          {
+            label: "Vốn hoá",
+            value: `${(financialIndicators.market_cap / 1_000_000_000).toFixed(2)} tỷ đồng`,
+          },
+          { label: "P/E", value: financialIndicators.pe_ratio.toFixed(2) },
+          { label: "P/B", value: financialIndicators.pb_ratio.toFixed(2) },
+          { label: "EPS", value: financialIndicators.eps.toFixed(2) },
+          { label: "BVPS", value: financialIndicators.bvps.toFixed(2) },
+          {
+            label: "EV/EBITDA",
+            value: financialIndicators.ev_ebitda.toFixed(2),
+          },
+        ].map(({ label, value }, i, arr) => (
+          <React.Fragment key={label}>
+            <View style={styles.row}>
+              <Text typography="bodyLarge" color={theme.text.primary + "88"}>
+                {label}
+              </Text>
+              <Text typography="titleMedium" color={theme.text.primary}>
+                {value}
+              </Text>
+            </View>
+            {i < arr.length - 1 && (
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.border.default },
+                ]}
+              />
+            )}
+          </React.Fragment>
+        ))}
       </View>
 
+      {/* ── Khả năng sinh lời ── */}
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
+          backgroundColor: theme.background.bg,
+          borderRadius: 12,
+          padding: 12,
           marginTop: 12,
         }}
       >
-        <Text typography="bodyLarge">Tổng nợ/Tổng TS</Text>
-        <Text typography="titleMedium">
-          {(
-            financialIndicators?.debt_to_equity /
-            financialIndicators?.financial_leverage
-          ).toFixed(2)}
+        <Text
+          typography="titleMedium"
+          color={theme.text.primary}
+          style={{ marginBottom: 12 }}
+        >
+          Khả năng sinh lời
         </Text>
+
+        {[
+          {
+            label: "ROE",
+            value: `${(financialIndicators.roe * 100).toFixed(2)}%`,
+          },
+          {
+            label: "ROA",
+            value: `${(financialIndicators.roa * 100).toFixed(2)}%`,
+          },
+          {
+            label: "ROIC",
+            value: `${(financialIndicators.roic * 100).toFixed(2)}%`,
+          },
+          {
+            label: "Tỷ suất LN gộp",
+            value: `${(financialIndicators.gross_margin * 100).toFixed(2)}%`,
+          },
+          {
+            label: "Biên LN ròng",
+            value: `${(financialIndicators.net_margin * 100).toFixed(2)}%`,
+          },
+        ].map(({ label, value }, i, arr) => (
+          <React.Fragment key={label}>
+            <View style={styles.row}>
+              <Text typography="bodyLarge" color={theme.text.primary + "88"}>
+                {label}
+              </Text>
+              <Text typography="titleMedium" color={theme.text.primary}>
+                {value}
+              </Text>
+            </View>
+            {i < arr.length - 1 && (
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.border.default },
+                ]}
+              />
+            )}
+          </React.Fragment>
+        ))}
       </View>
 
+      {/* ── Sức mạnh tài chính ── */}
       <View
         style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
+          backgroundColor: theme.background.bg,
+          borderRadius: 12,
+          padding: 12,
           marginTop: 12,
         }}
       >
-        <Text typography="bodyLarge">Thanh toán nhanh</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.quick_ratio.toFixed(2)}
+        <Text
+          typography="titleMedium"
+          color={theme.text.primary}
+          style={{ marginBottom: 12 }}
+        >
+          Sức mạnh tài chính
         </Text>
-      </View>
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Thanh toán hiện hành</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.current_ratio.toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Khả năng trả lãi</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.interest_coverage.toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Thanh khoản tiền mặt</Text>
-        <Text typography="titleMedium">
-          {financialIndicators?.cash_ratio.toFixed(2)}
-        </Text>
-      </View>
-
-      {/** -------------------------------------------- */}
-      <Text typography="headlineSmall" style={{ marginTop: 24 }}>
-        Dòng tiền
-      </Text>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Dòng tiền kinh doanh</Text>
-        <Text typography="titleMedium">
-          {(cashFlows?.cfo / 1000000000).toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Dòng tiền đầu tư</Text>
-        <Text typography="titleMedium">
-          {(cashFlows?.cfi / 1000000000).toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Dòng tiền tài chính</Text>
-        <Text typography="titleMedium">
-          {(cashFlows?.cff / 1000000000).toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Dòng tiền tự do</Text>
-        <Text typography="titleMedium">
-          {((cashFlows?.cfo + cashFlows?.capex) / 1000000000).toFixed(2)}
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginTop: 12,
-        }}
-      >
-        <Text typography="bodyLarge">Tiền cuối kỳ</Text>
-        <Text typography="titleMedium">
-          {(cashFlows?.cash_ending / 1000000000).toFixed(2)}
-        </Text>
+        {[
+          {
+            label: "Tổng nợ/VCSH",
+            value: financialIndicators.debt_to_equity.toFixed(2),
+          },
+          {
+            label: "Tổng nợ/Tổng TS",
+            value: (1 - 1 / financialIndicators.financial_leverage).toFixed(2),
+          },
+          {
+            label: "Thanh toán nhanh",
+            value: financialIndicators.quick_ratio.toFixed(2),
+          },
+          {
+            label: "Thanh toán hiện hành",
+            value: financialIndicators.current_ratio.toFixed(2),
+          },
+        ].map(({ label, value }, i, arr) => (
+          <React.Fragment key={label}>
+            <View style={styles.row}>
+              <Text typography="bodyLarge" color={theme.text.primary + "88"}>
+                {label}
+              </Text>
+              <Text typography="titleMedium" color={theme.text.primary}>
+                {value}
+              </Text>
+            </View>
+            {i < arr.length - 1 && (
+              <View
+                style={[
+                  styles.divider,
+                  { backgroundColor: theme.border.default },
+                ]}
+              />
+            )}
+          </React.Fragment>
+        ))}
       </View>
     </View>
-  ) : null;
+  );
 };
+
+// ─── Shared Styles ─────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  divider: {
+    width: "100%",
+    height: 1,
+    marginVertical: 12,
+  },
+  card: {
+    borderRadius: 12,
+    padding: 12,
+  },
+  sectionTitle: {
+    width: "50%",
+    height: 18,
+    borderRadius: 6,
+    marginVertical: 12,
+  },
+});
+
 export default FinancialIndicatorsSection;

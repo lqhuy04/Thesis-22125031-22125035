@@ -250,3 +250,56 @@ export const getTodayHighlights = async (): Promise<{
     };
   }
 };
+
+export type SuggestionItem = {
+  logo: string;
+  symbol: string;
+  company_name: string;
+  current_price: number;
+  price_change: number;
+  per_price_change: number;
+};
+
+export type SuggestionData = {
+  trend: {
+    top_gainers: SuggestionItem[];
+    top_decliners: SuggestionItem[];
+    top_volume: SuggestionItem[];
+  };
+  community: {
+    top_searched: SuggestionItem[];
+    top_watchlist: SuggestionItem[];
+  };
+};
+
+export const getInvestingIdea = async (
+  limit?: number,
+): Promise<{
+  status: boolean;
+  data: SuggestionData | null;
+}> => {
+  try {
+    const result = await sendMessage(
+      `api/investing-idea?limit=${limit != null ? limit : 5}`,
+    );
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as SuggestionData,
+      };
+    }
+
+    return {
+      status: false,
+      data: null,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: null,
+    };
+  }
+};

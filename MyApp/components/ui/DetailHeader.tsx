@@ -243,7 +243,7 @@ const DetailHeader = ({
       {chart}
 
       <Text
-        typography="titleMedium"
+        typography="titleLarge"
         color={theme.text.primary}
         style={{ marginHorizontal: 12, marginVertical: 12 }}
       >

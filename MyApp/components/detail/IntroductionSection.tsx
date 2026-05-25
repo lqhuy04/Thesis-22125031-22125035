@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
-  Image,
   LayoutAnimation,
   Platform,
   Pressable,
@@ -14,11 +13,8 @@ import {
   CompanyProfile,
   getCompanyLeaders,
   getCompanyProfile,
-  getCompanySubsidiaries,
-  SubsidiaryCompany,
 } from "@/helpers/CompanyProfileHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
-import { Images } from "@/constants/Images";
 import Entypo from "@expo/vector-icons/Entypo";
 
 if (
@@ -193,7 +189,7 @@ const Accordion = ({
           paddingVertical: 14,
         }}
       >
-        <Text typography="titleLarge" color={titleColor}>
+        <Text typography="titleMedium" color={titleColor}>
           {title}
         </Text>
         <Animated.View style={{ transform: [{ rotate }] }}>
@@ -256,8 +252,6 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
   const { theme } = useTheme();
   const [companyProfileData, setCompanyProfileData] =
     useState<CompanyProfile | null>(null);
-  const [subsidiaries, setSubsidiaries] = useState<SubsidiaryCompany[]>([]);
-  const [associates, setAssociates] = useState<SubsidiaryCompany[]>([]);
   const [leaders, setLeaders] = useState<CompanyLeader[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -266,12 +260,6 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
     Promise.all([
       getCompanyProfile(stockSymbol).then((res) => {
         if (res.status) setCompanyProfileData(res.data);
-      }),
-      getCompanySubsidiaries(stockSymbol).then((res) => {
-        if (res.status) {
-          setSubsidiaries(res.data.subsidiaries);
-          setAssociates(res.data.associates);
-        }
       }),
       getCompanyLeaders(stockSymbol).then((res) => {
         if (res.status) setLeaders(res.data);
@@ -286,49 +274,12 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
   const valueColor = theme.text.primary + "88";
   const borderColor = theme.border.default;
 
-  const CompanyCard = ({ item }: { item: SubsidiaryCompany }) => (
-    <View
-      style={{
-        borderRadius: 8,
-        padding: 10,
-        backgroundColor: theme.background.surface,
-        marginTop: 8,
-        flexDirection: "row",
-        alignItems: "flex-start",
-      }}
-    >
-      <Image
-        source={Images.ic_subsidiary}
-        style={{ width: 36, height: 36, marginRight: 12 }}
-      />
-      <View style={{ flex: 1 }}>
-        <Text typography="titleMedium" color={labelColor}>
-          {item.company_name}
-        </Text>
-        <Text
-          typography="bodyMedium"
-          color={valueColor}
-          style={{ marginTop: 4 }}
-        >
-          Vốn điều lệ: {item.charter_capital_billion} tỷ
-        </Text>
-        <Text
-          typography="bodyMedium"
-          color={valueColor}
-          style={{ marginTop: 2 }}
-        >
-          Tỉ lệ nắm giữ: {item.ownership_pct}%
-        </Text>
-      </View>
-    </View>
-  );
-
   return (
     <View>
       <Text
-        typography="titleMedium"
+        typography="titleLarge"
         color={theme.text.primary}
-        style={{ marginHorizontal: 12, marginTop: 12 }}
+        style={{ marginHorizontal: 12, marginTop: 24 }}
       >
         Hồ sơ doanh nghiệp
       </Text>
@@ -485,30 +436,6 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
                   {leader.position}
                 </Text>
               </View>
-            ))}
-          </Accordion>
-        )}
-
-        {subsidiaries.length > 0 && (
-          <Accordion
-            title="Công ty con"
-            borderColor={borderColor}
-            titleColor={labelColor}
-          >
-            {subsidiaries.map((sub) => (
-              <CompanyCard key={`sub_${sub.company_name}`} item={sub} />
-            ))}
-          </Accordion>
-        )}
-
-        {associates.length > 0 && (
-          <Accordion
-            title="Công ty liên kết"
-            borderColor={borderColor}
-            titleColor={labelColor}
-          >
-            {associates.map((asc) => (
-              <CompanyCard key={`asc_${asc.company_name}`} item={asc} />
             ))}
           </Accordion>
         )}
