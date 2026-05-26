@@ -33,6 +33,7 @@ import TimeframeBottomSheet, {
 import IndicatorBottomSheet, { IndicatorState } from "./IndicatorBottomsheet";
 import { Text } from "../ui/Text";
 import Entypo from "@expo/vector-icons/Entypo";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 interface Props {
   symbol: string;
@@ -41,6 +42,7 @@ interface Props {
 
 const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [loading, setLoading] = useState<boolean>(false);
   const [chartType, setChartType] = useState<"candle" | "area">("candle");
   const [timeFrame, setTimeFrame] = useState<TIMEFRAME>(
@@ -191,8 +193,9 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
     }));
   }, [priceData, theme.base.error, theme.base.success]);
 
-  const selectedLabel =
-    TIMEFRAME_OPTIONS.find((o) => o.value === timeFrame)?.label ?? "";
+  const selectedLabelKey =
+    TIMEFRAME_OPTIONS.find((o) => o.value === timeFrame)?.labelKey ?? "";
+  const selectedLabel = selectedLabelKey ? t(selectedLabelKey) : "";
 
   const activeIndicatorCount =
     (indicatorState.mode1 ? 1 : 0) +
@@ -221,7 +224,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
               }}
             >
               <Text typography="titleMedium" color={theme.text.primary}>
-                Biểu đồ:
+                {t("priceChart.chart")}
               </Text>
 
               <View
@@ -255,7 +258,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
                     style={{ marginRight: 8 }}
                   />
                   <Text typography="bodyMedium" color={theme.text.primary}>
-                    Đường
+                    {t("priceChart.line")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -279,7 +282,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
                     style={{ marginRight: 8 }}
                   />
                   <Text typography="bodyMedium" color={theme.text.primary}>
-                    Nến
+                    {t("priceChart.candle")}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -345,7 +348,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
             <View style={styles.toolbar}>
               {/* Timeframe button */}
               <Text typography="bodyMedium" color={theme.text.primary}>
-                Chu kỳ nến:
+                {t("priceChart.candlePeriod")}
               </Text>
 
               <TouchableOpacity
@@ -379,7 +382,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
 
               {/* Indicator button */}
               <Text typography="bodyMedium" color={theme.text.primary}>
-                Chỉ báo kỹ thuật:
+                {t("priceChart.technicalIndicator")}
               </Text>
 
               <TouchableOpacity

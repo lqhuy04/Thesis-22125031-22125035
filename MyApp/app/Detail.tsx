@@ -21,45 +21,9 @@ const Detail = () => {
   const { data } = useLocalSearchParams() || {};
   const stockSymbol = (data as string) ?? "";
 
-  // /**
-  //  * renderContent is called once per tab/subtab combination.
-  //  * CachedTabContent inside TabView keeps the component mounted after
-  //  * first render — so switching tabs won't trigger re-fetches or re-renders.
-  //  */
-  // const renderContent = useCallback(
-  //   (tabKey: string, subTabKey?: string): React.ReactNode => {
-  //     if (tabKey === "profile" && subTabKey === "introduction") {
-  //       return <IntroductionSection stockSymbol={stockSymbol} />;
-  //     }
-  //     if (tabKey === "profile" && subTabKey === "board") {
-  //       return <BoardSection stockSymbol={stockSymbol} />;
-  //     }
-  //     if (tabKey === "news") {
-  //       return <NewsSection stockSymbol={stockSymbol} />;
-  //     }
-  //     if (tabKey === "summary") {
-  //       return <SummarizeAndRecommendSection stockSymbol={stockSymbol} />;
-  //     }
-  //     if (
-  //       tabKey === "fundamental-analysis" &&
-  //       subTabKey === "fundamental-analysis-info"
-  //     ) {
-  //       return <FinancialIndicatorsSection stockSymbol={stockSymbol} />;
-  //     }
-  //     if (
-  //       tabKey === "fundamental-analysis" &&
-  //       subTabKey === "fundamental-analysis-summary"
-  //     ) {
-  //       return <FinancialAnalysisSummarySection stockSymbol={stockSymbol} />;
-  //     }
-  //     return null;
-  //   },
-  //   [stockSymbol],
-  // );
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
-      <ScreenHeader title={"Chi tiết cổ phiếu"} />
+      <ScreenHeader title={t("detail.screenTitle")} />
       <ScrollView
         style={{
           flex: 1,

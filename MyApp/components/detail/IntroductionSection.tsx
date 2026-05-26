@@ -15,6 +15,7 @@ import {
   getCompanyProfile,
 } from "@/helpers/CompanyProfileHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import Entypo from "@expo/vector-icons/Entypo";
 
 if (
@@ -250,6 +251,7 @@ const InfoRow = ({
 // ── Main component ────────────────────────────────────────────────────────────
 const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [companyProfileData, setCompanyProfileData] =
     useState<CompanyProfile | null>(null);
   const [leaders, setLeaders] = useState<CompanyLeader[]>([]);
@@ -281,7 +283,7 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
         color={theme.text.primary}
         style={{ marginHorizontal: 12, marginTop: 24 }}
       >
-        Hồ sơ doanh nghiệp
+        {t("companyProfile.sectionTitle")}
       </Text>
 
       <View
@@ -296,7 +298,7 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
         }}
       >
         <Accordion
-          title="Giới thiệu chung"
+          title={t("companyProfile.overview")}
           defaultOpen
           borderColor={borderColor}
           titleColor={labelColor}
@@ -306,59 +308,59 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
           </Text>
           <View style={{ height: 10 }} />
           <Text typography="bodyMedium" color={valueColor}>
-            • Địa chỉ: {companyProfileData.address}
+            • {t("companyProfile.address")}: {companyProfileData.address}
           </Text>
           <Text typography="bodyMedium" color={valueColor}>
-            • Email: {companyProfileData.email}
+            • {t("companyProfile.email")}: {companyProfileData.email}
           </Text>
           <Text typography="bodyMedium" color={valueColor}>
-            • Điện thoại: {companyProfileData.phone}
+            • {t("companyProfile.phone")}: {companyProfileData.phone}
           </Text>
           <Text typography="bodyMedium" color={valueColor}>
-            • Website: {companyProfileData.website}
+            • {t("companyProfile.website")}: {companyProfileData.website}
           </Text>
           <Text typography="bodyMedium" color={valueColor}>
-            • Fax: {companyProfileData.fax}
+            • {t("companyProfile.fax")}: {companyProfileData.fax}
           </Text>
         </Accordion>
 
         <Accordion
-          title="Thông tin cơ bản"
+          title={t("companyProfile.basicInfo")}
           borderColor={borderColor}
           titleColor={labelColor}
         >
           <InfoRow
-            label="Mã"
+            label={t("companyProfile.symbol")}
             value={companyProfileData.symbol}
             labelColor={labelColor}
             valueColor={valueColor}
           />
           <InfoRow
-            label="Tên ngành ICB"
+            label={t("companyProfile.industryName")}
             value={companyProfileData.industry_name}
             labelColor={labelColor}
             valueColor={valueColor}
           />
           <InfoRow
-            label="Mã ngành ICB"
+            label={t("companyProfile.icbCode")}
             value={companyProfileData.icb_code}
             labelColor={labelColor}
             valueColor={valueColor}
           />
           <InfoRow
-            label="Năm thành lập"
+            label={t("companyProfile.foundedDate")}
             value={companyProfileData.founded_date}
             labelColor={labelColor}
             valueColor={valueColor}
           />
           <InfoRow
-            label="Vốn điều lệ"
-            value={`${companyProfileData.listed_volume} tỷ`}
+            label={t("companyProfile.charterCapital")}
+            value={`${companyProfileData.listed_volume} ${t("companyProfile.billion")}`}
             labelColor={labelColor}
             valueColor={valueColor}
           />
           <InfoRow
-            label="Số lượng nhân viên"
+            label={t("companyProfile.employeeCount")}
             value={companyProfileData.employee_count}
             labelColor={labelColor}
             valueColor={valueColor}
@@ -366,36 +368,36 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
         </Accordion>
 
         <Accordion
-          title="Thông tin niêm yết"
+          title={t("companyProfile.listingInfo")}
           borderColor={borderColor}
           titleColor={labelColor}
         >
           <InfoRow
-            label="Ngày niêm yết"
+            label={t("companyProfile.listingDate")}
             value={companyProfileData.listing_date}
             labelColor={labelColor}
             valueColor={valueColor}
           />
           <InfoRow
-            label="Nơi niêm yết"
+            label={t("companyProfile.exchange")}
             value={companyProfileData.exchange}
             labelColor={labelColor}
             valueColor={valueColor}
           />
           <InfoRow
-            label="Giá chào sàn (1000 VND)"
+            label={t("companyProfile.ipoPrice")}
             value={companyProfileData.ipo_price}
             labelColor={labelColor}
             valueColor={valueColor}
           />
           <InfoRow
-            label="KL đang niêm yết"
-            value={`${companyProfileData.market_cap_billion} tỷ`}
+            label={t("companyProfile.listedVolume")}
+            value={`${companyProfileData.market_cap_billion} ${t("companyProfile.billion")}`}
             labelColor={labelColor}
             valueColor={valueColor}
           />
           <InfoRow
-            label="SLCP lưu hành"
+            label={t("companyProfile.sharesOutstanding")}
             value={companyProfileData.shares_outstanding}
             labelColor={labelColor}
             valueColor={valueColor}
@@ -404,7 +406,7 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
 
         {leaders.length > 0 && (
           <Accordion
-            title="Ban lãnh đạo"
+            title={t("companyProfile.leadership")}
             borderColor={borderColor}
             titleColor={labelColor}
           >

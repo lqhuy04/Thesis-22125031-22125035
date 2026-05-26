@@ -12,6 +12,7 @@ import {
   checkStockInFavorite,
   deleteStockFromFavorite,
 } from "@/helpers/ProfileHelpers";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 interface DetailHeaderProps {
   symbol: string;
@@ -25,6 +26,7 @@ const DetailHeader = ({
   isMarketIndex = false,
 }: DetailHeaderProps) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   const [data, setData] = useState<any>(null);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
@@ -166,7 +168,7 @@ const DetailHeader = ({
             </TouchableOpacity>
 
             <Text typography="bodySmall" color={theme.text.primary}>
-              {"Theo dõi"}
+              {t("detailHeader.follow")}
             </Text>
           </View>
         </View>
@@ -247,7 +249,7 @@ const DetailHeader = ({
         color={theme.text.primary}
         style={{ marginHorizontal: 12, marginVertical: 12 }}
       >
-        {"Biến động trong ngày"}
+        {t("detailHeader.intradayChange")}
       </Text>
 
       <View
@@ -270,7 +272,7 @@ const DetailHeader = ({
           >
             <View style={{ flex: 1 }}>
               <Text typography="bodyMedium" color={theme.text.primary}>
-                Sàn
+                {t("detailHeader.floor")}
               </Text>
               <Text typography="titleMedium" color={theme.base.error}>
                 {displayData?.FloorPrice}
@@ -284,7 +286,7 @@ const DetailHeader = ({
               }}
             >
               <Text typography="bodyMedium" color={theme.text.primary}>
-                Tham chiếu
+                {t("detailHeader.reference")}
               </Text>
               <Text typography="titleMedium" color={theme.base.warning}>
                 {displayData?.RefPrice}
@@ -298,7 +300,7 @@ const DetailHeader = ({
               }}
             >
               <Text typography="bodyMedium" color={theme.text.primary}>
-                Trần
+                {t("detailHeader.ceiling")}
               </Text>
               <Text typography="titleMedium" color={theme.base.success}>
                 {displayData?.CeilingPrice}
@@ -321,10 +323,10 @@ const DetailHeader = ({
             }}
           >
             <Text typography="bodyMedium" color={theme.text.primary}>
-              Khối lượng giao dịch
+              {t("detailHeader.tradingVolume")}
             </Text>
             <Text typography="titleMedium" color={theme.text.primary}>
-              {displayData?.TotalMatchVol} cp
+              {displayData?.TotalMatchVol} {t("detailHeader.shares")}
             </Text>
           </View>
 
@@ -340,11 +342,11 @@ const DetailHeader = ({
             style={{ flexDirection: "row", justifyContent: "space-between" }}
           >
             <Text typography="bodyMedium" color={theme.text.primary}>
-              Giá trị giao dịch
+              {t("detailHeader.tradingValue")}
             </Text>
             <Text typography="titleMedium" color={theme.text.primary}>
-              {(Number(displayData?.TotalMatchVal) / 1000000000).toFixed(2)} tỷ
-              đồng
+              {(Number(displayData?.TotalMatchVal) / 1000000000).toFixed(2)}{" "}
+              {t("detailHeader.billionVND")}
             </Text>
           </View>
         </View>

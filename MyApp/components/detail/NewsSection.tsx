@@ -4,6 +4,7 @@ import { Text } from "../ui/Text";
 import { fetchNews, New } from "@/helpers/DetailHelpers";
 import NewsItem from "../ui/NewsItem";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import { router } from "expo-router";
 
 // ─── Skeleton ──────────────────────────────────────────────────────────────────
@@ -105,6 +106,7 @@ const NewsSkeleton = ({
 
 const NewsSection = ({ stockSymbol }: { stockSymbol: string }) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [newsItems, setNewsItems] = useState<New[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -133,7 +135,7 @@ const NewsSection = ({ stockSymbol }: { stockSymbol: string }) => {
     <View>
       <View style={[styles.header, { marginTop: 12, marginHorizontal: 12 }]}>
         <Text typography="titleLarge" color={theme.text.primary}>
-          {`${stockSymbol} có tin gì hot?`}
+          {t("detail.newsSectionHotTitle").replace("{symbol}", stockSymbol)}
         </Text>
         <TouchableOpacity
           onPress={() => {
@@ -149,7 +151,7 @@ const NewsSection = ({ stockSymbol }: { stockSymbol: string }) => {
           }}
         >
           <Text typography="titleMedium" color={theme.base.primary}>
-            Xem tất cả
+            {t("detail.newsSectionViewAll")}
           </Text>
         </TouchableOpacity>
       </View>

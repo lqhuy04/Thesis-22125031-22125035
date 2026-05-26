@@ -8,6 +8,7 @@ import {
   getFinancialIndicators,
 } from "@/helpers/FundamentalAnalysisHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 
 // ─── Skeleton Primitives ───────────────────────────────────────────────────────
 
@@ -214,6 +215,7 @@ const FinancialIndicatorsSection = ({
   stockSymbol,
 }: FinancialIndicatorsSectionProps) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [financialIndicators, setFinancialIndicators] =
     useState<FinancialIndicators | null>(null);
   const [cashFlows, setCashFlows] = useState<CashFlows | null>(null);
@@ -258,7 +260,7 @@ const FinancialIndicatorsSection = ({
         color={theme.text.primary}
         style={{ marginBottom: 12, marginTop: 24 }}
       >
-        Chỉ tiêu tài chính
+        {t("financialIndicators.sectionTitle")}
       </Text>
 
       {/* ── Định giá ── */}
@@ -274,20 +276,32 @@ const FinancialIndicatorsSection = ({
           color={theme.text.primary}
           style={{ marginBottom: 12 }}
         >
-          Định giá
+          {t("financialIndicators.valuation")}
         </Text>
 
         {[
           {
-            label: "Vốn hoá",
-            value: `${(financialIndicators.market_cap / 1_000_000_000).toFixed(2)} tỷ đồng`,
+            label: t("financialIndicators.marketCap"),
+            value: `${(financialIndicators.market_cap / 1_000_000_000).toFixed(2)} ${t("financialIndicators.billionVND")}`,
           },
-          { label: "P/E", value: financialIndicators.pe_ratio.toFixed(2) },
-          { label: "P/B", value: financialIndicators.pb_ratio.toFixed(2) },
-          { label: "EPS", value: financialIndicators.eps.toFixed(2) },
-          { label: "BVPS", value: financialIndicators.bvps.toFixed(2) },
           {
-            label: "EV/EBITDA",
+            label: t("financialIndicators.pe"),
+            value: financialIndicators.pe_ratio.toFixed(2),
+          },
+          {
+            label: t("financialIndicators.pb"),
+            value: financialIndicators.pb_ratio.toFixed(2),
+          },
+          {
+            label: t("financialIndicators.eps"),
+            value: financialIndicators.eps.toFixed(2),
+          },
+          {
+            label: t("financialIndicators.bvps"),
+            value: financialIndicators.bvps.toFixed(2),
+          },
+          {
+            label: t("financialIndicators.evEbitda"),
             value: financialIndicators.ev_ebitda.toFixed(2),
           },
         ].map(({ label, value }, i, arr) => (
@@ -326,28 +340,28 @@ const FinancialIndicatorsSection = ({
           color={theme.text.primary}
           style={{ marginBottom: 12 }}
         >
-          Khả năng sinh lời
+          {t("financialIndicators.profitability")}
         </Text>
 
         {[
           {
-            label: "ROE",
+            label: t("financialIndicators.roe"),
             value: `${(financialIndicators.roe * 100).toFixed(2)}%`,
           },
           {
-            label: "ROA",
+            label: t("financialIndicators.roa"),
             value: `${(financialIndicators.roa * 100).toFixed(2)}%`,
           },
           {
-            label: "ROIC",
+            label: t("financialIndicators.roic"),
             value: `${(financialIndicators.roic * 100).toFixed(2)}%`,
           },
           {
-            label: "Tỷ suất LN gộp",
+            label: t("financialIndicators.grossMargin"),
             value: `${(financialIndicators.gross_margin * 100).toFixed(2)}%`,
           },
           {
-            label: "Biên LN ròng",
+            label: t("financialIndicators.netMargin"),
             value: `${(financialIndicators.net_margin * 100).toFixed(2)}%`,
           },
         ].map(({ label, value }, i, arr) => (
@@ -386,24 +400,24 @@ const FinancialIndicatorsSection = ({
           color={theme.text.primary}
           style={{ marginBottom: 12 }}
         >
-          Sức mạnh tài chính
+          {t("financialIndicators.financialStrength")}
         </Text>
 
         {[
           {
-            label: "Tổng nợ/VCSH",
+            label: t("financialIndicators.debtToEquity"),
             value: financialIndicators.debt_to_equity.toFixed(2),
           },
           {
-            label: "Tổng nợ/Tổng TS",
+            label: t("financialIndicators.debtToAsset"),
             value: (1 - 1 / financialIndicators.financial_leverage).toFixed(2),
           },
           {
-            label: "Thanh toán nhanh",
+            label: t("financialIndicators.quickRatio"),
             value: financialIndicators.quick_ratio.toFixed(2),
           },
           {
-            label: "Thanh toán hiện hành",
+            label: t("financialIndicators.currentRatio"),
             value: financialIndicators.current_ratio.toFixed(2),
           },
         ].map(({ label, value }, i, arr) => (

@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import { Text } from "../ui/Text";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -57,6 +58,7 @@ const IndicatorBottomSheet = ({
   onClose,
 }: Props) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -163,7 +165,7 @@ const IndicatorBottomSheet = ({
           color={theme.text.primary}
           style={{ textAlign: "center", marginTop: 8 }}
         >
-          Chỉ báo kỹ thuật
+          {t("indicator.title")}
         </Text>
 
         {/* Divider */}
@@ -179,7 +181,7 @@ const IndicatorBottomSheet = ({
         {/* Overlay indicators: MA, BOLL */}
         <View style={styles.sectionLabel}>
           <Text typography="labelLarge" color={theme.text.secondary}>
-            Đường chỉ báo
+            {t("indicator.overlayIndicators")}
           </Text>
         </View>
         <View style={styles.optionsContainer}>
@@ -195,7 +197,7 @@ const IndicatorBottomSheet = ({
         {/* Volume */}
         <View style={styles.sectionLabel}>
           <Text typography="labelLarge" color={theme.text.secondary}>
-            Khối lượng
+            {t("indicator.volume")}
           </Text>
         </View>
         <View style={styles.optionsContainer}>
@@ -210,7 +212,7 @@ const IndicatorBottomSheet = ({
         {/* Sub indicators: MACD, RSI, KDJ */}
         <View style={styles.sectionLabel}>
           <Text typography="labelLarge" color={theme.text.secondary}>
-            Chỉ báo phụ
+            {t("indicator.subIndicators")}
           </Text>
         </View>
         <View style={styles.optionsContainer}>
@@ -249,7 +251,7 @@ const IndicatorBottomSheet = ({
             ]}
           >
             <Text typography="titleMedium" color={theme.text.primary}>
-              Xóa tất cả
+              {t("indicator.clearAll")}
             </Text>
           </TouchableOpacity>
 
@@ -258,7 +260,7 @@ const IndicatorBottomSheet = ({
             style={[styles.footerBtn, { backgroundColor: theme.base.primary }]}
           >
             <Text typography="titleMedium" color="#F2F4F7">
-              Xong
+              {t("indicator.done")}
             </Text>
           </TouchableOpacity>
         </View>

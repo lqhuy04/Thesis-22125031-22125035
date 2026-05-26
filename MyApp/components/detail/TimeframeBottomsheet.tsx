@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import { Text } from "../ui/Text";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
@@ -25,14 +26,14 @@ export const enum TIMEFRAME {
 }
 
 export const TIMEFRAME_OPTIONS = [
-  { label: "1 phút", value: TIMEFRAME.ONE_MINUTE },
-  { label: "5 phút", value: TIMEFRAME.FIVE_MINUTES },
-  { label: "15 phút", value: TIMEFRAME.FIFTEEN_MINUTES },
-  { label: "30 phút", value: TIMEFRAME.THIRTY_MINUTES },
-  { label: "1 giờ", value: TIMEFRAME.ONE_HOUR },
-  { label: "1 ngày", value: TIMEFRAME.ONE_DAY },
-  { label: "1 tuần", value: TIMEFRAME.ONE_WEEK },
-  { label: "1 tháng", value: TIMEFRAME.ONE_MONTH },
+  { labelKey: "timeframe.oneMinute", value: TIMEFRAME.ONE_MINUTE },
+  { labelKey: "timeframe.fiveMinutes", value: TIMEFRAME.FIVE_MINUTES },
+  { labelKey: "timeframe.fifteenMinutes", value: TIMEFRAME.FIFTEEN_MINUTES },
+  { labelKey: "timeframe.thirtyMinutes", value: TIMEFRAME.THIRTY_MINUTES },
+  { labelKey: "timeframe.oneHour", value: TIMEFRAME.ONE_HOUR },
+  { labelKey: "timeframe.oneDay", value: TIMEFRAME.ONE_DAY },
+  { labelKey: "timeframe.oneWeek", value: TIMEFRAME.ONE_WEEK },
+  { labelKey: "timeframe.oneMonth", value: TIMEFRAME.ONE_MONTH },
 ];
 
 interface Props {
@@ -49,6 +50,7 @@ const TimeframeBottomSheet = ({
   onClose,
 }: Props) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -127,7 +129,7 @@ const TimeframeBottomSheet = ({
           color={theme.text.primary}
           style={{ textAlign: "center", marginTop: 8 }}
         >
-          Chọn khung thời gian
+          {t("timeframe.title")}
         </Text>
 
         <View
@@ -163,7 +165,7 @@ const TimeframeBottomSheet = ({
                   typography="bodyMedium"
                   color={isSelected ? theme.base.primary : theme.text.primary}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Text>
               </TouchableOpacity>
             );
@@ -193,7 +195,7 @@ const TimeframeBottomSheet = ({
                   typography="bodyMedium"
                   color={isSelected ? theme.base.primary : theme.text.primary}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </Text>
               </TouchableOpacity>
             );
@@ -211,16 +213,14 @@ const TimeframeBottomSheet = ({
           }}
         >
           <Text typography="bodyMedium" color={theme.text.primary}>
-            Chu kỳ nến cho biết mỗi cây nến thể hiện dữ liệu giá trong bao lâu.
-            Ví dụ: Khi bạn chọn chu kỳ nến 1 giờ, mỗi nến sẽ thể hiện biến động
-            giá trong 1 giờ.
+            {t("timeframe.description")}
           </Text>
           <Text
             typography="labelLarge"
             color={theme.base.success}
             style={{ textAlign: "right", marginTop: 8 }}
           >
-            Tìm hiểu thêm
+            {t("timeframe.learnMore")}
           </Text>
         </View>
       </Animated.View>

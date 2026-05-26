@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import {
   getInvestingIdea,
   SuggestionData,
@@ -22,6 +23,7 @@ import { router } from "expo-router";
 
 const SuggestionSection = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [data, setData] = useState<SuggestionData | null>(null);
   const [activeTab, setActiveTab] = useState<"trend" | "community">("trend");
   const [currentPage, setCurrentPage] = useState(0);
@@ -31,29 +33,29 @@ const SuggestionSection = () => {
   const tabs = [
     {
       icon: <AntDesign name="rise" size={36} color={theme.base.success} />,
-      title: "Top tăng mạnh",
-      description: "Top cổ phiếu tăng như cái máy",
+      title: t("suggestion.topGainersTitle"),
+      description: t("suggestion.topGainersDescription"),
       group: "trend" as const,
       getData: (d: SuggestionData) => d.trend.top_gainers,
     },
     {
       icon: <AntDesign name="fall" size={36} color={theme.base.error} />,
-      title: "Top giảm sâu",
-      description: "Cơ hội cho nhà đầu tư mạo hiểm",
+      title: t("suggestion.topDeclinersTitle"),
+      description: t("suggestion.topDeclinersDescription"),
       group: "trend" as const,
       getData: (d: SuggestionData) => d.trend.top_decliners,
     },
     {
       icon: <Entypo name="bar-graph" size={36} color={theme.base.primary} />,
-      title: "Top khối lượng",
-      description: "Cổ phiếu sôi động, dòng tiền săn đón",
+      title: t("suggestion.topVolumeTitle"),
+      description: t("suggestion.topVolumeDescription"),
       group: "trend" as const,
       getData: (d: SuggestionData) => d.trend.top_volume,
     },
     {
       icon: <Feather name="search" size={36} color={theme.base.primary} />,
-      title: "Top tìm kiếm",
-      description: "Top mã cộng đồng tìm nhiều nhất",
+      title: t("suggestion.topSearchedTitle"),
+      description: t("suggestion.topSearchedDescription"),
       group: "community" as const,
       getData: (d: SuggestionData) => d.community.top_searched,
     },
@@ -65,8 +67,8 @@ const SuggestionSection = () => {
           color={theme.base.primary}
         />
       ),
-      title: "Top theo dõi",
-      description: "Top mã cộng đồng quan sát nhiều nhất",
+      title: t("suggestion.topWatchlistTitle"),
+      description: t("suggestion.topWatchlistDescription"),
       group: "community" as const,
       getData: (d: SuggestionData) => d.community.top_watchlist,
     },
@@ -114,7 +116,7 @@ const SuggestionSection = () => {
   return data != null ? (
     <View style={{ marginTop: 24, marginHorizontal: 12 }}>
       <Text typography="titleLarge" color={theme.text.primary}>
-        Ý tưởng đầu tư
+        {t("suggestion.sectionTitle")}
       </Text>
 
       <LinearGradient
@@ -134,7 +136,10 @@ const SuggestionSection = () => {
         >
           {(["trend", "community"] as const).map((tab) => {
             const isActive = activeTab === tab;
-            const label = tab === "trend" ? "Xu hướng" : "Cộng đồng trade gì";
+            const label =
+              tab === "trend"
+                ? t("suggestion.tabTrend")
+                : t("suggestion.tabCommunity");
             return (
               <TouchableOpacity
                 key={tab}
@@ -236,21 +241,21 @@ const SuggestionSection = () => {
                       color={theme.text.primary}
                       style={{ flex: 7, marginRight: 16 }}
                     >
-                      Mã cổ phiếu
+                      {t("suggestion.columnSymbol")}
                     </Text>
                     <Text
                       typography="bodySmall"
                       color={theme.text.primary}
                       style={{ flex: 2, textAlign: "left", marginRight: 16 }}
                     >
-                      Giá
+                      {t("suggestion.columnPrice")}
                     </Text>
                     <Text
                       typography="bodySmall"
                       color={theme.text.primary}
                       style={{ flex: 3, textAlign: "center" }}
                     >
-                      % Hôm nay
+                      {t("suggestion.columnChangeToday")}
                     </Text>
                   </View>
 
@@ -367,7 +372,7 @@ const SuggestionSection = () => {
                   }}
                 >
                   <Text typography="labelLarge" color={theme.base.primary}>
-                    Xem thêm
+                    {t("suggestion.viewMore")}
                   </Text>
                   <Entypo
                     name="chevron-right"
