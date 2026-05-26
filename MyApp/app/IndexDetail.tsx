@@ -1,10 +1,10 @@
 import ScreenHeader from "@/components/ui/ScreenHeader";
-import PriceChartComponent from "@/components/detail/PriceChartComponent";
 import { useTheme } from "@/hooks/ThemeContext";
 import React from "react";
 import { ScrollView, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { MarketIndex } from "@/helpers/MarketHelpers";
+import PriceChartComponent from "@/components/detail/PriceChartComponent";
 
 const IndexDetail = () => {
   const { theme } = useTheme();
