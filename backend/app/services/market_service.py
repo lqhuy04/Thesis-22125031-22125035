@@ -1073,8 +1073,9 @@ class MarketService:
     @staticmethod
     def get_investing_ideas(limit: int = 100) -> Dict[str, Any]:
         """
-        Build investing ideas payload for two tabs:
+        Build investing ideas payload for three tabs:
         - trend: top gainers, decliners, and top volume
+        - choice: stocks priced under 50k
         - community: top searched and top watchlisted stocks
         
         Excludes UPCOM exchange; only includes HOSE and HNX.
@@ -1181,6 +1182,10 @@ class MarketService:
             top_gainers = sorted(items, key=lambda x: x["per_price_change"], reverse=True)[:limit]
             top_decliners = sorted(items, key=lambda x: x["per_price_change"])[:limit]
             top_volume = sorted(items, key=lambda x: x["_total_match_vol"], reverse=True)[:limit]
+            cheap_under_50k = sorted(
+                [item for item in items if item["current_price"] > 0 and item["current_price"] <= 50],
+                key=lambda x: (-x["current_price"], -x["_total_match_vol"], x["symbol"]),
+            )[:limit]
             top_searched = build_ranked_items(search_counts)
             top_watchlist = build_ranked_items(favorite_counts)
 
@@ -1189,6 +1194,9 @@ class MarketService:
                     "top_gainers": [public_row(x) for x in top_gainers],
                     "top_decliners": [public_row(x) for x in top_decliners],
                     "top_volume": [public_row(x) for x in top_volume],
+                },
+                "top_choice": {
+                    "cheap_under_50k": [public_row(x) for x in cheap_under_50k],
                 },
                 "community": {
                     "top_searched": top_searched,
@@ -1202,6 +1210,9 @@ class MarketService:
                     "top_gainers": [],
                     "top_decliners": [],
                     "top_volume": [],
+                },
+                "top_choice": {
+                    "cheap_under_50k": [],
                 },
                 "community": {
                     "top_searched": [],

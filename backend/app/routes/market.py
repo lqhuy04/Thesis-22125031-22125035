@@ -186,6 +186,7 @@ async def get_investing_idea(
         bool(payload.get("trend", {}).get("top_gainers"))
         or bool(payload.get("trend", {}).get("top_decliners"))
         or bool(payload.get("trend", {}).get("top_volume"))
+        or bool(payload.get("top_choice", {}).get("cheap_under_50k"))
         or bool(payload.get("community", {}).get("top_searched"))
         or bool(payload.get("community", {}).get("top_watchlist"))
     )

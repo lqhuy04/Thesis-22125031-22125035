@@ -221,6 +221,11 @@ class InvestingIdeaTrendTab(BaseModel):
     top_volume: List[InvestingIdeaStockItem] = Field(default=[], description="Top matched volume")
 
 
+class InvestingIdeaChoiceTab(BaseModel):
+    """Choice tab: cheap stocks under 50k."""
+    cheap_under_50k: List[InvestingIdeaStockItem] = Field(default=[], description="Cheap stocks under 50k")
+
+
 class InvestingIdeaCommunityTab(BaseModel):
     """Community tab: most searched and most watched stocks."""
     top_searched: List[InvestingIdeaStockItem] = Field(default=[], description="Top searched stocks")
@@ -229,6 +234,7 @@ class InvestingIdeaCommunityTab(BaseModel):
 class InvestingIdeaData(BaseModel):
     """Payload for investing idea endpoint."""
     trend: InvestingIdeaTrendTab = Field(default_factory=InvestingIdeaTrendTab)
+    top_choice: InvestingIdeaChoiceTab = Field(default_factory=InvestingIdeaChoiceTab)
     community: InvestingIdeaCommunityTab = Field(default_factory=InvestingIdeaCommunityTab)
 
 
