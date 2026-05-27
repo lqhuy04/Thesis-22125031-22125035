@@ -15,6 +15,12 @@ export type VolumeData = {
   color: string;
 };
 
+export type VolumeMAData = {
+  time: number;
+  vma20: number | null;
+  vma50: number | null;
+};
+
 export type MAData = {
   time: number;
   ma20: number;

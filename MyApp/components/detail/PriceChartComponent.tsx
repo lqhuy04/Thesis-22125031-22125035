@@ -5,6 +5,8 @@ import {
   StockPriceData,
   TechnicalIndicatorData,
   getTechnicalIndicators,
+  fetchCurrentIndexData,
+  fetchCurrentPriceData,
 } from "@/helpers/DetailHelpers";
 import {
   TouchableOpacity,
@@ -23,6 +25,7 @@ import {
   PriceData,
   RSIData,
   VolumeData,
+  VolumeMAData,
 } from "../tradingView/utils";
 import { MaterialCommunityIcons, MaterialIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -55,6 +58,21 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
     mode2: null,
     volume: false,
   });
+
+  //------------------------------------------------------------------------
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    if (isMarketIndex) {
+      fetchCurrentIndexData(symbol).then((res) => {
+        if (res?.status) setData(res?.data);
+      });
+    } else {
+      fetchCurrentPriceData(symbol).then((res) => {
+        if (res?.status) setData(res?.data);
+      });
+    }
+  }, [isMarketIndex, symbol]);
 
   //------------------------------------------------------------------------
   const [priceData, setPriceData] = useState<StockPriceData[]>([]);
@@ -193,6 +211,19 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
     }));
   }, [priceData, theme.base.error, theme.base.success]);
 
+  const chartVolumeMAData: VolumeMAData[] = useMemo(() => {
+    if (
+      !Array.isArray(technicalIndicatorsData) ||
+      technicalIndicatorsData.length === 0
+    )
+      return [];
+    return technicalIndicatorsData.map((item) => ({
+      time: parseDateTime(item.TradingDate, item.Time) / 1000,
+      vma20: item.volume_ma_20 ?? null,
+      vma50: item.volume_ma_50 ?? null,
+    }));
+  }, [technicalIndicatorsData]);
+
   const selectedLabelKey =
     TIMEFRAME_OPTIONS.find((o) => o.value === timeFrame)?.labelKey ?? "";
   const selectedLabel = selectedLabelKey ? t(selectedLabelKey) : "";
@@ -205,7 +236,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
   return (
     <View style={{ marginTop: 12 }}>
       <DetailHeader
-        symbol={symbol}
+        data={data}
         isMarketIndex={isMarketIndex}
         chart={
           <View
@@ -304,6 +335,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
                 <TradingViewChart
                   prices={chartPriceData}
                   volumes={chartVolumeData}
+                  volumeMAData={chartVolumeMAData}
                   maData={chartMAData}
                   bollData={chartBOLLData}
                   macdData={chartMACDData}
@@ -320,7 +352,12 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
                   onPress={() =>
                     router.push({
                       pathname: "/TradingViewScreen",
-                      params: { data: JSON.stringify({ symbol: symbol }) },
+                      params: {
+                        data: JSON.stringify({
+                          symbol: symbol,
+                          exchange: data?.exchange,
+                        }),
+                      },
                     })
                   }
                   style={{

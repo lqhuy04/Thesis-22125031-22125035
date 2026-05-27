@@ -2,10 +2,6 @@ import { useTheme } from "@/hooks/ThemeContext";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Image, TouchableOpacity } from "react-native";
 import { Text } from "./Text";
-import {
-  fetchCurrentIndexData,
-  fetchCurrentPriceData,
-} from "@/helpers/DetailHelpers";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import {
   addStockToFavorite,
@@ -15,53 +11,40 @@ import {
 import { useLocalization } from "@/hooks/LocalizationContext";
 
 interface DetailHeaderProps {
-  symbol: string;
+  data: any;
   chart: React.JSX.Element;
   isMarketIndex?: boolean;
 }
 
 const DetailHeader = ({
-  symbol,
+  data,
   chart,
   isMarketIndex = false,
 }: DetailHeaderProps) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
 
-  const [data, setData] = useState<any>(null);
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
 
   const toggleFavorite = useCallback(() => {
     setIsFavorite((prev) => {
       if (prev === false) {
-        addStockToFavorite(symbol);
+        addStockToFavorite(data?.symbol);
       } else {
-        deleteStockFromFavorite(symbol);
+        deleteStockFromFavorite(data?.symbol);
       }
 
       return !prev;
     });
-  }, [symbol]);
+  }, [data?.symbol]);
 
   useEffect(() => {
-    checkStockInFavorite(symbol).then((res) => {
+    checkStockInFavorite(data?.symbol).then((res) => {
       if (res?.status) {
         setIsFavorite(res?.data);
       }
     });
-  }, [symbol]);
-
-  useEffect(() => {
-    if (isMarketIndex) {
-      fetchCurrentIndexData(symbol).then((res) => {
-        if (res?.status) setData(res?.data);
-      });
-    } else {
-      fetchCurrentPriceData(symbol).then((res) => {
-        if (res?.status) setData(res?.data);
-      });
-    }
-  }, [isMarketIndex, symbol]);
+  }, [data?.symbol]);
 
   const displayData = useMemo(() => {
     if (!data) return null;

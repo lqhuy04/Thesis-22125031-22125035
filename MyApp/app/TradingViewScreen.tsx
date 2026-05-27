@@ -104,7 +104,9 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
 const TradingViewScreen = () => {
   const { theme } = useTheme();
   const { data } = useLocalSearchParams() || {};
-  const { symbol: stockCode } = data ? (JSON.parse(data as string) as any) : {};
+  const { symbol: stockCode, exchange } = data
+    ? (JSON.parse(data as string) as any)
+    : {};
 
   const { bottom, top } = useSafeAreaInsets();
   const { width: screenWidth, height: screenHeight } = useSafeAreaFrame();
@@ -149,8 +151,9 @@ const TradingViewScreen = () => {
   }, []);
 
   const webViewUri = useMemo(
-    () => `${BASE_URL}?symbol=${stockCode}`,
-    [stockCode],
+    () =>
+      `${BASE_URL}?symbol=${exchange ? `${exchange}:${stockCode}` : stockCode}`,
+    [stockCode, exchange],
   );
 
   const containerBoxStyle = useMemo(() => {

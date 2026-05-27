@@ -450,6 +450,27 @@ const tryInitialize = () => {
       lastValueVisible: true,
     });
     window.chart.priceScale("volume").applyOptions({ scaleMargins: SCALE_MARGINS.volumeAlone });
+
+    // ── Volume MA lines ────────────────────────────────────────────────────
+    window.vma20Series = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,           // ẩn mặc định, setVolumeVisible sẽ điều khiển
+      color: "#D4A017",         // vàng – giống MA20 price
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      priceScaleId: "volume",   // cùng scale với volume bar
+    });
+
+    window.vma50Series = window.chart.addSeries(LightweightCharts.LineSeries, {
+      visible: false,
+      color: "#1B7A1B",         // xanh lá – giống MA50 price
+      lineWidth: 1,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+      priceScaleId: "volume",
+    });
  
     // ── Main price series ──────────────────────────────────────────────────
     window.mainSeries = window.chart.addSeries(LightweightCharts.CandlestickSeries, createCandlestickOptions());
@@ -730,6 +751,8 @@ window.setVolumeVisible = (visible) => {
   if (!window.volumeSeries || !window.chart) return;
   window.isVolumeVisible = visible;
   window.volumeSeries.applyOptions({ visible });
+  if (window.vma20Series) window.vma20Series.applyOptions({ visible });
+  if (window.vma50Series) window.vma50Series.applyOptions({ visible });
   applyScaleMargins();
 };
  
@@ -805,7 +828,7 @@ window.setTechnicalIndicatorMode2 = (mode) => {
 };
  
 // Set chart data (called once or when timeframe changes)
-window.updateChartData = (priceData, volumeData, maData, bollData, macdData, rsiData, kdjData, timeframeOption) => {
+window.updateChartData = (priceData, volumeData, volumeMAData, maData, bollData, macdData, rsiData, kdjData, timeframeOption) => {
   if (!priceData || !volumeData) return;
  
   const isTimeframeChanged = timeframeOption !== undefined && timeframeOption !== window.currentTimeframeOption;
@@ -820,6 +843,21 @@ window.updateChartData = (priceData, volumeData, maData, bollData, macdData, rsi
     window.mainSeries.setData(priceData);
   }
   window.volumeSeries.setData(volumeData);
+
+  if (volumeMAData && window.vma20Series) {
+    window.vma20Series.setData(
+      volumeMAData
+        .filter((item) => item.vma20 !== null)
+        .map((item) => ({ time: item.time, value: item.vma20 }))
+    );
+  }
+  if (volumeMAData && window.vma50Series) {
+    window.vma50Series.setData(
+      volumeMAData
+        .filter((item) => item.vma50 !== null)
+        .map((item) => ({ time: item.time, value: item.vma50 }))
+    );
+  }
  
   if (isTimeframeChanged) {
     requestAnimationFrame(() => {

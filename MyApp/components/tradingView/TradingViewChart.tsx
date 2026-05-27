@@ -11,6 +11,7 @@ import {
   PriceData,
   RSIData,
   VolumeData,
+  VolumeMAData,
 } from "./utils";
 import injectedJavaScript from "./trading-view-script";
 import { useTheme } from "@/hooks/ThemeContext";
@@ -20,6 +21,7 @@ import { useTheme } from "@/hooks/ThemeContext";
 type Props = {
   prices: PriceData[];
   volumes: VolumeData[];
+  volumeMAData: VolumeMAData[];
   maData: MAData[];
   bollData: BollData[];
   macdData: MACDData[];
@@ -35,6 +37,7 @@ type Props = {
 const TradingViewChart = ({
   prices,
   volumes,
+  volumeMAData,
   maData,
   bollData,
   macdData,
@@ -61,6 +64,7 @@ const TradingViewChart = ({
     (
       p: PriceData[],
       v: VolumeData[],
+      vma: VolumeMAData[],
       maData: MAData[],
       bollData: BollData[],
       macdData: MACDData[],
@@ -75,6 +79,7 @@ const TradingViewChart = ({
               window.updateChartData(
                 ${JSON.stringify(p)},
                 ${JSON.stringify(v)},
+                ${JSON.stringify(vma)},
                 ${JSON.stringify(maData)},
                 ${JSON.stringify(bollData)},
                 ${JSON.stringify(macdData)},
@@ -179,6 +184,7 @@ const TradingViewChart = ({
             updateChartData(
               prices,
               volumes,
+              volumeMAData,
               maData,
               bollData,
               macdData,
@@ -206,6 +212,7 @@ const TradingViewChart = ({
       setTechnicalIndicatorMode2,
       technicalIndicatorMode2,
       updateChartData,
+      volumeMAData,
       maData,
       bollData,
       macdData,
@@ -222,6 +229,7 @@ const TradingViewChart = ({
     updateChartData(
       prices,
       volumes,
+      volumeMAData,
       maData,
       bollData,
       macdData,
@@ -239,6 +247,7 @@ const TradingViewChart = ({
     kdjData,
     updateChartData,
     macdData,
+    volumeMAData,
   ]);
 
   useEffect(() => {

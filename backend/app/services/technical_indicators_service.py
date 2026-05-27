@@ -282,6 +282,10 @@ class TechnicalIndicatorsService:
             indicators['kdj_d'] = d.tolist()
             indicators['kdj_j'] = j.tolist()
 
+            # 6. Volume MA
+            indicators['volume_ma_20'] = TechnicalIndicatorsService._sma(volume, 20).tolist()
+            indicators['volume_ma_50'] = TechnicalIndicatorsService._sma(volume, 50).tolist()
+
             return TechnicalIndicatorsService._sanitize_indicators(indicators)
 
         except Exception as e:

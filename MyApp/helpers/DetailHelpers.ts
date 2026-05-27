@@ -323,6 +323,8 @@ export type TechnicalIndicatorData = {
   kdj_k: number;
   kdj_d: number;
   kdj_j: number;
+  volume_ma_20: number;
+  volume_ma_50: number;
 };
 
 export const getTechnicalIndicators = async (
