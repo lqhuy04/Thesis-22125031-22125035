@@ -1183,7 +1183,7 @@ class MarketService:
             top_decliners = sorted(items, key=lambda x: x["per_price_change"])[:limit]
             top_volume = sorted(items, key=lambda x: x["_total_match_vol"], reverse=True)[:limit]
             cheap_under_50k = sorted(
-                [item for item in items if item["current_price"] > 0 and item["current_price"] <= 50],
+                [item for item in items if item["current_price"] > 0 and item["current_price"] < 50],
                 key=lambda x: (-x["current_price"], -x["_total_match_vol"], x["symbol"]),
             )[:limit]
             top_searched = build_ranked_items(search_counts)
