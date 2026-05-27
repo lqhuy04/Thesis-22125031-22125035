@@ -266,6 +266,9 @@ export type SuggestionData = {
     top_decliners: SuggestionItem[];
     top_volume: SuggestionItem[];
   };
+  top_choice: {
+    cheap_under_50k: SuggestionItem[];
+  };
   community: {
     top_searched: SuggestionItem[];
     top_watchlist: SuggestionItem[];

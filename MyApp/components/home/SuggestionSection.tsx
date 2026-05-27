@@ -172,7 +172,10 @@ const SuggestionSectionSkeleton = () => {
               height={36}
               borderRadius={8}
               animatedOpacity={rowOpacity}
-              style={{ marginRight: 12, backgroundColor: theme.text.primary + "20" }}
+              style={{
+                marginRight: 12,
+                backgroundColor: theme.text.primary + "20",
+              }}
             />
           </View>
 
@@ -199,13 +202,21 @@ const SuggestionSectionSkeleton = () => {
                 width={60}
                 height={11}
                 animatedOpacity={rowOpacity}
-                style={{ flex: 7, marginRight: 16, backgroundColor: theme.text.primary + "20" }}
+                style={{
+                  flex: 7,
+                  marginRight: 16,
+                  backgroundColor: theme.text.primary + "20",
+                }}
               />
               <SkeletonBox
                 width={40}
                 height={11}
                 animatedOpacity={rowOpacity}
-                style={{ flex: 2, marginRight: 16, backgroundColor: theme.text.primary + "20" }}
+                style={{
+                  flex: 2,
+                  marginRight: 16,
+                  backgroundColor: theme.text.primary + "20",
+                }}
               />
               <SkeletonBox
                 width={60}
@@ -347,12 +358,27 @@ const SuggestionSection = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [data, setData] = useState<SuggestionData | null>(null);
-  const [activeTab, setActiveTab] = useState<"trend" | "community">("trend");
+  const [activeTab, setActiveTab] = useState<
+    "trend" | "community" | "top_choice"
+  >("trend");
   const [currentPage, setCurrentPage] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const screenWidth = Dimensions.get("window").width;
 
   const tabs = [
+    {
+      icon: (
+        <MaterialCommunityIcons
+          name="tag-heart-outline"
+          size={36}
+          color={theme.base.primary}
+        />
+      ),
+      title: t("suggestion.topUnder50kTitle"),
+      description: t("suggestion.topUnder50kDescription"),
+      group: "top_choice" as const,
+      getData: (d: SuggestionData) => d.top_choice.cheap_under_50k,
+    },
     {
       icon: <AntDesign name="rise" size={36} color={theme.base.success} />,
       title: t("suggestion.topGainersTitle"),
@@ -397,11 +423,12 @@ const SuggestionSection = () => {
   ];
 
   const trendTabs = tabs.filter((t) => t.group === "trend");
+  const topChoiceTabs = tabs.filter((t) => t.group === "top_choice");
   const communityTabs = tabs.filter((t) => t.group === "community");
 
-  // index trong FlatList tương ứng với group
   const trendStartIndex = 0;
-  const communityStartIndex = trendTabs.length; // = 3
+  const topChoiceStartIndex = trendTabs.length; // = 3
+  const communityStartIndex = topChoiceStartIndex + topChoiceTabs.length; // = 4
 
   useEffect(() => {
     getInvestingIdea().then((res) => {
@@ -409,31 +436,46 @@ const SuggestionSection = () => {
     });
   }, []);
 
-  const handleTabPress = (tab: "trend" | "community") => {
+  const handleTabPress = (tab: "trend" | "community" | "top_choice") => {
     setActiveTab(tab);
-    const targetIndex = tab === "trend" ? trendStartIndex : communityStartIndex;
+    const targetIndex =
+      tab === "trend"
+        ? trendStartIndex
+        : tab === "top_choice"
+          ? topChoiceStartIndex
+          : communityStartIndex;
     flatListRef.current?.scrollToIndex({ index: targetIndex, animated: true });
     setCurrentPage(targetIndex);
   };
 
   const handleScrollEnd = (e: any) => {
     const offsetX = e.nativeEvent.contentOffset.x;
-    const cardWidth = screenWidth - 48 + 24; // width + margin*2
+    const cardWidth = screenWidth - 48 + 24;
     const page = Math.round(offsetX / cardWidth);
     setCurrentPage(page);
-    if (page < communityStartIndex) {
+    if (page < topChoiceStartIndex) {
       setActiveTab("trend");
+    } else if (page < communityStartIndex) {
+      setActiveTab("top_choice");
     } else {
       setActiveTab("community");
     }
   };
 
   // dots chỉ hiển thị theo group đang active
-  const activeTabs = activeTab === "trend" ? trendTabs : communityTabs;
+  const activeTabs =
+    activeTab === "trend"
+      ? trendTabs
+      : activeTab === "top_choice"
+        ? topChoiceTabs
+        : communityTabs;
+
   const dotIndex =
     activeTab === "trend"
       ? currentPage - trendStartIndex
-      : currentPage - communityStartIndex;
+      : activeTab === "top_choice"
+        ? currentPage - topChoiceStartIndex
+        : currentPage - communityStartIndex;
 
   return data != null ? (
     <View style={{ marginTop: 24, marginHorizontal: 12 }}>
@@ -456,12 +498,14 @@ const SuggestionSection = () => {
             marginHorizontal: 12,
           }}
         >
-          {(["trend", "community"] as const).map((tab) => {
+          {(["top_choice", "trend", "community"] as const).map((tab) => {
             const isActive = activeTab === tab;
             const label =
               tab === "trend"
                 ? t("suggestion.tabTrend")
-                : t("suggestion.tabCommunity");
+                : tab === "top_choice"
+                  ? t("suggestion.tabTopChoice")
+                  : t("suggestion.tabCommunity");
             return (
               <TouchableOpacity
                 key={tab}
