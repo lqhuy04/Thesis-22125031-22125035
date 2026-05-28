@@ -149,6 +149,12 @@ export default {
     columnPrice: "Price",
     columnChangeToday: "% Today",
     viewMore: "View more",
+    screenDescTopchoice:
+      "Top stocks at affordable prices — a popular starting choice for new investors",
+    screenDescTrend:
+      "Top stocks attracting capital inflows and leading market trends",
+    screenDescCommunity:
+      "Hot stocks currently gaining strong interest from investors",
   },
   fundamentalAnalysis: {
     fundamentalAnalysisMetricsSectionTitle: "Key figures",

@@ -127,6 +127,12 @@ const SuggestionSectionSkeleton = () => {
             animatedOpacity={animatedOpacity}
           />
           <SkeletonBox
+            width={60}
+            height={26}
+            borderRadius={24}
+            animatedOpacity={animatedOpacity}
+          />
+          <SkeletonBox
             width={120}
             height={26}
             borderRadius={24}
@@ -360,7 +366,7 @@ const SuggestionSection = () => {
   const [data, setData] = useState<SuggestionData | null>(null);
   const [activeTab, setActiveTab] = useState<
     "trend" | "community" | "top_choice"
-  >("trend");
+  >("top_choice");
   const [currentPage, setCurrentPage] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const screenWidth = Dimensions.get("window").width;
@@ -426,9 +432,9 @@ const SuggestionSection = () => {
   const topChoiceTabs = tabs.filter((t) => t.group === "top_choice");
   const communityTabs = tabs.filter((t) => t.group === "community");
 
-  const trendStartIndex = 0;
-  const topChoiceStartIndex = trendTabs.length; // = 3
-  const communityStartIndex = topChoiceStartIndex + topChoiceTabs.length; // = 4
+  const topChoiceStartIndex = 0;
+  const trendStartIndex = topChoiceTabs.length; // = 1
+  const communityStartIndex = trendStartIndex + trendTabs.length; // = 4
 
   useEffect(() => {
     getInvestingIdea().then((res) => {
@@ -453,10 +459,11 @@ const SuggestionSection = () => {
     const cardWidth = screenWidth - 48 + 24;
     const page = Math.round(offsetX / cardWidth);
     setCurrentPage(page);
-    if (page < topChoiceStartIndex) {
-      setActiveTab("trend");
-    } else if (page < communityStartIndex) {
+
+    if (page < trendStartIndex) {
       setActiveTab("top_choice");
+    } else if (page < communityStartIndex) {
+      setActiveTab("trend");
     } else {
       setActiveTab("community");
     }
@@ -479,10 +486,38 @@ const SuggestionSection = () => {
 
   return data != null ? (
     <View style={{ marginTop: 24, marginHorizontal: 12 }}>
-      <Text typography="titleLarge" color={theme.text.primary}>
-        {t("suggestion.sectionTitle")}
-      </Text>
-
+      <TouchableOpacity
+        onPress={() => {
+          router.push({
+            pathname: "/InvestmentIdeas",
+          });
+        }}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
+        <Text typography="titleLarge" color={theme.text.primary}>
+          {t("suggestion.sectionTitle")}{" "}
+        </Text>
+        <View
+          style={{
+            height: 16,
+            width: 16,
+            borderRadius: 8,
+            backgroundColor: theme.border.default,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Entypo
+            name="chevron-small-right"
+            size={16}
+            color={theme.text.primary}
+          />
+        </View>
+      </TouchableOpacity>
       <LinearGradient
         colors={["#9D8CFF", "#7B5CFF", "#613DE4"]}
         useAngle

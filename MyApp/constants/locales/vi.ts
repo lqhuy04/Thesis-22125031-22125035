@@ -145,6 +145,11 @@ export default {
     columnPrice: "Giá",
     columnChangeToday: "% Hôm nay",
     viewMore: "Xem thêm",
+    screenDescTopchoice:
+      "Cổ phiếu hàng đầu, giá vừa túi - nhiều nhà đầu tư mới chọn để bắt đầu",
+    screenDescTrend:
+      "Top cổ phiếu thu hút dòng tiền và đang dẫn dắt xu hướng thị trường",
+    screenDescCommunity: "Những cổ phiếu hot đang được nhà đầu tư săn đón",
   },
   fundamentalAnalysis: {
     fundamentalAnalysisMetricsSectionTitle: "Số liệu chính",
