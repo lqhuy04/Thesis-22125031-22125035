@@ -25,132 +25,188 @@ def _clean(value) -> float | None:
         return None
 
 
-def _fmt(value, spec: str) -> str:
-    v = _clean(value)
-    if v is None:
-        return ""
-    return format(v, spec)
+def _score_rsi(current: float | None, previous: float | None) -> tuple[int, str]:
+    """
+    1 điểm nếu thỏa MỘT trong 3 điều kiện (ưu tiên theo thứ tự):
+      1. RSI vừa vượt 50 từ dưới lên (kỳ trước < 50, kỳ này >= 50)
+      2. 50 <= RSI <= 70 VÀ RSI kỳ này > RSI kỳ trước
+      3. RSI < 35 VÀ RSI kỳ này > RSI kỳ trước
+    0 điểm: mọi trường hợp còn lại
+    """
+    if current is None or previous is None:
+        return 0, "Không đủ dữ liệu RSI"
+    if previous < 50 and current >= 50:
+        return 1, f"RSI vừa vượt 50 từ dưới lên ({previous:.1f} → {current:.1f})"
+    if 50 <= current <= 70 and current > previous:
+        return 1, f"RSI trong vùng tăng động lực 50–70 và đang tăng ({previous:.1f} → {current:.1f})"
+    if current < 35 and current > previous:
+        return 1, f"RSI đang hồi phục từ vùng quá bán ({previous:.1f} → {current:.1f})"
+    if current >= 70:
+        return 0, f"RSI quá mua ({current:.1f}), rủi ro điều chỉnh"
+    if current > previous:
+        return 0, f"RSI tăng nhưng trong vùng 35–50, chưa đủ động lực ({previous:.1f} → {current:.1f})"
+    return 0, f"RSI đang giảm ({previous:.1f} → {current:.1f})"
 
 
-def _signal(value, low, high) -> str:
-    v = _clean(value)
-    if v is None:
-        return ""
-    if v <= low:
-        return "Quá bán"
-    if v >= high:
-        return "Quá mua"
-    return "Trung tính"
+def _score_ma(
+    sma20_current: float | None,
+    sma20_previous: float | None,
+    sma50_current: float | None,
+    sma50_previous: float | None,
+    price: float | None,
+) -> tuple[int, str]:
+    """
+    1 điểm nếu thỏa BẤT KỲ 1 trong 3 điều kiện:
+      1. Golden cross: kỳ trước SMA20 < SMA50, kỳ này SMA20 >= SMA50
+      2. SMA20 > SMA50 VÀ khoảng cách đang nới rộng so với kỳ trước
+      3. current_price > SMA20 VÀ SMA20 > SMA50
+    0 điểm: mọi trường hợp còn lại
+    """
+    if sma20_current is None or sma50_current is None:
+        return 0, "Không đủ dữ liệu MA"
+
+    if sma20_previous is not None and sma50_previous is not None:
+        if sma20_previous < sma50_previous and sma20_current >= sma50_current:
+            return 1, f"Golden cross: SMA20 vừa cắt lên SMA50 ({sma20_current:,.2f} > {sma50_current:,.2f})"
+
+    if sma20_previous is not None and sma50_previous is not None:
+        gap_current  = sma20_current - sma50_current
+        gap_previous = sma20_previous - sma50_previous
+        if sma20_current > sma50_current and gap_current > gap_previous:
+            return 1, f"Uptrend tăng tốc: khoảng cách SMA20–SMA50 nới rộng ({gap_previous:,.2f} → {gap_current:,.2f})"
+
+    if price is not None and sma20_current > sma50_current and price > sma20_current:
+        return 1, f"Giá ({price:,.2f}) trên SMA20 ({sma20_current:,.2f}) và SMA20 trên SMA50 ({sma50_current:,.2f})"
+
+    if sma20_current < sma50_current:
+        return 0, f"SMA20 ({sma20_current:,.2f}) dưới SMA50 ({sma50_current:,.2f}), xu hướng giảm"
+    if price is not None and price < sma20_current:
+        return 0, f"Giá ({price:,.2f}) dưới SMA20 ({sma20_current:,.2f}), chưa xác nhận xu hướng tăng"
+    return 0, f"SMA20 ({sma20_current:,.2f}) và SMA50 ({sma50_current:,.2f}) chưa có tín hiệu tích cực"
 
 
-def _format_technical_output(
-    symbol: str,
-    interval: str,
-    records: list[dict],
-    current_price: float | None = None,
-    current_price_time: datetime | None = None,
-) -> str:
-    if not records:
-        return "Không đủ dữ liệu để phân tích kỹ thuật."
+def _score_boll(
+    upper: float | None,
+    middle: float | None,
+    lower: float | None,
+    close_current: float | None,
+    close_previous: float | None,
+    current_price: float | None,
+) -> tuple[int, str]:
+    """
+    1 điểm nếu thỏa BẤT KỲ 1 trong 3 điều kiện:
+      1. Giá vừa vượt lên trên bb_middle (close kỳ trước < middle, current_price/close kỳ này >= middle)
+      2. Giá (close) > bb_middle VÀ (close - middle) kỳ này > (close - middle) kỳ trước
+      3. Giá (current_price/close) <= bb_lower VÀ kỳ này > kỳ trước
+    0 điểm: mọi trường hợp còn lại
+    """
+    if upper is None or middle is None or lower is None:
+        return 0, "Không đủ dữ liệu Bollinger Bands"
 
-    latest = records[-1]
-    oldest = records[0]
+    price_now = current_price if current_price is not None else close_current
 
-    closes = [r["close"] for r in records if _clean(r.get("close")) is not None]
-    price_trend = "Tăng" if len(closes) >= 2 and closes[-1] > closes[0] else "Giảm"
+    if price_now is None or close_previous is None:
+        return 0, "Không đủ dữ liệu giá để tính Bollinger Bands"
 
-    rsi       = latest.get("rsi_14")
-    macd      = latest.get("macd")
-    macd_sig  = latest.get("macd_signal")
-    macd_hist = latest.get("macd_histogram")
-    bb_upper  = latest.get("bb_upper")
-    bb_lower  = latest.get("bb_lower")
-    bb_middle = latest.get("bb_middle")
-    close     = latest.get("close")
-    kdj_k     = latest.get("kdj_k")
-    kdj_d     = latest.get("kdj_d")
-    kdj_j     = latest.get("kdj_j")
-    sma_20    = latest.get("sma_20")
-    sma_50    = latest.get("sma_50")
+    if close_previous < middle and price_now >= middle:
+        return 1, f"Giá vừa vượt lên trên BB middle ({close_previous:,.2f} → {price_now:,.2f}, middle={middle:,.2f})"
 
-    c_macd     = _clean(macd)
-    c_macd_sig = _clean(macd_sig)
-    c_close    = _clean(close)
-    c_bb_upper = _clean(bb_upper)
-    c_bb_lower = _clean(bb_lower)
-    c_sma_20   = _clean(sma_20)
-    c_sma_50   = _clean(sma_50)
+    if close_current is not None and close_current > middle:
+        gap_current  = close_current - middle
+        gap_previous = close_previous - middle
+        if gap_current > gap_previous:
+            return 1, f"Giá trên BB middle và đà tăng mạnh dần (khoảng cách: {gap_previous:,.2f} → {gap_current:,.2f})"
 
-    # Giá hiện tại: ưu tiên 1m, fallback về close của candle cuối
-    display_price = current_price if current_price is not None else c_close
-    display_time = (
-        current_price_time.strftime("%H:%M %d/%m/%Y")
-        if current_price_time else
-        f"{latest['TradingDate']} {latest['Time']}"
-    )
+    if price_now <= lower and price_now > close_previous:
+        return 1, f"Giá hồi phục từ vùng quá bán BB lower ({close_previous:,.2f} → {price_now:,.2f}, lower={lower:,.2f})"
 
-    macd_direction = (
-        "Tăng (MACD > Signal)" if c_macd is not None and c_macd_sig is not None and c_macd > c_macd_sig
-        else "Giảm (MACD < Signal)" if c_macd is not None and c_macd_sig is not None
-        else ""
-    )
-
-    bb_pos = (
-        "Gần band trên (có thể quá mua)" if c_close and c_bb_upper and c_close >= c_bb_upper * 0.99
-        else "Gần band dưới (có thể quá bán)" if c_close and c_bb_lower and c_close <= c_bb_lower * 1.01
-        else "Trong vùng giữa Bollinger Band" if c_close and c_bb_upper and c_bb_lower
-        else ""
-    )
-
-    sma_trend = (
-        "Tăng (SMA20 > SMA50)" if c_sma_20 and c_sma_50 and c_sma_20 > c_sma_50
-        else "Giảm (SMA20 < SMA50)" if c_sma_20 and c_sma_50
-        else ""
-    )
-
-    return f"""
-## Phân tích kỹ thuật — {symbol} ({interval})
-Khoảng thời gian: {oldest["TradingDate"]} {oldest["Time"]} → {latest["TradingDate"]} {latest["Time"]}
-Số phiên: {len(records)}
-
-### Giá hiện tại (cập nhật lúc {display_time})
-- Giá: {_fmt(display_price, ",.2f")} đồng
-- Xu hướng giá trong kỳ ({interval}): {price_trend}
-
-### RSI (14)
-- Giá trị: {_fmt(rsi, ".2f")}
-- Tín hiệu: {_signal(rsi, 30, 70)}
-
-### MACD
-- MACD: {_fmt(macd, ".4f")}
-- Signal: {_fmt(macd_sig, ".4f")}
-- Histogram: {_fmt(macd_hist, ".4f")}
-- Tín hiệu: {macd_direction}
-
-### Bollinger Bands
-- Upper: {_fmt(bb_upper, ",.2f")} | Middle: {_fmt(bb_middle, ",.2f")} | Lower: {_fmt(bb_lower, ",.2f")}
-- Vị trí giá: {bb_pos}
-
-### KDJ
-- K: {_fmt(kdj_k, ".2f")} | D: {_fmt(kdj_d, ".2f")} | J: {_fmt(kdj_j, ".2f")}
-- Tín hiệu K: {_signal(kdj_k, 20, 80)}
-
-### Moving Averages
-- SMA20: {_fmt(sma_20, ",.2f")} | SMA50: {_fmt(sma_50, ",.2f")}
-- Tín hiệu: {sma_trend}
-""".strip()
+    if price_now > upper:
+        return 0, f"Giá ({price_now:,.2f}) vượt BB upper ({upper:,.2f}), rủi ro quá mua"
+    if price_now < middle:
+        return 0, f"Giá ({price_now:,.2f}) dưới BB middle ({middle:,.2f}), xu hướng yếu"
+    return 0, f"Giá ({price_now:,.2f}) trong vùng middle–upper nhưng đà tăng chưa rõ"
 
 
-def technical_analysis_agent(state: AgentState) -> AgentState:
-    myTask = state.get("plan", {}).get("technical_analysis_agent", {})
-    symbol = state.get("symbol", "")
-    interval = myTask.get("interval", "1d")
-    from_date = myTask.get("from_date", "")
-    to_date = myTask.get("to_date", "")
+def _score_macd(
+    macd_current: float | None,
+    macd_previous: float | None,
+    signal_current: float | None,
+    signal_previous: float | None,
+    hist_current: float | None,
+    hist_previous: float | None,
+) -> tuple[int, str]:
+    """
+    1 điểm nếu thỏa BẤT KỲ 1 trong 3 điều kiện:
+      1. MACD vừa cắt lên Signal (kỳ trước macd < signal, kỳ này macd >= signal)
+      2. MACD > Signal VÀ histogram kỳ này > histogram kỳ trước
+      3. Histogram vừa chuyển dương (kỳ trước < 0, kỳ này >= 0)
+    0 điểm: mọi trường hợp còn lại
+    """
+    if macd_current is None or signal_current is None or hist_current is None:
+        return 0, "Không đủ dữ liệu MACD"
 
-    # 1. Fetch giá 1m để lấy giá hiện tại chính xác
-    current_price = None
-    current_price_time = None
+    if macd_previous is not None and signal_previous is not None:
+        if macd_previous < signal_previous and macd_current >= signal_current:
+            return 1, f"MACD vừa cắt lên Signal ({macd_previous:.4f} → {macd_current:.4f}, signal={signal_current:.4f})"
+
+    if hist_previous is not None:
+        if macd_current > signal_current and hist_current > hist_previous:
+            return 1, f"MACD trên Signal và histogram tăng tốc ({hist_previous:.4f} → {hist_current:.4f})"
+
+    if hist_previous is not None:
+        if hist_previous < 0 and hist_current >= 0:
+            return 1, f"Histogram vừa chuyển dương ({hist_previous:.4f} → {hist_current:.4f}), momentum đổi chiều"
+
+    if macd_current < signal_current:
+        return 0, f"MACD ({macd_current:.4f}) dưới Signal ({signal_current:.4f}), xu hướng giảm"
+    if hist_current < 0:
+        return 0, f"Histogram âm ({hist_current:.4f}), momentum tiêu cực"
+    if hist_previous is not None and hist_current < hist_previous:
+        return 0, f"MACD trên Signal nhưng histogram đang suy yếu ({hist_previous:.4f} → {hist_current:.4f})"
+    return 0, "MACD chưa có tín hiệu tích cực rõ ràng"
+
+
+def _score_kdj(
+    k_current: float | None,
+    k_previous: float | None,
+    d_current: float | None,
+    d_previous: float | None,
+    j_current: float | None,
+    j_previous: float | None,
+) -> tuple[int, str]:
+    """
+    1 điểm nếu thỏa BẤT KỲ 1 trong 3 điều kiện:
+      1. K vừa cắt lên D (kỳ trước K < D, kỳ này K >= D)
+      2. K > D VÀ J kỳ này > J kỳ trước
+      3. K < 20 VÀ K kỳ này > K kỳ trước
+    0 điểm: mọi trường hợp còn lại
+    """
+    if k_current is None or d_current is None or j_current is None:
+        return 0, "Không đủ dữ liệu KDJ"
+
+    if k_previous is not None and d_previous is not None:
+        if k_previous < d_previous and k_current >= d_current:
+            return 1, f"K vừa cắt lên D ({k_previous:.2f} → {k_current:.2f}, D={d_current:.2f})"
+
+    if j_previous is not None:
+        if k_current > d_current and j_current > j_previous:
+            return 1, f"K trên D và J tăng tốc ({j_previous:.2f} → {j_current:.2f})"
+
+    if k_previous is not None:
+        if k_current < 20 and k_current > k_previous:
+            return 1, f"K hồi phục từ vùng quá bán ({k_previous:.2f} → {k_current:.2f})"
+
+    if k_current > 80:
+        return 0, f"K ({k_current:.2f}) trong vùng quá mua, rủi ro điều chỉnh"
+    if k_current < d_current:
+        return 0, f"K ({k_current:.2f}) dưới D ({d_current:.2f}), xu hướng yếu"
+    if j_previous is not None and j_current < j_previous:
+        return 0, f"K trên D nhưng J đang suy yếu ({j_previous:.2f} → {j_current:.2f})"
+    return 0, "KDJ chưa có tín hiệu tích cực rõ ràng"
+
+
+def _fetch_current_price(symbol: str) -> tuple[float | None, datetime | None]:
+    """Bước 1: Fetch giá 1m để lấy giá hiện tại chính xác."""
     try:
         price_1m_rows = MarketService.get_stock_price_by_interval(
             symbol=symbol,
@@ -161,31 +217,37 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
             price_1m_df["_dt"] = price_1m_df["trading_time"].apply(_parse_dt)
             price_1m_df = price_1m_df.sort_values("_dt")
             latest_1m = price_1m_df.iloc[-1]
-            current_price = _clean(latest_1m.get("close"))
-            current_price_time = latest_1m["_dt"]
+            return _clean(latest_1m.get("close")), latest_1m["_dt"]
     except Exception:
-        pass  # fallback về close của candle interval cuối
+        pass
+    return None, None
 
-    # 2. Fetch giá theo interval để tính indicators
+
+def _build_records(
+    symbol: str,
+    interval: str,
+    from_date: str,
+    to_date: str,
+) -> list[dict] | str:
+    """
+    Bước 2–7: Fetch, tính indicators, gộp thành records, filter theo thời gian.
+    Trả về list[dict] nếu thành công, hoặc str (error message) nếu thất bại.
+    """
     current_rows = MarketService.get_stock_price_by_interval(
         symbol=symbol,
         interval=interval,
     )
 
     df = pd.DataFrame(current_rows)
-
     if df.empty:
-        return {"agent_results": {"technical_analysis_agent": "Không có dữ liệu thị trường."}}
+        return "Không có dữ liệu thị trường."
 
-    # 3. Sort
     if "trading_time" in df.columns:
         df["_dt"] = df["trading_time"].apply(_parse_dt)
         df = df.sort_values("_dt").reset_index(drop=True)
 
-    # 4. Tính indicators trên toàn bộ df trước khi filter (đảm bảo warm-up đủ)
     indicators = TechnicalIndicatorsService.calculate_all_indicators(df)
 
-    # 5. Gộp giá + indicators thành records
     records = []
     for i, row in df.iterrows():
         t_dt = row["_dt"]
@@ -199,7 +261,6 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
             record[key] = _clean(values[i] if i < len(values) else None)
         records.append(record)
 
-    # 6. Filter theo thời gian SAU khi đã tính indicators
     if from_date:
         start = datetime.fromisoformat(from_date)
         records = [r for r in records if r["_dt"] >= start]
@@ -209,12 +270,174 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
             end = end.replace(hour=23, minute=59, second=59)
         records = [r for r in records if r["_dt"] <= end]
 
-    # 7. Bỏ _dt khỏi record trước khi format
     for r in records:
         r.pop("_dt", None)
 
     if not records:
-        return {"agent_results": {"technical_analysis_agent": "Không có dữ liệu trong khoảng thời gian được chỉ định."}}
+        return "Không có dữ liệu trong khoảng thời gian được chỉ định."
+
+    return records
+
+
+def _format_technical_output(
+    symbol: str,
+    interval: str,
+    records: list[dict],
+    current_price: float | None = None,
+    current_price_time: datetime | None = None,
+) -> dict:
+    if not records:
+        return {"error": "Không đủ dữ liệu để phân tích kỹ thuật."}
+
+    latest   = records[-1]
+    previous = records[-2] if len(records) >= 2 else None
+
+    # RSI
+    rsi_current  = _clean(latest.get("rsi_14"))
+    rsi_previous = _clean(previous.get("rsi_14")) if previous else None
+    rsi_score, rsi_reason = _score_rsi(rsi_current, rsi_previous)
+
+    # MA
+    sma20_current  = _clean(latest.get("sma_20"))
+    sma20_previous = _clean(previous.get("sma_20")) if previous else None
+    sma50_current  = _clean(latest.get("sma_50"))
+    sma50_previous = _clean(previous.get("sma_50")) if previous else None
+    price_for_ma   = current_price if current_price is not None else _clean(latest.get("close"))
+    ma_score, ma_reason = _score_ma(
+        sma20_current, sma20_previous,
+        sma50_current, sma50_previous,
+        price_for_ma,
+    )
+
+    # BOLL
+    bb_upper       = _clean(latest.get("bb_upper"))
+    bb_middle      = _clean(latest.get("bb_middle"))
+    bb_lower       = _clean(latest.get("bb_lower"))
+    close_current  = _clean(latest.get("close"))
+    close_previous = _clean(previous.get("close")) if previous else None
+    boll_score, boll_reason = _score_boll(
+        bb_upper, bb_middle, bb_lower,
+        close_current, close_previous,
+        current_price,
+    )
+
+    # MACD
+    macd_current    = _clean(latest.get("macd"))
+    macd_previous   = _clean(previous.get("macd")) if previous else None
+    signal_current  = _clean(latest.get("macd_signal"))
+    signal_previous = _clean(previous.get("macd_signal")) if previous else None
+    hist_current    = _clean(latest.get("macd_histogram"))
+    hist_previous   = _clean(previous.get("macd_histogram")) if previous else None
+    macd_score, macd_reason = _score_macd(
+        macd_current, macd_previous,
+        signal_current, signal_previous,
+        hist_current, hist_previous,
+    )
+
+    # KDJ
+    k_current  = _clean(latest.get("kdj_k"))
+    k_previous = _clean(previous.get("kdj_k")) if previous else None
+    d_current  = _clean(latest.get("kdj_d"))
+    d_previous = _clean(previous.get("kdj_d")) if previous else None
+    j_current  = _clean(latest.get("kdj_j"))
+    j_previous = _clean(previous.get("kdj_j")) if previous else None
+    kdj_score, kdj_reason = _score_kdj(
+        k_current, k_previous,
+        d_current, d_previous,
+        j_current, j_previous,
+    )
+
+    # Tổng điểm
+    total_score = rsi_score + ma_score + boll_score + macd_score + kdj_score
+
+    # Display price
+    display_price = current_price if current_price is not None else close_current
+    display_time  = (
+        current_price_time.strftime("%H:%M %d/%m/%Y")
+        if current_price_time else
+        f"{latest['TradingDate']} {latest['Time']}"
+    )
+
+    return {
+        "symbol":   symbol,
+        "interval": interval,
+        "period": {
+            "from":    f"{records[0]['TradingDate']} {records[0]['Time']}",
+            "to":      f"{latest['TradingDate']} {latest['Time']}",
+            "candles": len(records),
+        },
+        "current_price": {
+            "value": display_price,
+            "time":  display_time,
+        },
+        "total_score": total_score,   # tổng điểm 0–5, >= 3 → Mua
+        "indicators": {
+            "rsi": {
+                "value":  {"current": rsi_current, "previous": rsi_previous},
+                "score":  rsi_score,
+                "reason": rsi_reason,
+            },
+            "ma": {
+                "value": {
+                    "sma20_current":  sma20_current,
+                    "sma20_previous": sma20_previous,
+                    "sma50_current":  sma50_current,
+                    "sma50_previous": sma50_previous,
+                },
+                "score":  ma_score,
+                "reason": ma_reason,
+            },
+            "boll": {
+                "value": {
+                    "upper":          bb_upper,
+                    "middle":         bb_middle,
+                    "lower":          bb_lower,
+                    "close_current":  close_current,
+                    "close_previous": close_previous,
+                },
+                "score":  boll_score,
+                "reason": boll_reason,
+            },
+            "macd": {
+                "value": {
+                    "macd_current":    macd_current,
+                    "macd_previous":   macd_previous,
+                    "signal_current":  signal_current,
+                    "signal_previous": signal_previous,
+                    "hist_current":    hist_current,
+                    "hist_previous":   hist_previous,
+                },
+                "score":  macd_score,
+                "reason": macd_reason,
+            },
+            "kdj": {
+                "value": {
+                    "k_current":  k_current,
+                    "k_previous": k_previous,
+                    "d_current":  d_current,
+                    "d_previous": d_previous,
+                    "j_current":  j_current,
+                    "j_previous": j_previous,
+                },
+                "score":  kdj_score,
+                "reason": kdj_reason,
+            },
+        },
+    }
+
+
+def technical_analysis_agent(state: AgentState) -> AgentState:
+    myTask    = state.get("plan", {}).get("technical_analysis_agent", {})
+    symbol    = state.get("symbol", "")
+    interval  = myTask.get("interval", "1d")
+    from_date = myTask.get("from_date", "")
+    to_date   = myTask.get("to_date", "")
+
+    current_price, current_price_time = _fetch_current_price(symbol)
+
+    records = _build_records(symbol, interval, from_date, to_date)
+    if isinstance(records, str):
+        return {"agent_results": {"technical_analysis_agent": {"error": records}}}
 
     output = _format_technical_output(symbol, interval, records, current_price, current_price_time)
 

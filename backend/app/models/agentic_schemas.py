@@ -10,10 +10,6 @@ from pydantic import BaseModel, Field
 # ─── Shared ───────────────────────────────────────────────────────────────────
 
 class RiskAppetite(BaseModel):
-    capital_ratio: str = Field(description="Tỷ lệ vốn, ví dụ: 'Dưới 10%'")
-    comfort_zone: str = Field(description="Ngưỡng lợi nhuận / lỗ chấp nhận được")
-    expectation: str = Field(description="Kỳ vọng đầu tư")
-    experience: str = Field(description="Kinh nghiệm của nhà đầu tư")
     period: str = Field(description="Kỳ hạn đầu tư, ví dụ: 'Ngắn hạn (Dưới 1 năm)'")
 
 

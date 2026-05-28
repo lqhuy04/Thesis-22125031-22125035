@@ -26,7 +26,7 @@ TABLE         = "Stock_Price_1m"
 SLEEP_SECONDS = 1.1
 SYMBOL_SKIP_SUFFIX_RE = re.compile(r"\d{4}$")
 SYMBOL_3CHAR_RE = re.compile(r'^[A-Z0-9]{3}$')
-ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
+ALLOWED_INDICES = {"VNM"}
 
 logging.basicConfig(
     level=logging.INFO,
