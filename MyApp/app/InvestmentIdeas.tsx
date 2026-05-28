@@ -221,6 +221,22 @@ const InvestmentIdeas = () => {
     "trend" | "community" | "top_choice"
   >("top_choice");
   const [currentPage, setCurrentPage] = useState(0);
+
+  type SortKey = "symbol" | "price" | "change";
+  type SortDir = "asc" | "desc";
+
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const handleSortPress = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((prev) => (prev === "desc" ? "asc" : "desc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  };
+
   const flatListRef = useRef<FlatList>(null);
 
   // ------------------------------------------------------------------
@@ -449,6 +465,16 @@ const InvestmentIdeas = () => {
   // ------------------------------------------------------------------
   const renderPage = ({ item }: { item: (typeof tabs)[0] }) => {
     const listData = data ? item.getData(data) : [];
+    const sortedData = [...listData].sort((a, b) => {
+      if (!sortKey) return 0;
+      let diff = 0;
+      if (sortKey === "symbol") diff = a.symbol.localeCompare(b.symbol);
+      else if (sortKey === "price") diff = a.current_price - b.current_price;
+      else if (sortKey === "change")
+        diff = a.per_price_change - b.per_price_change;
+      return sortDir === "asc" ? diff : -diff;
+    });
+
     return (
       <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
         <ScrollView
@@ -466,38 +492,135 @@ const InvestmentIdeas = () => {
               backgroundColor: theme.background.bg,
             }}
           >
-            {/* Symbol column */}
-            <Text
-              typography="bodySmall"
-              color={theme.text.primary}
-              style={{ flex: 6.5, textAlign: "left", marginRight: 12 }}
-            >
-              {t("suggestion.columnSymbol")}
-            </Text>
-
-            <Text
-              typography="bodySmall"
-              color={theme.text.primary}
+            {/* Symbol — sortable */}
+            <TouchableOpacity
+              onPress={() => handleSortPress("symbol")}
               style={{
-                flex: 1.5,
-                textAlign: "left",
+                flex: 6.5,
+                flexDirection: "row",
+                alignItems: "center",
                 marginRight: 12,
               }}
             >
-              {t("suggestion.columnPrice")}
-            </Text>
+              <Text
+                typography="bodySmall"
+                color={
+                  sortKey === "symbol" ? theme.base.primary : theme.text.primary
+                }
+              >
+                {t("suggestion.columnSymbol")}
+              </Text>
+              <View style={{ marginLeft: 4, alignItems: "center" }}>
+                <Entypo
+                  name="chevron-small-up"
+                  size={14}
+                  color={
+                    sortKey === "symbol" && sortDir === "asc"
+                      ? theme.base.primary
+                      : theme.text.primary + "40"
+                  }
+                  style={{ marginBottom: -2 }}
+                />
+                <Entypo
+                  name="chevron-small-down"
+                  size={14}
+                  color={
+                    sortKey === "symbol" && sortDir === "desc"
+                      ? theme.base.primary
+                      : theme.text.primary + "40"
+                  }
+                  style={{ marginTop: -2 }}
+                />
+              </View>
+            </TouchableOpacity>
 
-            <Text
-              typography="bodySmall"
-              color={theme.text.primary}
-              style={{ flex: 2, textAlign: "center" }}
+            {/* Price — sortable */}
+            <TouchableOpacity
+              onPress={() => handleSortPress("price")}
+              style={{
+                flex: 1.5,
+                flexDirection: "row",
+                alignItems: "center",
+                marginRight: 12,
+              }}
             >
-              {t("suggestion.columnChangeToday")}
-            </Text>
+              <Text
+                typography="bodySmall"
+                color={
+                  sortKey === "price" ? theme.base.primary : theme.text.primary
+                }
+              >
+                {t("suggestion.columnPrice")}
+              </Text>
+              <View style={{ marginLeft: 4, alignItems: "center" }}>
+                <Entypo
+                  name="chevron-small-up"
+                  size={14}
+                  color={
+                    sortKey === "price" && sortDir === "asc"
+                      ? theme.base.primary
+                      : theme.text.primary + "40"
+                  }
+                  style={{ marginBottom: -2 }}
+                />
+                <Entypo
+                  name="chevron-small-down"
+                  size={14}
+                  color={
+                    sortKey === "price" && sortDir === "desc"
+                      ? theme.base.primary
+                      : theme.text.primary + "40"
+                  }
+                  style={{ marginTop: -2 }}
+                />
+              </View>
+            </TouchableOpacity>
+
+            {/* % Change — sortable */}
+            <TouchableOpacity
+              onPress={() => handleSortPress("change")}
+              style={{
+                flex: 2,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                typography="bodySmall"
+                color={
+                  sortKey === "change" ? theme.base.primary : theme.text.primary
+                }
+              >
+                {t("suggestion.columnChangeToday")}
+              </Text>
+              <View style={{ marginLeft: 4, alignItems: "center" }}>
+                <Entypo
+                  name="chevron-small-up"
+                  size={14}
+                  color={
+                    sortKey === "change" && sortDir === "asc"
+                      ? theme.base.primary
+                      : theme.text.primary + "40"
+                  }
+                  style={{ marginBottom: -2 }}
+                />
+                <Entypo
+                  name="chevron-small-down"
+                  size={14}
+                  color={
+                    sortKey === "change" && sortDir === "desc"
+                      ? theme.base.primary
+                      : theme.text.primary + "40"
+                  }
+                  style={{ marginTop: -2 }}
+                />
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Rows */}
-          {listData.map((stock: SuggestionItem, index: number) =>
+          {sortedData.map((stock: SuggestionItem, index: number) =>
             renderStockRow(stock, index),
           )}
         </ScrollView>
