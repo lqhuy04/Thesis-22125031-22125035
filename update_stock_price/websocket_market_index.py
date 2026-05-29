@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import sys
+import time
 from typing import Any, Optional
 
 from dotenv import load_dotenv
@@ -27,8 +28,6 @@ class Config:
 config = Config()
 
 TABLE = "Current_Market_Index"
-ALLOWED_INDEX_IDS = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
-ALLOWED_INDEX_LOOKUP = {index_id.upper(): index_id for index_id in ALLOWED_INDEX_IDS}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -74,10 +73,6 @@ def parse_index_tick(message) -> Optional[dict]:
         index_id = str(
             _get_field(index_data, "IndexId", "IndexID", "index_id", default="")
         ).strip()
-        if not index_id:
-            return None
-
-        index_id = ALLOWED_INDEX_LOOKUP.get(index_id.upper())
         if not index_id:
             return None
 
@@ -158,7 +153,7 @@ def main():
     logger.info("Index stream started. Press Ctrl+C to stop.")
     try:
         while True:
-            pass
+            time.sleep(1)
     except KeyboardInterrupt:
         logger.info("Stopped.")
 

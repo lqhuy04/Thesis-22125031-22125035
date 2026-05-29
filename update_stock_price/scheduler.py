@@ -14,13 +14,17 @@ import time
 import logging
 import subprocess
 import sys
+import signal
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+BASE_DIR = Path(__file__).resolve().parent
 
 VN_TZ = timezone(timedelta(hours=7))
 
@@ -62,7 +66,8 @@ def start_websockets():
             logger.warning(f"⚠ WebSocket 1m crashed with return code {ws_1m_process.returncode}")
         logger.info("▶ Starting websocket_stock_price_1m.py")
         ws_1m_process = subprocess.Popen(
-            [sys.executable, "-u", "websocket_stock_price_1m.py"],
+            [sys.executable, "-u", str(BASE_DIR / "websocket_stock_price_1m.py")],
+            cwd=str(BASE_DIR),
             text=True,
             bufsize=1,
         )
@@ -72,7 +77,8 @@ def start_websockets():
             logger.warning(f"⚠ WebSocket 1d crashed with return code {ws_1d_process.returncode}")
         logger.info("▶ Starting websocket_stock_price_1d.py")
         ws_1d_process = subprocess.Popen(
-            [sys.executable, "-u", "websocket_stock_price_1d.py"],
+            [sys.executable, "-u", str(BASE_DIR / "websocket_stock_price_1d.py")],
+            cwd=str(BASE_DIR),
             text=True,
             bufsize=1,
         )
@@ -82,7 +88,8 @@ def start_websockets():
             logger.warning(f"⚠ WebSocket index crashed with return code {ws_index_process.returncode}")
         logger.info("▶ Starting websocket_market_index.py")
         ws_index_process = subprocess.Popen(
-            [sys.executable, "-u", "websocket_market_index.py"],
+            [sys.executable, "-u", str(BASE_DIR / "websocket_market_index.py")],
+            cwd=str(BASE_DIR),
             text=True,
             bufsize=1,
         )
@@ -94,7 +101,11 @@ def stop_websockets():
     for name, proc in [("1m", ws_1m_process), ("1d", ws_1d_process), ("index", ws_index_process)]:
         if proc and proc.poll() is None:
             logger.info(f"⏹ Stopping WebSocket {name} process")
-            proc.terminate()
+            try:
+                proc.send_signal(signal.SIGINT)
+            except Exception as e:
+                logger.warning(f"⚠ Failed to send SIGINT to WebSocket {name}: {e}; falling back to terminate()")
+                proc.terminate()
             try:
                 proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
@@ -121,7 +132,8 @@ def run_standardize():
     for script in scripts:
         logger.info(f"▶ Running {script}")
         p = subprocess.Popen(
-            [sys.executable, "-u", script],
+            [sys.executable, "-u", str(BASE_DIR / script)],
+            cwd=str(BASE_DIR),
             stdout=sys.stdout,
             stderr=sys.stderr,
         )

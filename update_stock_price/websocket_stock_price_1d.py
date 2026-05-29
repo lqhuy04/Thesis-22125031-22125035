@@ -7,6 +7,7 @@ import logging
 import sys
 import threading
 import time
+from datetime import datetime
 from typing import Optional
 from dotenv import load_dotenv
 from supabase import create_client
@@ -40,6 +41,58 @@ supabase = create_client(
     os.getenv("SUPABASE_URL", ""),
     os.getenv("SUPABASE_KEY", "")
 )
+
+
+def _to_float(value) -> float:
+    try:
+        if value in (None, ""):
+            return 0.0
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _get_field(payload: dict, *keys: str, default=None):
+    for key in keys:
+        if key in payload and payload[key] not in (None, ""):
+            return payload[key]
+    return default
+
+
+def _normalize_timestamp(bar: dict) -> str | None:
+    raw_timestamp = str(
+        _get_field(bar, "TradingTime", "Time", "trading_time", "time", default="")
+    ).strip()
+    if not raw_timestamp:
+        return None
+
+    if "T" in raw_timestamp or (" " in raw_timestamp and len(raw_timestamp) >= 19):
+        normalized = raw_timestamp.replace(" ", "T")
+        return normalized[:19]
+
+    raw_date = str(
+        _get_field(bar, "TradingDate", "tradingdate", "Date", "date", default="")
+    ).strip()
+    if raw_date:
+        if "/" in raw_date:
+            parts = raw_date.split("/")
+            if len(parts) != 3:
+                return None
+            dd, mm, yyyy = parts
+        elif "-" in raw_date:
+            parts = raw_date.split("-")
+            if len(parts) != 3:
+                return None
+            yyyy, mm, dd = parts
+        else:
+            return None
+    else:
+        today = datetime.now().date()
+        yyyy = today.strftime("%Y")
+        mm = today.strftime("%m")
+        dd = today.strftime("%d")
+
+    return f"{yyyy}-{mm}-{dd}T{raw_timestamp[:8]}"
 
 # ═════════════════════════════════════════════════════════════════════════════
 # IN-MEMORY CANDLE BUFFER
@@ -153,32 +206,31 @@ def parse_tick(message) -> Optional[dict]:
     try:
         msg = json.loads(message) if isinstance(message, str) else message
 
-        if msg.get("DataType") != "B" and msg.get("datatype") != "B":
+        data_type = str(msg.get("DataType") or msg.get("datatype") or "").upper()
+        if data_type != "B":
             return None
 
         content = msg.get("Content") or msg.get("content")
         bar     = json.loads(content) if isinstance(content, str) else content
+        if not isinstance(bar, dict):
+            return None
 
         symbol = str(bar.get("Symbol") or "").strip().upper()
         if not (SYMBOL_REGEX.match(symbol) or symbol in ALLOWED_INDICES):
             return None
 
-        trading_time_str = bar.get("Time")        or bar.get("time")        or ""
-        trading_date_str = bar.get("TradingDate") or bar.get("tradingdate") or ""
-        if not trading_time_str or not trading_date_str:
+        trading_time = _normalize_timestamp(bar)
+        if not trading_time:
             return None
-
-        dd, mm, yyyy = trading_date_str.split("/")
-        trading_time = f"{yyyy}-{mm}-{dd}T{trading_time_str}"
 
         return {
             "symbol":       symbol,
             "trading_time": trading_time,
-            "open":         float(bar.get("Open")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "high":         float(bar.get("High")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "low":          float(bar.get("Low")    or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "close":        float(bar.get("Close")  or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "volume":       float(bar.get("Volume") or 0),
+            "open":         _to_float(_get_field(bar, "Open", "open", default=0)) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "high":         _to_float(_get_field(bar, "High", "high", default=0)) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "low":          _to_float(_get_field(bar, "Low", "low", default=0)) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "close":        _to_float(_get_field(bar, "Close", "close", default=0)) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+            "volume":       _to_float(_get_field(bar, "Volume", "volume", default=0)),
         }
     except Exception as e:
         logger.warning(f"Parse error: {e}")
@@ -223,7 +275,7 @@ def main():
     logger.info("Stream started. Press Ctrl+C to stop.")
     try:
         while True:
-            pass
+            time.sleep(1)
     except KeyboardInterrupt:
         periodic_flush_stop.set()
         logger.info(f"Flushing {len(candle_buffer)} remaining candles...")

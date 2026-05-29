@@ -25,6 +25,7 @@ client = fc_md_client.MarketDataClient(config)
 
 TABLE         = "Stock_Price_1m"
 KEEP_DAYS     = 30
+LOOKBACK_DAYS  = 2
 SYMBOL_REGEX  = re.compile(r'^[A-Z0-9]{3}$')
 ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
@@ -130,6 +131,57 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]
 
     return result
 
+def get_latest_trading_date(symbol: str) -> str | None:
+    try:
+        response = (
+            supabase.table(TABLE)
+            .select("trading_time")
+            .eq("symbol", symbol)
+            .order("trading_time", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = getattr(response, "data", None) or []
+        if not rows:
+            return None
+        latest = rows[0].get("trading_time") or ""
+        return latest[:10] if latest else None
+    except Exception as e:
+        logger.warning(f"[{symbol}] Failed to read latest trading_time: {e}")
+        return None
+
+def reconcile_latest_day(symbols: list[str], expected_date: str, from_date: str, to_date: str) -> None:
+    stale_symbols: list[str] = []
+
+    for symbol in symbols:
+        latest_date = get_latest_trading_date(symbol)
+        if latest_date != expected_date:
+            stale_symbols.append(symbol)
+
+    if not stale_symbols:
+        logger.info(f"All symbols are up to date for {expected_date}")
+        return
+
+    logger.warning(
+        f"[RECONCILE] {len(stale_symbols)} symbols are missing latest day {expected_date}; retrying SSI lookback {from_date} → {to_date}"
+    )
+
+    repaired = 0
+    still_missing: list[str] = []
+    for symbol in stale_symbols:
+        candles = fetch_intraday_ohlc(symbol, from_date, to_date)
+        if candles:
+            upsert_candles(candles)
+            repaired += 1
+        else:
+            still_missing.append(symbol)
+
+    logger.info(
+        f"[RECONCILE] repaired={repaired}, still_missing={len(still_missing)}"
+    )
+    if still_missing:
+        logger.warning(f"[RECONCILE] still missing symbols: {still_missing[:20]}{' ...' if len(still_missing) > 20 else ''}")
+
 # ═════════════════════════════════════════════════════════════════════════════
 # SUPABASE
 # ═════════════════════════════════════════════════════════════════════════════
@@ -154,9 +206,10 @@ def delete_old_candles(symbol: str, cutoff_iso: str) -> None:
 def main():
     today      = date.today()
     today_str  = today.strftime("%d/%m/%Y")
+    from_date  = (today - timedelta(days=LOOKBACK_DAYS)).strftime("%d/%m/%Y")
     cutoff_iso = (today - timedelta(days=KEEP_DAYS)).isoformat()
 
-    logger.info(f"=== Starting intraday sync: {today_str} ===")
+    logger.info(f"=== Starting intraday sync: {from_date} → {today_str} ===")
 
     symbols = get_hose_symbols()
     logger.info(f"Fetched {len(symbols)} HOSE symbols")
@@ -168,7 +221,7 @@ def main():
     all_candles = []
     for symbol in sorted(symbols):
         try:
-            candles = fetch_intraday_ohlc(symbol, today_str, today_str)
+            candles = fetch_intraday_ohlc(symbol, from_date, today_str)
             if candles:
                 logger.info(f"[{symbol}] Fetched {len(candles)} candles")
                 all_candles.extend(candles)
@@ -176,6 +229,8 @@ def main():
             delete_old_candles(symbol, cutoff_iso)
         except Exception as e:
             logger.error(f"[{symbol}] Error processing: {e}")
+
+    reconcile_latest_day(sorted(symbols), today.isoformat(), from_date, today_str)
 
     logger.info(f"Total candles processed: {len(all_candles)}")
     logger.info("=== Done ===")
