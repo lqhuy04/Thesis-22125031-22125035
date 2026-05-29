@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   fetchStockDataByTimeFrame,
   parseDateTime,
@@ -8,12 +8,14 @@ import {
   fetchCurrentIndexData,
   fetchCurrentPriceData,
 } from "@/helpers/DetailHelpers";
-import {
-  TouchableOpacity,
-  View,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { TouchableOpacity, View, StyleSheet } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  interpolate,
+} from "react-native-reanimated";
 import { useTheme } from "@/hooks/ThemeContext";
 import DetailHeader from "../ui/DetailHeader";
 import TradingViewChart from "../tradingView/TradingViewChart";
@@ -38,6 +40,163 @@ import { Text } from "../ui/Text";
 import Entypo from "@expo/vector-icons/Entypo";
 import { useLocalization } from "@/hooks/LocalizationContext";
 
+// ─────────────────────────────────────────────
+// SkeletonBox — pulsing placeholder block
+// ─────────────────────────────────────────────
+interface SkeletonBoxProps {
+  width?: number | `${number}%`;
+  height?: number;
+  borderRadius?: number;
+  style?: object;
+}
+
+const SkeletonBox = ({
+  width = "100%",
+  height = 14,
+  borderRadius = 6,
+  style,
+}: SkeletonBoxProps) => {
+  const { theme } = useTheme();
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    opacity.value = withRepeat(withTiming(1, { duration: 700 }), -1, true);
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(opacity.value, [0, 1], [0.3, 0.7]),
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: theme.background.surface,
+        },
+        animatedStyle,
+        style,
+      ]}
+    />
+  );
+};
+
+// ─────────────────────────────────────────────
+// PriceChartSkeleton — mirrors the real layout
+// ─────────────────────────────────────────────
+const PriceChartSkeleton = () => {
+  const { theme } = useTheme();
+  const bg = theme.background.bg;
+
+  return (
+    <View style={{ marginTop: 12 }}>
+      {/* Stock header */}
+      <View style={[skStyles.card, { backgroundColor: bg }]}>
+        <View style={skStyles.row}>
+          <SkeletonBox width={40} height={40} borderRadius={8} />
+          <View style={{ flex: 1, gap: 6 }}>
+            <SkeletonBox width={80} height={14} />
+            <SkeletonBox width={140} height={11} />
+          </View>
+          <SkeletonBox width={28} height={28} borderRadius={14} />
+        </View>
+        <SkeletonBox width={90} height={24} style={{ marginBottom: 6 }} />
+        <SkeletonBox width={70} height={12} />
+      </View>
+
+      {/* Chart card */}
+      <View style={[skStyles.card, { backgroundColor: bg, marginTop: 8 }]}>
+        {/* Chart type toggle row */}
+        <View style={[skStyles.row, { marginBottom: 12 }]}>
+          <SkeletonBox width={38} height={14} />
+          <SkeletonBox width={110} height={30} borderRadius={10} />
+          <View style={{ flex: 1 }} />
+          <SkeletonBox width={20} height={20} borderRadius={10} />
+        </View>
+
+        {/* Chart area */}
+        <SkeletonBox
+          height={220}
+          borderRadius={8}
+          style={{ marginBottom: 12 }}
+        />
+
+        {/* Toolbar */}
+        <View style={skStyles.row}>
+          <SkeletonBox width={52} height={13} />
+          <SkeletonBox width={88} height={28} borderRadius={8} />
+          <View style={{ flex: 1 }} />
+          <SkeletonBox width={80} height={13} />
+          <SkeletonBox width={36} height={28} borderRadius={8} />
+        </View>
+      </View>
+
+      {/* Intraday Change card */}
+      <View style={[skStyles.card, { backgroundColor: bg, marginTop: 8 }]}>
+        <SkeletonBox width={110} height={14} style={{ marginBottom: 14 }} />
+
+        {/* Floor / Reference / Ceiling */}
+        <View
+          style={[
+            skStyles.row,
+            { justifyContent: "space-between", marginBottom: 0 },
+          ]}
+        >
+          {[36, 44, 36].map((w, i) => (
+            <View key={i} style={{ alignItems: "center", gap: 6 }}>
+              <SkeletonBox width={w + 8} height={11} />
+              <SkeletonBox width={w} height={16} />
+            </View>
+          ))}
+        </View>
+
+        <View style={skStyles.divider} />
+
+        {[130, 150].map((w, i) => (
+          <View
+            key={i}
+            style={[
+              skStyles.row,
+              {
+                justifyContent: "space-between",
+                marginBottom: 0,
+                marginTop: 12,
+              },
+            ]}
+          >
+            <SkeletonBox width={90} height={12} />
+            <SkeletonBox width={w} height={12} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+const skStyles = StyleSheet.create({
+  card: {
+    borderRadius: 12,
+    margin: 12,
+    padding: 12,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(128,128,128,0.25)",
+    marginTop: 14,
+  },
+});
+
+// ─────────────────────────────────────────────
+// Main component
+// ─────────────────────────────────────────────
 interface Props {
   symbol: string;
   isMarketIndex?: boolean;
@@ -46,7 +205,12 @@ interface Props {
 const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
-  const [loading, setLoading] = useState<boolean>(false);
+
+  // true on first load until we have price data for the first time
+  const isFirstLoad = useRef(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+
   const [chartType, setChartType] = useState<"candle" | "area">("candle");
   const [timeFrame, setTimeFrame] = useState<TIMEFRAME>(
     TIMEFRAME.FIFTEEN_MINUTES,
@@ -59,7 +223,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
     volume: false,
   });
 
-  //------------------------------------------------------------------------
+  // ── Current price/index header data ──────────────────────────────────
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
@@ -74,7 +238,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
     }
   }, [isMarketIndex, symbol]);
 
-  //------------------------------------------------------------------------
+  // ── OHLCV + technical indicator data ─────────────────────────────────
   const [priceData, setPriceData] = useState<StockPriceData[]>([]);
   const [technicalIndicatorsData, setTechnicalIndicatorsData] = useState<
     TechnicalIndicatorData[]
@@ -82,7 +246,14 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      // Show full skeleton only on the very first fetch; subsequent
+      // timeframe changes show a lighter loading indicator on the chart.
+      if (isFirstLoad.current) {
+        setInitialLoading(true);
+      } else {
+        setLoading(true);
+      }
+
       try {
         const interval =
           timeFrame === TIMEFRAME.ONE_MINUTE
@@ -118,12 +289,17 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
         setPriceData([]);
       } finally {
         setLoading(false);
+        if (isFirstLoad.current) {
+          setInitialLoading(false);
+          isFirstLoad.current = false;
+        }
       }
     };
 
     fetchData();
   }, [symbol, timeFrame]);
 
+  // ── Derived chart data (memoised) ─────────────────────────────────────
   const chartPriceData: PriceData[] = useMemo(() => {
     if (!Array.isArray(priceData) || priceData.length === 0) return [];
     return priceData.map((item) => ({
@@ -233,6 +409,10 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
     (indicatorState.mode2 ? 1 : 0) +
     (indicatorState.volume ? 1 : 0);
 
+  // ── Skeleton guard — first load only ─────────────────────────────────
+  if (initialLoading) return <PriceChartSkeleton />;
+
+  // ── Normal render ─────────────────────────────────────────────────────
   return (
     <View style={{ marginTop: 12 }}>
       <DetailHeader
@@ -326,64 +506,58 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
               />
             </View>
 
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color={theme.base.primary} />
-              </View>
-            ) : (
-              <View>
-                <TradingViewChart
-                  prices={chartPriceData}
-                  volumes={chartVolumeData}
-                  volumeMAData={chartVolumeMAData}
-                  maData={chartMAData}
-                  bollData={chartBOLLData}
-                  macdData={chartMACDData}
-                  rsiData={chartRSIData}
-                  kdjData={chartKDJData}
-                  timeframe={timeFrame}
-                  chartType={chartType}
-                  showVolume={indicatorState.volume}
-                  technicalIndicatorMode1={indicatorState.mode1}
-                  technicalIndicatorMode2={indicatorState.mode2}
-                />
+            {/* Chart — shows lightweight opacity fade while reloading on timeframe change */}
+            <Animated.View style={{ opacity: loading ? 0.4 : 1 }}>
+              <TradingViewChart
+                prices={chartPriceData}
+                volumes={chartVolumeData}
+                volumeMAData={chartVolumeMAData}
+                maData={chartMAData}
+                bollData={chartBOLLData}
+                macdData={chartMACDData}
+                rsiData={chartRSIData}
+                kdjData={chartKDJData}
+                timeframe={timeFrame}
+                chartType={chartType}
+                showVolume={indicatorState.volume}
+                technicalIndicatorMode1={indicatorState.mode1}
+                technicalIndicatorMode2={indicatorState.mode2}
+              />
 
-                <TouchableOpacity
-                  onPress={() =>
-                    router.push({
-                      pathname: "/TradingViewScreen",
-                      params: {
-                        data: JSON.stringify({
-                          symbol: symbol,
-                          exchange: data?.exchange,
-                        }),
-                      },
-                    })
-                  }
-                  style={{
-                    backgroundColor: theme.background.surface,
-                    borderColor: theme.border.default,
-                    position: "absolute",
-                    bottom: 64,
-                    left: 12,
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="arrow-expand"
-                    size={12}
-                    color={theme.text.primary}
-                  />
-                </TouchableOpacity>
-              </View>
-            )}
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/TradingViewScreen",
+                    params: {
+                      data: JSON.stringify({
+                        symbol: symbol,
+                        exchange: data?.exchange,
+                      }),
+                    },
+                  })
+                }
+                style={{
+                  backgroundColor: theme.background.surface,
+                  borderColor: theme.border.default,
+                  position: "absolute",
+                  bottom: 64,
+                  left: 12,
+                  width: 24,
+                  height: 24,
+                  borderRadius: 12,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="arrow-expand"
+                  size={12}
+                  color={theme.text.primary}
+                />
+              </TouchableOpacity>
+            </Animated.View>
 
             <View style={styles.toolbar}>
-              {/* Timeframe button */}
               <Text typography="bodyMedium" color={theme.text.primary}>
                 {t("priceChart.candlePeriod")}
               </Text>
@@ -417,7 +591,6 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
 
               <View style={{ flex: 1 }} />
 
-              {/* Indicator button */}
               <Text typography="bodyMedium" color={theme.text.primary}>
                 {t("priceChart.technicalIndicator")}
               </Text>
@@ -452,7 +625,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
                       marginLeft: 4,
                     }}
                   >
-                    <Text typography="bodySmall" color={theme.text.primary}>
+                    <Text typography="bodySmall" color={theme.text.onPrimary}>
                       {activeIndicatorCount}
                     </Text>
                   </View>
@@ -481,39 +654,11 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
 };
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    height: 300,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   toolbar: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
     marginTop: 12,
-  },
-  iconBtn: {
-    borderRadius: 2,
-    borderWidth: 1,
-    padding: 4,
-  },
-  rowBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-  },
-  btnLabel: {
-    fontSize: 12,
-    color: "black",
-    fontWeight: "500",
-  },
-  badge: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
   },
 });
 
