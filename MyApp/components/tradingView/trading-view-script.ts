@@ -515,12 +515,185 @@ const ensureIndicatorPaneCreated = () => {
   window.kdjJSeries.applyOptions({ visible: false });
 };
 
+// ─── Legend label helpers ─────────────────────────────────────────────────────
+
+const LEGEND_STYLE = [
+  "position:absolute",
+  "top:4px",
+  "left:4px",
+  "z-index:10",
+  "font-size:10px",
+  "line-height:1.6",
+  "pointer-events:none",
+  "white-space:nowrap",
+].join(";");
+
+const createLegendEl = (id) => {
+  const el = document.createElement("div");
+  el.id = id;
+  el.style.cssText = LEGEND_STYLE;
+  return el;
+};
+
+const spanVal = (text, color) =>
+  '<span style="color:' + (color || "inherit") + '">' + text + '</span>';
+
+const fmt = (v) => (v == null || isNaN(v) ? "--" : Number(v).toFixed(2));
+const fmtVol = volumeFormatter;
+
+// Get last item of an array safely
+const lastOf = (arr) => (arr && arr.length ? arr[arr.length - 1] : null);
+
+const getPaneElement = (paneIndex) => {
+  try {
+    const panes = window.chart.panes();
+    if (paneIndex >= panes.length) return null;
+    const trEl = panes[paneIndex].getHTMLElement();
+    if (!trEl) return null;
+    // LWC v5 render mỗi pane là <tr> với 3 <td>: left scale, canvas, right scale
+    // Canvas wrapper là <td> thứ 2 (index 1)
+    const tdEl = trEl.querySelectorAll("td")[1];
+    if (!tdEl) return null;
+    // Canvas nằm trong 1 div bên trong td đó
+    const divEl = tdEl.querySelector("div");
+    if (!divEl) return null;
+    divEl.style.position = "relative";
+    return divEl;
+  } catch (e) {
+    return null;
+  }
+};
+
+// ── Price pane legend (mode1: MA / BOLL / null) ───────────────────────────────
+window.priceLegendEl = null;
+window.currentMode1 = null;
+
+const ensurePriceLegend = (container) => {
+  if (window.priceLegendEl) return;
+  window.priceLegendEl = createLegendEl("legend-price");
+  container.appendChild(window.priceLegendEl);
+};
+
+const updatePriceLegend = (index) => {
+  const el = window.priceLegendEl;
+  if (!el) return;
+  const mode = window.currentMode1;
+  if (!mode) { el.innerHTML = ""; return; }
+
+  if (mode === "MA") {
+    const ma = index != null && window.cachedMaData ? window.cachedMaData[index] : lastOf(window.cachedMaData);
+    if (!ma) { el.innerHTML = ""; return; }
+    el.innerHTML =
+      spanVal("MA20: ", "#D4A017") + spanVal(fmt(ma.ma20), "#D4A017") + "  " +
+      spanVal("MA50: ", "#1B7A1B") + spanVal(fmt(ma.ma50), "#1B7A1B");
+  } else if (mode === "BOLL") {
+    const b = index != null && window.cachedBollData ? window.cachedBollData[index] : lastOf(window.cachedBollData);
+    if (!b) { el.innerHTML = ""; return; }
+    el.innerHTML =
+      spanVal("BOLL: ", "#D4A017") + spanVal(fmt(b.boll), "#D4A017") + "  " +
+      spanVal("UB: ", "#1B7A1B") + spanVal(fmt(b.ub), "#1B7A1B") + "  " +
+      spanVal("LB: ", "#613DE4") + spanVal(fmt(b.lb), "#613DE4");
+  }
+};
+
+// ── Volume pane legend ────────────────────────────────────────────────────────
+window.volumeLegendEl = null;
+
+const ensureVolumeLegend = (retry = 0) => {
+  if (window.volumeLegendEl) return;
+  const paneEl = getPaneElement(1);
+  if (!paneEl) {
+    // DOM chưa ready, thử lại sau 1 frame (tối đa 10 lần)
+    if (retry < 10) requestAnimationFrame(() => ensureVolumeLegend(retry + 1));
+    return;
+  }
+  window.volumeLegendEl = createLegendEl("legend-volume");
+  paneEl.appendChild(window.volumeLegendEl);
+  updateVolumeLegend(null); // render ngay sau khi tạo
+};
+
+const destroyVolumeLegend = () => {
+  if (window.volumeLegendEl) { window.volumeLegendEl.remove(); window.volumeLegendEl = null; }
+};
+
+const updateVolumeLegend = (index) => {
+  const el = window.volumeLegendEl;
+  if (!el) return;
+  const color = window.themeColors?.textPrimary || "#333333";
+  const vd = index != null && window.cachedVolumeData ? window.cachedVolumeData[index] : lastOf(window.cachedVolumeData);
+  const vm = index != null && window.cachedVolumeMAData ? window.cachedVolumeMAData[index] : lastOf(window.cachedVolumeMAData);
+  el.innerHTML =
+    spanVal("VOL: ", color) + spanVal(fmtVol(vd ? vd.value : null), color) + "  " +
+    spanVal("MA20: ", "#D4A017") + spanVal(fmtVol(vm ? vm.vma20 : null), "#D4A017") + "  " +
+    spanVal("MA50: ", "#1B7A1B") + spanVal(fmtVol(vm ? vm.vma50 : null), "#1B7A1B");
+};
+
+// ── Indicator pane legend ─────────────────────────────────────────────────────
+window.indicatorLegendEl = null;
+
+const ensureIndicatorLegend = (retry = 0) => {
+  if (window.indicatorLegendEl) return;
+  const indicatorPaneIndex = window.isVolumeVisible ? 2 : 1;
+  const paneEl = getPaneElement(indicatorPaneIndex);
+  if (!paneEl) {
+    if (retry < 10) requestAnimationFrame(() => ensureIndicatorLegend(retry + 1));
+    return;
+  }
+  window.indicatorLegendEl = createLegendEl("legend-indicator");
+  paneEl.appendChild(window.indicatorLegendEl);
+  updateIndicatorLegend(null); // render ngay sau khi tạo
+};
+
+const destroyIndicatorLegend = () => {
+  if (window.indicatorLegendEl) { window.indicatorLegendEl.remove(); window.indicatorLegendEl = null; }
+};
+
+const updateIndicatorLegend = (index) => {
+  const el = window.indicatorLegendEl;
+  if (!el) return;
+  const mode = window.currentIndicatorMode2;
+  if (!mode) { el.innerHTML = ""; return; }
+
+  if (mode === "MACD") {
+    const d = index != null && window.cachedMacdData ? window.cachedMacdData[index] : lastOf(window.cachedMacdData);
+    if (!d) { el.innerHTML = ""; return; }
+    const macdColor = d.macd >= 0 ? "#34C759" : "#F63842";
+    el.innerHTML =
+      spanVal("MACD(12,26,9)  ", window.themeColors?.textPrimary) +
+      spanVal("MACD: ", macdColor) + spanVal(fmt(d.macd), macdColor) + "  " +
+      spanVal("DIF: ", "#D4A017") + spanVal(fmt(d.dif), "#D4A017") + "  " +
+      spanVal("DEA: ", "#1B7A1B") + spanVal(fmt(d.dea), "#1B7A1B");
+  } else if (mode === "RSI") {
+    const d = index != null && window.cachedRsiData ? window.cachedRsiData[index] : lastOf(window.cachedRsiData);
+    if (!d) { el.innerHTML = ""; return; }
+    el.innerHTML =
+      spanVal("RSI(14)  ", window.themeColors?.textPrimary) +
+      spanVal("RSI: ", "#FF9F0A") + spanVal(fmt(d.value), "#FF9F0A");
+  } else if (mode === "KDJ") {
+    const d = index != null && window.cachedKdjData ? window.cachedKdjData[index] : lastOf(window.cachedKdjData);
+    if (!d) { el.innerHTML = ""; return; }
+    el.innerHTML =
+      spanVal("KDJ(9,1,3)  ", window.themeColors?.textPrimary) +
+      spanVal("K: ", "#FF9F0A") + spanVal(fmt(d.k), "#FF9F0A") + "  " +
+      spanVal("D: ", "#3395FF") + spanVal(fmt(d.d), "#3395FF") + "  " +
+      spanVal("J: ", "#FF3B30") + spanVal(fmt(d.j), "#FF3B30");
+  }
+};
+
+// ── Master update: called on crosshair move or data change ───────────────────
+const updateAllLegends = (index) => {
+  updatePriceLegend(index);
+  if (window.isVolumeVisible) updateVolumeLegend(index);
+  if (window.currentIndicatorMode2 !== null) updateIndicatorLegend(index);
+};
+
 const tryInitialize = () => {
   document.body.style.backgroundColor = window.themeColors.background;
   document.documentElement.style.backgroundColor = window.themeColors.background;
 
   const container = document.getElementById("container");
   if (!container || typeof LightweightCharts === "undefined") return;
+  window.chartContainer = container;
 
   const rect = container.getBoundingClientRect();
   if (rect.width === 0 || rect.height === 0) {
@@ -623,6 +796,9 @@ const tryInitialize = () => {
     container.appendChild(tooltip);
     window.tooltip = tooltip;
 
+    // ── Price pane legend ──────────────────────────────────────────────────
+    ensurePriceLegend(container);
+
     window.chart.subscribeCrosshairMove((param) => {
       if (
         !param.point || !param.time ||
@@ -630,11 +806,12 @@ const tryInitialize = () => {
         param.point.y < 0 || param.point.y > container.clientHeight
       ) {
         tooltip.style.display = "none";
+        updateAllLegends(null); // reset to last value
         return;
       }
 
       const candleData = param.seriesData.get(window.mainSeries);
-      if (!candleData) { tooltip.style.display = "none"; return; }
+      if (!candleData) { tooltip.style.display = "none"; updateAllLegends(null); return; }
 
       const volumeData = window.volumeSeries ? param.seriesData.get(window.volumeSeries) : null;
 
@@ -643,6 +820,9 @@ const tryInitialize = () => {
 
       const index = binarySearchByTime(window.cachedPriceData, param.time);
       const prevClosePrice = index > 0 ? window.cachedPriceData[index - 1].close : null;
+
+      // Update legends with hovered index
+      updateAllLegends(index >= 0 ? index : null);
 
       const openEl = document.getElementById("tooltip-open");
       const closeEl = document.getElementById("tooltip-close");
@@ -754,27 +934,44 @@ window.setVolumeVisible = (visible) => {
 
   if (visible) {
     if (window.currentIndicatorMode2 !== null && window.rsiSeries) {
-      // Indicator pane exists — must destroy it first so volume can take the next pane slot,
-      // then recreate indicator after volume so order is: price → volume → indicator
       destroyIndicatorSeries();
+      destroyIndicatorLegend();
       ensureVolumePaneCreated();
+      ensureVolumeLegend();
       ensureIndicatorPaneCreated();
-      // Re-apply the active indicator mode visibility
+      ensureIndicatorLegend();
       window.setTechnicalIndicatorMode2(window.currentIndicatorMode2);
     } else {
       ensureVolumePaneCreated();
+      ensureVolumeLegend();
     }
     if (window.volumeSeries) window.volumeSeries.applyOptions({ visible: true });
     if (window.vma20Series) window.vma20Series.applyOptions({ visible: true });
     if (window.vma50Series) window.vma50Series.applyOptions({ visible: true });
+    updateVolumeLegend(null);
   } else {
-    destroyVolumeSeries();
+    // Nếu đang có indicator, phải destroy indicator trước, destroy volume,
+    // rồi recreate indicator ở pane 1 (thay vì pane 2)
+    if (window.currentIndicatorMode2 !== null && window.rsiSeries) {
+      destroyIndicatorSeries();
+      destroyIndicatorLegend();
+      destroyVolumeSeries();
+      destroyVolumeLegend();
+      ensureIndicatorPaneCreated();
+      ensureIndicatorLegend();
+      window.setTechnicalIndicatorMode2(window.currentIndicatorMode2);
+    } else {
+      destroyVolumeSeries();
+      destroyVolumeLegend();
+    }
   }
 };
 
 window.setTechnicalIndicatorMode1 = (mode) => {
   if (!window.ma20Series || !window.ma50Series) return;
   if (!window.bollSeries || !window.ubSeries || !window.lbSeries) return;
+
+  window.currentMode1 = mode || null;
 
   if (mode === "MA") {
     window.ma20Series.applyOptions({ visible: true });
@@ -795,6 +992,7 @@ window.setTechnicalIndicatorMode1 = (mode) => {
     window.ubSeries.applyOptions({ visible: false });
     window.lbSeries.applyOptions({ visible: false });
   }
+  updatePriceLegend(null);
 };
 
 // ── technicalIndicatorMode2: "MACD" | "RSI" | "KDJ" | null ───────────────────
@@ -804,13 +1002,14 @@ window.setTechnicalIndicatorMode2 = (mode) => {
   window.currentIndicatorMode2 = mode;
 
   if (mode === null) {
-    // Destroy indicator series → Lightweight Charts auto-removes empty pane
     destroyIndicatorSeries();
+    destroyIndicatorLegend();
     return;
   }
 
   // Lazy create indicator pane on first use
   ensureIndicatorPaneCreated();
+  ensureIndicatorLegend();
 
   if (mode === "MACD") {
     window.macdHistogramSeries.applyOptions({ visible: true });
@@ -837,6 +1036,7 @@ window.setTechnicalIndicatorMode2 = (mode) => {
     window.kdjDSeries.applyOptions({ visible: true });
     window.kdjJSeries.applyOptions({ visible: true });
   }
+  updateIndicatorLegend(null);
 };
 
 // Set chart data (called once or when timeframe changes)
@@ -912,6 +1112,9 @@ window.updateChartData = (priceData, volumeData, volumeMAData, maData, bollData,
       }
     });
   }
+
+  // Refresh legends with latest data
+  updateAllLegends(null);
 };
 
 if (document.readyState === "loading") {
