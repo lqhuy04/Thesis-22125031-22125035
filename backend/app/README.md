@@ -45,6 +45,13 @@ python -m app.main
 ### Protected Routes (Require Authorization header)
 - `GET /api/auth/me` - Get current user info
 
+### Agentic Analysis
+- `POST /api/agentic/analyze` - Run the full analysis pipeline and return the structured recommendation.
+- `POST /api/agentic/chat` - Chat mode with session memory.
+- `POST /api/agentic/backtest` - Run the historical technical backtest used for thesis evaluation.
+
+For the backtest methodology and assumptions, see [BACKTEST.md](../BACKTEST.md).
+
 ## Testing Protected Routes
 
 ```bash

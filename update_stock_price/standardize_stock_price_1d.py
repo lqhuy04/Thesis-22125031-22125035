@@ -3,7 +3,7 @@ import re
 import time
 import logging
 import requests
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
@@ -23,6 +23,8 @@ class Config:
 
 config = Config()
 client = fc_md_client.MarketDataClient(config)
+
+VN_TZ = timezone(timedelta(hours=7))
 
 TABLE         = "Stock_Price_1d"
 KEEP_DAYS     = 365 * 5     # Giữ lại 5 năm dữ liệu daily
@@ -225,7 +227,7 @@ def delete_old_candles(symbol: str, cutoff_iso: str) -> None:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def main():
-    today      = date.today()
+    today      = datetime.now(VN_TZ).date()
     today_str  = today.strftime("%d/%m/%Y")
     from_date  = (today - timedelta(days=LOOKBACK_DAYS)).strftime("%d/%m/%Y")
     cutoff_iso = (today - timedelta(days=KEEP_DAYS)).isoformat()

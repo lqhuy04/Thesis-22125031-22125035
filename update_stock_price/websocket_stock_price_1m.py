@@ -7,7 +7,7 @@ import logging
 import requests
 import sys
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import time
 from dotenv import load_dotenv
 from supabase import create_client
@@ -26,6 +26,8 @@ class Config:
     stream_url     = os.getenv("SSI_STREAM_URL", "https://fc-datahub.ssi.com.vn/")
 
 config = Config()
+
+VN_TZ = timezone(timedelta(hours=7))
 
 TABLE        = "Stock_Price_1m"
 SYMBOL_REGEX = re.compile(r'^[A-Z0-9]{3}$')
@@ -89,7 +91,7 @@ def _normalize_timestamp(bar: dict) -> str | None:
             return None
     else:
         # Live bars sometimes omit the date, so fall back to the current trading day.
-        today = datetime.now().date()
+        today = datetime.now(VN_TZ).date()
         yyyy = today.strftime("%Y")
         mm = today.strftime("%m")
         dd = today.strftime("%d")
@@ -301,7 +303,7 @@ def main():
         last_minute = None
         while True:
             try:
-                now = datetime.now()
+                now = datetime.now(VN_TZ)
                 current_minute = now.replace(second=0, microsecond=0).isoformat()[:16]
 
                 # Flush closed minutes once per minute (even if no incoming ticks)
@@ -332,7 +334,7 @@ def main():
         logger.info(f"Shutting down... Flushing {len(candle_buffer)} remaining candles from candle_buffer...")
         if candle_buffer:
             # Only flush completed minutes (do not write the current open minute)
-            now = datetime.now().replace(second=0, microsecond=0).isoformat()[:16]
+            now = datetime.now(VN_TZ).replace(second=0, microsecond=0).isoformat()[:16]
             completed = [c for k, c in candle_buffer.items() if k[1][:16] < now]
             if completed:
                 try:
