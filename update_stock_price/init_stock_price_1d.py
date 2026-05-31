@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import logging
 import re
@@ -194,13 +195,19 @@ def upsert_candles(candles: list[dict]) -> None:
         return
     supabase.table(TABLE).upsert(candles, on_conflict="symbol,trading_time").execute()
 
+
+def resolve_symbols(cli_symbols: list[str] | None = None) -> list[str]:
+    if cli_symbols:
+        return [symbol.strip().upper() for symbol in cli_symbols if symbol.strip()]
+    return list(ALLOWED_INDICES)
+
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ═════════════════════════════════════════════════════════════════════════════
 
-def main():
-    symbols = list(ALLOWED_INDICES)
-    logger.info(f"Init daily OHLC for {len(symbols)} indices: {symbols}")
+def main(symbols: list[str] | None = None):
+    symbols = resolve_symbols(symbols)
+    logger.info(f"Init daily OHLC for {len(symbols)} symbols: {symbols}")
 
     today      = date.today()
     start_date = today.replace(year=today.year - YEARS_BACK)
@@ -242,4 +249,4 @@ def main():
     logger.info(f"All done. Total upserted: {total_upserted} candles.")
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
