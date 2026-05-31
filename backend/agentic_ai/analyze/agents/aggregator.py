@@ -20,20 +20,43 @@ from agentic_ai.analyze.state import AgentState
 class InvestmentRecommendation(BaseModel):
     recommendation: Literal["Mua", "Chờ"] = Field(
         description=(
-            "Hành động đề xuất dựa trên total_score:\n"
-            "  'Mua'  = total_score >= 3\n"
-            "  'Chờ' = total_score < 3"
+            "Quyết định cuối dựa trên tổng hợp 3 nguồn:\n"
+            "  - technical_score: 0–5\n"
+            "  - article_sentiment: positive | neutral | negative\n"
+            "  - fundamental_health: strong | neutral | weak\n"
+            "\n"
+            "  Logic tổng hợp:\n"
+            "  Mua  = technical_score >= 3\n"
+            "         VÀ article_sentiment != negative\n"
+            "         VÀ fundamental_health != weak\n"
+            "  Chờ  = mọi trường hợp còn lại\n"
+            "\n"
+            "  Nếu article hoặc fundamental không có dữ liệu\n"
+            "  → bỏ qua điều kiện đó, chỉ dùng điều kiện còn lại"
         )
     )
 
     analysis: str = Field(
         description=(
-            "Phân tích tổng thể. Bao gồm:\n"
-            "  1. Tổng score (total_score/5) và kết luận Mua/Chờ\n"
-            "  2. Từng indicator theo thứ tự RSI → MA → BOLL → MACD → KDJ: "
-            "score và reason, dẫn số liệu cụ thể\n"
-            "  3. Nhận xét ngắn về xu hướng kỹ thuật tổng thể"
+            "Phân tích tổng hợp gồm 4 phần:\n"
+            "  1. Quyết định: Mua/Chờ và lý do tổng hợp\n"
+            "  2. Kỹ thuật: total_score x/5, điểm từng indicator\n"
+            "  3. Tin tức: sentiment và các điểm chính\n"
+            "  4. Cơ bản: sức khỏe tài chính, các chỉ số nổi bật"
         )
+    )
+
+    confidence: Literal["high", "medium", "low"] = Field(
+        description=(
+            "Mức độ tin cậy của quyết định:\n"
+            "  high   = cả 3 nguồn đồng thuận\n"
+            "  medium = 2/3 nguồn đồng thuận, hoặc 1 nguồn thiếu dữ liệu\n"
+            "  low    = các nguồn mâu thuẫn nhau, hoặc 2 nguồn thiếu dữ liệu"
+        )
+    )
+
+    data_sources_used: list[Literal["technical", "article", "fundamental"]] = Field(
+        description="Danh sách nguồn dữ liệu thực sự có dữ liệu và được dùng"
     )
 
 
@@ -42,51 +65,57 @@ class InvestmentRecommendation(BaseModel):
 # ─────────────────────────────────────────────────────────────
 
 AGGREGATOR_SYSTEM_PROMPT = """
-Bạn là chuyên gia phân tích kỹ thuật chứng khoán Việt Nam.
+Bạn là chuyên gia phân tích đầu tư chứng khoán Việt Nam.
+Bạn nhận dữ liệu từ 3 nguồn và tổng hợp thành quyết định Mua/Chờ.
 
-Bạn nhận dữ liệu từ technical_analysis_agent. Điểm số đã được tính sẵn —
-nhiệm vụ của bạn chỉ là đọc, tóm tắt và đưa ra quyết định.
+PHẦN I — ĐÁNH GIÁ TỪNG NGUỒN
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN I — CẤU TRÚC DỮ LIỆU
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Technical (bắt buộc):
+     Đọc total_score từ technical_analysis_agent.
+     Không tự tính lại.
 
-  technical_analysis_agent:
-    total_score: int          ← tổng điểm 0–5, đã tính sẵn
-    indicators:
-      rsi:  { value: {...}, score: 0|1, reason: string }
-      ma:   { value: {...}, score: 0|1, reason: string }
-      boll: { value: {...}, score: 0|1, reason: string }
-      macd: { value: {...}, score: 0|1, reason: string }
-      kdj:  { value: {...}, score: 0|1, reason: string }
+2. Article (tùy chọn):
+     Nếu có dữ liệu: đánh giá sentiment tổng thể là
+         positive  = tin tức tích cực rõ ràng
+         neutral   = không rõ chiều hoặc lẫn lộn
+         negative  = tin tức tiêu cực rõ ràng
+     Nếu "Không có tin tức hữu ích" hoặc thiếu dữ liệu:
+         đánh dấu là không có dữ liệu, bỏ qua điều kiện này.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PHẦN II — QUYẾT ĐỊNH
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. Fundamental (tùy chọn):
+     Nếu có dữ liệu: đánh giá sức khỏe tài chính là
+         strong  = ROE > 15%, P/E hợp lý, nợ thấp, tăng trưởng dương
+         neutral = chỉ số trung bình, không có dấu hiệu cực đoan
+         weak    = ROE thấp, nợ cao, tăng trưởng âm, P/E quá cao
+     Nếu thiếu dữ liệu: bỏ qua điều kiện này.
 
-Đọc total_score trực tiếp — KHÔNG tự tính lại:
+PHẦN II — LOGIC TỔNG HỢP (CỨNG, KHÔNG OVERRIDE)
 
-  total_score >= 3  →  "Mua"
-  total_score < 3   →  "Chờ"
+Mua = technical_score >= 3
+            VÀ article_sentiment != negative  (nếu có dữ liệu)
+            VÀ fundamental_health != weak     (nếu có dữ liệu)
 
-Đây là rule cứng — KHÔNG override dù bạn thấy các yếu tố khác.
+Chờ = mọi trường hợp còn lại
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Ví dụ:
+    score=4, article=positive, fundamental=strong  → Mua, confidence=high
+    score=4, article=negative, fundamental=strong  → Chờ, confidence=medium
+    score=4, article=N/A,      fundamental=strong  → Mua, confidence=medium
+    score=2, article=positive, fundamental=strong  → Chờ, confidence=high
+    score=4, article=N/A,      fundamental=N/A     → Mua, confidence=low
+
 PHẦN III — VIẾT analysis
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Viết analysis theo thứ tự:
-  1. Mở đầu: total_score x/5 → Mua hoặc Chờ
-  2. Từng indicator (RSI → MA → BOLL → MACD → KDJ):
-     dùng lại reason từ dữ liệu, kèm số liệu cụ thể từ value
-  3. Kết: nhận xét ngắn về xu hướng kỹ thuật tổng thể
+Viết theo thứ tự:
+    1. Quyết định Mua/Chờ, confidence, lý do tổng hợp 1–2 câu
+    2. Kỹ thuật: total_score x/5, từng indicator (RSI→MA→BOLL→MACD→KDJ)
+    3. Tin tức: sentiment đánh giá được, dẫn 1–2 điểm chính
+    4. Cơ bản: health đánh giá được, dẫn 2–3 chỉ số nổi bật
 
 QUY TẮC BẮT BUỘC:
-  ✓ Không bịa số liệu ngoài dữ liệu được cung cấp
-  ✓ Đọc total_score trực tiếp, không tự cộng lại
-  ✓ Không override rule total_score >= 3 → Mua
-  ✓ Dùng lại reason từ dữ liệu, không diễn giải lại theo ý mình
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ✓ Không bịa số liệu
+    ✓ Không override logic tổng hợp ở Phần II
+    ✓ Nếu nguồn nào thiếu dữ liệu, ghi rõ "Không có dữ liệu [nguồn]"
 """
 
 
@@ -95,16 +124,30 @@ QUY TẮC BẮT BUỘC:
 # ─────────────────────────────────────────────────────────────
 
 def aggregator_agent(state: AgentState) -> AgentState:
-    print("[Aggregator] Tổng hợp kết quả từ technical_analysis_agent...")
+    print("[Aggregator] Tổng hợp kết quả từ technical, article, fundamental...")
 
     client     = _get_openai_client()
     results    = state.get("agent_results", {})
     user_input = state.get("user_input", "")
 
+    technical = results.get("technical_analysis_agent", {})
+    article = results.get("article_agent", "")
+    fundamental = results.get("fundamental_analysis_agent", "")
+
+    article_text = article if article else "Không có dữ liệu"
+    fundamental_text = fundamental if fundamental else "Không có dữ liệu"
+
     analysis_message = f"""
 DỮ LIỆU PHÂN TÍCH:
 
-{json.dumps(results, ensure_ascii=False, indent=2)}
+=== TECHNICAL ANALYSIS ===
+{json.dumps(technical, ensure_ascii=False, indent=2)}
+
+=== ARTICLE SENTIMENT ===
+{article_text}
+
+=== FUNDAMENTAL ANALYSIS ===
+{fundamental_text}
 
 ────────────────────────
 YÊU CẦU:
@@ -126,8 +169,10 @@ YÊU CẦU:
         parsed: InvestmentRecommendation = response.choices[0].message.parsed
 
         output = {
-            "recommendation": parsed.recommendation,
-            "analysis":       parsed.analysis,
+            "recommendation":    parsed.recommendation,
+            "confidence":        parsed.confidence,
+            "data_sources_used": parsed.data_sources_used,
+            "analysis":          parsed.analysis,
         }
 
         print("[Aggregator] Output:")
@@ -141,7 +186,9 @@ YÊU CẦU:
         return {
             "error": str(e),
             "final_output": {
-                "recommendation": "Chờ",
-                "analysis":       "Lỗi hệ thống — vui lòng thử lại sau.",
+                "recommendation":    "Chờ",
+                "confidence":        "low",
+                "data_sources_used": [],
+                "analysis":          "Lỗi hệ thống — vui lòng thử lại sau.",
             },
         }
