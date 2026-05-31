@@ -1,436 +1,253 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useMemo } from "react";
 import {
-  View,
   ScrollView,
   TextInput,
+  View,
+  Image,
+  Dimensions,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import uuid from "react-native-uuid";
-import Markdown from "react-native-markdown-display";
-
 import { useTheme } from "@/hooks/ThemeContext";
+import LinearGradient from "react-native-linear-gradient";
+import Feather from "@expo/vector-icons/Feather";
+import Octicons from "@expo/vector-icons/Octicons";
 import { Text } from "@/components/ui/Text";
-import { sendChatMessage } from "@/helpers/AgenticHelpers";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type MessageRole = "user" | "assistant";
-
-interface Message {
-  id: string;
-  role: MessageRole;
-  content: string;
-  timestamp: Date;
-}
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-const UserBubble = ({ message, theme }: { message: Message; theme: any }) => (
-  <View style={{ alignItems: "flex-end", marginBottom: 12 }}>
-    <View
-      style={{
-        backgroundColor: theme.base.primary,
-        borderRadius: 16,
-        borderBottomRightRadius: 4,
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        maxWidth: "78%",
-      }}
-    >
-      <Text typography="bodyMedium" color={theme.text.onPrimary}>
-        {message.content}
-      </Text>
-    </View>
-    <Text
-      typography="labelSmall"
-      color={theme.text.secondary}
-      style={{ marginTop: 4, marginRight: 4 }}
-    >
-      {formatTime(message.timestamp)}
-    </Text>
-  </View>
-);
-
-const AssistantBubble = ({
-  message,
-  theme,
-}: {
-  message: Message;
-  theme: any;
-}) => (
-  <View style={{ alignItems: "flex-start", marginBottom: 12 }}>
-    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-      {/* Avatar */}
-      <View
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 14,
-          backgroundColor: theme.base.primary,
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: 18,
-        }}
-      >
-        <Ionicons name="bar-chart-outline" size={14} color="#fff" />
-      </View>
-
-      <View style={{ flex: 1 }}>
-        <View
-          style={{
-            backgroundColor: theme.background.surface,
-            borderRadius: 16,
-            borderBottomLeftRadius: 4,
-            paddingHorizontal: 14,
-            paddingVertical: 10,
-            maxWidth: "100%",
-            borderWidth: 1,
-            borderColor: theme.border.default,
-          }}
-        >
-          <Markdown
-            style={{
-              body: {
-                color: theme.text.primary,
-                fontSize: 14,
-                lineHeight: 20,
-              },
-              strong: {
-                fontWeight: "700",
-                color: theme.text.primary,
-              },
-              em: {
-                fontStyle: "italic",
-                color: theme.text.primary,
-              },
-              bullet_list: {
-                marginVertical: 4,
-              },
-              ordered_list: {
-                marginVertical: 4,
-              },
-              list_item: {
-                marginVertical: 2,
-                color: theme.text.primary,
-              },
-              heading1: {
-                fontSize: 18,
-                fontWeight: "700",
-                color: theme.text.primary,
-                marginVertical: 6,
-              },
-              heading2: {
-                fontSize: 16,
-                fontWeight: "700",
-                color: theme.text.primary,
-                marginVertical: 4,
-              },
-              heading3: {
-                fontSize: 14,
-                fontWeight: "700",
-                color: theme.text.primary,
-                marginVertical: 4,
-              },
-              code_inline: {
-                backgroundColor: theme.border.default,
-                color: theme.base.primary,
-                borderRadius: 4,
-                paddingHorizontal: 4,
-                fontSize: 13,
-              },
-              fence: {
-                backgroundColor: theme.background.bg,
-                borderRadius: 8,
-                padding: 10,
-                marginVertical: 6,
-                borderWidth: 1,
-                borderColor: theme.border.default,
-              },
-              code_block: {
-                color: theme.text.primary,
-                fontSize: 13,
-              },
-              blockquote: {
-                borderLeftWidth: 3,
-                borderLeftColor: theme.base.primary,
-                paddingLeft: 10,
-                marginLeft: 0,
-                opacity: 0.8,
-              },
-              hr: {
-                borderColor: theme.border.default,
-                marginVertical: 8,
-              },
-              link: {
-                color: theme.base.primary,
-              },
-            }}
-          >
-            {message.content}
-          </Markdown>
-        </View>
-        <Text
-          typography="labelSmall"
-          color={theme.text.secondary}
-          style={{ marginTop: 4, marginLeft: 4 }}
-        >
-          {formatTime(message.timestamp)}
-        </Text>
-      </View>
-    </View>
-  </View>
-);
-
-const TypingIndicator = ({ theme }: { theme: any }) => (
-  <View style={{ alignItems: "flex-start", marginBottom: 12 }}>
-    <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
-      <View
-        style={{
-          width: 28,
-          height: 28,
-          borderRadius: 14,
-          backgroundColor: theme.base.primary,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Ionicons name="bar-chart-outline" size={14} color="#fff" />
-      </View>
-      <View
-        style={{
-          backgroundColor: theme.background.surface,
-          borderRadius: 16,
-          borderBottomLeftRadius: 4,
-          paddingHorizontal: 16,
-          paddingVertical: 14,
-          borderWidth: 1,
-          borderColor: theme.border.default,
-        }}
-      >
-        <ActivityIndicator size="small" color={theme.base.primary} />
-      </View>
-    </View>
-  </View>
-);
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const formatTime = (date: Date) =>
-  date.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-
-const WELCOME_MESSAGE: Message = {
-  id: "welcome",
-  role: "assistant",
-  content:
-    "Xin chào! Mình là trợ lý phân tích chứng khoán. Bạn muốn tìm hiểu về mã cổ phiếu nào, hoặc có câu hỏi gì về thị trường không?",
-  timestamp: new Date(),
-};
-
-// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 const Chatbot = () => {
   const { theme } = useTheme();
-  const scrollViewRef = useRef<ScrollView>(null);
-  const sessionId = useRef<string>(uuid.v4() as string);
-
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
-  const [inputText, setInputText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  }, []);
-
-  const handleSend = useCallback(async () => {
-    const text = inputText.trim();
-    if (!text || isLoading) return;
-
-    const userMessage: Message = {
-      id: uuid.v4() as string,
-      role: "user",
-      content: text,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputText("");
-    setIsLoading(true);
-    scrollToBottom();
-
-    const result = await sendChatMessage(sessionId.current, text);
-
-    const assistantMessage: Message = {
-      id: uuid.v4() as string,
-      role: "assistant",
-      content: result.status
-        ? result.data!.reply
-        : "Xin lỗi, mình gặp sự cố khi xử lý yêu cầu. Bạn thử lại sau nhé!",
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, assistantMessage]);
-    setIsLoading(false);
-    scrollToBottom();
-  }, [inputText, isLoading, scrollToBottom]);
-
   const insets = useSafeAreaInsets();
 
+  const exampleMessages = [
+    "Sinh viên có nên đầu tư chứng khoán?",
+    "Tóm tắt thị trường hôm nay",
+    "Cổ phiếu VNM có tiềm năng không?",
+    "Làm sao để bắt đầu đầu tư chứng khoán?",
+    "RSI là gì và cách sử dụng nó?",
+    "Tóm tắt tình hình mã VHM hôm nay",
+  ];
+
+  const quotes = useMemo(
+    () => [
+      `"Don't look for the needle in the haystack. Just buy the haystack!" — John Bogle`,
+      `"Given a ten percent chance of a 100 times payoff, you should take that bet every time." — Jeff Bezos`,
+      `"The stock market is filled with individuals who know the price of everything, but the value of nothing." — Phillip Fisher`,
+      `"In investing, what is comfortable is rarely profitable." — Robert Arnott`,
+      `"Courage taught me no matter how bad a crisis gets any sound investment will eventually pay off." — Carlos Slim Helú`,
+      `"The individual investor should act consistently as an investor and not as a speculator." — Ben Graham`,
+      `"Know what you own, and know why you own it." — Peter Lynch`,
+      `“Invest for the long haul. Don’t get too greedy and don’t get too scared.” — Shelby M.C. Davis`,
+      `“The stock market is a device to transfer money from the impatient to the patient.” — Warren Buffett`,
+      `“The function of economic forecasting is to make astrology look respectable.” — John Kenneth Galbraith`,
+    ],
+    [],
+  );
+
+  const getRandomQuote = (): { quote: string; author: string } => {
+    const raw = quotes[Math.floor(Math.random() * quotes.length)];
+    const parts = raw.split(" — ");
+    return {
+      quote: parts[0], // "Don't look for the needle..."
+      author: `— ${parts[1]}`, // — John Bogle
+    };
+  };
+  const { quote, author } = getRandomQuote();
+
+  const screenWidth = Dimensions.get("window").width;
+
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: theme.background.bg,
-        paddingTop: insets.top,
-      }}
+    <LinearGradient
+      colors={["#4B2FC9", "#613DE4", "#7B5CFF", "#9D8CFF", "#7B5CFF"]}
+      locations={[0, 0.1, 0.24, 0.5, 0.76]}
+      useAngle
+      angle={60}
+      angleCenter={{ x: 0.5, y: 0.5 }}
+      style={{ flex: 1 }}
     >
-      {/* Header */}
+      {/* Vùng chat chiếm hết không gian còn lại */}
+
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.border.default,
-          backgroundColor: theme.background.bg,
-          gap: 12,
+          marginHorizontal: 12,
+          marginTop: insets.top + 48,
         }}
       >
         <View
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: theme.base.primary,
+            width: 48,
+            height: 48,
+            backgroundColor: theme.background.bg,
+            borderRadius: 24,
             alignItems: "center",
             justifyContent: "center",
+            marginRight: 12,
           }}
         >
-          <Ionicons name="bar-chart-outline" size={18} color="#fff" />
+          <Octicons name="dependabot" size={32} color={theme.text.primary} />
         </View>
-
-        <View style={{ flex: 1 }}>
-          <Text typography="titleSmall" color={theme.text.primary}>
-            Trợ lý phân tích
-          </Text>
-          <Text typography="labelSmall" color={theme.base.success}>
-            Đang hoạt động
+        <View
+          style={{
+            flex: 1,
+          }}
+        >
+          <Text typography="headlineMedium" color={theme.text.primary}>
+            Chào bạn, tôi có thể giúp gì cho bạn?
           </Text>
         </View>
       </View>
 
-      {/* Messages */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 48,
+        }}
       >
-        <ScrollView
-          ref={scrollViewRef}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
-          onContentSizeChange={scrollToBottom}
-          showsVerticalScrollIndicator={false}
-        >
-          {messages.map((message) =>
-            message.role === "user" ? (
-              <UserBubble key={message.id} message={message} theme={theme} />
-            ) : (
-              <AssistantBubble
-                key={message.id}
-                message={message}
-                theme={theme}
-              />
-            ),
-          )}
-
-          {isLoading && <TypingIndicator theme={theme} />}
-        </ScrollView>
-
-        {/* Input */}
-        <View
+        <Image
+          source={{
+            uri: "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/increase.png",
+          }}
           style={{
-            flexDirection: "row",
-            alignItems: "flex-end",
-            paddingHorizontal: 12,
-            paddingVertical: 10,
-            borderTopWidth: 1,
-            borderTopColor: theme.border.default,
+            width: screenWidth * 0.45,
+            height: screenWidth * 0.45, // Giữ tỷ lệ hình ảnh
+            alignSelf: "center",
+            marginBottom: 24,
+            opacity: 0.7,
+          }}
+        />
+        <Text
+          typography="bodyMedium"
+          color={theme.text.primary}
+          style={{ textAlign: "center", opacity: 0.8 }}
+        >
+          <Text
+            typography="bodyMedium"
+            color={theme.text.primary}
+            style={{ fontStyle: "italic" }}
+          >
+            {quote}
+          </Text>{" "}
+          <Text typography="bodyMedium" color={theme.text.primary}>
+            {author}
+          </Text>
+        </Text>
+      </View>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginHorizontal: 12,
+          justifyContent: "space-between",
+          marginBottom: 12,
+        }}
+      >
+        <Text typography="titleMedium" color={theme.text.primary}>
+          Gợi ý dành cho bạn
+        </Text>
+
+        <Text typography="labelLarge" color={theme.text.primary}>
+          Xem thêm
+        </Text>
+      </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{
+          flexDirection: "row",
+          paddingLeft: 12,
+          marginBottom: 36,
+          maxHeight: 128,
+        }}
+      >
+        {exampleMessages.map((msg, index) => (
+          <View
+            key={index.toString()}
+            style={{
+              borderTopLeftRadius: 16,
+              borderBottomLeftRadius: 16,
+              borderTopRightRadius: 16,
+              borderBottomRightRadius: 4,
+              backgroundColor: theme.background.bg,
+              padding: 16,
+              width: 128,
+              height: 128,
+              marginRight: 12,
+            }}
+          >
+            <Text
+              typography="bodyLarge"
+              color={theme.text.primary}
+              numberOfLines={4}
+            >
+              {msg}
+            </Text>
+          </View>
+        ))}
+      </ScrollView>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          marginBottom: 24,
+          paddingHorizontal: 12,
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            width: 56,
+            height: 56,
             backgroundColor: theme.background.bg,
-            gap: 8,
+            borderRadius: 28,
+            borderWidth: 4,
+            borderColor: theme.background.surface,
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: theme.background.surface,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: theme.border.default,
-              paddingHorizontal: 16,
-              paddingVertical: 10,
-              minHeight: 42,
-              justifyContent: "center",
-            }}
-          >
+          <Feather name="menu" size={24} color={theme.text.primary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {}}
+          style={{
+            height: 56,
+            backgroundColor: theme.background.bg,
+            borderRadius: 28,
+            marginLeft: 12,
+            flex: 1,
+            borderWidth: 4,
+            borderColor: theme.background.surface,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 12,
+          }}
+        >
+          <Octicons
+            name="sparkles-fill"
+            size={16}
+            color={theme.text.primary}
+            style={{ marginRight: 8 }}
+          />
+          <View style={{ pointerEvents: "none", flex: 1 }}>
             <TextInput
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Nhập câu hỏi..."
-              placeholderTextColor={theme.text.secondary}
-              multiline
-              style={{
-                color: theme.text.primary,
-                fontSize: 14,
-                lineHeight: 20,
-                padding: 0,
-              }}
-              onSubmitEditing={handleSend}
-              blurOnSubmit={false}
+              style={{ color: theme.text.primary }}
+              value={""}
+              onChangeText={() => {}}
+              autoCapitalize="none"
+              returnKeyType="search"
+              placeholder="Hỏi tôi bất cứ điều gì..."
+              placeholderTextColor={theme.text.primary + "88"}
             />
           </View>
-
-          <TouchableOpacity
-            onPress={handleSend}
-            disabled={!inputText.trim() || isLoading}
-            style={{
-              width: 42,
-              height: 42,
-              borderRadius: 21,
-              backgroundColor:
-                inputText.trim() && !isLoading
-                  ? theme.base.primary
-                  : theme.background.surface,
-              alignItems: "center",
-              justifyContent: "center",
-              borderWidth: 1,
-              borderColor:
-                inputText.trim() && !isLoading
-                  ? theme.base.primary
-                  : theme.border.default,
-            }}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="send"
-              size={18}
-              color={
-                inputText.trim() && !isLoading
-                  ? "#FFFFFF"
-                  : theme.text.secondary
-              }
-            />
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </View>
+        </TouchableOpacity>
+      </View>
+    </LinearGradient>
   );
 };
 
