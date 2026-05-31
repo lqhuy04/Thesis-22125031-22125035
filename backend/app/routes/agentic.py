@@ -7,8 +7,8 @@ from fastapi.responses import JSONResponse
 
 from app.models.base_schemas import success_response, error_response
 from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest
-from app.models.backtest_schemas import BacktestRequest
-from app.services.backtest_service import run_backtest
+from app.models.backtest_pipeline_schemas import BacktestPipelineRequest
+from app.services.backtest_pipeline_service import run_backtest_pipeline
 from app.services.agentic_service import run_chat, run_stock_analysis
 
 router = APIRouter(prefix="/api/agentic", tags=["agentic-ai"])
@@ -80,15 +80,15 @@ async def chat(body: ChatRequest):
 
 @router.post(
     "/backtest",
-    summary="Backtest chiến lược kỹ thuật",
+    summary="Backtest LLM pipeline",
     description=(
-        "Chạy backtest long-only trên dữ liệu lịch sử, dùng cùng rule scoring với technical_analysis_agent. "
-        "Tín hiệu khớp ở candle kế tiếp và báo cáo trade log, equity curve, drawdown, Sharpe, benchmark."
+        "Chay backtest end-to-end voi LLM, goi technical + article + fundamental + aggregator "
+        "tren du lieu lich su, chi goi LLM tai cac ngay co tin hieu ky thuat."
     ),
 )
-async def backtest_stock(body: BacktestRequest):
+async def backtest_pipeline(body: BacktestPipelineRequest):
     try:
-        result = run_backtest(body)
+        result = run_backtest_pipeline(body)
         return success_response(data=result)
 
     except ValueError as e:
@@ -104,7 +104,7 @@ async def backtest_stock(body: BacktestRequest):
     except Exception as e:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=error_response(error_code=500001, error_desc=f"Lỗi hệ thống: {e}"),
+            content=error_response(error_code=500001, error_desc=f"Loi he thong: {e}"),
         )
 
 
