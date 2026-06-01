@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ScrollView,
   TextInput,
@@ -9,14 +9,19 @@ import {
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import LinearGradient from "react-native-linear-gradient";
+import { router } from "expo-router";
 import Feather from "@expo/vector-icons/Feather";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Text } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import ChatHistoryBottomSheet from "@/components/chatbot/ChatHistoryBottomsheet";
+import SuggestionsBottomSheet from "@/components/chatbot/SuggestionsBottomsheet";
 
 const Chatbot = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+  const [historyVisible, setHistoryVisible] = useState(false);
+  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
 
   const exampleMessages = [
     "Sinh viên có nên đầu tư chứng khoán?",
@@ -149,9 +154,11 @@ const Chatbot = () => {
           Gợi ý dành cho bạn
         </Text>
 
-        <Text typography="labelLarge" color={theme.text.primary}>
-          Xem thêm
-        </Text>
+        <TouchableOpacity onPress={() => setSuggestionsVisible(true)}>
+          <Text typography="labelLarge" color={theme.text.primary}>
+            Xem thêm
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -199,6 +206,7 @@ const Chatbot = () => {
         }}
       >
         <TouchableOpacity
+          onPress={() => setHistoryVisible(true)}
           style={{
             width: 56,
             height: 56,
@@ -247,6 +255,25 @@ const Chatbot = () => {
           </View>
         </TouchableOpacity>
       </View>
+
+      <ChatHistoryBottomSheet
+        visible={historyVisible}
+        onClose={() => setHistoryVisible(false)}
+        onSelectConversation={(conversation) => {
+          setHistoryVisible(false);
+          router.push({
+            pathname: "/ChatDetail",
+            params: { data: JSON.stringify(conversation) },
+          });
+        }}
+        onNewConversation={() => {}}
+      />
+
+      <SuggestionsBottomSheet
+        visible={suggestionsVisible}
+        onClose={() => setSuggestionsVisible(false)}
+        onSelectQuestion={() => setSuggestionsVisible(false)}
+      />
     </LinearGradient>
   );
 };
