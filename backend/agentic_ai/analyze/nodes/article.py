@@ -3,6 +3,8 @@ from app.services.articles_service import ArticlesService
 from agentic_ai.service.openai_service import _get_openai_client
 from datetime import datetime
 
+ARTICLES_ENABLED = False
+
 ARTICLE_SUMMARY_PROMPT = """Bạn là chuyên gia phân tích tài chính. 
 Dựa trên các bài viết tin tức về cổ phiếu dưới đây, hãy lọc ra những bài có thông tin hữu ích và liên quan, 
 sau đó tóm tắt những thông tin quan trọng nhất.
@@ -27,6 +29,13 @@ def _build_articles_message(symbol: str, articles: list) -> str:
 
 
 def article_agent(state: AgentState) -> AgentState:
+    if not ARTICLES_ENABLED:
+        return {
+            "agent_results": {
+                "article_agent": "Tạm ngưng articles theo cấu hình.",
+            },
+        }
+
     myTask = state.get("plan", {}).get("article_agent", {})
     symbol = state.get("symbol", "")
     from_date = myTask.get("from_date", "")

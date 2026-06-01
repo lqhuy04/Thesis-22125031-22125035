@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api/fundamental-analysis", tags=["Fundamental Metric
 @router.get("/{symbol}/balance-sheets", summary="Get Balance Sheets")
 async def get_balance_sheets(symbol: str):
     try:
-        data = await FundamentalAnalysisService.get_balance_sheets(symbol)
+        data = FundamentalAnalysisService.get_balance_sheets(symbol)
         return success_response(data=data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -21,7 +21,7 @@ async def get_balance_sheets(symbol: str):
 @router.get("/{symbol}/cash-flows", summary="Get Cash Flows")
 async def get_cash_flows(symbol: str):
     try:
-        data = await FundamentalAnalysisService.get_cash_flows(symbol)
+        data = FundamentalAnalysisService.get_cash_flows(symbol)
         return success_response(data=data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -29,7 +29,7 @@ async def get_cash_flows(symbol: str):
 @router.get("/{symbol}/financial-indicators", summary="Get Financial Indicators")
 async def get_financial_indicators(symbol: str):
     try:
-        data = await FundamentalAnalysisService.get_indicators(symbol)
+        data = FundamentalAnalysisService.get_indicators(symbol)
         return success_response(data=data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -37,7 +37,7 @@ async def get_financial_indicators(symbol: str):
 @router.get("/{symbol}/income-statements", summary="Get Income Statements")
 async def get_income_statements(symbol: str):
     try:
-        data = await FundamentalAnalysisService.get_income_statements(symbol)
+        data = FundamentalAnalysisService.get_income_statements(symbol)
         return success_response(data=data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -56,7 +56,7 @@ async def get_fundamental_summary(symbol: str):
                 detail="Invalid symbol format"
             )
 
-        summary_data = await FundamentalAnalysisService.get_summary(symbol.upper())
+        summary_data = FundamentalAnalysisService.get_summary(symbol.upper())
 
         if not summary_data:
             raise HTTPException(

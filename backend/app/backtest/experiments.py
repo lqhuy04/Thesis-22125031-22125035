@@ -14,6 +14,7 @@ def walk_forward(
     train_window: int = 252,
     test_window: int = 63,
     step: int = 21,
+    min_score: int = 3,
     **trade_config: Any,
 ) -> dict[str, Any]:
     windows: list[dict[str, Any]] = []
@@ -26,9 +27,9 @@ def walk_forward(
     while start + test_window <= len(df):
         test_df = df.iloc[start : start + test_window].copy()
         scored = scorer.score_dataframe(test_df)
-        signaled = signal_gen.generate_signals(scored)
+        signaled = signal_gen.generate_signals(scored, min_score=min_score)
 
-        signal_dates = pipeline.filter_signal_dates(signaled)
+        signal_dates = pipeline.filter_signal_dates(signaled, min_score=min_score)
         pipeline_results = pipeline.run_pipeline_batch(signal_dates, interval="1d", lookback_days=train_window)
         approved_dates = {
             result.get("date")
@@ -89,7 +90,7 @@ def run_benchmarks(
     if n_random > 0 and len(df) > 1:
         indices = np.arange(len(df) - 1)
         trade_count = max(len(pipeline_trades), 1)
-        simulator = TradeSimulator(stop_loss_pct=0.05, take_profit_pct=0.1, max_hold_candles=20)
+        simulator = TradeSimulator(max_hold_candles=20)
         for _ in range(n_random):
             sampled = np.random.choice(indices, size=trade_count, replace=False if trade_count <= len(indices) else True)
             random_df = df.copy()
@@ -206,7 +207,12 @@ def confidence_calibration(
             confidence_numeric.append(mapping[label])
             return_values.append(ret)
 
-    correlation = float(np.corrcoef(confidence_numeric, return_values)[0, 1]) if len(return_values) >= 2 else 0.0
+    correlation = 0.0
+    if len(return_values) >= 2:
+        conf_std = float(np.std(confidence_numeric))
+        ret_std = float(np.std(return_values))
+        if conf_std > 0 and ret_std > 0:
+            correlation = float(np.corrcoef(confidence_numeric, return_values)[0, 1])
 
     interpretation = (
         f"high confidence trades co win_rate {summary['high']['win_rate']:.2%} "

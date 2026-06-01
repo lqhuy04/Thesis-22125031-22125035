@@ -28,6 +28,8 @@ class BacktestPipeline:
                 "interval": interval,
                 "from_date": from_date,
                 "to_date": date,
+                "use_current_price": False,
+                "indicator_source": "backtest",
             },
             "article_agent": {
                 "from_date": from_date,
@@ -81,6 +83,10 @@ class BacktestPipeline:
         return {
             "date": date,
             "recommendation": final_output.get("recommendation"),
+            "entry_price": final_output.get("entry_price"),
+            "take_profit_price": final_output.get("take_profit_price"),
+            "stop_loss_price": final_output.get("stop_loss_price"),
+            "max_hold_candles": final_output.get("max_hold_candles"),
             "confidence": final_output.get("confidence"),
             "data_sources_used": final_output.get("data_sources_used", []),
             "total_score": total_score,

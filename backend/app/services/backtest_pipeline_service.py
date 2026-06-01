@@ -81,15 +81,26 @@ def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
 
     df_1d = _build_dataframe(symbol=symbol, interval="1d", start_date=request.start_date, end_date=request.end_date)
 
-    end_dt = _resolve_end_date(df_1d, request.end_date)
-    one_minute_start = end_dt - timedelta(days=request.one_minute_lookback_days)
+    if request.use_intraday:
+        end_dt = _resolve_end_date(df_1d, request.end_date)
+        one_minute_start = end_dt - timedelta(days=request.one_minute_lookback_days)
 
-    df_1m = _build_dataframe(
-        symbol=symbol,
-        interval="1m",
-        start_date=one_minute_start.strftime("%Y-%m-%d"),
-        end_date=end_dt.strftime("%Y-%m-%d"),
-    )
+        try:
+            df_1m = _build_dataframe(
+                symbol=symbol,
+                interval="1m",
+                start_date=one_minute_start.strftime("%Y-%m-%d"),
+                end_date=end_dt.strftime("%Y-%m-%d"),
+            )
+        except ValueError:
+            df_1m_all = _build_dataframe(symbol=symbol, interval="1m", start_date=None, end_date=None)
+            latest_dt = df_1m_all["datetime"].max()
+            cutoff = latest_dt - timedelta(days=request.one_minute_lookback_days)
+            df_1m = df_1m_all[df_1m_all["datetime"] >= cutoff].reset_index(drop=True)
+            if df_1m.empty:
+                raise ValueError("No 1m data available for fallback window")
+    else:
+        df_1m = df_1d.copy()
 
     market_df = _build_dataframe(
         symbol=market_symbol,
@@ -99,8 +110,6 @@ def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
     )
 
     trade_config = {
-        "stop_loss_pct": request.stop_loss_pct,
-        "take_profit_pct": request.take_profit_pct,
         "max_hold_candles": request.max_hold_candles,
         "exit_on_score_drop": request.exit_on_score_drop,
     }
@@ -110,5 +119,6 @@ def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
         df_1m=df_1m,
         market_df=market_df,
         symbol=symbol,
+        min_signal_score=request.min_signal_score,
         **trade_config,
     )

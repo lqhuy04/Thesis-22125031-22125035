@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+import math
 import numpy as np
 import pandas as pd
 
@@ -25,6 +26,8 @@ def _build_state(symbol: str, from_date: str, to_date: str) -> AgentState:
                 "interval": "1d",
                 "from_date": from_date,
                 "to_date": to_date,
+                "use_current_price": False,
+                "indicator_source": "backtest",
             }
         },
         "agent_results": {},
@@ -38,17 +41,14 @@ def run_full_backtest(
     df_1m: pd.DataFrame,
     market_df: pd.DataFrame,
     symbol: str,
-    stop_loss_pct: float = 0.05,
-    take_profit_pct: float = 0.10,
     max_hold_candles: int = 20,
+    min_signal_score: int = 3,
     exit_on_score_drop: bool = False,
 ) -> dict[str, Any]:
     indicator_engine = IndicatorEngine()
     scoring_engine = ScoringEngine()
     signal_generator = SignalGenerator()
     trade_config = {
-        "stop_loss_pct": stop_loss_pct,
-        "take_profit_pct": take_profit_pct,
         "max_hold_candles": max_hold_candles,
         "exit_on_score_drop": exit_on_score_drop,
     }
@@ -60,11 +60,11 @@ def run_full_backtest(
 
     sample_count = min(10, len(df_1d) - 50)
     sample_indices = np.linspace(50, len(df_1d) - 1, num=sample_count, dtype=int)
+    parity_start = pd.to_datetime(df_1d["datetime"].min()).strftime("%Y-%m-%d")
     live_outputs: list[dict[str, Any]] = []
     for idx in sample_indices:
         date_str = pd.to_datetime(df_1d.iloc[idx]["datetime"]).strftime("%Y-%m-%d")
-        from_date = (pd.to_datetime(date_str) - pd.Timedelta(days=200)).strftime("%Y-%m-%d")
-        state = _build_state(symbol, from_date, date_str)
+        state = _build_state(symbol, parity_start, date_str)
         output = technical_analysis_agent(state)
         live_outputs.append({
             "candle_index": idx,
@@ -79,7 +79,7 @@ def run_full_backtest(
     scored_1m = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1m))
 
     pipeline = BacktestPipeline(symbol, trade_config)
-    signal_dates_1d = pipeline.filter_signal_dates(scored_1d)
+    signal_dates_1d = pipeline.filter_signal_dates(scored_1d, min_score=min_signal_score)
 
     print(f"Goi LLM cho {len(signal_dates_1d)} signal dates tren 1d...")
     pipeline_results = pipeline.run_pipeline_batch(signal_dates_1d, interval="1d", lookback_days=252)
@@ -90,25 +90,38 @@ def run_full_backtest(
         if result.get("recommendation") == "Mua"
     }
     confidence_map = {result.get("date"): result.get("confidence") for result in pipeline_results}
+    entry_price_map = {result.get("date"): result.get("entry_price") for result in pipeline_results}
+    take_profit_map = {result.get("date"): result.get("take_profit_price") for result in pipeline_results}
+    stop_loss_map = {result.get("date"): result.get("stop_loss_price") for result in pipeline_results}
+    max_hold_map = {result.get("date"): result.get("max_hold_candles") for result in pipeline_results}
 
-    signaled_full = signal_generator.generate_signals(scored_1d)
+    signaled_full = signal_generator.generate_signals(scored_1d, min_score=min_signal_score)
     date_labels = pd.to_datetime(signaled_full["datetime"]).dt.strftime("%Y-%m-%d")
     allowed_mask = (signaled_full["signal"] == "BUY") & date_labels.isin(approved_dates)
     signaled_full.loc[:, "signal"] = None
     signaled_full.loc[allowed_mask, "signal"] = "BUY"
     signaled_full["confidence"] = date_labels.map(confidence_map)
+    signaled_full["entry_price_override"] = date_labels.map(entry_price_map)
+    signaled_full["take_profit_price"] = date_labels.map(take_profit_map)
+    signaled_full["stop_loss_price"] = date_labels.map(stop_loss_map)
+    signaled_full["max_hold_candles_override"] = date_labels.map(max_hold_map)
 
     simulator = TradeSimulator(**trade_config)
     full_trades = simulator.run(signaled_full)
 
-    signaled_engine = signal_generator.generate_signals(scored_1d)
+    signaled_engine = signal_generator.generate_signals(scored_1d, min_score=min_signal_score)
     engine_trades = simulator.run(signaled_engine)
 
     metrics_calc = MetricsCalculator()
     full_metrics = metrics_calc.calculate(full_trades)
     engine_metrics = metrics_calc.calculate(engine_trades)
 
-    walk_forward_results = walk_forward(scored_1d, pipeline, **trade_config)
+    walk_forward_results = walk_forward(
+        scored_1d,
+        pipeline,
+        min_score=min_signal_score,
+        **trade_config,
+    )
     benchmark_results = run_benchmarks(scored_1d, full_trades, engine_trades)
     regime_results = regime_analysis(scored_1d, market_df, pipeline_results, full_trades)
     confidence_results = confidence_calibration(pipeline_results, full_trades)
@@ -125,6 +138,18 @@ def run_full_backtest(
 
     def _pct(value: float) -> str:
         return f"{value * 100:.1f}%"
+
+    def _sanitize_json(value: Any) -> Any:
+        if isinstance(value, dict):
+            return {k: _sanitize_json(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [_sanitize_json(v) for v in value]
+        if isinstance(value, (np.floating, float)):
+            number = float(value)
+            return number if math.isfinite(number) else None
+        if isinstance(value, (np.integer, int)):
+            return int(value)
+        return value
 
     print("=" * 50)
     print(f"BACKTEST RESULTS — {symbol}")
@@ -183,10 +208,8 @@ def run_full_backtest(
 
     print("=" * 50)
 
-    return {
+    result = {
         "parity_report": parity_report,
-        "scored_1d": scored_1d,
-        "scored_1m": scored_1m,
         "pipeline_results": pipeline_results,
         "full_trades": full_trades,
         "engine_trades": engine_trades,
@@ -198,3 +221,5 @@ def run_full_backtest(
         "confidence": confidence_results,
         "stats": stats_results,
     }
+
+    return _sanitize_json(result)

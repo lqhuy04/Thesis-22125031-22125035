@@ -382,13 +382,9 @@ class SignalGenerator:
 class TradeSimulator:
     def __init__(
         self,
-        stop_loss_pct: float,
-        take_profit_pct: float,
         max_hold_candles: int,
         exit_on_score_drop: bool = False,
     ) -> None:
-        self.stop_loss_pct = stop_loss_pct
-        self.take_profit_pct = take_profit_pct
         self.max_hold_candles = max_hold_candles
         self.exit_on_score_drop = exit_on_score_drop
 
@@ -398,6 +394,28 @@ class TradeSimulator:
         else:
             value = df.index[index]
         return str(pd.to_datetime(value))
+
+    @staticmethod
+    def _to_float(value: Any) -> float | None:
+        try:
+            if value is None:
+                return None
+            number = float(value)
+            if not np.isfinite(number):
+                return None
+            return number
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _to_int(value: Any) -> int | None:
+        try:
+            if value is None:
+                return None
+            number = int(value)
+            return number if number > 0 else None
+        except (TypeError, ValueError):
+            return None
 
     def run(self, df: pd.DataFrame) -> list[dict[str, Any]]:
         trades: list[dict[str, Any]] = []
@@ -410,29 +428,43 @@ class TradeSimulator:
                 continue
 
             entry_index = i + 1
-            entry_price = float(df.iloc[entry_index]["open"])
+            signal_row = df.iloc[i]
+            entry_price_override = self._to_float(signal_row.get("entry_price_override"))
+            entry_price = entry_price_override if entry_price_override is not None else float(df.iloc[entry_index]["open"])
             entry_date = self._get_date(df, entry_index)
             score_at_entry = df.iloc[i].get("total_score")
             confidence = df.iloc[i].get("confidence") if "confidence" in df.columns else None
+
+            stop_loss_override = self._to_float(signal_row.get("stop_loss_price"))
+            take_profit_override = self._to_float(signal_row.get("take_profit_price"))
+            max_hold_override = self._to_int(signal_row.get("max_hold_candles_override"))
+            if stop_loss_override is not None and stop_loss_override >= entry_price:
+                stop_loss_override = None
+            if take_profit_override is not None and take_profit_override <= entry_price:
+                take_profit_override = None
+
+            stop_loss_level = stop_loss_override
+            take_profit_level = take_profit_override
 
             exit_index = None
             exit_price = None
             exit_reason = None
 
-            max_exit_index = min(entry_index + self.max_hold_candles, n - 1)
+            hold_limit = max_hold_override if max_hold_override is not None else self.max_hold_candles
+            max_exit_index = min(entry_index + hold_limit, n - 1)
             for j in range(entry_index, max_exit_index + 1):
                 low = float(df.iloc[j]["low"])
                 high = float(df.iloc[j]["high"])
 
-                if low <= entry_price * (1 - self.stop_loss_pct):
+                if stop_loss_level is not None and low <= stop_loss_level:
                     exit_index = j
-                    exit_price = entry_price * (1 - self.stop_loss_pct)
+                    exit_price = stop_loss_level
                     exit_reason = "STOP_LOSS"
                     break
 
-                if high >= entry_price * (1 + self.take_profit_pct):
+                if take_profit_level is not None and high >= take_profit_level:
                     exit_index = j
-                    exit_price = entry_price * (1 + self.take_profit_pct)
+                    exit_price = take_profit_level
                     exit_reason = "TAKE_PROFIT"
                     break
 

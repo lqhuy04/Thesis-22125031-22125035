@@ -22,8 +22,6 @@ run_full_backtest(
     df_1m,        # 1m OHLCV (recent window)
     market_df,    # VN-Index daily OHLCV
     symbol,
-    stop_loss_pct=0.05,
-    take_profit_pct=0.10,
     max_hold_candles=20,
     exit_on_score_drop=False,
 )
@@ -47,11 +45,11 @@ Example payload:
   "start_date": "2021-01-01",
   "end_date": "2024-12-31",
   "market_symbol": "VNINDEX",
-  "stop_loss_pct": 0.05,
-  "take_profit_pct": 0.10,
   "max_hold_candles": 20,
+  "min_signal_score": 4,
   "exit_on_score_drop": false,
-  "one_minute_lookback_days": 30
+  "one_minute_lookback_days": 30,
+  "use_intraday": true
 }
 
 ## Notes

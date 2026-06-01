@@ -19,23 +19,17 @@ class BacktestPipelineRequest(BaseModel):
         default="VNINDEX",
         description="Benchmark symbol for regime analysis",
     )
-    stop_loss_pct: float = Field(
-        default=0.05,
-        ge=0.0,
-        le=1.0,
-        description="Stop loss percentage",
-    )
-    take_profit_pct: float = Field(
-        default=0.10,
-        ge=0.0,
-        le=5.0,
-        description="Take profit percentage",
-    )
     max_hold_candles: int = Field(
         default=20,
         ge=1,
         le=200,
         description="Maximum holding period in candles",
+    )
+    min_signal_score: int = Field(
+        default=3,
+        ge=1,
+        le=5,
+        description="Minimum technical total_score required to trigger a BUY signal",
     )
     exit_on_score_drop: bool = Field(
         default=False,
@@ -46,4 +40,8 @@ class BacktestPipelineRequest(BaseModel):
         ge=7,
         le=120,
         description="Lookback window for 1m data",
+    )
+    use_intraday: bool = Field(
+        default=True,
+        description="Whether to load 1m data for current-price precision",
     )

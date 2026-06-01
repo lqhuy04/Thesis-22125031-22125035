@@ -2,6 +2,7 @@ from datetime import datetime
 import math
 import pandas as pd
 from agentic_ai.analyze.state import AgentState
+from app.backtest.engine import IndicatorEngine
 from app.services.market_service import MarketService
 from app.services.technical_indicators_service import TechnicalIndicatorsService
 
@@ -228,6 +229,7 @@ def _build_records(
     interval: str,
     from_date: str,
     to_date: str,
+    indicator_source: str = "live",
 ) -> list[dict] | str:
     """
     Bước 2–7: Fetch, tính indicators, gộp thành records, filter theo thời gian.
@@ -246,7 +248,39 @@ def _build_records(
         df["_dt"] = df["trading_time"].apply(_parse_dt)
         df = df.sort_values("_dt").reset_index(drop=True)
 
-    indicators = TechnicalIndicatorsService.calculate_all_indicators(df)
+    start = datetime.fromisoformat(from_date) if from_date else None
+    end = datetime.fromisoformat(to_date) if to_date else None
+    if end and end.hour == 0 and end.minute == 0 and end.second == 0:
+        end = end.replace(hour=23, minute=59, second=59)
+
+    if indicator_source == "backtest":
+        if start is not None:
+            df = df[df["_dt"] >= start]
+        if end is not None:
+            df = df[df["_dt"] <= end]
+        df = df.reset_index(drop=True)
+
+        if df.empty:
+            return "Không có dữ liệu trong khoảng thời gian được chỉ định."
+
+        indicator_engine = IndicatorEngine()
+        df = indicator_engine.add_indicators(df)
+        indicators = {
+            "rsi_14": df["rsi_14"].tolist(),
+            "sma_20": df["sma_20"].tolist(),
+            "sma_50": df["sma_50"].tolist(),
+            "bb_upper": df["bb_upper"].tolist(),
+            "bb_middle": df["bb_middle"].tolist(),
+            "bb_lower": df["bb_lower"].tolist(),
+            "macd": df["macd"].tolist(),
+            "macd_signal": df["macd_signal"].tolist(),
+            "macd_histogram": df["macd_histogram"].tolist(),
+            "kdj_k": df["kdj_k"].tolist(),
+            "kdj_d": df["kdj_d"].tolist(),
+            "kdj_j": df["kdj_j"].tolist(),
+        }
+    else:
+        indicators = TechnicalIndicatorsService.calculate_all_indicators(df)
 
     records = []
     for i, row in df.iterrows():
@@ -262,12 +296,8 @@ def _build_records(
         records.append(record)
 
     if from_date:
-        start = datetime.fromisoformat(from_date)
         records = [r for r in records if r["_dt"] >= start]
     if to_date:
-        end = datetime.fromisoformat(to_date)
-        if end.hour == 0 and end.minute == 0 and end.second == 0:
-            end = end.replace(hour=23, minute=59, second=59)
         records = [r for r in records if r["_dt"] <= end]
 
     for r in records:
@@ -432,10 +462,15 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
     interval  = myTask.get("interval", "1d")
     from_date = myTask.get("from_date", "")
     to_date   = myTask.get("to_date", "")
+    use_current_price = myTask.get("use_current_price", True)
+    indicator_source = myTask.get("indicator_source", "live")
 
-    current_price, current_price_time = _fetch_current_price(symbol)
+    if use_current_price:
+        current_price, current_price_time = _fetch_current_price(symbol)
+    else:
+        current_price, current_price_time = None, None
 
-    records = _build_records(symbol, interval, from_date, to_date)
+    records = _build_records(symbol, interval, from_date, to_date, indicator_source)
     if isinstance(records, str):
         return {"agent_results": {"technical_analysis_agent": {"error": records}}}
 
