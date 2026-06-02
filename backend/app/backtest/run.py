@@ -44,6 +44,7 @@ def run_full_backtest(
     max_hold_candles: int = 20,
     min_signal_score: int = 3,
     exit_on_score_drop: bool = False,
+    transaction_cost_pct: float = 0.0015,
 ) -> dict[str, Any]:
     indicator_engine = IndicatorEngine()
     scoring_engine = ScoringEngine()
@@ -51,6 +52,7 @@ def run_full_backtest(
     trade_config = {
         "max_hold_candles": max_hold_candles,
         "exit_on_score_drop": exit_on_score_drop,
+        "transaction_cost_pct": transaction_cost_pct,
     }
 
     if len(df_1d) <= 50:
@@ -122,7 +124,7 @@ def run_full_backtest(
         min_score=min_signal_score,
         **trade_config,
     )
-    benchmark_results = run_benchmarks(scored_1d, full_trades, engine_trades)
+    benchmark_results = run_benchmarks(scored_1d, full_trades, engine_trades, transaction_cost_pct=transaction_cost_pct)
     regime_results = regime_analysis(scored_1d, market_df, pipeline_results, full_trades)
     confidence_results = confidence_calibration(pipeline_results, full_trades)
 
@@ -154,7 +156,8 @@ def run_full_backtest(
     print("=" * 50)
     print(f"BACKTEST RESULTS — {symbol}")
     print("=" * 50)
-    print("\n[FULL PIPELINE — LLM + Technical + Article + Fundamental]")
+    print(f"\n[FULL PIPELINE — LLM + Technical + Article + Fundamental]")
+    print(f"Transaction cost:      {transaction_cost_pct*100:.2f}% per side ({transaction_cost_pct*2*100:.2f}% round-trip)")
     print(f"Signal dates found:    {len(signal_dates_1d)}")
     print(f"LLM calls made:        {len(pipeline_results)}")
     print(f"Trades executed:       {full_metrics['volume']['n_trades']}")

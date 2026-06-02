@@ -384,9 +384,11 @@ class TradeSimulator:
         self,
         max_hold_candles: int,
         exit_on_score_drop: bool = False,
+        transaction_cost_pct: float = 0.0015,
     ) -> None:
         self.max_hold_candles = max_hold_candles
         self.exit_on_score_drop = exit_on_score_drop
+        self.transaction_cost_pct = transaction_cost_pct
 
     def _get_date(self, df: pd.DataFrame, index: int) -> str:
         if "datetime" in df.columns:
@@ -482,7 +484,8 @@ class TradeSimulator:
 
             exit_date = self._get_date(df, exit_index)
             hold_candles = exit_index - entry_index + 1
-            return_pct = (exit_price - entry_price) / entry_price
+            gross_return_pct = (exit_price - entry_price) / entry_price
+            return_pct = gross_return_pct - 2 * self.transaction_cost_pct
 
             trade: dict[str, Any] = {
                 "entry_date": entry_date,
@@ -490,6 +493,8 @@ class TradeSimulator:
                 "entry_price": entry_price,
                 "exit_price": exit_price,
                 "return_pct": return_pct,
+                "gross_return_pct": gross_return_pct,
+                "transaction_cost": 2 * self.transaction_cost_pct,
                 "exit_reason": exit_reason,
                 "hold_candles": hold_candles,
                 "total_score_at_entry": score_at_entry,

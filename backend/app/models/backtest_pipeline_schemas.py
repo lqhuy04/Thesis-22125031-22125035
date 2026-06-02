@@ -45,3 +45,9 @@ class BacktestPipelineRequest(BaseModel):
         default=True,
         description="Whether to load 1m data for current-price precision",
     )
+    transaction_cost_pct: float = Field(
+        default=0.0015,
+        ge=0.0,
+        le=0.05,
+        description="Transaction cost per side as a decimal (0.0015 = 0.15%). Applied both at entry and exit.",
+    )

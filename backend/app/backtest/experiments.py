@@ -73,6 +73,7 @@ def run_benchmarks(
     pipeline_trades: list[dict[str, Any]],
     engine_trades: list[dict[str, Any]],
     n_random: int = 1000,
+    transaction_cost_pct: float = 0.0015,
 ) -> dict[str, Any]:
     pipeline_entries = {t["entry_date"] for t in pipeline_trades}
     engine_entries = {t["entry_date"] for t in engine_trades}
@@ -90,7 +91,7 @@ def run_benchmarks(
     if n_random > 0 and len(df) > 1:
         indices = np.arange(len(df) - 1)
         trade_count = max(len(pipeline_trades), 1)
-        simulator = TradeSimulator(max_hold_candles=20)
+        simulator = TradeSimulator(max_hold_candles=20, transaction_cost_pct=transaction_cost_pct)
         for _ in range(n_random):
             sampled = np.random.choice(indices, size=trade_count, replace=False if trade_count <= len(indices) else True)
             random_df = df.copy()
