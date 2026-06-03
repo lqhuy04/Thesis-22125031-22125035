@@ -50,8 +50,7 @@ async def analyze_stock(body: StockAnalysisRequest):
     summary="Chat với AI phân tích chứng khoán",
     description=(
         "Gửi tin nhắn và nhận phản hồi dạng text. "
-        "Giữ nguyên session_id giữa các lần gọi để duy trì lịch sử hội thoại. "
-        "risk_appetite chỉ cần gửi ở turn đầu tiên."
+        "Giữ nguyên session_id giữa các lần gọi để duy trì lịch sử hội thoại."
     ),
 )
 async def chat(body: ChatRequest):
@@ -59,7 +58,6 @@ async def chat(body: ChatRequest):
         result = run_chat(
             session_id=body.session_id,
             message=body.message,
-            risk_appetite=body.risk_appetite.model_dump() if body.risk_appetite else None,
         )
         return success_response(data={
             "session_id": body.session_id,
@@ -106,22 +104,3 @@ async def backtest_pipeline(body: BacktestPipelineRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=error_response(error_code=500001, error_desc=f"Loi he thong: {e}"),
         )
-
-
-# ─── Xóa session ─────────────────────────────────────────────────────────────
-
-# @router.delete(
-#     "/chat/session/{session_id}",
-#     summary="Xóa session chat",
-#     description="Xóa toàn bộ lịch sử hội thoại của một session. Gọi khi user thoát màn hình chatbot.",
-# )
-# async def remove_session(session_id: str):
-#     try:
-#         delete_session(session_id)
-#         return success_response(data={"session_id": session_id})
-
-#     except Exception as e:
-#         return JSONResponse(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             content=error_response(error_code=500, error_desc=f"Lỗi hệ thống: {e}"),
-#         )

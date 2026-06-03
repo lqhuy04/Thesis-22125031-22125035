@@ -8,8 +8,6 @@ from typing import Any
 
 # Graph được khởi tạo một lần duy nhất khi server start
 # tránh tạo lại sqlite connection mỗi request
-# _chatbot_graph = build_chatbot_graph()
-
 _graph = build_graph()
 _chatbot_graph = build_chatbot_graph()
 
@@ -50,29 +48,21 @@ def run_stock_analysis(
 
 # ─── Chatbot mode ─────────────────────────────────────────────────────────────
 
-# Cache risk_appetite theo session_id
-# Để client chỉ cần gửi risk_appetite ở turn đầu, các turn sau bỏ qua
+def run_chat(session_id: str, message: str) -> str:
+    """Đối đáp thông thường: gửi message vào graph 1 agent, nhận lại reply.
 
-def run_chat(
-    session_id: str,
-    message: str,
-    risk_appetite: dict,
-) -> dict:
+    Lịch sử hội thoại được giữ qua SqliteSaver theo thread_id = session_id.
+    """
     initial_state = {
         "user_input": message,
-        "risk_appetite": risk_appetite,
-        
-        "sub_results": [],
-        
-        "intents": [],
-        "messages": [],
-
         "final_output": "",
         "error": None,
     }
 
     # thread_id = session_id → LangGraph tự load/save history qua SqliteSaver
-    result = _chatbot_graph.invoke(initial_state, config={"configurable": {"thread_id": session_id}})
+    result = _chatbot_graph.invoke(
+        initial_state, config={"configurable": {"thread_id": session_id}}
+    )
 
     if result.get("error"):
         raise RuntimeError(result["error"])

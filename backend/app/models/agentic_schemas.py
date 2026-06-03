@@ -36,16 +36,8 @@ class ChatRequest(BaseModel):
         description="ID phiên hội thoại. Client tự tạo (UUID) và giữ nguyên suốt cuộc trò chuyện."
     )
     message: str = Field(description="Tin nhắn của user")
-    risk_appetite: RiskAppetite | None = Field(
-        default=None,
-        description="Khẩu vị rủi ro. Chỉ cần gửi ở tin nhắn đầu tiên, các turn sau bỏ qua."
-    )
 
 
 class ChatResponse(BaseModel):
     session_id: str
     reply: str                          # plain text trả về cho user
-    intent_type: str                    # để client biết loại intent (có thể dùng để render UI)
-    instant_reply: bool = Field(
-        description="True nếu reply đến từ intent_classifier (không qua full pipeline)"
-    )
