@@ -26,7 +26,7 @@ TABLE         = "Stock_Price_1m"
 SLEEP_SECONDS = 1.1
 SYMBOL_SKIP_SUFFIX_RE = re.compile(r"\d{4}$")
 SYMBOL_3CHAR_RE = re.compile(r'^[A-Z0-9]{3}$')
-ALLOWED_INDICES = {"VNM"}
+ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -203,8 +203,9 @@ def main():
         logger.error("No SSI access token found. Exiting.")
         return
 
-    symbols = list(ALLOWED_INDICES)
-    logger.info(f"Processing {len(symbols)} indices: {symbols}")
+    raw_symbols = get_all_symbols(access_token)
+    symbols = filter_symbols(raw_symbols)  # đã bao gồm 5 indices trong filter_symbols()
+    logger.info(f"Processing {len(symbols)} symbols: {symbols[:5]}...")
 
     today     = date.today()
     to_date   = today.strftime("%d/%m/%Y")
@@ -230,6 +231,10 @@ def main():
     logger.info(f"\n✅ Completed!")
     logger.info(f"Total candles fetched: {total_candles_fetched}")
     logger.info(f"Total candles upserted: {total_candles_upserted}")
-
+    
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger.error(f"Fatal error: {e}", exc_info=True)
+        input("Press Enter to exit...")  # giữ cửa sổ lại để đọc lỗi
