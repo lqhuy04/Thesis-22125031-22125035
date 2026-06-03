@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     # Supabase
     SUPABASE_URL: str
     SUPABASE_KEY: str
+    # Connection string Postgres của Supabase (khác SUPABASE_URL là REST endpoint).
+    # Dùng cho LangGraph PostgresSaver lưu lịch sử chat.
+    SUPABASE_DB_URL: str = ""
     
     # JWT
     JWT_SECRET: str

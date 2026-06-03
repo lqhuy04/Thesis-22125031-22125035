@@ -91,6 +91,13 @@ app.include_router(portfolio.router)
 app.include_router(favorite.router)
 app.include_router(search_history.router)
 
+@app.on_event("shutdown")
+async def _shutdown_db_pool():
+    # Đóng connection pool Postgres dùng cho chatbot khi app tắt
+    from agentic_ai.chatbot.db import close_pool
+    close_pool()
+
+
 @app.get("/")
 async def root():
     return {

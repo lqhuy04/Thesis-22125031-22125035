@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   ScrollView,
   TextInput,
@@ -10,18 +10,97 @@ import {
 import { useTheme } from "@/hooks/ThemeContext";
 import LinearGradient from "react-native-linear-gradient";
 import { router } from "expo-router";
+import * as Crypto from "expo-crypto";
 import Feather from "@expo/vector-icons/Feather";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Text } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import ChatHistoryBottomSheet from "@/components/chatbot/ChatHistoryBottomsheet";
+import ChatHistoryBottomSheet, {
+  type ChatConversation,
+} from "@/components/chatbot/ChatHistoryBottomsheet";
 import SuggestionsBottomSheet from "@/components/chatbot/SuggestionsBottomsheet";
+import {
+  getChatSessions,
+  deleteChatSession,
+  type ChatSession,
+} from "@/helpers/AgenticHelpers";
+
+/** Định dạng nhãn thời gian hiển thị cho lịch sử trò chuyện. */
+const formatTimeLabel = (iso: string): string => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round(
+    (startOfDay(now) - startOfDay(date)) / 86_400_000,
+  );
+
+  if (diffDays === 0) return "Hôm nay";
+  if (diffDays === 1) return "Hôm qua";
+  return `${String(date.getDate()).padStart(2, "0")} tháng ${String(
+    date.getMonth() + 1,
+  ).padStart(2, "0")}`;
+};
 
 const Chatbot = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [historyVisible, setHistoryVisible] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+
+  const fetchSessions = useCallback(async () => {
+    const { status, data } = await getChatSessions();
+    if (status) {
+      setConversations(
+        data.map((s: ChatSession) => ({
+          id: s.session_id,
+          title: s.title || "Cuộc trò chuyện mới",
+          timeLabel: formatTimeLabel(s.updated_at),
+        })),
+      );
+    }
+  }, []);
+
+  const openHistory = () => {
+    setHistoryVisible(true);
+    fetchSessions();
+  };
+
+  const handleDeleteConversation = async (conversation: ChatConversation) => {
+    const { status } = await deleteChatSession(conversation.id);
+    if (status) {
+      setConversations((prev) =>
+        prev.filter((c) => c.id !== conversation.id),
+      );
+    }
+  };
+
+  const [input, setInput] = useState("");
+
+  /** Tạo phiên mới (UUID) và điều hướng sang ChatDetail, gửi luôn tin đầu tiên. */
+  const startNewConversation = (text: string) => {
+    const message = text.trim();
+    if (!message) return;
+
+    const sessionId = Crypto.randomUUID();
+    const conversation: ChatConversation = {
+      id: sessionId,
+      title: message.slice(0, 60),
+      timeLabel: "Hôm nay",
+    };
+
+    setInput("");
+    router.push({
+      pathname: "/ChatDetail",
+      params: {
+        data: JSON.stringify(conversation),
+        initialMessage: message,
+      },
+    });
+  };
 
   const exampleMessages = [
     "Sinh viên có nên đầu tư chứng khoán?",
@@ -172,8 +251,10 @@ const Chatbot = () => {
         }}
       >
         {exampleMessages.map((msg, index) => (
-          <View
+          <TouchableOpacity
             key={index.toString()}
+            activeOpacity={0.7}
+            onPress={() => startNewConversation(msg)}
             style={{
               borderTopLeftRadius: 16,
               borderBottomLeftRadius: 16,
@@ -193,7 +274,7 @@ const Chatbot = () => {
             >
               {msg}
             </Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </ScrollView>
 
@@ -206,7 +287,7 @@ const Chatbot = () => {
         }}
       >
         <TouchableOpacity
-          onPress={() => setHistoryVisible(true)}
+          onPress={openHistory}
           style={{
             width: 56,
             height: 56,
@@ -221,8 +302,7 @@ const Chatbot = () => {
           <Feather name="menu" size={24} color={theme.text.primary} />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => {}}
+        <View
           style={{
             height: 56,
             backgroundColor: theme.background.bg,
@@ -233,7 +313,8 @@ const Chatbot = () => {
             borderColor: theme.background.surface,
             flexDirection: "row",
             alignItems: "center",
-            paddingHorizontal: 12,
+            paddingLeft: 12,
+            paddingRight: 4,
           }}
         >
           <Octicons
@@ -242,22 +323,39 @@ const Chatbot = () => {
             color={theme.text.primary}
             style={{ marginRight: 8 }}
           />
-          <View style={{ pointerEvents: "none", flex: 1 }}>
-            <TextInput
-              style={{ color: theme.text.primary }}
-              value={""}
-              onChangeText={() => {}}
-              autoCapitalize="none"
-              returnKeyType="search"
-              placeholder="Hỏi tôi bất cứ điều gì..."
-              placeholderTextColor={theme.text.primary + "88"}
-            />
-          </View>
-        </TouchableOpacity>
+          <TextInput
+            style={{ color: theme.text.primary, flex: 1 }}
+            value={input}
+            onChangeText={setInput}
+            autoCapitalize="none"
+            returnKeyType="send"
+            onSubmitEditing={() => startNewConversation(input)}
+            placeholder="Hỏi tôi bất cứ điều gì..."
+            placeholderTextColor={theme.text.primary + "88"}
+          />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            disabled={!input.trim()}
+            onPress={() => startNewConversation(input)}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: input.trim()
+                ? theme.base.primary
+                : theme.background.surface,
+            }}
+          >
+            <Feather name="send" size={18} color={theme.text.onPrimary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ChatHistoryBottomSheet
         visible={historyVisible}
+        conversations={conversations}
         onClose={() => setHistoryVisible(false)}
         onSelectConversation={(conversation) => {
           setHistoryVisible(false);
@@ -266,13 +364,17 @@ const Chatbot = () => {
             params: { data: JSON.stringify(conversation) },
           });
         }}
+        onDeleteConversation={handleDeleteConversation}
         onNewConversation={() => {}}
       />
 
       <SuggestionsBottomSheet
         visible={suggestionsVisible}
         onClose={() => setSuggestionsVisible(false)}
-        onSelectQuestion={() => setSuggestionsVisible(false)}
+        onSelectQuestion={(question) => {
+          setSuggestionsVisible(false);
+          startNewConversation(question);
+        }}
       />
     </LinearGradient>
   );

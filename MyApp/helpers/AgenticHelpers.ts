@@ -91,3 +91,79 @@ export const sendChatMessage = async (
     };
   }
 };
+
+//------------------------------------------------------------
+export type ChatSession = {
+  session_id: string;
+  title: string;
+  updated_at: string;
+};
+
+export type ChatHistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+/** Danh sách các cuộc trò chuyện của user đang đăng nhập (mới nhất trước). */
+export const getChatSessions = async (): Promise<{
+  status: boolean;
+  data: ChatSession[];
+}> => {
+  try {
+    const result = await sendMessage("api/agentic/chat/sessions", {
+      method: "GET",
+    });
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return { status: true, data: (data as ChatSession[]) ?? [] };
+    }
+    return { status: false, data: [] };
+  } catch (error) {
+    console.error(error);
+    return { status: false, data: [] };
+  }
+};
+
+/** Lịch sử tin nhắn của một cuộc trò chuyện. */
+export const getChatHistory = async (
+  sessionId: string,
+): Promise<{
+  status: boolean;
+  data: ChatHistoryMessage[];
+}> => {
+  try {
+    const result = await sendMessage(
+      `api/agentic/chat/history/${sessionId}`,
+      { method: "GET" },
+    );
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: (data?.messages as ChatHistoryMessage[]) ?? [],
+      };
+    }
+    return { status: false, data: [] };
+  } catch (error) {
+    console.error(error);
+    return { status: false, data: [] };
+  }
+};
+
+/** Xóa một cuộc trò chuyện và toàn bộ lịch sử của nó. */
+export const deleteChatSession = async (
+  sessionId: string,
+): Promise<{ status: boolean }> => {
+  try {
+    const result = await sendMessage(
+      `api/agentic/chat/session/${sessionId}`,
+      { method: "DELETE" },
+    );
+    return { status: (result?.errorCode ?? -1) === 0 };
+  } catch (error) {
+    console.error(error);
+    return { status: false };
+  }
+};

@@ -23,30 +23,6 @@ export interface ChatConversation {
   timeLabel: string;
 }
 
-// Mock data — danh sách các cuộc trò chuyện gần đây
-export const MOCK_CONVERSATIONS: ChatConversation[] = [
-  { id: "1", title: "123", timeLabel: "Hôm nay" },
-  { id: "2", title: "hi", timeLabel: "Hôm nay" },
-  { id: "3", title: "hello", timeLabel: "Hôm nay" },
-  {
-    id: "4",
-    title: "Bí kíp deal lương cho chiếu mới 🧠",
-    timeLabel: "Hôm qua",
-  },
-  {
-    id: "5",
-    title: "🔮 Thông điệp hôm nay cho mình",
-    timeLabel: "27 tháng 05",
-  },
-  { id: "6", title: "hello", timeLabel: "07 tháng 01" },
-  {
-    id: "7",
-    title:
-      "Moni, lương thực tập của mình đang ở đâu so với những thực tập sinh khác trên thị trường?",
-    timeLabel: "25 tháng 11",
-  },
-];
-
 interface Props {
   visible: boolean;
   conversations?: ChatConversation[];
@@ -60,7 +36,7 @@ interface Props {
 
 const ChatHistoryBottomSheet = ({
   visible,
-  conversations = MOCK_CONVERSATIONS,
+  conversations = [],
   onClose,
   onSelectConversation,
   onConversationMenu,

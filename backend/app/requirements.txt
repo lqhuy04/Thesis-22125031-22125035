@@ -20,6 +20,8 @@ webdriver-manager==4.0.1
 asyncio
 langchain-google-genai
 langgraph
+langgraph-checkpoint-postgres
+psycopg[binary,pool]
 TA-Lib==0.4.28
 numpy==1.24.3
 requests==2.31.0
