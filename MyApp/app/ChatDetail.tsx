@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import Markdown from "react-native-markdown-display";
+import LinearGradient from "react-native-linear-gradient";
 import Feather from "@expo/vector-icons/Feather";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
@@ -112,10 +113,18 @@ const ChatDetail = () => {
   }, [sessionId]);
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: theme.background.surface }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <LinearGradient
+      colors={["#5B21B6", "#7C3AED", "#A78BFA", "#E9D5FF"]}
+      locations={[0, 0.2, 0.6, 1]}
+      useAngle
+      angle={135}
+      angleCenter={{ x: 0.5, y: 0.5 }}
+      style={{ flex: 1 }}
     >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
       <ScreenHeader title={conversation?.title ?? t("chatbot.chatTitle")} />
 
       {loading ? (
@@ -281,7 +290,8 @@ const ChatDetail = () => {
           </TouchableOpacity>
         </View>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 };
 

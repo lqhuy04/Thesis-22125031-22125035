@@ -46,10 +46,10 @@ const ChatCompose = () => {
 
   return (
     <LinearGradient
-      colors={["#4B2FC9", "#613DE4", "#7B5CFF", "#9D8CFF", "#7B5CFF"]}
-      locations={[0, 0.1, 0.24, 0.5, 0.76]}
+      colors={["#5B21B6", "#7C3AED", "#A78BFA", "#E9D5FF"]}
+      locations={[0, 0.2, 0.6, 1]}
       useAngle
-      angle={60}
+      angle={135}
       angleCenter={{ x: 0.5, y: 0.5 }}
       style={{ flex: 1 }}
     >
