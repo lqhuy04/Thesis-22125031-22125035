@@ -49,6 +49,7 @@ const SocialButtons = () => {
         setLoadingProvider(null);
       }
     } catch (e: any) {
+      console.error("Google Sign-In Error:", e);
       if (e?.code !== statusCodes.SIGN_IN_CANCELLED) {
         showError(t("auth.tryAgain"));
       }
