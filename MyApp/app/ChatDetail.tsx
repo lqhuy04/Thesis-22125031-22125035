@@ -18,6 +18,7 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { typography } from "@/constants/typography";
 import type { ChatConversation } from "@/components/chatbot/ChatHistoryBottomsheet";
 import { getChatHistory, sendChatMessage } from "@/helpers/AgenticHelpers";
+import Octicons from "@expo/vector-icons/Octicons";
 
 interface ChatMessage {
   id: string;
@@ -27,8 +28,7 @@ interface ChatMessage {
   image?: string;
 }
 
-const genId = () =>
-  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const ChatDetail = () => {
   const { theme } = useTheme();
@@ -219,55 +219,65 @@ const ChatDetail = () => {
       <View
         style={{
           flexDirection: "row",
-          alignItems: "flex-end",
+          alignItems: "center",
+          marginBottom: 24,
           paddingHorizontal: 12,
-          paddingTop: 8,
-          paddingBottom: 24,
-          borderTopWidth: 1,
-          borderTopColor: theme.border.default,
-          backgroundColor: theme.background.bg,
         }}
       >
         <View
           style={{
+            minHeight: 56,
+            backgroundColor: theme.background.bg,
+            borderRadius: 28,
             flex: 1,
-            backgroundColor: theme.background.surface,
-            borderRadius: 24,
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            maxHeight: 120,
+            borderWidth: 4,
+            borderColor: theme.background.surface,
+            flexDirection: "row",
+            alignItems: "center",
+            paddingLeft: 12,
+            paddingRight: 4,
           }}
         >
+          <Octicons
+            name="sparkles-fill"
+            size={16}
+            color={theme.text.primary}
+            style={{ marginRight: 8 }}
+          />
           <TextInput
-            style={{ color: theme.text.primary, ...typography.bodyLarge }}
+            style={{
+              paddingVertical: 10,
+              flex: 1,
+              color: theme.text.primary,
+              backgroundColor: theme.background.bg,
+            }}
             value={input}
             onChangeText={setInput}
-            placeholder="Nhập tin nhắn..."
-            placeholderTextColor={theme.text.secondary}
+            autoCapitalize="none"
+            autoFocus
             multiline
-            editable={!loading}
+            returnKeyType="send"
+            placeholder="Hỏi tôi bất cứ điều gì..."
+            placeholderTextColor={theme.text.primary + "88"}
           />
+          <TouchableOpacity
+            activeOpacity={0.8}
+            disabled={!input.trim()}
+            onPress={() => send(input)}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: input.trim()
+                ? theme.base.primary
+                : theme.background.surface,
+            }}
+          >
+            <Feather name="send" size={18} color={theme.text.onPrimary} />
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          disabled={!input.trim() || sending}
-          onPress={() => send(input)}
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            marginLeft: 8,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor:
-              !input.trim() || sending
-                ? theme.text.secondary
-                : theme.base.primary,
-          }}
-        >
-          <Feather name="send" size={20} color={theme.text.onPrimary} />
-        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );

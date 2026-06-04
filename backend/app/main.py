@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError, HTTPException
@@ -6,10 +7,19 @@ from app.config import settings
 from app.routes import articles, auth, technical_indicators, risk_appetite, company, fundamental_analysis, market, agentic, portfolio, favorite, search_history
 import uuid
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    from agentic_ai.chatbot.db import close_pool
+    close_pool()
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
+    lifespan=lifespan
 )
 
 # CORS
@@ -90,13 +100,6 @@ app.include_router(agentic.router)
 app.include_router(portfolio.router)
 app.include_router(favorite.router)
 app.include_router(search_history.router)
-
-@app.on_event("shutdown")
-async def _shutdown_db_pool():
-    # Đóng connection pool Postgres dùng cho chatbot khi app tắt
-    from agentic_ai.chatbot.db import close_pool
-    close_pool()
-
 
 @app.get("/")
 async def root():

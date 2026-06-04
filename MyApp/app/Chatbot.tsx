@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ScrollView,
-  TextInput,
   View,
   Image,
   Dimensions,
@@ -72,13 +71,9 @@ const Chatbot = () => {
   const handleDeleteConversation = async (conversation: ChatConversation) => {
     const { status } = await deleteChatSession(conversation.id);
     if (status) {
-      setConversations((prev) =>
-        prev.filter((c) => c.id !== conversation.id),
-      );
+      setConversations((prev) => prev.filter((c) => c.id !== conversation.id));
     }
   };
-
-  const [input, setInput] = useState("");
 
   /** Tạo phiên mới (UUID) và điều hướng sang ChatDetail, gửi luôn tin đầu tiên. */
   const startNewConversation = (text: string) => {
@@ -92,7 +87,6 @@ const Chatbot = () => {
       timeLabel: "Hôm nay",
     };
 
-    setInput("");
     router.push({
       pathname: "/ChatDetail",
       params: {
@@ -101,6 +95,9 @@ const Chatbot = () => {
       },
     });
   };
+
+  /** Mở trang soạn câu hỏi đầu tiên. */
+  const openCompose = () => router.push("/ChatCompose");
 
   const exampleMessages = [
     "Sinh viên có nên đầu tư chứng khoán?",
@@ -177,7 +174,7 @@ const Chatbot = () => {
           }}
         >
           <Text typography="headlineMedium" color={theme.text.primary}>
-            Chào bạn, tôi có thể giúp gì cho bạn?
+            Xin chào, tôi có thể giúp gì cho bạn?
           </Text>
         </View>
       </View>
@@ -302,7 +299,9 @@ const Chatbot = () => {
           <Feather name="menu" size={24} color={theme.text.primary} />
         </TouchableOpacity>
 
-        <View
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={openCompose}
           style={{
             height: 56,
             backgroundColor: theme.background.bg,
@@ -314,7 +313,7 @@ const Chatbot = () => {
             flexDirection: "row",
             alignItems: "center",
             paddingLeft: 12,
-            paddingRight: 4,
+            paddingRight: 16,
           }}
         >
           <Octicons
@@ -323,34 +322,14 @@ const Chatbot = () => {
             color={theme.text.primary}
             style={{ marginRight: 8 }}
           />
-          <TextInput
-            style={{ color: theme.text.primary, flex: 1 }}
-            value={input}
-            onChangeText={setInput}
-            autoCapitalize="none"
-            returnKeyType="send"
-            onSubmitEditing={() => startNewConversation(input)}
-            placeholder="Hỏi tôi bất cứ điều gì..."
-            placeholderTextColor={theme.text.primary + "88"}
-          />
-          <TouchableOpacity
-            activeOpacity={0.8}
-            disabled={!input.trim()}
-            onPress={() => startNewConversation(input)}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: input.trim()
-                ? theme.base.primary
-                : theme.background.surface,
-            }}
+          <Text
+            typography="bodyLarge"
+            color={theme.text.primary + "88"}
+            style={{ flex: 1 }}
           >
-            <Feather name="send" size={18} color={theme.text.onPrimary} />
-          </TouchableOpacity>
-        </View>
+            Hỏi tôi bất cứ điều gì...
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ChatHistoryBottomSheet
