@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import LinearGradient from "react-native-linear-gradient";
 import WatchlistSection from "@/components/market/WatchlistSection";
+import SuggestionSection from "@/components/home/SuggestionSection";
 
 const TABS = ["market", "favorites", "news"] as const;
 type Tab = (typeof TABS)[number];
@@ -121,12 +122,14 @@ const Market = () => {
           <ScrollView style={{ width: SCREEN_WIDTH }}>
             <MarketIndicesSection />
             <IndustryMovementSection />
+            <SuggestionSection />
             <View style={{ height: 24 }} />
           </ScrollView>
 
           {/* Tab 1 — Favorites */}
           <ScrollView style={{ width: SCREEN_WIDTH }}>
             <WatchlistSection />
+            <View style={{ height: 24 }} />
           </ScrollView>
 
           {/* Tab 2 — News */}

@@ -15,6 +15,7 @@ import Feather from "@expo/vector-icons/Feather";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import { typography } from "@/constants/typography";
 import type { ChatConversation } from "@/components/chatbot/ChatHistoryBottomsheet";
 import { getChatHistory, sendChatMessage } from "@/helpers/AgenticHelpers";
@@ -32,6 +33,7 @@ const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 const ChatDetail = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   const { data, initialMessage } = useLocalSearchParams() || {};
   const conversation = data
@@ -70,7 +72,7 @@ const ChatDetail = () => {
         content:
           status && reply
             ? reply.reply
-            : "Xin lỗi, đã có lỗi khi gửi tin nhắn. Vui lòng thử lại.",
+            : t("chatbot.errorMessage"),
       },
     ]);
     setSending(false);
@@ -114,7 +116,7 @@ const ChatDetail = () => {
       style={{ flex: 1, backgroundColor: theme.background.surface }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScreenHeader title={conversation?.title ?? "Chi tiết trò chuyện"} />
+      <ScreenHeader title={conversation?.title ?? t("chatbot.chatTitle")} />
 
       {loading ? (
         <View
@@ -139,7 +141,7 @@ const ChatDetail = () => {
                 color={theme.text.secondary}
                 style={{ textAlign: "center" }}
               >
-                Hãy bắt đầu cuộc trò chuyện bằng một câu hỏi.
+                {t("chatbot.emptyMessage")}
               </Text>
             </View>
           ) : (
@@ -208,7 +210,7 @@ const ChatDetail = () => {
                 color={theme.text.secondary}
                 style={{ marginLeft: 8 }}
               >
-                Đang trả lời...
+                {t("chatbot.sending")}
               </Text>
             </View>
           ) : null}
@@ -257,7 +259,7 @@ const ChatDetail = () => {
             autoFocus
             multiline
             returnKeyType="send"
-            placeholder="Hỏi tôi bất cứ điều gì..."
+            placeholder={t("chatbot.placeholder")}
             placeholderTextColor={theme.text.primary + "88"}
           />
           <TouchableOpacity

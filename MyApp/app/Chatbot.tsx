@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import LinearGradient from "react-native-linear-gradient";
 import { router } from "expo-router";
 import * as Crypto from "expo-crypto";
@@ -25,7 +26,7 @@ import {
 } from "@/helpers/AgenticHelpers";
 
 /** Định dạng nhãn thời gian hiển thị cho lịch sử trò chuyện. */
-const formatTimeLabel = (iso: string): string => {
+const formatTimeLabel = (iso: string, t: (key: string) => string): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
 
@@ -36,8 +37,8 @@ const formatTimeLabel = (iso: string): string => {
     (startOfDay(now) - startOfDay(date)) / 86_400_000,
   );
 
-  if (diffDays === 0) return "Hôm nay";
-  if (diffDays === 1) return "Hôm qua";
+  if (diffDays === 0) return t("chatbot.today");
+  if (diffDays === 1) return t("chatbot.yesterday");
   return `${String(date.getDate()).padStart(2, "0")} tháng ${String(
     date.getMonth() + 1,
   ).padStart(2, "0")}`;
@@ -45,6 +46,7 @@ const formatTimeLabel = (iso: string): string => {
 
 const Chatbot = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const insets = useSafeAreaInsets();
   const [historyVisible, setHistoryVisible] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
@@ -56,12 +58,12 @@ const Chatbot = () => {
       setConversations(
         data.map((s: ChatSession) => ({
           id: s.session_id,
-          title: s.title || "Cuộc trò chuyện mới",
-          timeLabel: formatTimeLabel(s.updated_at),
+          title: s.title || t("chatbot.newConversation"),
+          timeLabel: formatTimeLabel(s.updated_at, t),
         })),
       );
     }
-  }, []);
+  }, [t]);
 
   const openHistory = () => {
     setHistoryVisible(true);
@@ -84,7 +86,7 @@ const Chatbot = () => {
     const conversation: ChatConversation = {
       id: sessionId,
       title: message.slice(0, 60),
-      timeLabel: "Hôm nay",
+      timeLabel: t("chatbot.today"),
     };
 
     router.push({
@@ -99,14 +101,17 @@ const Chatbot = () => {
   /** Mở trang soạn câu hỏi đầu tiên. */
   const openCompose = () => router.push("/ChatCompose");
 
-  const exampleMessages = [
-    "Sinh viên có nên đầu tư chứng khoán?",
-    "Tóm tắt thị trường hôm nay",
-    "Cổ phiếu VNM có tiềm năng không?",
-    "Làm sao để bắt đầu đầu tư chứng khoán?",
-    "RSI là gì và cách sử dụng nó?",
-    "Tóm tắt tình hình mã VHM hôm nay",
-  ];
+  const exampleMessages = useMemo(
+    () => [
+      t("chatbot.example1"),
+      t("chatbot.example2"),
+      t("chatbot.example3"),
+      t("chatbot.example4"),
+      t("chatbot.example5"),
+      t("chatbot.example6"),
+    ],
+    [t],
+  );
 
   const quotes = useMemo(
     () => [
@@ -174,7 +179,7 @@ const Chatbot = () => {
           }}
         >
           <Text typography="headlineMedium" color={theme.text.primary}>
-            Xin chào, tôi có thể giúp gì cho bạn?
+            {t("chatbot.greeting")}
           </Text>
         </View>
       </View>
@@ -227,12 +232,12 @@ const Chatbot = () => {
         }}
       >
         <Text typography="titleMedium" color={theme.text.primary}>
-          Gợi ý dành cho bạn
+          {t("chatbot.suggestions")}
         </Text>
 
         <TouchableOpacity onPress={() => setSuggestionsVisible(true)}>
           <Text typography="labelLarge" color={theme.text.primary}>
-            Xem thêm
+            {t("chatbot.viewMore")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -327,7 +332,7 @@ const Chatbot = () => {
             color={theme.text.primary + "88"}
             style={{ flex: 1 }}
           >
-            Hỏi tôi bất cứ điều gì...
+            {t("chatbot.placeholder")}
           </Text>
         </TouchableOpacity>
       </View>

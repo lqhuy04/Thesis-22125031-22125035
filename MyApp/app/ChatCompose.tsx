@@ -7,6 +7,7 @@ import {
   Platform,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import LinearGradient from "react-native-linear-gradient";
 import { router } from "expo-router";
 import * as Crypto from "expo-crypto";
@@ -18,6 +19,7 @@ import ScreenHeader from "@/components/ui/ScreenHeader";
 
 const ChatCompose = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [input, setInput] = useState("");
 
   /** Tạo phiên mới (UUID) và điều hướng sang ChatDetail, gửi luôn tin đầu tiên. */
@@ -29,7 +31,7 @@ const ChatCompose = () => {
     const conversation: ChatConversation = {
       id: sessionId,
       title: message.slice(0, 60),
-      timeLabel: "Hôm nay",
+      timeLabel: t("chatbot.today"),
     };
 
     setInput("");
@@ -55,7 +57,7 @@ const ChatCompose = () => {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScreenHeader title="Chatbot" />
+        <ScreenHeader title={t("tabs.chatbot")} />
 
         {/* Tiêu đề */}
         <View
@@ -87,7 +89,7 @@ const ChatCompose = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text typography="headlineMedium" color={theme.text.primary}>
-                Xin chào, tôi có thể giúp gì cho bạn?
+                {t("chatbot.greeting")}
               </Text>
             </View>
           </View>
@@ -136,7 +138,7 @@ const ChatCompose = () => {
               multiline
               returnKeyType="send"
               onSubmitEditing={startNewConversation}
-              placeholder="Hỏi tôi bất cứ điều gì..."
+              placeholder={t("chatbot.placeholder")}
               placeholderTextColor={theme.text.primary + "88"}
             />
             <TouchableOpacity

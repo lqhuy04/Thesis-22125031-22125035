@@ -9,6 +9,12 @@ import {
   deleteStockFromFavorite,
 } from "@/helpers/ProfileHelpers";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import Feather from "@expo/vector-icons/Feather";
+import {
+  formatNextOpen,
+  getMarketState,
+  MarketStatus,
+} from "@/helpers/MarketHoursHelper";
 
 interface DetailHeaderProps {
   data: any;
@@ -22,9 +28,16 @@ const DetailHeader = ({
   isMarketIndex = false,
 }: DetailHeaderProps) => {
   const { theme } = useTheme();
-  const { t } = useLocalization();
+  const { t, language } = useLocalization();
 
   const [isFavorite, setIsFavorite] = useState<boolean>(false);
+
+  // Đồng hồ cập nhật mỗi phút để trạng thái thị trường luôn chính xác.
+  const [now, setNow] = useState<Date>(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const toggleFavorite = useCallback(() => {
     setIsFavorite((prev) => {
@@ -39,12 +52,14 @@ const DetailHeader = ({
   }, [data?.symbol]);
 
   useEffect(() => {
-    checkStockInFavorite(data?.symbol).then((res) => {
-      if (res?.status) {
-        setIsFavorite(res?.data);
-      }
-    });
-  }, [data?.symbol]);
+    if (!isMarketIndex) {
+      checkStockInFavorite(data?.symbol).then((res) => {
+        if (res?.status) {
+          setIsFavorite(res?.data);
+        }
+      });
+    }
+  }, [data?.symbol, isMarketIndex]);
 
   const displayData = useMemo(() => {
     if (!data) return null;
@@ -66,6 +81,20 @@ const DetailHeader = ({
     };
   }, [data, isMarketIndex]);
 
+  const marketState = useMemo(
+    () => getMarketState(displayData?.symbol, now),
+    [displayData?.symbol, now],
+  );
+
+  const marketStatusLabel = useMemo(() => {
+    const labels: Record<MarketStatus, string> = {
+      open: t("detailHeader.marketOpen"),
+      lunch: t("detailHeader.marketLunch"),
+      closed: t("detailHeader.marketClosed"),
+    };
+    return labels[marketState.status];
+  }, [marketState.status, t]);
+
   return (
     <View>
       <View
@@ -75,14 +104,43 @@ const DetailHeader = ({
           backgroundColor: theme.background.bg,
           borderRadius: 12,
           marginHorizontal: 12,
-          marginBottom: isMarketIndex ? -28 : undefined,
         }}
       >
         {isMarketIndex ? (
-          <View style={{ paddingBottom: 12 }}>
-            <Text typography="headlineSmall" color={theme.text.primary}>
-              {displayData?.symbol}
-            </Text>
+          <View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Text typography="headlineSmall" color={theme.text.primary}>
+                {displayData?.symbol}
+              </Text>
+              {marketState.status !== "open" ? (
+                <View
+                  style={{
+                    paddingVertical: 4,
+                    paddingHorizontal: 8,
+                    borderRadius: 8,
+                    backgroundColor: theme.background.surface,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  <Feather
+                    name="clock"
+                    size={16}
+                    color={theme.text.primary}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text typography="labelLarge" color={theme.text.primary}>
+                    {marketStatusLabel}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
 
             <View
               style={{
@@ -155,6 +213,19 @@ const DetailHeader = ({
                 %
               </Text>
             </View>
+
+            {marketState.nextOpen ? (
+              <Text
+                typography="labelLarge"
+                color={theme.text.primary + "88"}
+                style={{ marginTop: 4 }}
+              >
+                {`${t("detailHeader.opensAt")} ${formatNextOpen(
+                  marketState.nextOpen,
+                  language,
+                )}`}
+              </Text>
+            ) : null}
           </View>
         ) : (
           <View>
