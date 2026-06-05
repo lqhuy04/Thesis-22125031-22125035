@@ -152,19 +152,6 @@ async def get_news_single_category(
         result=True,
     )
 
-@router.post("/update", response_model=ArticlesListResponse)
-async def update_new_articles(symbol: Optional[str] = ""):
-    """ Update new articles for market or stock """
-
-    result = ArticlesService.updateNewArticles(symbol = symbol)
-
-    return ArticlesListResponse(
-        data=[],
-        errorCode=0 if result else 500001,
-        errorDesc="" if result else "Failed to update new articles",
-        requestId=str(uuid4()),
-        result=result
-    )
 
 
 
