@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     # Frontend URL (for password reset links)
     FRONTEND_URL: str = "http://localhost:3000"
     BACKEND_URL: str = "http://localhost:8000"
+
+    # CORS — danh sách origin (cách nhau bởi dấu phẩy) được phép gọi từ trình duyệt.
+    # App mobile không bị CORS kiểm soát; cấu hình này dành cho web admin / Expo web.
+    CORS_ORIGINS: str = "http://localhost:8081,http://localhost:3000"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
     
     # OAuth Settings
     GOOGLE_CLIENT_ID: str = ""

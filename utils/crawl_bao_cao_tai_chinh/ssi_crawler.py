@@ -23,7 +23,7 @@ from typing import Dict, List, Optional
 import re
 import os
 from dotenv import load_dotenv
-from fetch_historical_prices import fetch_market_data_for_years
+from utils.crawl_bao_cao_tai_chinh.fetch_historical_prices import fetch_market_data_for_years
 
 class SSIiBoardCrawler:
     def __init__(self, headless: bool = False):

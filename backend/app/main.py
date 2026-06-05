@@ -22,10 +22,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS
+# CORS — chỉ cho phép các origin khai báo trong CORS_ORIGINS (xem config/.env)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure properly in production
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -113,5 +113,7 @@ async def health_check():
     return {"status": "healthy"}
 
 if __name__ == "__main__":
+    import os
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("app.main:app", host="0.0.0.0", port=port, reload=settings.DEBUG)
