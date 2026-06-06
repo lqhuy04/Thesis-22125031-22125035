@@ -2,14 +2,15 @@
 Technical Indicators Routes
 API endpoints for technical analysis indicators using TA-Lib
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from datetime import datetime
 import uuid
 import pandas as pd
 from app.services.technical_indicators_service import TechnicalIndicatorsService
 from app.services.market_service import MarketService
+from app.middleware.auth_middleware import get_current_user
 
-router = APIRouter(prefix="/api/technical-indicators", tags=["Technical Indicators"])
+router = APIRouter(prefix="/api/technical-indicators", tags=["Technical Indicators"], dependencies=[Depends(get_current_user)])
 
 @router.get("/{symbol}",
             summary="Calculate Technical Indicators",

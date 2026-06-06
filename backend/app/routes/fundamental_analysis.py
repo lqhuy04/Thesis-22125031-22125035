@@ -2,13 +2,14 @@
 Financial Analysis Routes
 API endpoints for financial metrics and fundamental analysis
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 
 from app.models.base_schemas import success_response
 from app.services.fundamental_analysis_service import FundamentalAnalysisService
+from app.middleware.auth_middleware import get_current_user
 import uuid
 
-router = APIRouter(prefix="/api/fundamental-analysis", tags=["Fundamental Metrics"])
+router = APIRouter(prefix="/api/fundamental-analysis", tags=["Fundamental Metrics"], dependencies=[Depends(get_current_user)])
 
 @router.get("/{symbol}/balance-sheets", summary="Get Balance Sheets")
 async def get_balance_sheets(symbol: str):

@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/agentic", tags=["agentic-ai"])
     summary="Phân tích cổ phiếu",
     description="Chạy full pipeline: tin tức + cơ bản + kỹ thuật → structured output. Không có memory.",
 )
-async def analyze_stock(body: StockAnalysisRequest):
+async def analyze_stock(body: StockAnalysisRequest, current_user: dict = Depends(get_current_user)):
     try:
         recommendation = run_stock_analysis(
             mode=body.mode,

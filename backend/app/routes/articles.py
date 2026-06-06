@@ -2,13 +2,14 @@
 News Routes
 API endpoints for financial news
 """
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from app.models.article_schema import ArticlesListResponse, TodayHighlightResponse
 from app.services.articles_service import ArticlesService
+from app.middleware.auth_middleware import get_current_user
 from typing import Optional
 from uuid import uuid4
 
-router = APIRouter(prefix="/api/articles", tags=["Articles"])
+router = APIRouter(prefix="/api/articles", tags=["Articles"], dependencies=[Depends(get_current_user)])
 
 @router.get("", response_model=ArticlesListResponse)
 async def get_all_articles(

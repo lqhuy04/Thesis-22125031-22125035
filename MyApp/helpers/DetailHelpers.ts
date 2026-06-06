@@ -123,52 +123,6 @@ export const fetchNews = async (
 };
 
 //------------------------------------------------------------
-export type FundamentalAnalysisIndexes = {
-  pe_ratio: number; // P/E
-  pb_ratio: number; // P/B
-  eps: number; // EPS
-  market_cap_billion: number; // Vốn hóa (tỷ đồng)
-  shares_outstanding_million: number; // Khối lượng lưu hành (triệu cổ phiếu)
-  roe: number; // ROE
-  gross_margin: number; // Biên lợi nhuận gộp
-  revenue_yoy: number; // Doanh thu YoY
-  eps_yoy: number; // EPS YoY
-  debt_to_equity: number; // Nợ/VCSH
-  current_ratio: number; // Hệ số thanh toán hiện hành
-  fcf: number; // FCF
-  ev_ebitda: number; // EV/EBITDA
-};
-
-export const fetchFundamentalAnalysisIndexes = async (
-  symbol: string,
-): Promise<{
-  status: boolean;
-  data: FundamentalAnalysisIndexes | null;
-}> => {
-  try {
-    const result = await sendMessage(`api/fundamental-metrics/${symbol}`);
-
-    const { errorCode, data } = result || {};
-    if (errorCode === 0) {
-      return {
-        status: true,
-        data: data?.metrics as FundamentalAnalysisIndexes,
-      };
-    }
-    return {
-      status: false,
-      data: null,
-    };
-  } catch (error) {
-    console.error(error);
-    return {
-      status: false,
-      data: null,
-    };
-  }
-};
-
-//------------------------------------------------------------
 export type StockPriceData = {
   symbol: string;
   TradingDate: string;

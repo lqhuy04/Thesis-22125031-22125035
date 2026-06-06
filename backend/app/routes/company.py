@@ -2,16 +2,17 @@
 Company Profile Routes
 GET endpoints for company profiles, leaders, and subsidiaries.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from uuid import uuid4
 from app.services.company_service import CompanyService
+from app.middleware.auth_middleware import get_current_user
 from app.models.company_schemas import (
     CompanyProfileAPIResponse,
     LeadersAPIResponse,
     SubsidiariesAPIResponse,
 )
 
-router = APIRouter(prefix="/api/company", tags=["Company Profile"])
+router = APIRouter(prefix="/api/company", tags=["Company Profile"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/{symbol}/profile", response_model=CompanyProfileAPIResponse)

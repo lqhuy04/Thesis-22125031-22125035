@@ -2,15 +2,16 @@
 Market Data Routes
 FastAPI routes for SSI FC Data API integration
 """
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 import uuid
 from supabase_auth import Any
 from app.services.market_service import MarketService
 from app.services.ssi_service import get_ssi_service
 from app.models.market_data_schemas import SectorStockMovementResponse, IndexImpactResponse, InvestingIdeaResponse
+from app.middleware.auth_middleware import get_current_user
 
 
-router = APIRouter(prefix="/api", tags=["Market Data"])
+router = APIRouter(prefix="/api", tags=["Market Data"], dependencies=[Depends(get_current_user)])
 
 @router.get("/all-symbol", response_model=Any)
 async def get_all_symbols():
