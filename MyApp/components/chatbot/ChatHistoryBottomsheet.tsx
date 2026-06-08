@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import Feather from "@expo/vector-icons/Feather";
 import { Text } from "../ui/Text";
 import ConversationOptionsBottomSheet from "./ConversationOptionsBottomsheet";
@@ -45,6 +46,7 @@ const ChatHistoryBottomSheet = ({
   onShareConversation,
 }: Props) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   const [optionsTarget, setOptionsTarget] = useState<ChatConversation | null>(
     null,
@@ -116,7 +118,7 @@ const ChatHistoryBottomSheet = ({
         <View style={styles.header}>
           <View style={{ width: 24 }} />
           <Text typography="titleLarge" color={theme.text.primary}>
-            Lịch sử hoạt động
+            {t("chatbot.historyTitle")}
           </Text>
           <TouchableOpacity onPress={closeSheet} hitSlop={8}>
             <Feather name="x" size={24} color={theme.text.primary} />
@@ -134,7 +136,7 @@ const ChatHistoryBottomSheet = ({
             color={theme.text.primary}
             style={{ marginHorizontal: 20, marginBottom: 4 }}
           >
-            Trò chuyện
+            {t("chatbot.conversations")}
           </Text>
 
           {conversations.map((item, index) => (
@@ -205,7 +207,7 @@ const ChatHistoryBottomSheet = ({
             color={theme.text.onPrimary}
             style={{ marginLeft: 8 }}
           >
-            Trò chuyện mới
+            {t("chatbot.newConversation")}
           </Text>
         </TouchableOpacity>
       </Animated.View>

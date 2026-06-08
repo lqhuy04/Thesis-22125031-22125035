@@ -10,6 +10,7 @@ import {
   Dimensions,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import Feather from "@expo/vector-icons/Feather";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Text } from "../ui/Text";
@@ -105,6 +106,7 @@ const SuggestionsBottomSheet = ({
   onSelectQuestion,
 }: Props) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   const [activeTab, setActiveTab] = useState(0);
 
@@ -179,7 +181,7 @@ const SuggestionsBottomSheet = ({
         <View style={styles.header}>
           <View style={{ width: 24 }} />
           <Text typography="titleLarge" color={theme.text.primary}>
-            Mở rộng
+            {t("chatbot.expand")}
           </Text>
           <TouchableOpacity onPress={closeSheet} hitSlop={8}>
             <Feather name="x" size={24} color={theme.text.primary} />

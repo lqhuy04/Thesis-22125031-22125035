@@ -293,5 +293,12 @@ export default {
     errorMessage: "Xin lỗi, đã có lỗi khi gửi tin nhắn. Vui lòng thử lại.",
     sending: "Đang trả lời...",
     newConversation: "Cuộc trò chuyện mới",
+    historyTitle: "Lịch sử hoạt động",
+    conversations: "Trò chuyện",
+    options: "Tuỳ chọn",
+    share: "Chia sẻ",
+    comingSoon: "Sắp ra mắt",
+    delete: "Xoá",
+    expand: "Mở rộng",
   },
 };

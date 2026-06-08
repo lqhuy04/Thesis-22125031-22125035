@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import Feather from "@expo/vector-icons/Feather";
 import { Text } from "../ui/Text";
 import type { ChatConversation } from "./ChatHistoryBottomsheet";
@@ -31,6 +32,7 @@ const ConversationOptionsBottomSheet = ({
   onDelete,
 }: Props) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -93,7 +95,7 @@ const ConversationOptionsBottomSheet = ({
         <View style={styles.header}>
           <View style={{ width: 24 }} />
           <Text typography="titleLarge" color={theme.text.primary}>
-            Tuỳ chọn
+            {t("chatbot.options")}
           </Text>
           <TouchableOpacity onPress={closeSheet} hitSlop={8}>
             <Feather name="x" size={24} color={theme.text.primary} />
@@ -114,13 +116,13 @@ const ConversationOptionsBottomSheet = ({
               color={theme.text.secondary}
               style={{ marginLeft: 16 }}
             >
-              Chia sẻ
+              {t("chatbot.share")}
             </Text>
             <View
               style={[styles.badge, { backgroundColor: theme.base.warning }]}
             >
               <Text typography="labelSmall" color="#FFFFFF">
-                Sắp ra mắt
+                {t("chatbot.comingSoon")}
               </Text>
             </View>
           </TouchableOpacity>
@@ -134,7 +136,7 @@ const ConversationOptionsBottomSheet = ({
             }}
           />
 
-          {/* Xoá */}
+          {/* Delete */}
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => {
@@ -149,7 +151,7 @@ const ConversationOptionsBottomSheet = ({
               color={theme.base.error}
               style={{ marginLeft: 16 }}
             >
-              Xoá
+              {t("chatbot.delete")}
             </Text>
           </TouchableOpacity>
         </View>

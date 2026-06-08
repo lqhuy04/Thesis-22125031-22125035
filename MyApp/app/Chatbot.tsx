@@ -349,7 +349,9 @@ const Chatbot = () => {
           });
         }}
         onDeleteConversation={handleDeleteConversation}
-        onNewConversation={() => {}}
+        onNewConversation={() => {
+          router.push("/ChatCompose");
+        }}
       />
 
       <SuggestionsBottomSheet

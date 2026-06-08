@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   ScrollView,
   View,
   Image,
@@ -32,6 +33,47 @@ interface ChatMessage {
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
+const TypingIndicator = ({ color }: { color: string }) => {
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(dot1, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(dot2, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(dot3, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.delay(300),
+        Animated.parallel([
+          Animated.timing(dot1, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+          Animated.timing(dot2, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+          Animated.timing(dot3, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+        ]),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [dot1, dot2, dot3]);
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      {([dot1, dot2, dot3] as Animated.Value[]).map((opacity, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 3.5,
+            backgroundColor: color,
+            opacity,
+          }}
+        />
+      ))}
+    </View>
+  );
+};
+
 const ChatDetail = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
@@ -45,7 +87,8 @@ const ChatDetail = () => {
     typeof initialMessage === "string" ? initialMessage : undefined;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Skip loading spinner for brand-new sessions — history doesn't exist yet
+  const [loading, setLoading] = useState(!firstMessage);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -79,7 +122,6 @@ const ChatDetail = () => {
     setSending(false);
   };
 
-  // Nạp lịch sử khi mở phiên; nếu là phiên mới có initialMessage thì gửi luôn.
   useEffect(() => {
     let active = true;
 
@@ -88,21 +130,28 @@ const ChatDetail = () => {
         setLoading(false);
         return;
       }
+
+      // Brand-new session: skip history fetch (session doesn't exist in DB yet)
+      if (firstMessage) {
+        if (!sentInitial.current) {
+          sentInitial.current = true;
+          send(firstMessage);
+        }
+        return;
+      }
+
+      // Existing session: fetch history then reveal UI
       const { data: history } = await getChatHistory(sessionId);
       if (!active) return;
 
-      const mapped = history.map((m, index) => ({
-        id: String(index),
-        role: m.role,
-        content: m.content,
-      }));
-      setMessages(mapped);
+      setMessages(
+        history.map((m, index) => ({
+          id: String(index),
+          role: m.role,
+          content: m.content,
+        })),
+      );
       setLoading(false);
-
-      if (firstMessage && !sentInitial.current && mapped.length === 0) {
-        sentInitial.current = true;
-        send(firstMessage);
-      }
     };
 
     load();
@@ -212,15 +261,31 @@ const ChatDetail = () => {
           )}
 
           {sending ? (
-            <View style={{ marginVertical: 8, flexDirection: "row" }}>
-              <ActivityIndicator size="small" color={theme.text.secondary} />
-              <Text
-                typography="bodyMedium"
-                color={theme.text.secondary}
-                style={{ marginLeft: 8 }}
+            <View
+              style={{
+                marginVertical: 8,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
+              <View
+                style={{
+                  width: 36,
+                  height: 36,
+                  backgroundColor: theme.background.bg,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginRight: 10,
+                }}
               >
-                {t("chatbot.sending")}
-              </Text>
+                <Octicons
+                  name="dependabot"
+                  size={22}
+                  color={theme.text.primary}
+                />
+              </View>
+              <TypingIndicator color={theme.text.primary} />
             </View>
           ) : null}
         </ScrollView>

@@ -292,5 +292,12 @@ export default {
     errorMessage: "Sorry, an error occurred while sending the message. Please try again.",
     sending: "Replying...",
     newConversation: "New Conversation",
+    historyTitle: "Chat History",
+    conversations: "Conversations",
+    options: "Options",
+    share: "Share",
+    comingSoon: "Coming Soon",
+    delete: "Delete",
+    expand: "Expand",
   },
 };
