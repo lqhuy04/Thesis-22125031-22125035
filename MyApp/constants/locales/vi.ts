@@ -30,6 +30,11 @@ export default {
     signInFailed: "Đăng nhập thất bại",
     noIdToken: "Đăng nhập với Google không thành công",
     tryAgain: "Vui lòng thử lại.",
+    signUpWelcome: "Tạo tài khoản để bắt đầu 🚀",
+    signUpFailedTitle: "Đăng ký thất bại",
+    signUpFailedBody: "Email, số điện thoại hoặc mật khẩu không hợp lệ.",
+    emailInvalid: "Email không đúng định dạng.",
+    confirmPasswordMismatch: "Mật khẩu xác nhận không khớp.",
   },
   detail: {
     screenTitle: "Chi tiết cổ phiếu",
@@ -269,11 +274,6 @@ export default {
     validateSpecial: "Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt.",
     successLogoutNotice: "Đổi mật khẩu thành công, hãy đăng nhập lại.",
     successConfirmBtn: "Đã hiểu",
-    signUpWelcome: "Tạo tài khoản để bắt đầu 🚀",
-    signUpFailedTitle: "Đăng ký thất bại",
-    signUpFailedBody: "Email, số điện thoại hoặc mật khẩu không hợp lệ.",
-    emailInvalid: "Email không đúng định dạng.",
-    confirmPasswordMismatch: "Mật khẩu xác nhận không khớp.",
   },
   chatbot: {
     greeting: "Xin chào, tôi có thể giúp gì cho bạn?",
