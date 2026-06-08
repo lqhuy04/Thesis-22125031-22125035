@@ -14,7 +14,8 @@ const Authentication = () => {
   return (
     <SafeAreaView
       style={{
-        padding: 12,
+        paddingHorizontal: 12,
+        paddingTop: 24,
         backgroundColor: theme.background.surface,
         flex: 1,
       }}

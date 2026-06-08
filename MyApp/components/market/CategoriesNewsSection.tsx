@@ -6,6 +6,7 @@ import {
   Image,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -460,11 +461,10 @@ const CategoriesNewsSection = () => {
         }}
       >
         {/* Category tabs */}
-        <View
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
           style={{
-            flexDirection: "row",
-            alignItems: "center",
-            flexWrap: "wrap",
             marginBottom: 12,
           }}
         >
@@ -475,24 +475,19 @@ const CategoriesNewsSection = () => {
               style={{
                 backgroundColor:
                   chosenIndex === index
-                    ? theme.base.primary + "20"
-                    : theme.border.default + "80",
-                paddingVertical: 2,
+                    ? theme.base.primary
+                    : theme.border.default,
+                paddingVertical: 4,
                 paddingHorizontal: 12,
-                borderRadius: 16,
+                borderRadius: 24,
                 marginRight: 8,
-                borderWidth: 2,
-                borderColor:
-                  chosenIndex === index
-                    ? theme.base.primary + "60"
-                    : theme.border.default + "00",
               }}
             >
               <Text
                 typography="bodyMedium"
                 color={
                   chosenIndex === index
-                    ? theme.base.primary
+                    ? theme.text.onPrimary
                     : theme.text.primary
                 }
               >
@@ -500,7 +495,7 @@ const CategoriesNewsSection = () => {
               </Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         {/* Content hoặc skeleton khi lazy load */}
         {isCurrentLoading ? (

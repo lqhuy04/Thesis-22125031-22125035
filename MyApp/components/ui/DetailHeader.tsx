@@ -423,7 +423,7 @@ const DetailHeader = ({
               }}
             >
               <Text
-                typography="bodyLarge"
+                typography="bodyMedium"
                 color={theme.text.primary + "88"}
                 style={{ marginBottom: 8 }}
               >
@@ -448,7 +448,7 @@ const DetailHeader = ({
               }}
             >
               <Text
-                typography="bodyLarge"
+                typography="bodyMedium"
                 color={theme.text.primary + "88"}
                 style={{ marginBottom: 8 }}
               >

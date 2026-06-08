@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Dimensions, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, Dimensions, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { getWatchlist, WatchItem } from "@/helpers/ProfileHelpers";
@@ -18,10 +18,25 @@ type Props = {
   registerRefresh?: (fn: () => Promise<void>) => () => void;
 };
 
+const useShimmer = () => {
+  const shimmer = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
+      ]),
+    ).start();
+  }, [shimmer]);
+  return shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.85] });
+};
+
 const HomeAssetSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [data, setData] = useState<WatchItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const opacity = useShimmer();
 
   const totalAsset = useMemo(
     () => data.reduce((s, item) => s + marketValue(item), 0) * 1000,
@@ -43,21 +58,36 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
   );
 
   const fetchData = useCallback(async () => {
-    getWatchlist().then((res) => {
+    setLoading(true);
+    try {
+      const res = await getWatchlist();
       if (res?.status) setData(res.data);
-    });
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    fetchData(); // gọi lần đầu
-
-    // Đăng ký để Home có thể trigger refresh
+    fetchData();
     const unregister = registerRefresh?.(fetchData);
     return () => unregister?.();
   }, [fetchData, registerRefresh]);
 
   const screenWidth = Dimensions.get("window").width;
   const insets = useSafeAreaInsets();
+
+  const SkeletonBox = ({ w, h, mt = 0 }: { w: number | `${number}%`; h: number; mt?: number }) => (
+    <Animated.View
+      style={{
+        width: w,
+        height: h,
+        marginTop: mt,
+        borderRadius: 4,
+        backgroundColor: theme.text.primary + "30",
+        opacity,
+      }}
+    />
+  );
 
   return (
     <View
@@ -80,36 +110,46 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
           width: screenWidth - 48,
         }}
       >
-        <Text typography="titleMedium" color={theme.text.primary}>
-          {t("home.asset")}
-        </Text>
+        {loading ? (
+          <>
+            <SkeletonBox w="40%" h={16} />
+            <SkeletonBox w="60%" h={44} mt={12} />
+            <SkeletonBox w="75%" h={14} mt={12} />
+          </>
+        ) : (
+          <>
+            <Text typography="titleMedium" color={theme.text.primary}>
+              {t("home.asset")}
+            </Text>
 
-        <Text
-          typography="headlineLarge"
-          style={{ marginVertical: 8, fontSize: 36, lineHeight: 48 }}
-          color={theme.text.primary}
-        >
-          {totalAsset.toLocaleString("vi-VN")} đ
-        </Text>
+            <Text
+              typography="headlineLarge"
+              style={{ marginVertical: 8, fontSize: 36, lineHeight: 48 }}
+              color={theme.text.primary}
+            >
+              {totalAsset.toLocaleString("vi-VN")} đ
+            </Text>
 
-        <Text typography="bodyMedium" color={theme.text.primary}>
-          {t("home.yourInvestment")}
-          <Text
-            typography="labelLarge"
-            color={
-              totalPnl > 0
-                ? theme.base.success
-                : totalPnl < 0
-                  ? theme.base.error
-                  : theme.base.warning
-            }
-            style={{ fontWeight: "bold" }}
-          >
-            {totalPnl > 0 ? "+" : ""}
-            {totalPnl.toLocaleString("vi-VN")} đ ({totalPnl > 0 ? "+" : ""}
-            {totalPnlPct.toFixed(2)}%)
-          </Text>
-        </Text>
+            <Text typography="bodyMedium" color={theme.text.primary}>
+              {t("home.yourInvestment")}
+              <Text
+                typography="labelLarge"
+                color={
+                  totalPnl > 0
+                    ? theme.base.success
+                    : totalPnl < 0
+                      ? theme.base.error
+                      : theme.base.warning
+                }
+                style={{ fontWeight: "bold" }}
+              >
+                {totalPnl > 0 ? "+" : ""}
+                {totalPnl.toLocaleString("vi-VN")} đ ({totalPnl > 0 ? "+" : ""}
+                {totalPnlPct.toFixed(2)}%)
+              </Text>
+            </Text>
+          </>
+        )}
       </TouchableOpacity>
     </View>
   );

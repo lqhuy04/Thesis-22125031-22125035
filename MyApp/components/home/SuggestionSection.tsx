@@ -4,6 +4,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -209,7 +210,7 @@ const SuggestionSectionSkeleton = () => {
                 height={11}
                 animatedOpacity={rowOpacity}
                 style={{
-                  flex: 7,
+                  flex: 6.5,
                   marginRight: 16,
                   backgroundColor: theme.text.primary + "20",
                 }}
@@ -228,7 +229,10 @@ const SuggestionSectionSkeleton = () => {
                 width={60}
                 height={11}
                 animatedOpacity={rowOpacity}
-                style={{ flex: 3, backgroundColor: theme.text.primary + "20" }}
+                style={{
+                  flex: 3.5,
+                  backgroundColor: theme.text.primary + "20",
+                }}
               />
             </View>
 
@@ -248,7 +252,7 @@ const SuggestionSectionSkeleton = () => {
                 {/* Logo + Symbol + Name */}
                 <View
                   style={{
-                    flex: 7,
+                    flex: 6.5,
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 8,
@@ -295,7 +299,7 @@ const SuggestionSectionSkeleton = () => {
                 </View>
 
                 {/* % Badge */}
-                <View style={{ flex: 3, alignItems: "flex-end" }}>
+                <View style={{ flex: 3.4, alignItems: "flex-end" }}>
                   <SkeletonBox
                     width={"100%" as any}
                     height={28}
@@ -525,13 +529,14 @@ const SuggestionSection = () => {
         angleCenter={{ x: 0.5, y: 0.5 }}
         style={{ marginTop: 12, borderRadius: 12 }}
       >
-        <View
+        <ScrollView
           style={{
-            flexDirection: "row",
             marginTop: 12,
             gap: 8,
-            marginHorizontal: 12,
+            marginLeft: 12,
           }}
+          horizontal
+          showsHorizontalScrollIndicator={false}
         >
           {(["top_choice", "trend", "community"] as const).map((tab) => {
             const isActive = activeTab === tab;
@@ -552,6 +557,7 @@ const SuggestionSection = () => {
                   backgroundColor: isActive
                     ? theme.base.primary
                     : theme.border.default,
+                  marginRight: 8,
                 }}
               >
                 <Text
@@ -563,7 +569,7 @@ const SuggestionSection = () => {
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
 
         <FlatList
           ref={flatListRef}
@@ -640,7 +646,7 @@ const SuggestionSection = () => {
                     <Text
                       typography="bodySmall"
                       color={theme.text.primary}
-                      style={{ flex: 7, marginRight: 16 }}
+                      style={{ flex: 6.5, marginRight: 16 }}
                     >
                       {t("suggestion.columnSymbol")}
                     </Text>
@@ -654,7 +660,7 @@ const SuggestionSection = () => {
                     <Text
                       typography="bodySmall"
                       color={theme.text.primary}
-                      style={{ flex: 3, textAlign: "center" }}
+                      style={{ flex: 3.5, textAlign: "center" }}
                     >
                       {t("suggestion.columnChangeToday")}
                     </Text>
@@ -688,7 +694,7 @@ const SuggestionSection = () => {
                         {/* Logo + Symbol + Name */}
                         <View
                           style={{
-                            flex: 7,
+                            flex: 6.5,
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 8,
@@ -736,7 +742,7 @@ const SuggestionSection = () => {
                         </View>
 
                         {/* % Change badge */}
-                        <View style={{ flex: 3, alignItems: "flex-end" }}>
+                        <View style={{ flex: 3.5, alignItems: "flex-end" }}>
                           <View
                             style={{
                               backgroundColor: changeBg,
@@ -750,7 +756,7 @@ const SuggestionSection = () => {
                             <Text typography="labelLarge" color={changeColor}>
                               <Text typography="labelSmall" color={changeColor}>
                                 {arrow}
-                              </Text>{" "}
+                              </Text>
                               {Math.abs(stock.per_price_change).toLocaleString(
                                 "vi-VN",
                               )}

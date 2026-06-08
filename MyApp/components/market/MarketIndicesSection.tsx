@@ -22,6 +22,34 @@ type Props = {
 };
 
 // Skeleton shimmer
+const SkeletonTitle = () => {
+  const { theme } = useTheme();
+  const shimmer = React.useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
+      ]),
+    ).start();
+  }, [shimmer]);
+
+  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.85] });
+
+  return (
+    <Animated.View
+      style={{
+        width: "45%",
+        height: 20,
+        borderRadius: 4,
+        backgroundColor: theme.border.default,
+        opacity,
+      }}
+    />
+  );
+};
+
 const SkeletonCard = () => {
   const { theme } = useTheme();
   const shimmer = React.useRef(new Animated.Value(0)).current;
@@ -146,18 +174,21 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
 
   return (
     <View style={{ marginLeft: 12 }}>
-      <Text typography="titleLarge" color={theme.text.primary}>
-        {t("home.marketToday")}
-      </Text>
-
       {loading ? (
         // Hiện 2 skeleton card lúc loading
-        <View style={{ flexDirection: "row", marginTop: 0 }}>
-          <SkeletonCard />
-          <SkeletonCard />
-        </View>
+        <>
+          <SkeletonTitle />
+          <View style={{ flexDirection: "row", marginTop: 0 }}>
+            <SkeletonCard />
+            <SkeletonCard />
+          </View>
+        </>
       ) : (
-        <FlatList
+        <>
+          <Text typography="titleLarge" color={theme.text.primary}>
+            {t("home.marketToday")}
+          </Text>
+          <FlatList
           data={indices}
           keyExtractor={(item) => item.IndexId}
           horizontal
@@ -368,6 +399,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
             </TouchableOpacity>
           )}
         />
+        </>
       )}
     </View>
   );

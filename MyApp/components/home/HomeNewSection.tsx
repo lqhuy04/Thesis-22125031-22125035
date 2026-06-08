@@ -225,7 +225,8 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
       <View
         style={{
           backgroundColor: theme.background.bg,
-          padding: 12,
+          paddingLeft: 12,
+          paddingVertical: 12,
           borderRadius: 12,
         }}
       >
@@ -242,24 +243,19 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
               style={{
                 backgroundColor:
                   chosenCategory === item.id
-                    ? theme.base.primary + "20"
-                    : theme.border.default + "80",
-                paddingVertical: 2,
+                    ? theme.base.primary
+                    : theme.border.default,
+                paddingVertical: 4,
                 paddingHorizontal: 12,
-                borderRadius: 16,
+                borderRadius: 24,
                 marginRight: 8,
-                borderWidth: 2,
-                borderColor:
-                  chosenCategory === item.id
-                    ? theme.base.primary + "60"
-                    : theme.border.default + "00",
               }}
             >
               <Text
                 typography="bodyMedium"
                 color={
                   chosenCategory === item.id
-                    ? theme.base.primary
+                    ? theme.text.onPrimary
                     : theme.text.primary
                 }
               >
