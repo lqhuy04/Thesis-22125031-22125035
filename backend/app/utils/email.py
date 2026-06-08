@@ -1,7 +1,55 @@
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import httpx
 from app.config import settings
+
+RESEND_API_URL = "https://api.resend.com/emails"
+
+
+async def _deliver_email(to_email: str, subject: str, text_body: str, html_body: str) -> bool:
+    """
+    Gửi email qua Resend HTTP API (HTTPS port 443).
+
+    Lý do không dùng smtplib: Railway (và nhiều cloud khác) chặn outbound SMTP
+    ports 25/465/587 -> socket connect tới smtp.gmail.com bị "Network is unreachable",
+    khiến request signup treo (pending) và không gửi được email.
+
+    Nếu RESEND_API_KEY không được cấu hình -> chạy development mode, chỉ in nội dung
+    ra console (hữu ích khi chạy local).
+    """
+    if not settings.RESEND_API_KEY:
+        print("\n" + "=" * 60)
+        print("EMAIL (Development Mode - no RESEND_API_KEY configured)")
+        print("=" * 60)
+        print(f"To: {to_email}")
+        print(f"Subject: {subject}")
+        print(text_body)
+        print("=" * 60 + "\n")
+        return True
+
+    payload = {
+        "from": settings.FROM_EMAIL,
+        "to": [to_email],
+        "subject": subject,
+        "html": html_body,
+        "text": text_body,
+    }
+    headers = {
+        "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            response = await client.post(RESEND_API_URL, json=payload, headers=headers)
+
+        if response.status_code >= 400:
+            print(f"Failed to send email via Resend: {response.status_code} {response.text}")
+            raise Exception(f"Resend API error {response.status_code}: {response.text}")
+
+        return True
+    except Exception as e:
+        print(f"Failed to send email: {str(e)}")
+        raise
+
 
 async def send_reset_email(to_email: str, reset_token_or_otp: str):
     """
@@ -164,44 +212,7 @@ https://stockrium.vn
         </html>
         '''
     
-    # Check if SMTP is configured
-    if not settings.SMTP_USER or settings.SMTP_USER == "":
-        # Development mode - just print the OTP or link
-        print("\n" + "="*60)
-        if is_otp:
-            print("PASSWORD RESET OTP (Development Mode)")
-            print("="*60)
-            print(f"Email: {to_email}")
-            print(f"OTP Code: {reset_token_or_otp}")
-            print(f"Valid for: 10 minutes")
-        else:
-            print("PASSWORD RESET LINK (Development Mode)")
-            print("="*60)
-            print(f"Email: {to_email}")
-            print(f"Reset Link: {reset_link}")
-            print(f"Token: {reset_token_or_otp}")
-        print("="*60 + "\n")
-        return True
-    
-    # Production mode - send actual email
-    message = MIMEMultipart("alternative")
-    message["From"] = settings.FROM_EMAIL
-    message["To"] = to_email
-    message["Subject"] = subject
-    
-    # Attach both plain text and HTML versions
-    message.attach(MIMEText(text_body, "plain"))
-    message.attach(MIMEText(html_body, "html"))
-    
-    try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            server.starttls()
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.send_message(message)
-        return True
-    except Exception as e:
-        print(f"Failed to send email: {str(e)}")
-        raise
+    return await _deliver_email(to_email, subject, text_body, html_body)
 
 
 async def send_verification_email(to_email: str, verification_otp: str):
@@ -276,33 +287,4 @@ https://stockrium.vn
     </html>
     '''
 
-    # Check if SMTP is configured
-    if not settings.SMTP_USER or settings.SMTP_USER == "":
-        # Development mode - just print the OTP
-        print("\n" + "="*60)
-        print("EMAIL VERIFICATION OTP (Development Mode)")
-        print("="*60)
-        print(f"Email: {to_email}")
-        print(f"OTP Code: {verification_otp}")
-        print(f"Valid for: 10 minutes")
-        print("="*60 + "\n")
-        return True
-
-    message = MIMEMultipart("alternative")
-    message["From"] = settings.FROM_EMAIL
-    message["To"] = to_email
-    message["Subject"] = subject
-    
-    # Attach both plain text and HTML versions
-    message.attach(MIMEText(text_body, "plain"))
-    message.attach(MIMEText(html_body, "html"))
-
-    try:
-        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-            server.starttls()
-            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-            server.send_message(message)
-        return True
-    except Exception as e:
-        print(f"Failed to send email: {str(e)}")
-        raise
+    return await _deliver_email(to_email, subject, text_body, html_body)

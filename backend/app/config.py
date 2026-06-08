@@ -39,11 +39,17 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = ""
     
     # Email (for password reset)
+    # NOTE: Railway chặn outbound SMTP ports (25/465/587), nên không dùng smtplib
+    # trên production được. Email được gửi qua Resend HTTP API (HTTPS port 443).
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     FROM_EMAIL: str = ""
+
+    # Resend (HTTP email API) — bắt buộc trên Railway vì SMTP bị chặn.
+    # Nếu để trống -> chạy ở development mode (chỉ in OTP ra console).
+    RESEND_API_KEY: str = ""
     
     # Frontend URL (for password reset links)
     FRONTEND_URL: str = "http://localhost:3000"
