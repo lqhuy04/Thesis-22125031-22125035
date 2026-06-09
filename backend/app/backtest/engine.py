@@ -492,6 +492,8 @@ class TradeSimulator:
                 "exit_date": exit_date,
                 "entry_price": entry_price,
                 "exit_price": exit_price,
+                "take_profit": take_profit_level,
+                "stop_loss": stop_loss_level,
                 "return_pct": return_pct,
                 "gross_return_pct": gross_return_pct,
                 "transaction_cost": 2 * self.transaction_cost_pct,

@@ -211,6 +211,27 @@ def run_full_backtest(
 
     print("=" * 50)
 
+    # Save visualization
+    try:
+        import os
+        from .visualizer import generate_backtest_html
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        visualizations_dir = os.path.join(current_dir, "visualizations")
+        timestamp_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"{symbol}_{timestamp_str}_backtest.html"
+        output_path = os.path.join(visualizations_dir, output_filename)
+        
+        generate_backtest_html(
+            df=scored_1d,
+            trades=full_trades,
+            metrics=full_metrics,
+            symbol=symbol,
+            output_path=output_path
+        )
+        print(f"Visualization HTML file created: {output_path}")
+    except Exception as e:
+        print(f"Failed to generate visualization HTML: {e}")
+
     result = {
         "parity_report": parity_report,
         "pipeline_results": pipeline_results,

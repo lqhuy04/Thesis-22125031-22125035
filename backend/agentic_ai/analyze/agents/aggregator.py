@@ -133,15 +133,34 @@ Viết theo thứ tự:
 
 PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ
 
+Đọc `interval` từ technical analysis để xác định kỳ hạn, rồi áp dụng bảng sau:
+
+┌──────────────┬──────────────┬──────────────────┬──────────────────┬──────────────────────┐
+│ Kỳ hạn       │ interval     │ TP (% từ entry)  │ SL (% từ entry)  │ max_hold_candles     │
+├──────────────┼──────────────┼──────────────────┼──────────────────┼──────────────────────┤
+│ Ngắn hạn     │ 1h           │ 4% - 8%          │ 2% - 4%          │ 24 - 72 nến (1-3 ngày)│
+│ Ngắn hạn     │ 1d           │ 8% - 15%         │ 4% - 7%          │ 5 - 15 nến           │
+│ Trung hạn    │ 1d           │ 15% - 30%        │ 7% - 12%         │ 15 - 60 nến          │
+│ Trung hạn    │ 1w           │ 20% - 40%        │ 10% - 15%        │ 8 - 24 nến           │
+│ Dài hạn      │ 1w           │ 40% - 80%        │ 15% - 20%        │ 24 - 52 nến          │
+│ Dài hạn      │ 1M           │ 50% - 100%       │ 15% - 25%        │ 6 - 18 nến           │
+└──────────────┴──────────────┴──────────────────┴──────────────────┴──────────────────────┘
+
+Trong phạm vi trên, tinh chỉnh thêm dựa vào:
+- Biên độ ATR gần nhất (nếu có trong technical): dùng 2*ATR làm SL tham chiếu
+- Vùng kháng cự gần nhất làm TP tham chiếu
+- Vùng hỗ trợ gần nhất làm SL tham chiếu
+- Nếu technical có bollinger band: SL không nên thấp hơn lower band
+
+Tỷ lệ Risk/Reward tối thiểu: TP/SL >= 1.5
+Nếu không đạt tỷ lệ này → recommendation = Chờ dù score >= 3.
+
 - Nếu recommendation = Mua:
-    * Lấy current_price từ technical analysis làm tham chiếu chính.
-    * entry_price gần current_price (hoặc bằng current_price).
-    * stop_loss_price < entry_price < take_profit_price.
-    * max_hold_candles là số nguyên dương, hợp lý theo interval (ví dụ 1d: 5–60).
-    * Giải thích ngắn tỷ lệ rủi ro/lợi nhuận trong analysis.
+    * entry_price gần current_price (±0.5%)
+    * stop_loss_price < entry_price < take_profit_price
+    * Giải thích ngắn tỷ lệ R/R trong analysis
 - Nếu recommendation = Chờ:
-    * entry_price, take_profit_price, stop_loss_price = null.
-    * max_hold_candles = null.
+    * Tất cả = null
 
 QUY TẮC BẮT BUỘC:
     ✓ Không bịa số liệu
@@ -167,8 +186,21 @@ def aggregator_agent(state: AgentState) -> AgentState:
 
     fundamental_text = fundamental if fundamental else "Không có dữ liệu"
 
+    # Lấy interval từ plan để truyền cho aggregator
+    plan = state.get("plan", {})
+    interval = plan.get("technical_analysis_agent", {}).get("interval", "1d")
+    investment_horizon = state.get("risk_appetite", {}).get("period", "Trung hạn")
+
     analysis_message = f"""
 DỮ LIỆU PHÂN TÍCH:
+
+=== TECHNICAL ANALYSIS ===
+{json.dumps(technical, ensure_ascii=False, indent=2)}
+
+=== FUNDAMENTAL ANALYSIS ===
+=== CONTEXT ===
+interval: {interval}
+investment_horizon: {investment_horizon}
 
 === TECHNICAL ANALYSIS ===
 {json.dumps(technical, ensure_ascii=False, indent=2)}
@@ -178,7 +210,6 @@ DỮ LIỆU PHÂN TÍCH:
 
 ────────────────────────
 YÊU CẦU:
-
 {user_input}
 """
 

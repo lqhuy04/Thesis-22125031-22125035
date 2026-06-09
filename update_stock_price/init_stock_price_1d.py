@@ -29,7 +29,7 @@ TABLE         = "Stock_Price_1d"
 CHUNK_DAYS    = 30          # SSI giới hạn tối đa 30 ngày mỗi request
 SLEEP_SECONDS = 1.1         # Delay giữa các request để tránh rate-limit SSI
 YEARS_BACK    = 5           # Số năm lấy dữ liệu lịch sử
-RESUME_AFTER_SYMBOL = "CVPB2513"
+RESUME_AFTER_SYMBOL = "MSB"
 SYMBOL_SKIP_SUFFIX_RE = re.compile(r"\d{4}$")
 SYMBOL_3CHAR_RE = re.compile(r'^[A-Z0-9]{3}$')
 ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
@@ -199,7 +199,8 @@ def upsert_candles(candles: list[dict]) -> None:
 def resolve_symbols(cli_symbols: list[str] | None = None) -> list[str]:
     if cli_symbols:
         return [symbol.strip().upper() for symbol in cli_symbols if symbol.strip()]
-    return list(ALLOWED_INDICES)
+    all_symbols = get_all_symbols()
+    return filter_symbols(all_symbols)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
