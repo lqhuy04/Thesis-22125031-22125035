@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import { Text } from "@/components/ui/Text";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { router, useLocalSearchParams } from "expo-router";
@@ -28,6 +29,7 @@ const OTPScreen = () => {
   }>();
 
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -80,7 +82,7 @@ const OTPScreen = () => {
 
   const handleVerify = async () => {
     const code = otp.join("");
-    if (code.length < OTP_LENGTH) return setError("Vui lòng nhập đủ 6 chữ số.");
+    if (code.length < OTP_LENGTH) return setError(t("forgotPasswordFlow.otpIncompleteError"));
 
     setError("");
     setLoading(true);
@@ -102,7 +104,7 @@ const OTPScreen = () => {
         });
       }
     } else {
-      setError("Mã OTP không đúng. Vui lòng thử lại.");
+      setError(t("forgotPasswordFlow.otpInvalidError"));
     }
   };
 
@@ -125,7 +127,7 @@ const OTPScreen = () => {
 
   return (
     <View style={[styles.safe, { backgroundColor: theme.background.surface }]}>
-      <ScreenHeader title="Xác thực OTP" />
+      <ScreenHeader title={t("forgotPasswordFlow.otpScreenTitle")} />
 
       {/* Success Modal */}
       <Modal
@@ -138,14 +140,19 @@ const OTPScreen = () => {
           <View
             style={[styles.modalCard, { backgroundColor: theme.background.bg }]}
           >
-            <Text typography="titleLarge" style={{ textAlign: "center" }}>
-              🎉 Xác thực thành công
+            <Text
+              typography="titleLarge"
+              color={theme.text.primary}
+              style={{ textAlign: "center" }}
+            >
+              {t("forgotPasswordFlow.otpSuccessTitle")}
             </Text>
             <Text
               typography="bodyMedium"
+              color={theme.text.primary}
               style={{ opacity: 0.6, textAlign: "center", marginTop: 8 }}
             >
-              Vui lòng đăng nhập để tiếp tục.
+              {t("forgotPasswordFlow.otpSuccessDesc")}
             </Text>
             <TouchableOpacity
               style={[
@@ -159,7 +166,7 @@ const OTPScreen = () => {
               activeOpacity={0.8}
             >
               <Text typography="titleMedium" color={theme.text.onPrimary}>
-                Đồng ý
+                {t("forgotPasswordFlow.otpSuccessButton")}
               </Text>
             </TouchableOpacity>
           </View>
@@ -169,12 +176,15 @@ const OTPScreen = () => {
       <View style={styles.content}>
         {/* Description */}
         <View style={styles.header}>
-          <Text typography="titleLarge">Nhập mã xác thực</Text>
+          <Text typography="titleLarge" color={theme.text.primary}>
+            {t("forgotPasswordFlow.otpInputLabel")}
+          </Text>
           <Text
             typography="bodyMedium"
+            color={theme.text.primary}
             style={{ opacity: 0.5, textAlign: "center", marginTop: 6 }}
           >
-            Mã OTP gồm 6 chữ số đã được gửi đến email của bạn
+            {t("forgotPasswordFlow.otpDescription")}
           </Text>
         </View>
 
@@ -227,15 +237,19 @@ const OTPScreen = () => {
 
         {/* Resend */}
         <View style={styles.resendRow}>
-          <Text typography="bodyMedium" style={{ opacity: 0.5 }}>
-            Không nhận được mã?{" "}
+          <Text
+            typography="bodyMedium"
+            color={theme.text.primary}
+            style={{ opacity: 0.5 }}
+          >
+            {t("forgotPasswordFlow.otpResendPrefix")}
           </Text>
           <TouchableOpacity onPress={handleResend} disabled={!canResend}>
             <Text
               typography="titleMedium"
               color={canResend ? theme.base.primary : theme.text.secondary}
             >
-              {canResend ? "Gửi lại" : `Gửi lại (${countdown}s)`}
+              {canResend ? t("forgotPasswordFlow.otpResendButton") : t("forgotPasswordFlow.otpResendCooldown").replace("{{countdown}}", countdown.toString())}
             </Text>
           </TouchableOpacity>
         </View>
@@ -258,7 +272,7 @@ const OTPScreen = () => {
             <ActivityIndicator color={theme.text.onPrimary} />
           ) : (
             <Text typography="titleLarge" color={theme.text.onPrimary}>
-              Xác nhận
+              {t("forgotPasswordFlow.otpConfirmButton")}
             </Text>
           )}
         </TouchableOpacity>

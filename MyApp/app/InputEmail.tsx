@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useForm } from "react-hook-form";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import { Text } from "@/components/ui/Text";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { Input } from "@/components/ui/Input";
@@ -15,31 +16,34 @@ import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import { router } from "expo-router";
 import { sendOTPForgotPass } from "@/helpers/AuthenticationHelper";
 
-const validateEmail = (value: string): string | undefined => {
-  if (!value) return undefined;
+const isEmailValid = (value: string): boolean => {
+  if (!value) return true;
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(value)) return "Email không đúng định dạng.";
-  return undefined;
+  return emailRegex.test(value);
 };
 
 const ForgotPasswordEmail = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const { control, handleSubmit, watch } = useForm();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [emailError, setEmailError] = useState<string | undefined>();
 
   const email = watch("email");
-  const isFormValid = !!email && !validateEmail(email);
+  const isFormValid = !!email && isEmailValid(email);
 
   const handleEmailChange = (value: string) => {
-    setEmailError(validateEmail(value));
+    if (value && !isEmailValid(value)) {
+      setEmailError(t("auth.emailFormatError"));
+    } else {
+      setEmailError(undefined);
+    }
   };
 
   const onSubmit = async (data: any) => {
-    const emailErr = validateEmail(data.email);
-    if (!data.email) return setError("Vui lòng nhập email.");
-    if (emailErr) return setEmailError(emailErr);
+    if (!data.email) return setError(t("forgotPasswordFlow.emailRequiredError"));
+    if (!isEmailValid(data.email)) return setEmailError(t("auth.emailFormatError"));
 
     setError("");
     setLoading(true);
@@ -49,7 +53,7 @@ const ForgotPasswordEmail = () => {
     setLoading(false);
 
     if (!response.status)
-      return setError("Email không tồn tại trong hệ thống.");
+      return setError(t("forgotPasswordFlow.emailNotFoundError"));
 
     router.push({
       pathname: "/OTP",
@@ -59,7 +63,7 @@ const ForgotPasswordEmail = () => {
 
   return (
     <View style={[styles.safe, { backgroundColor: theme.background.surface }]}>
-      <ScreenHeader title="Quên mật khẩu" />
+      <ScreenHeader title={t("forgotPasswordFlow.screenTitle")} />
 
       <View style={styles.content}>
         {/* Loading Modal */}
@@ -91,14 +95,19 @@ const ForgotPasswordEmail = () => {
               color={theme.base.primary}
             />
           </View>
-          <Text typography="titleLarge" style={{ textAlign: "center" }}>
-            Xác nhận email
+          <Text
+            typography="titleLarge"
+            color={theme.text.primary}
+            style={{ textAlign: "center" }}
+          >
+            {t("forgotPasswordFlow.emailVerificationTitle")}
           </Text>
           <Text
             typography="bodyMedium"
+            color={theme.text.primary}
             style={{ opacity: 0.5, textAlign: "center", marginTop: 4 }}
           >
-            Nhập email đã đăng ký, chúng tôi sẽ gửi mã OTP để đặt lại mật khẩu.
+            {t("forgotPasswordFlow.emailVerificationDesc")}
           </Text>
         </View>
 
@@ -164,7 +173,7 @@ const ForgotPasswordEmail = () => {
           activeOpacity={0.8}
         >
           <Text typography="titleLarge" color={theme.text.onPrimary}>
-            Gửi mã xác thực
+            {t("forgotPasswordFlow.sendOtpButton")}
           </Text>
         </TouchableOpacity>
       </View>
