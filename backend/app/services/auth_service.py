@@ -33,12 +33,22 @@ class AuthService:
         
         user_data = new_user.data[0]
 
-        # Generate and send verification OTP after account creation
-        verification_otp = await OTPService.generate_and_store_otp_for_purpose(email, "verify-email")
-        await send_verification_email(user_data["email"], verification_otp)
-        
+        # Account creation already succeeded. Sending the verification OTP is
+        # best-effort: if OTP generation or email delivery fails (e.g. email
+        # provider down, DNS not yet verified), we still return success so the
+        # signup isn't blocked. The user can request a new OTP via the
+        # resend_verification_otp endpoint.
+        email_sent = True
+        try:
+            verification_otp = await OTPService.generate_and_store_otp_for_purpose(email, "verify-email")
+            await send_verification_email(user_data["email"], verification_otp)
+        except Exception as e:
+            email_sent = False
+            print(f"Signup: failed to send verification email to {email}: {str(e)}")
+
         return {
-            "message": "Registration successful. Please verify your email before logging in."
+            "message": "Registration successful. Please verify your email before logging in.",
+            "email_sent": email_sent,
         }
     
     @staticmethod
