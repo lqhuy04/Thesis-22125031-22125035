@@ -134,11 +134,11 @@ class InvestmentRecommendation(BaseModel):
 
     analysis: str = Field(
         description=(
-            "Phân tích tổng hợp gồm 4 phần:\n"
-            "  1. Quyết định: Mua/Chờ và lý do tổng hợp\n"
-            "  2. Kỹ thuật: total_score x/5, điểm từng indicator\n"
-            "  3. Cơ bản: sức khỏe tài chính, các chỉ số nổi bật\n"
-            "  4. Giá mua/TP/SL và thời gian giữ: nêu rõ mức giá và số nến tối đa"
+            "Phân tích tổng hợp bằng tiếng Việt, gồm các phần:\n"
+            "  1. Kỹ thuật: Đi qua từng chỉ số (RSI, MA, Bollinger Bands, MACD, KDJ), chỉ ra tích cực/tiêu cực, tại sao, dẫn chứng số liệu.\n"
+            "  2. Cơ bản: Tóm tắt phân tích cơ bản đầy đủ (định giá, sinh lời, tăng trưởng, sức khỏe tài chính, dòng tiền).\n"
+            "  3. Tin tức: Tóm tắt dữ liệu tin tức và nhắc tới những thông tin nổi bật (nếu có).\n"
+            "  4. Giá mua/TP/SL và thời gian giữ: mức giá đề xuất và giải thích R/R (nếu Mua). Không được nhắc lại recommendation và confidence."
         )
     )
 
@@ -222,12 +222,13 @@ Ví dụ:
 
 PHẦN III — VIẾT analysis
 
-Viết theo thứ tự:
-    1. Quyết định Mua/Chờ và lý do tổng hợp 1–2 câu
-    2. Kỹ thuật: total_score x/5, từng indicator (RSI→MA→BOLL→MACD→KDJ)
-    3. Cơ bản: health đánh giá được, dẫn 2–3 chỉ số nổi bật
-    4. Tin tức: sentiment và các điểm chính (nếu có dữ liệu)
-    5. Giá mua/TP/SL: nêu rõ mức giá đề xuất và tỷ lệ R/R
+Viết văn bản phân tích tổng hợp (bằng tiếng Việt) chi tiết và khách quan, tuân thủ nghiêm ngặt các quy tắc cấu trúc sau:
+    - TUYỆT ĐỐI KHÔNG nhắc lại quyết định cuối cùng (Mua/Chờ) và điểm số confidence ở bất kỳ đâu trong phần analysis này.
+    - Cấu trúc bài phân tích gồm các phần sau:
+        1. Phân tích kỹ thuật: Đi qua từng chỉ số kỹ thuật cụ thể (RSI, MA, Bollinger Bands, MACD, KDJ). Với từng chỉ số, hãy chỉ rõ trạng thái là Tích cực hay Tiêu cực, lý giải tại sao và dẫn chứng số liệu/giá trị cụ thể.
+        2. Phân tích cơ bản: Tóm tắt phân tích cơ bản một cách đầy đủ và toàn diện dựa trên dữ liệu (gồm định giá, sức khỏe tài chính, khả năng sinh lời, tăng trưởng, dòng tiền).
+        3. Tin tức: Tóm tắt dữ liệu tin tức, nhắc tới những thông tin/sự kiện nổi bật nhất (nếu có).
+        4. Mức giá & Quản trị rủi ro (nếu recommendation = Mua): Nêu rõ mức giá đề xuất, số nến giữ tối đa và tỷ lệ Risk/Reward. Nếu recommendation = Chờ, giải thích các yếu tố kỹ thuật hoặc cơ bản nào chưa đạt điều kiện mà không đề xuất giá.
 
 PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ
 
