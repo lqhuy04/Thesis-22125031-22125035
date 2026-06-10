@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Alert, TouchableOpacity, View } from "react-native";
+import { Animated, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
@@ -169,8 +169,6 @@ const RiskAppetite = () => {
       setSaving(false);
       if (res.status) {
         router.back();
-      } else {
-        Alert.alert("Lỗi", "Đã có lỗi xảy ra, vui lòng thử lại sau.");
       }
     });
   };
