@@ -2,11 +2,13 @@ import { sendMessage } from "./api/ApiClients";
 import { getRiskAppetite } from "./ProfileHelpers";
 
 export type AnalysisData = {
-  summary: string;
   recommendation: string;
-  reasoning: string;
+  entry_price: number | null;
+  take_profit_price: number | null;
+  stop_loss_price: number | null;
+  max_hold_candles: number | null;
   confidence: number;
-  tactical_suggestion: string;
+  analysis: string;
 };
 
 export const getAnalysis = async (
@@ -22,9 +24,10 @@ export const getAnalysis = async (
       method: "POST",
       body: JSON.stringify({
         mode: "auto",
-        plan: {},
         symbol: symbol,
-        risk_appetite: riskAppetite.data,
+        risk_appetite: {
+          period: "short_term",
+        },
       }),
     });
 
@@ -133,10 +136,9 @@ export const getChatHistory = async (
   data: ChatHistoryMessage[];
 }> => {
   try {
-    const result = await sendMessage(
-      `api/agentic/chat/history/${sessionId}`,
-      { method: "GET" },
-    );
+    const result = await sendMessage(`api/agentic/chat/history/${sessionId}`, {
+      method: "GET",
+    });
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
@@ -157,10 +159,9 @@ export const deleteChatSession = async (
   sessionId: string,
 ): Promise<{ status: boolean }> => {
   try {
-    const result = await sendMessage(
-      `api/agentic/chat/session/${sessionId}`,
-      { method: "DELETE" },
-    );
+    const result = await sendMessage(`api/agentic/chat/session/${sessionId}`, {
+      method: "DELETE",
+    });
     return { status: (result?.errorCode ?? -1) === 0 };
   } catch (error) {
     console.error(error);

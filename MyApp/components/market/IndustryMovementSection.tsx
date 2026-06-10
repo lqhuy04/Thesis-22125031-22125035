@@ -76,7 +76,8 @@ const IndustryMovementSection = () => {
         marginTop: 24,
         marginHorizontal: 12,
         backgroundColor: theme.background.bg,
-        padding: 12,
+        paddingVertical: 12,
+        paddingLeft: 12,
         borderRadius: 12,
       }}
     >
@@ -134,19 +135,14 @@ const IndustryMovementSection = () => {
             <TouchableOpacity
               key={index.toString()}
               style={{
+                paddingHorizontal: 12,
+                paddingVertical: 4,
+                borderRadius: 24,
                 backgroundColor:
                   chosenIndex === index
-                    ? theme.base.primary + "20"
-                    : theme.border.default + "80",
-                paddingVertical: 2,
-                paddingHorizontal: 12,
-                borderRadius: 16,
+                    ? theme.base.primary
+                    : theme.border.default,
                 marginRight: 8,
-                borderWidth: 2,
-                borderColor:
-                  chosenIndex === index
-                    ? theme.base.primary + "60"
-                    : theme.border.default + "00",
               }}
               onPress={() => {
                 setChosenIndex(index);
@@ -156,7 +152,7 @@ const IndustryMovementSection = () => {
                 typography="bodyMedium"
                 color={
                   chosenIndex === index
-                    ? theme.base.primary
+                    ? theme.text.onPrimary
                     : theme.text.primary
                 }
               >
