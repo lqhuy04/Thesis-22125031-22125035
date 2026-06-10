@@ -1,6 +1,13 @@
 import { useTheme } from "@/hooks/ThemeContext";
-import React, { useCallback, useState } from "react";
-import { Modal, Pressable, Switch, TouchableOpacity, View } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Animated,
+  Modal,
+  Pressable,
+  Switch,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
 import { router, useFocusEffect } from "expo-router";
@@ -14,6 +21,40 @@ import {
   UserProfile,
 } from "@/helpers/AuthenticationHelper";
 import { Language, useLocalization } from "@/hooks/LocalizationContext";
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
+const SkeletonBox = ({
+  width,
+  height,
+  borderRadius = 6,
+  style,
+}: {
+  width: number | string;
+  height: number;
+  borderRadius?: number;
+  style?: object;
+}) => {
+  const { theme } = useTheme();
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.View
+      style={[{ width, height, borderRadius, backgroundColor: theme.border.default, opacity }, style]}
+    />
+  );
+};
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface MenuItemProps {
@@ -257,12 +298,25 @@ const Profile = () => {
         </View>
 
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <Text typography="titleMedium" color={theme.text.primary}>
-            {profile?.email}
-          </Text>
-          <Text typography="bodyMedium" color={theme.text.primary}>
-            {profile?.user_id}
-          </Text>
+          {profile ? (
+            <>
+              <Text
+                typography="titleMedium"
+                color={theme.text.primary}
+                style={{ marginBottom: 4 }}
+              >
+                {profile.email}
+              </Text>
+              <Text typography="bodyMedium" color={theme.text.primary}>
+                {profile.user_id}
+              </Text>
+            </>
+          ) : (
+            <>
+              <SkeletonBox width="75%" height={18} style={{ marginBottom: 8 }} />
+              <SkeletonBox width="55%" height={14} />
+            </>
+          )}
         </View>
       </View>
 

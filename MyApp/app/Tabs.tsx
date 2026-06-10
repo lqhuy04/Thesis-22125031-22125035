@@ -32,6 +32,7 @@ const Tabs = () => {
   const { theme } = useTheme();
   const pagerRef = useRef<PagerView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [visitedTabs, setVisitedTabs] = useState<Set<number>>(new Set([0]));
 
   const TABS = [
     {
@@ -81,6 +82,7 @@ const Tabs = () => {
   const handleTabPress = (index: number) => {
     pagerRef.current?.setPage(index);
     setActiveIndex(index);
+    setVisitedTabs((prev) => new Set(prev).add(index));
     animateTo(index);
   };
 
@@ -100,13 +102,14 @@ const Tabs = () => {
         onPageSelected={(e) => {
           const idx = e.nativeEvent.position;
           setActiveIndex(idx);
+          setVisitedTabs((prev) => new Set(prev).add(idx));
           animateTo(idx);
         }}
         overdrag={false}
       >
-        {TABS.map((tab) => (
+        {TABS.map((tab, index) => (
           <View key={tab.name} style={{ flex: 1 }}>
-            {tab.component}
+            {visitedTabs.has(index) ? tab.component : null}
           </View>
         ))}
       </PagerView>
