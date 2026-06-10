@@ -2,57 +2,33 @@ import { sendMessage } from "./api/ApiClients";
 import { CurrentPriceData } from "./DetailHelpers";
 
 export const saveRiskAppetite = async ({
-  experience,
-  expectation,
   period,
-  comfort_zone,
-  capital_ratio,
 }: {
-  experience: string;
-  expectation: string;
   period: string;
-  comfort_zone: string;
-  capital_ratio: string;
 }): Promise<{
   status: boolean;
 }> => {
   try {
     const result = await sendMessage("api/risk-appetite/", {
       method: "POST",
-      body: JSON.stringify({
-        experience,
-        expectation,
-        period,
-        comfort_zone,
-        capital_ratio,
-      }),
+      body: JSON.stringify({ period }),
     });
 
     const { errorCode } = result || {};
 
     if (errorCode === 0) {
-      return {
-        status: true,
-      };
+      return { status: true };
     } else {
-      return {
-        status: false,
-      };
+      return { status: false };
     }
   } catch (error) {
     console.error(error);
-    return {
-      status: false,
-    };
+    return { status: false };
   }
 };
 
 export type RiskAppetite = {
-  experience: string;
-  expectation: string;
   period: string;
-  comfort_zone: string;
-  capital_ratio: string;
 };
 
 export const getRiskAppetite = async (): Promise<{

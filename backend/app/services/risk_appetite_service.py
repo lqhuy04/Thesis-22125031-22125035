@@ -39,11 +39,7 @@ class RiskAppetiteService:
     @staticmethod
     async def upsert_risk_appetite(
         user_id: str,
-        experience: Optional[str] = None,
-        expectation: Optional[str] = None,
-        period: Optional[str] = None,
-        comfort_zone: Optional[str] = None,
-        capital_ratio: Optional[str] = None,
+        period: str,
     ) -> Dict:
         """
         Create or update risk appetite for a user.
@@ -51,20 +47,12 @@ class RiskAppetiteService:
 
         Args:
             user_id: The authenticated user's ID
-            experience: Investment experience level
-            expectation: Return expectation
-            period: Investment time horizon
-            comfort_zone: Risk comfort zone
-            capital_ratio: Capital ratio for investment
+            period: Investment time horizon (short_term, mid_term, long_term)
         """
         try:
             payload = {
                 "userid": user_id,
-                "experience": experience,
-                "expectation": expectation,
                 "period": period,
-                "comfort_zone": comfort_zone,
-                "capital_ratio": capital_ratio,
             }
 
             # Check if record already exists

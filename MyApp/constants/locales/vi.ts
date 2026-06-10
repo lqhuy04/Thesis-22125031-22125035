@@ -318,6 +318,20 @@ export default {
     delete: "Xoá",
     expand: "Mở rộng",
   },
+  riskAppetiteScreen: {
+    title: "Khẩu vị rủi ro",
+    question: "Bạn định đầu tư trong bao lâu?",
+    description:
+      "Khoảng thời gian này giúp đưa ra chiến thuật đầu tư phù hợp cho bạn.",
+    shortTerm: "Ngắn hạn",
+    shortTermDesc: "Dưới 3 tháng",
+    midTerm: "Trung hạn",
+    midTermDesc: "3 - 12 tháng",
+    longTerm: "Dài hạn",
+    longTermDesc: "Trên 1 năm",
+    save: "Lưu lại",
+    saving: "Đang lưu...",
+  },
   forgotPasswordFlow: {
     screenTitle: "Quên mật khẩu",
     emailVerificationTitle: "Xác nhận email",

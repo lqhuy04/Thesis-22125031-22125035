@@ -25,9 +25,7 @@ export const getAnalysis = async (
       body: JSON.stringify({
         mode: "auto",
         symbol: symbol,
-        risk_appetite: {
-          period: "short_term",
-        },
+        risk_appetite: riskAppetite?.data,
       }),
     });
 
