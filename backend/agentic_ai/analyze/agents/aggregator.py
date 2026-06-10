@@ -3,6 +3,15 @@ aggregator.py — Aggregator Agent (simplified)
 
 Đọc output từ technical_analysis_agent, tổng hợp và đưa ra quyết định Mua/Chờ.
 Rule: total_score >= 3/5 → Mua, ngược lại → Chờ.
+
+Confidence được tính deterministic trong Python (không để LLM tự sinh),
+dựa trên 3 nguồn với trọng số bằng nhau:
+
+  confidence = (1/3) * technical_component     # technical_score / 5
+             + (1/3) * fundamental_component   # strong=1.0 / neutral=0.5 / weak=0.0 / N/A=0.5
+             + (1/3) * article_component       # positive=1.0 / neutral=0.5 / negative=0.0 / N/A=0.5
+
+  Ngưỡng chấp nhận lệnh Mua: confidence >= CONFIDENCE_THRESHOLD (0.55)
 """
 
 import json
@@ -11,6 +20,69 @@ from pydantic import BaseModel, Field
 
 from agentic_ai.service.openai_service import _get_openai_client
 from agentic_ai.analyze.state import AgentState
+
+
+# ─────────────────────────────────────────────────────────────
+# ⚙️ Confidence Config
+# ─────────────────────────────────────────────────────────────
+
+# Ngưỡng tối thiểu để chấp nhận lệnh Mua
+CONFIDENCE_THRESHOLD = 0.55
+
+# Trọng số từng nguồn (bằng nhau, tổng = 1.0)
+CONFIDENCE_WEIGHTS = {
+    "technical":   1 / 3,
+    "fundamental": 1 / 3,
+    "article":     1 / 3,
+}
+
+# Điểm trung lập khi nguồn thiếu dữ liệu (N/A)
+_NA_SCORE = 0.5
+
+# Map nhãn → điểm
+_FUNDAMENTAL_SCORE_MAP: dict[str, float] = {
+    "strong":  1.0,
+    "neutral": 0.5,
+    "weak":    0.0,
+    "N/A":     _NA_SCORE,
+}
+
+_ARTICLE_SCORE_MAP: dict[str, float] = {
+    "positive": 1.0,
+    "neutral":  0.5,
+    "negative": 0.0,
+    "N/A":      _NA_SCORE,
+}
+
+
+def _compute_confidence(
+    technical_score: int,
+    fundamental_health: str,
+    article_sentiment: str,
+) -> float:
+    """
+    Tính confidence score [0.0, 1.0] hoàn toàn bằng rule cứng.
+
+    3 nguồn, trọng số đều nhau (1/3 mỗi nguồn):
+      technical_component   = technical_score / 5
+      fundamental_component = _FUNDAMENTAL_SCORE_MAP[fundamental_health]
+      article_component     = _ARTICLE_SCORE_MAP[article_sentiment]
+
+    Khi nguồn thiếu dữ liệu (N/A) → dùng _NA_SCORE = 0.5 (trung lập),
+    không redistribute trọng số sang nguồn khác.
+    """
+    technical_component   = max(0.0, min(technical_score, 5)) / 5.0
+    fundamental_component = _FUNDAMENTAL_SCORE_MAP.get(fundamental_health, _NA_SCORE)
+    article_component     = _ARTICLE_SCORE_MAP.get(article_sentiment, _NA_SCORE)
+
+    w = CONFIDENCE_WEIGHTS
+    score = (
+        w["technical"]   * technical_component
+        + w["fundamental"] * fundamental_component
+        + w["article"]     * article_component
+    )
+
+    return round(score, 4)
 
 
 # ─────────────────────────────────────────────────────────────
@@ -44,16 +116,12 @@ class InvestmentRecommendation(BaseModel):
 
     take_profit_price: float | None = Field(
         default=None,
-        description=(
-            "Giá chốt lời đề xuất. Nếu recommendation = Chờ thì để null."
-        ),
+        description="Giá chốt lời đề xuất. Nếu recommendation = Chờ thì để null.",
     )
 
     stop_loss_price: float | None = Field(
         default=None,
-        description=(
-            "Giá cắt lỗ đề xuất. Nếu recommendation = Chờ thì để null."
-        ),
+        description="Giá cắt lỗ đề xuất. Nếu recommendation = Chờ thì để null.",
     )
 
     max_hold_candles: int | None = Field(
@@ -74,16 +142,35 @@ class InvestmentRecommendation(BaseModel):
         )
     )
 
-    confidence: Literal["high", "medium", "low"] = Field(
+    # ── Raw signals để Python tính confidence ──────────────────
+    technical_score: int = Field(
         description=(
-            "Mức độ tin cậy của quyết định:\n"
-            "  high   = technical & fundamental đồng thuận\n"
-            "  medium = chỉ 1 nguồn mạnh, hoặc 1 nguồn thiếu dữ liệu\n"
-            "  low    = tín hiệu yếu hoặc mâu thuẫn"
+            "Điểm kỹ thuật tổng hợp đọc trực tiếp từ technical_analysis_agent. "
+            "Giá trị nguyên 0–5. KHÔNG tự tính lại."
         )
     )
 
-    data_sources_used: list[Literal["technical", "fundamental"]] = Field(
+    fundamental_health: Literal["strong", "neutral", "weak", "N/A"] = Field(
+        description=(
+            "Đánh giá sức khỏe tài chính:\n"
+            "  strong  = ROE > 15%, P/E hợp lý, nợ thấp, tăng trưởng dương\n"
+            "  neutral = chỉ số trung bình, không có dấu hiệu cực đoan\n"
+            "  weak    = ROE thấp, nợ cao, tăng trưởng âm, P/E quá cao\n"
+            "  N/A     = không có dữ liệu fundamental"
+        )
+    )
+
+    article_sentiment: Literal["positive", "neutral", "negative", "N/A"] = Field(
+        description=(
+            "Đánh giá sentiment tổng hợp từ tin tức:\n"
+            "  positive = tin tức tích cực, hỗ trợ xu hướng tăng\n"
+            "  neutral  = tin tức trung tính hoặc lẫn lộn\n"
+            "  negative = tin tức tiêu cực, rủi ro giảm giá\n"
+            "  N/A      = không có dữ liệu article (hiện đang tạm ngưng)"
+        )
+    )
+
+    data_sources_used: list[Literal["technical", "fundamental", "article"]] = Field(
         description="Danh sách nguồn dữ liệu thực sự có dữ liệu và được dùng"
     )
 
@@ -94,21 +181,31 @@ class InvestmentRecommendation(BaseModel):
 
 AGGREGATOR_SYSTEM_PROMPT = """
 Bạn là chuyên gia phân tích đầu tư chứng khoán Việt Nam.
-Bạn nhận dữ liệu từ 2 nguồn và tổng hợp thành quyết định Mua/Chờ.
-Nguồn tin tức (article) hiện đang tạm ngưng — bỏ qua hoàn toàn.
+Bạn nhận dữ liệu từ tối đa 3 nguồn và tổng hợp thành quyết định Mua/Chờ.
+
+LƯU Ý: Confidence KHÔNG do bạn tính — hệ thống sẽ tính sau từ 3 raw signals:
+  - technical_score    : đọc nguyên từ technical_analysis_agent (0–5)
+  - fundamental_health : đánh giá theo tiêu chí bên dưới (strong/neutral/weak/N/A)
+  - article_sentiment  : đánh giá sentiment tin tức (positive/neutral/negative/N/A)
 
 PHẦN I — ĐÁNH GIÁ TỪNG NGUỒN
 
 1. Technical (bắt buộc):
-     Đọc total_score từ technical_analysis_agent.
-     Không tự tính lại.
+     Đọc total_score từ technical_analysis_agent. KHÔNG tự tính lại.
 
 2. Fundamental (tùy chọn):
      Nếu có dữ liệu: đánh giá sức khỏe tài chính là
          strong  = ROE > 15%, P/E hợp lý, nợ thấp, tăng trưởng dương
          neutral = chỉ số trung bình, không có dấu hiệu cực đoan
          weak    = ROE thấp, nợ cao, tăng trưởng âm, P/E quá cao
-     Nếu thiếu dữ liệu: bỏ qua điều kiện này.
+     Nếu thiếu dữ liệu: trả về "N/A".
+
+3. Article (tùy chọn):
+     Nếu có dữ liệu: đánh giá sentiment tổng hợp từ tin tức là
+         positive = tin tức tích cực, hỗ trợ xu hướng tăng
+         neutral  = tin tức trung tính hoặc lẫn lộn
+         negative = tin tức tiêu cực, rủi ro giảm giá
+     Nếu thiếu dữ liệu hoặc đang tạm ngưng: trả về "N/A".
 
 PHẦN II — LOGIC TỔNG HỢP (CỨNG, KHÔNG OVERRIDE)
 
@@ -118,18 +215,19 @@ Mua = technical_score >= 3
 Chờ = mọi trường hợp còn lại
 
 Ví dụ:
-    score=4, fundamental=strong  → Mua, confidence=high
-    score=4, fundamental=weak    → Chờ, confidence=medium
-    score=4, fundamental=N/A     → Mua, confidence=medium
-    score=2, fundamental=strong  → Chờ, confidence=high
+    score=4, fundamental=strong   → Mua
+    score=4, fundamental=weak     → Chờ
+    score=4, fundamental=N/A      → Mua
+    score=2, fundamental=strong   → Chờ
 
 PHẦN III — VIẾT analysis
 
 Viết theo thứ tự:
-    1. Quyết định Mua/Chờ, confidence, lý do tổng hợp 1–2 câu
+    1. Quyết định Mua/Chờ và lý do tổng hợp 1–2 câu
     2. Kỹ thuật: total_score x/5, từng indicator (RSI→MA→BOLL→MACD→KDJ)
     3. Cơ bản: health đánh giá được, dẫn 2–3 chỉ số nổi bật
-    4. Giá mua/TP/SL: nêu rõ mức giá đề xuất
+    4. Tin tức: sentiment và các điểm chính (nếu có dữ liệu)
+    5. Giá mua/TP/SL: nêu rõ mức giá đề xuất và tỷ lệ R/R
 
 PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ
 
@@ -160,13 +258,13 @@ Nếu không đạt tỷ lệ này → recommendation = Chờ dù score >= 3.
     * stop_loss_price < entry_price < take_profit_price
     * Giải thích ngắn tỷ lệ R/R trong analysis
 - Nếu recommendation = Chờ:
-    * Tất cả = null
+    * entry_price, take_profit_price, stop_loss_price, max_hold_candles = null
 
 QUY TẮC BẮT BUỘC:
     ✓ Không bịa số liệu
     ✓ Không override logic tổng hợp ở Phần II
     ✓ Nếu nguồn nào thiếu dữ liệu, ghi rõ "Không có dữ liệu [nguồn]"
-    ✓ KHÔNG dùng article (đang tạm ngưng)
+    ✓ KHÔNG tự sinh confidence — hệ thống sẽ tính từ technical_score, fundamental_health, article_sentiment
 """
 
 
@@ -181,10 +279,12 @@ def aggregator_agent(state: AgentState) -> AgentState:
     results    = state.get("agent_results", {})
     user_input = state.get("user_input", "")
 
-    technical = results.get("technical_analysis_agent", {})
-    fundamental = results.get("fundamental_analysis_agent", "")
+    technical       = results.get("technical_analysis_agent", {})
+    fundamental     = results.get("fundamental_analysis_agent", "")
+    article         = results.get("article_agent", "")
 
     fundamental_text = fundamental if fundamental else "Không có dữ liệu"
+    article_text     = article if article else "Không có dữ liệu"
 
     # Lấy interval từ plan để truyền cho aggregator
     plan = state.get("plan", {})
@@ -194,10 +294,6 @@ def aggregator_agent(state: AgentState) -> AgentState:
     analysis_message = f"""
 DỮ LIỆU PHÂN TÍCH:
 
-=== TECHNICAL ANALYSIS ===
-{json.dumps(technical, ensure_ascii=False, indent=2)}
-
-=== FUNDAMENTAL ANALYSIS ===
 === CONTEXT ===
 interval: {interval}
 investment_horizon: {investment_horizon}
@@ -207,6 +303,9 @@ investment_horizon: {investment_horizon}
 
 === FUNDAMENTAL ANALYSIS ===
 {fundamental_text}
+
+=== ARTICLE / NEWS ===
+{article_text}
 
 ────────────────────────
 YÊU CẦU:
@@ -226,15 +325,48 @@ YÊU CẦU:
 
         parsed: InvestmentRecommendation = response.choices[0].message.parsed
 
+        # ── Tính confidence deterministic từ 3 raw signals ────────────────────
+        confidence = _compute_confidence(
+            technical_score    = parsed.technical_score,
+            fundamental_health = parsed.fundamental_health,
+            article_sentiment  = parsed.article_sentiment,
+        )
+
+        # ── Override recommendation nếu confidence dưới ngưỡng ────────────────
+        recommendation = parsed.recommendation
+        if recommendation == "Mua" and confidence < CONFIDENCE_THRESHOLD:
+            print(
+                f"[Aggregator] confidence={confidence} < threshold={CONFIDENCE_THRESHOLD} "
+                f"→ override Mua → Chờ"
+            )
+            recommendation = "Chờ"
+
+        if recommendation == "Chờ":
+            entry_price       = None
+            take_profit_price = None
+            stop_loss_price   = None
+            max_hold_candles  = None
+        else:
+            entry_price       = parsed.entry_price
+            take_profit_price = parsed.take_profit_price
+            stop_loss_price   = parsed.stop_loss_price
+            max_hold_candles  = parsed.max_hold_candles
+
         output = {
-            "recommendation":    parsed.recommendation,
-            "entry_price":       parsed.entry_price,
-            "take_profit_price": parsed.take_profit_price,
-            "stop_loss_price":   parsed.stop_loss_price,
-            "max_hold_candles":  parsed.max_hold_candles,
-            "confidence":        parsed.confidence,
-            "data_sources_used": parsed.data_sources_used,
-            "analysis":          parsed.analysis,
+            "recommendation":       recommendation,
+            "entry_price":          entry_price,
+            "take_profit_price":    take_profit_price,
+            "stop_loss_price":      stop_loss_price,
+            "max_hold_candles":     max_hold_candles,
+            "confidence":           confidence,
+            "confidence_threshold": CONFIDENCE_THRESHOLD,
+            "confidence_breakdown": {
+                "technical_score":    parsed.technical_score,
+                "fundamental_health": parsed.fundamental_health,
+                "article_sentiment":  parsed.article_sentiment,
+                "weights":            {k: round(v, 4) for k, v in CONFIDENCE_WEIGHTS.items()},
+            },
+            "analysis":             parsed.analysis,
         }
 
         print("[Aggregator] Output:")
@@ -248,13 +380,14 @@ YÊU CẦU:
         return {
             "error": str(e),
             "final_output": {
-                "recommendation":    "Chờ",
-                "entry_price":       None,
-                "take_profit_price": None,
-                "stop_loss_price":   None,
-                "max_hold_candles":  None,
-                "confidence":        "low",
-                "data_sources_used": [],
-                "analysis":          "Lỗi hệ thống — vui lòng thử lại sau.",
+                "recommendation":       "Chờ",
+                "entry_price":          None,
+                "take_profit_price":    None,
+                "stop_loss_price":      None,
+                "max_hold_candles":     None,
+                "confidence":           0.0,
+                "confidence_threshold": CONFIDENCE_THRESHOLD,
+                "confidence_breakdown": {},
+                "analysis":             "Lỗi hệ thống — vui lòng thử lại sau.",
             },
         }
