@@ -125,6 +125,152 @@ export default {
     clearAll: "Clear All",
     done: "Done",
   },
+  chartGuide: {
+    title: "How to read the chart",
+    back: "Back",
+    next: "Next",
+    done: "Got it",
+
+    // Step 1 — Candle anatomy
+    structureTitle: "Anatomy of each candle",
+    bullTitle: "Green candle (price up)",
+    bullSubtitle: "Open price < close price",
+    bearTitle: "Red candle (price down)",
+    bearSubtitle: "Open price > close price",
+    high: "Highest price",
+    low: "Lowest price",
+    open: "Open price",
+    close: "Close price",
+    structureIntro: 'The basic components of a "candle"',
+    bodyLabel: "A. Candle body:",
+    bodyDesc:
+      "The distance between the open and close price. It shows the trading range and helps investors tell whether buyers or sellers control the market.",
+    shadowLabel: "B. Candle wicks:",
+    shadowDesc:
+      'The two "wicks" at each end of the body show the highest and lowest prices. The longer the wick, the stronger the tug-of-war between buyers and sellers.',
+    paramsLabel: "C. Key parameters:",
+    param1:
+      "Open - Close: The starting and ending price within the trading timeframe",
+    param2:
+      "High - Low: The peak and bottom price reached within the trading timeframe",
+
+    // Step 2 — Candlestick chart
+    candleChartTitle: "Candlestick chart",
+    candleChartDesc:
+      "An essential tool that helps investors visually observe trends, market psychology and money flow over a given period of time.",
+    axisXItem: "Time axis (x): Displays the trading time points.",
+    axisYItem: "Price axis (y): Displays the price levels of the stock.",
+    periodItem:
+      "The candle period indicates how much time each candle represents. For example, when you choose a 1-hour candle, each candle shows the price movement within 1 hour.",
+
+    // Step 3 — Volume chart
+    volumeChartTitle: "Volume chart",
+    volumeChartDesc:
+      "A tool that helps confirm the strength of a trend and detect the footprint of money flow",
+    volumeWhatTitle: "A. What is Volume?",
+    volumeWhatDesc:
+      "The total number of shares successfully matched within a given timeframe.",
+    colorLabel: "Color:",
+    colorGreen: "Green bar: Volume during a rising session",
+    colorRed: "Red bar: Volume during a falling session",
+    heightLabel: "Height:",
+    heightDesc:
+      "The taller the bar, the larger the money flow involved and the more active the market.",
+    trendTitle: "B. Confirming trend strength",
+    trendDesc:
+      "Volume measures the reliability of an upward or downward momentum.",
+    trend1:
+      "Price and volume rising (or falling) together confirms the up or down trend is solid.",
+    trend2:
+      "Price moving on low volume signals a lack of demand (or supply), warning of a potential reversal.",
+    moneyTitle: 'C. Spotting the footprint of "Big money"',
+    moneyDesc:
+      "Through spikes in volume bars, investors can recognize the presence of financial institutions or large investors.",
+    breakoutLabel: "Breakout confirmation:",
+    breakoutDesc:
+      "An outstanding price rise accompanied by an abnormal spike in volume signals big money pushing the price into a new growth cycle.",
+    absorbLabel: "Absorbing selling pressure:",
+    absorbDesc:
+      'Large volume at low price zones shows big money quietly "accumulating", building a solid base for the stock to rise.',
+
+    // Step 4 — Advanced technical chart
+    advancedTitle: "Advanced technical chart",
+    advancedDesc:
+      "Provides a full set of drawing tools and indicators that help investors analyze deeply into every smallest movement of the market.",
+    advancedHint:
+      "Tap the expand icon at the corner of the chart to enter full screen and view all indicators.",
+    controlsTitle: "Chart controls",
+    chartTypeTitle: "Switch chart type (Line / Candle)",
+    chartTypeDesc:
+      'Tap the "Line" or "Candle" button at the top of the chart to switch between a line chart (tracking the close-price trend) and a candlestick chart (showing full open, close, high, low).',
+    intervalCtrlTitle: "Choose the candle period",
+    intervalCtrlDesc:
+      'Tap the "Periods" box below the chart to choose the timeframe for each candle: from 1 minute, 15 minutes, 1 hour up to 1 day, 1 week, 1 month.',
+    indicatorCtrlTitle: "Choose technical indicators",
+    indicatorCtrlDesc:
+      'Tap the "Indicators" icon to toggle indicators such as MA, BOLL, Volume, MACD, RSI, KDJ overlaid on the chart.',
+    expandCtrlTitle: "Expand to full screen",
+    expandCtrlDesc:
+      "Tap the expand icon at the bottom corner of the chart to enter full screen and view all drawing tools together with every indicator.",
+
+    // Step 5 — Single patterns
+    singleTitle: "3 common single-candle patterns",
+    patternsSubtitle:
+      "Helps you read market psychology, recognize money-flow strength and catch potential reversal signals early",
+    feature: "Characteristics:",
+    meaning: "Meaning:",
+    dojiName: "Doji",
+    dojiFeature:
+      "Cross-shaped because the close price is nearly equal to the open price.",
+    dojiMeaning:
+      "Buyers and sellers are balanced; the market is pausing to wait for a new trend. Often appears at important reversal points.",
+    hammerName: "Hammer",
+    hammerFeature:
+      "Hammer-shaped. A small upper body with a very long wick (2-3 times the body).",
+    hammerMeaning:
+      'Reflects a "comeback" within the session. Early on, sellers dominate and push the price down; by the close, buyers take over and push the close price back near the high.',
+    marubozuName: "Marubozu",
+    marubozuFeature: "A very long body with almost no wicks.",
+    marubozuMeaning:
+      "Confirms one side—buyers or sellers—fully dominates. Confirms a strong trend that is likely to continue.",
+
+    // Step 6 — Cluster patterns
+    clusterTitle: "3 common cluster-candle patterns",
+    engulfingName: "Engulfing",
+    engulfingFeature:
+      "The body of the second candle completely covers the body of the first candle.",
+    engulfingMeaning:
+      "A signal that the opposite side (buyers or sellers) has fully taken over and established a new trend.",
+    engulfingBearLabel: "Bearish engulfing",
+    engulfingBullLabel: "Bullish engulfing",
+    starName: "Morning Star / Evening Star",
+    starFeatureTitle: "Characteristics, a set of 3 candles:",
+    star1: "Candle 1: Long body, strongly continuing the current trend.",
+    star2: "Candle 2: Short body or Doji, showing hesitation and loss of momentum.",
+    star3: "Candle 3: Long body, decisively reversing against candle 1.",
+    starMeaning:
+      'Symbolizes the transition between day and night. While the Morning Star signals "light" (buyers) returning after a decline, the Evening Star is a sign of "darkness" (sellers) about to take over after an euphoric rally.',
+    morningStarLabel: "Morning Star",
+    eveningStarLabel: "Evening Star",
+    soldiersName: "Three White Soldiers / Three Black Crows",
+    soldiersFeatureTitle: "Characteristics:",
+    soldiersContinuity:
+      "Continuity: Three long-body candles of the same color (3 green or 3 red) appearing back-to-back like a staircase.",
+    soldiersOpen:
+      "Open position: Each candle usually opens within the body of the previous one (showing continued money flow).",
+    soldiersClose:
+      "Close position: Each candle closes well beyond the previous close, with very short or no wicks (showing the strength is maintained to the end of the session).",
+    soldiersMeaningTitle: "Meaning: Shows the consensus of a trend",
+    soldiersDesc:
+      "Three Soldiers: Buyers have gathered enough force to push the price up continuously over 3 sessions, opening a sustainable uptrend.",
+    crowsDesc:
+      "Three Crows: Sellers have fully taken control and pushed the price down sharply over 3 sessions, signaling a long-term downtrend ahead.",
+    soldiersLabel: "Three White Soldiers",
+    crowsLabel: "Three Black Crows",
+
+    disclaimer:
+      'Candle patterns are tools to support price-action analysis, not investment advice. A "beautiful" candle pattern can still fail without volume confirmation or when it goes against the overall market trend. Users are responsible for their own trading decisions.',
+  },
   companyProfile: {
     sectionTitle: "Company Profile",
     overview: "Overview",

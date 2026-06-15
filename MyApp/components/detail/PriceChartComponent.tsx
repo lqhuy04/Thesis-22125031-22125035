@@ -36,6 +36,7 @@ import TimeframeBottomSheet, {
   TIMEFRAME_OPTIONS,
 } from "./TimeframeBottomsheet";
 import IndicatorBottomSheet, { IndicatorState } from "./IndicatorBottomsheet";
+import ChartGuideBottomSheet from "./ChartGuideBottomsheet";
 import { Text } from "../ui/Text";
 import Entypo from "@expo/vector-icons/Entypo";
 import { useLocalization } from "@/hooks/LocalizationContext";
@@ -217,6 +218,7 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
   );
   const [showTimeframeSheet, setShowTimeframeSheet] = useState(false);
   const [showIndicatorSheet, setShowIndicatorSheet] = useState(false);
+  const [showGuideSheet, setShowGuideSheet] = useState(false);
   const [indicatorState, setIndicatorState] = useState<IndicatorState>({
     mode1: null,
     mode2: null,
@@ -499,11 +501,16 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
               </View>
 
               <View style={{ flex: 1 }} />
-              <MaterialCommunityIcons
-                name="information-slab-circle-outline"
-                size={20}
-                color={theme.text.primary}
-              />
+              <TouchableOpacity
+                onPress={() => setShowGuideSheet(true)}
+                hitSlop={8}
+              >
+                <MaterialCommunityIcons
+                  name="information-slab-circle-outline"
+                  size={20}
+                  color={theme.text.primary}
+                />
+              </TouchableOpacity>
             </View>
 
             {/* Chart — shows lightweight opacity fade while reloading on timeframe change */}
@@ -648,6 +655,11 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
         indicatorState={indicatorState}
         onChangeIndicator={setIndicatorState}
         onClose={() => setShowIndicatorSheet(false)}
+      />
+
+      <ChartGuideBottomSheet
+        visible={showGuideSheet}
+        onClose={() => setShowGuideSheet(false)}
       />
     </View>
   );

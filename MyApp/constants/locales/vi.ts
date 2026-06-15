@@ -126,6 +126,151 @@ export default {
     clearAll: "Xóa tất cả",
     done: "Xong",
   },
+  chartGuide: {
+    title: "Cách đọc biểu đồ",
+    back: "Trở lại",
+    next: "Tiếp tục",
+    done: "Đã hiểu",
+
+    // Bước 1 — Cấu tạo cây nến
+    structureTitle: "Cấu tạo mỗi cây nến",
+    bullTitle: "Nến xanh (giá tăng)",
+    bullSubtitle: "Giá mở cửa < giá đóng cửa",
+    bearTitle: "Nến đỏ (giá giảm)",
+    bearSubtitle: "Giá mở cửa > giá đóng cửa",
+    high: "Giá cao nhất",
+    low: "Giá thấp nhất",
+    open: "Giá mở cửa",
+    close: "Giá đóng cửa",
+    structureIntro: 'Các thành phần cơ bản của một "ngọn nến"',
+    bodyLabel: "A. Thân nến:",
+    bodyDesc:
+      "Khoảng cách giữa giá mở cửa và đóng cửa. Thể hiện biên độ giao dịch, giúp nhà đầu tư xác định bên mua hay bán đang kiểm soát thị trường.",
+    shadowLabel: "B. Bóng nến:",
+    shadowDesc:
+      'Hai phần "râu" xuất hiện ở hai đầu thân nến, thể hiện mức giá cao nhất, và thấp nhất. Bóng nến càng dài, áp lực giằng co giữa bên mua và bên bán càng lớn',
+    paramsLabel: "C. Các thông số chính:",
+    param1:
+      "Giá Mở cửa - Đóng cửa: Giá khởi đầu và kết thúc trong khung thời gian giao dịch",
+    param2:
+      "Giá Cao nhất - Thấp nhất: Mức giá đỉnh và đáy đạt được trong khung thời gian giao dịch",
+
+    // Bước 2 — Biểu đồ nến
+    candleChartTitle: "Biểu đồ nến",
+    candleChartDesc:
+      "Là công cụ quan trọng giúp nhà đầu tư quan sát trực quan xu hướng, diễn biến tâm lý và dòng tiền của thị trường trong một khoảng thời gian nhất định.",
+    axisXItem: "Trục thời gian (x): Hiển thị các mốc thời gian giao dịch.",
+    axisYItem: "Trục giá (y): Hiển thị các mức giá của cổ phiếu.",
+    periodItem:
+      "Chu kỳ nến cho biết mỗi cây nến thể hiện dữ liệu giá trong bao lâu. Ví dụ: Khi bạn chọn chu kỳ nến 1 giờ, mỗi nến sẽ thể hiện biến động giá trong 1 giờ.",
+
+    // Bước 3 — Biểu đồ khối lượng
+    volumeChartTitle: "Biểu đồ khối lượng",
+    volumeChartDesc:
+      "Là công cụ giúp xác nhận sức mạnh của xu hướng và nhận diện dấu chân của dòng tiền",
+    volumeWhatTitle: "A. Khối lượng (Volume) là gì?",
+    volumeWhatDesc:
+      "Là tổng số lượng cổ phiếu đã được khớp lệnh thành công trong một khung thời gian nhất định.",
+    colorLabel: "Màu sắc:",
+    colorGreen: "Cột xanh: Thể hiện khối lượng trong một phiên tăng giá",
+    colorRed: "Cột đỏ: Thể hiện khối lượng trong một phiên giảm giá",
+    heightLabel: "Độ cao:",
+    heightDesc:
+      "Cột càng cao thể hiện dòng tiền tham gia càng lớn và thị trường giao dịch sôi động.",
+    trendTitle: "B. Xác nhận sức mạnh xu hướng",
+    trendDesc: "Khối lượng là thước đo độ tin cậy của đà tăng hoặc giảm giá.",
+    trend1:
+      "Giá và khối lượng cùng tăng (hoặc cùng giảm) xác nhận xu hướng tăng hoặc giảm đang vững chắc.",
+    trend2:
+      "Giá biến động nhưng khối lượng thấp cho thấy sự thiếu hụt lực cầu (hoặc cung), cảnh báo dấu hiệu sắp đảo chiều.",
+    moneyTitle: 'C. Nhận diện dấu chân của "Dòng tiền lớn"',
+    moneyDesc:
+      "Thông qua các cột khối lượng đột biến, nhà đầu tư có thể nhận ra sự hiện diện của các tổ chức tài chính hoặc nhà đầu tư lớn tham gia.",
+    breakoutLabel: "Xác nhận bứt phá:",
+    breakoutDesc:
+      "Giá tăng vượt trội đi kèm khối lượng cao đột biến là tín hiệu dòng tiền lớn đang đẩy giá vào một chu kỳ tăng trưởng mới.",
+    absorbLabel: "Hấp thụ lực bán:",
+    absorbDesc:
+      'Khối lượng lớn tại các vùng giá thấp cho thấy dòng tiền lớn đang âm thầm "gom hàng", tạo nền tảng vững chắc để cổ phiếu tăng giá.',
+
+    // Bước 4 — Biểu đồ kỹ thuật chuyên sâu
+    advancedTitle: "Biểu đồ kỹ thuật chuyên sâu",
+    advancedDesc:
+      "Là nơi cung cấp đầy đủ các công cụ vẽ và chỉ báo giúp nhà đầu tư phân tích sâu vào từng biến động nhỏ nhất của thị trường.",
+    advancedHint:
+      "Nhấn vào biểu tượng mở rộng ở góc biểu đồ để vào chế độ toàn màn hình và xem toàn bộ các chỉ báo.",
+    controlsTitle: "Các thao tác trên biểu đồ",
+    chartTypeTitle: "Đổi dạng biểu đồ (Đường / Nến)",
+    chartTypeDesc:
+      'Nhấn nút "Đường" hoặc "Nến" ở góc trên biểu đồ để chuyển đổi giữa biểu đồ đường (theo dõi xu hướng giá đóng cửa) và biểu đồ nến (xem đầy đủ giá mở, đóng, cao, thấp).',
+    intervalCtrlTitle: "Chọn chu kỳ nến",
+    intervalCtrlDesc:
+      'Nhấn vào ô "Chu kỳ" phía dưới biểu đồ để chọn khung thời gian cho mỗi cây nến: từ 1 phút, 15 phút, 1 giờ đến 1 ngày, 1 tuần, 1 tháng.',
+    indicatorCtrlTitle: "Chọn chỉ báo kỹ thuật",
+    indicatorCtrlDesc:
+      'Nhấn vào biểu tượng "Chỉ báo" để bật/tắt các chỉ báo như MA, BOLL, Khối lượng, MACD, RSI, KDJ chồng lên biểu đồ.',
+    expandCtrlTitle: "Phóng to toàn màn hình",
+    expandCtrlDesc:
+      "Nhấn vào biểu tượng mở rộng ở góc dưới biểu đồ để vào chế độ toàn màn hình, xem đầy đủ các công cụ vẽ cùng tất cả các chỉ báo.",
+
+    // Bước 5 — Nến đơn
+    singleTitle: "3 mô hình nến đơn phổ biến",
+    patternsSubtitle:
+      "Giúp bạn đọc vị tâm lý thị trường, nhận diện sức mạnh dòng tiền và nắm bắt sớm các tín hiệu đảo chiều tiềm năng",
+    feature: "Đặc điểm:",
+    meaning: "Ý nghĩa:",
+    dojiName: "Nến Chữ Thập (Doji)",
+    dojiFeature:
+      "Hình dáng giống chữ thập do giá đóng cửa gần bằng giá mở cửa.",
+    dojiMeaning:
+      "Bên mua và bán cân bằng, thị trường đang tạm dừng để chờ xu hướng mới. Thường xuất hiện tại các điểm đảo chiều quan trọng.",
+    hammerName: "Nến Búa (Hammer)",
+    hammerFeature:
+      "Hình dáng giống một cái búa. Thân trên nhỏ, bóng nến rất dài (gấp 2-3 lần thân nến).",
+    hammerMeaning:
+      'Phản ánh một cuộc "lội ngược dòng" trong phiên. Đầu phiên: bên bán áp đảo, đẩy giá xuống sâu. Cuối phiên: bên mua chiếm ưu thế, đẩy giá đóng cửa về gần mức cao nhất.',
+    marubozuName: "Nến Thân Dài (Marubozu)",
+    marubozuFeature: "Thân rất dài, gần như không có bóng nến.",
+    marubozuMeaning:
+      "Xác nhận một bên mua hoặc bán chiếm ưu thế hoàn toàn. Xác nhận xu hướng đang mạnh và có khả năng tiếp diễn.",
+
+    // Bước 6 — Nến cụm
+    clusterTitle: "3 nhóm mô hình nến cụm phổ biến",
+    engulfingName: "Nến Nhấn chìm (Engulfing)",
+    engulfingFeature: "Thân nến thứ hai bao phủ toàn bộ thân nến thứ nhất.",
+    engulfingMeaning:
+      "Tín hiệu cho thấy bên đối lập (bên mua hoặc bán) đã hoàn toàn áp đảo và thiết lập xu hướng mới.",
+    engulfingBearLabel: "Nến nhấn chìm giảm",
+    engulfingBullLabel: "Nến nhấn chìm tăng",
+    starName: "Nến Sao Mai / Sao Hôm (Morning Star / Evening Star)",
+    starFeatureTitle: "Đặc điểm, gồm bộ 3 nến:",
+    star1: "Nến 1: Thân dài, tiếp diễn mạnh mẽ xu hướng hiện tại.",
+    star2: "Nến 2: Thân ngắn hoặc Doji, cho thấy sự lưỡng lự và mất đà.",
+    star3: "Nến 3: Thân dài, đảo chiều quyết liệt ngược với nến 1.",
+    starMeaning:
+      'Tượng trưng cho sự giao thoa giữa ngày và đêm. Nếu Sao Mai báo hiệu "ánh sáng" (phe Mua) quay trở lại sau đà giảm, thì Sao Hôm là dấu hiệu của "bóng tối" (phe Bán) chuẩn bị chiếm lĩnh sau chu kỳ tăng giá hưng phấn.',
+    morningStarLabel: "Nến Sao Mai",
+    eveningStarLabel: "Nến Sao Hôm",
+    soldiersName:
+      "Ba chàng lính trắng & Ba con quạ đen (Three White Soldiers / Three Black Crows)",
+    soldiersFeatureTitle: "Đặc điểm:",
+    soldiersContinuity:
+      "Tính liên tiếp: Gồm 3 cây nến thân dài, cùng màu (3 xanh hoặc 3 đỏ) xuất hiện nối đuôi nhau như hình bậc thang.",
+    soldiersOpen:
+      "Vị trí mở cửa: Nến sau thường mở cửa bên trong thân của nến trước đó (thể hiện sự tiếp nối dòng tiền).",
+    soldiersClose:
+      "Vị trí đóng cửa: Nến sau đóng cửa vượt xa giá đóng cửa nến trước, râu nến rất ngắn hoặc không có (cho thấy sức mạnh được duy trì áp đảo đến tận cuối phiên).",
+    soldiersMeaningTitle: "Ý nghĩa: Thể hiện sự đồng thuận của một xu hướng",
+    soldiersDesc:
+      "Ba chàng lính: Bên mua đã tập hợp đủ lực lượng để đẩy giá lên cao liên tục trong 3 phiên, mở ra một giai đoạn tăng giá bền vững.",
+    crowsDesc:
+      "Ba con quạ: Phe bán đã chiếm lĩnh hoàn toàn thế trận và đẩy giá giảm sâu liên tiếp trong 3 phiên, báo hiệu cho một chu kỳ giảm giá dài hạn sắp diễn ra.",
+    soldiersLabel: "Ba chàng lính trắng",
+    crowsLabel: "Ba con quạ đen",
+
+    disclaimer:
+      'Các mô hình nến là công cụ hỗ trợ phân tích hành vi giá, không phải là lời khuyên đầu tư. Một mẫu hình nến "đẹp" vẫn có thể thất bại nếu thiếu đi sự xác nhận của khối lượng hoặc đi ngược lại xu hướng chung của thị trường. Người dùng cần tự chịu trách nhiệm trước mọi quyết định giao dịch của mình.',
+  },
   companyProfile: {
     sectionTitle: "Hồ sơ doanh nghiệp",
     overview: "Giới thiệu chung",
