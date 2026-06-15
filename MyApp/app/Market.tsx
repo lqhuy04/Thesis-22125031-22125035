@@ -21,7 +21,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import LinearGradient from "react-native-linear-gradient";
 import WatchlistSection from "@/components/market/WatchlistSection";
-import SuggestionSection from "@/components/home/SuggestionSection";
 
 const TABS = ["market", "favorites", "news"] as const;
 type Tab = (typeof TABS)[number];
@@ -32,6 +31,9 @@ const Market = () => {
   const { t } = useLocalization();
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>("market");
+  const [visitedTabs, setVisitedTabs] = useState<Set<Tab>>(
+    new Set<Tab>(["market"]),
+  );
   const translateX = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
@@ -44,6 +46,7 @@ const Market = () => {
   const switchTab = (tab: Tab) => {
     const index = TABS.indexOf(tab);
     setActiveTab(tab);
+    setVisitedTabs((prev) => new Set(prev).add(tab));
     Animated.spring(translateX, {
       toValue: -index * SCREEN_WIDTH,
       useNativeDriver: true,
@@ -120,26 +123,37 @@ const Market = () => {
         >
           {/* Tab 0 — Market */}
           <ScrollView style={{ width: SCREEN_WIDTH }}>
-            <MarketIndicesSection />
-            <IndustryMovementSection />
-            <SuggestionSection />
-            <View style={{ height: 24 }} />
+            {visitedTabs.has("market") && (
+              <>
+                <MarketIndicesSection />
+                <IndustryMovementSection />
+                <View style={{ height: 24 }} />
+              </>
+            )}
           </ScrollView>
 
           {/* Tab 1 — Favorites */}
           <ScrollView style={{ width: SCREEN_WIDTH }}>
-            <WatchlistSection />
-            <View style={{ height: 24 }} />
+            {visitedTabs.has("favorites") && (
+              <>
+                <WatchlistSection />
+                <View style={{ height: 24 }} />
+              </>
+            )}
           </ScrollView>
 
           {/* Tab 2 — News */}
           <ScrollView style={{ width: SCREEN_WIDTH }}>
-            <TodayHighlightSection />
-            <BusinessNewsSection />
-            <CategoriesNewsSection />
-            <MacroEcomNewsSection />
-            <AllNewsSection />
-            <View style={{ height: 24 }} />
+            {visitedTabs.has("news") && (
+              <>
+                <TodayHighlightSection />
+                <BusinessNewsSection />
+                <CategoriesNewsSection />
+                <MacroEcomNewsSection />
+                <AllNewsSection />
+                <View style={{ height: 24 }} />
+              </>
+            )}
           </ScrollView>
         </Animated.View>
       </View>
