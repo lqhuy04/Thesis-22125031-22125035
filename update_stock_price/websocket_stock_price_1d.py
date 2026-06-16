@@ -7,10 +7,12 @@ import logging
 import sys
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from dotenv import load_dotenv
 from supabase import create_client
+
+from vn30_symbols import get_vn30_symbols
 
 load_dotenv()
 
@@ -27,6 +29,8 @@ class Config:
 
 config = Config()
 
+VN_TZ = timezone(timedelta(hours=7))
+
 TABLE        = "Stock_Price_1d"
 SYMBOL_REGEX = re.compile(r'^[A-Z0-9]{3}$')
 ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
@@ -41,6 +45,14 @@ supabase = create_client(
     os.getenv("SUPABASE_URL", ""),
     os.getenv("SUPABASE_KEY", "")
 )
+
+allowed_symbols: set[str] = set()
+
+
+def get_target_symbols() -> set[str]:
+    """30 mã VN30 (từ DB) ∪ các chỉ số cần giữ. Lỗi DB → chỉ còn các chỉ số."""
+    vn30 = get_vn30_symbols(supabase)
+    return vn30 | ALLOWED_INDICES
 
 
 def _to_float(value) -> float:
@@ -87,7 +99,7 @@ def _normalize_timestamp(bar: dict) -> str | None:
         else:
             return None
     else:
-        today = datetime.now().date()
+        today = datetime.now(VN_TZ).date()
         yyyy = today.strftime("%Y")
         mm = today.strftime("%m")
         dd = today.strftime("%d")
@@ -218,6 +230,8 @@ def parse_tick(message) -> Optional[dict]:
         symbol = str(bar.get("Symbol") or "").strip().upper()
         if not (SYMBOL_REGEX.match(symbol) or symbol in ALLOWED_INDICES):
             return None
+        if allowed_symbols and symbol not in allowed_symbols:
+            return None
 
         trading_time = _normalize_timestamp(bar)
         if not trading_time:
@@ -259,6 +273,13 @@ def get_error(error) -> None:
 def main():
     logger.info("Starting SSI WebSocket stream (daily candle)...")
 
+    global allowed_symbols
+    allowed_symbols = get_target_symbols()
+    if not (allowed_symbols - ALLOWED_INDICES):
+        logger.warning("No VN30 symbols loaded from DB; stream will accept indices only until next refresh.")
+    else:
+        logger.info(f"Loaded {len(allowed_symbols)} target symbols (VN30 + indices) for websocket filtering.")
+
     periodic_flush_stop.clear()
     flush_thread = threading.Thread(target=periodic_flush_thread, daemon=True)
     flush_thread.start()
@@ -273,8 +294,22 @@ def main():
         return
 
     logger.info("Stream started. Press Ctrl+C to stop.")
+    last_refresh = time.time()
+    REFRESH_INTERVAL = 60 * 60  # seconds
     try:
         while True:
+            # Refresh allowlist (VN30 + indices) periodically
+            if time.time() - last_refresh > REFRESH_INTERVAL:
+                try:
+                    allowed = get_target_symbols()
+                    # Chỉ thay khi thực sự lấy được mã VN30 (tránh tụt về indices-only khi DB lỗi)
+                    if allowed - ALLOWED_INDICES:
+                        allowed_symbols.clear()
+                        allowed_symbols.update(allowed)
+                        logger.info(f"Refreshed target symbol list: {len(allowed_symbols)} symbols")
+                    last_refresh = time.time()
+                except Exception as e:
+                    logger.warning(f"Failed to refresh target symbols: {e}")
             time.sleep(1)
     except KeyboardInterrupt:
         periodic_flush_stop.set()

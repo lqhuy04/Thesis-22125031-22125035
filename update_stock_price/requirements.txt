@@ -1,3 +1,4 @@
 python-dotenv
 supabase
 ssi-fc-data
+requests

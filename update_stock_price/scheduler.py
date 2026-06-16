@@ -1,11 +1,12 @@
 """
 scheduler.py
-Chạy liên tục, quản lý 5 tác vụ:
-  1. WebSocket 1m stream  → mở đầu phiên (9:00), đóng cuối phiên (15:30)
-  2. WebSocket 1d stream  → mở đầu phiên (9:00), đóng cuối phiên (15:30)
-    3. Standardize 1m       → chạy 1 lần lúc 15:05 (sau khi stream đóng)
-    4. Standardize 1d       → chạy 1 lần lúc 15:05 (cùng lúc với 1m)
-    5. Standardize index    → chạy 1 lần lúc 15:05 (cùng lúc với 1m/1d)
+Chạy liên tục, quản lý 6 tiến trình:
+  1. WebSocket 1m stream     → mở đầu phiên (9:00), đóng cuối phiên (15:00)
+  2. WebSocket 1d stream     → mở đầu phiên (9:00), đóng cuối phiên (15:00)
+  3. WebSocket market index  → mở đầu phiên (9:00), đóng cuối phiên (15:00)
+  4. Standardize 1m          → chạy 1 lần lúc 15:05 (sau khi stream đóng)
+  5. Standardize 1d          → chạy 1 lần lúc 15:05 (cùng lúc với 1m)
+  6. Standardize index       → chạy 1 lần lúc 15:05 (cùng lúc với 1m/1d)
 
 Giờ Việt Nam = UTC+7
 """
@@ -168,15 +169,15 @@ def main():
                 )
                 after_close = (h, m) >= (MARKET_CLOSE_H, MARKET_CLOSE_M)
 
-                # 1️⃣  Trong phiên → đảm bảo cả 2 WebSocket đang chạy
+                # 1️⃣  Trong phiên → đảm bảo cả 3 WebSocket đang chạy
                 if in_session:
                     start_websockets()
 
-                # 2️⃣  Hết phiên → tắt cả 2 WebSocket
+                # 2️⃣  Hết phiên → tắt cả 3 WebSocket
                 elif after_close:
                     stop_websockets()
 
-                    # 3️⃣  Chạy standardize đúng 1 lần lúc ≥ 15:35
+                    # 3️⃣  Chạy standardize đúng 1 lần lúc ≥ 15:05
                     if (
                         standardize_done_today != today and
                         (h, m) >= (STANDARDIZE_H, STANDARDIZE_M)

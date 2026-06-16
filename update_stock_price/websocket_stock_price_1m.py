@@ -4,13 +4,14 @@ import re
 import os
 import json
 import logging
-import requests
 import sys
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 import time
 from dotenv import load_dotenv
 from supabase import create_client
+
+from vn30_symbols import get_vn30_symbols
 
 load_dotenv()
 
@@ -98,52 +99,10 @@ def _normalize_timestamp(bar: dict) -> str | None:
 
     return f"{yyyy}-{mm}-{dd}T{raw_timestamp[:8]}"
 
-def get_ssi_access_token() -> str:
-    """Get access token from SSI API using consumer credentials."""
-    try:
-        url = "https://fc-data.ssi.com.vn/api/v2/Market/AccessToken"
-        payload = {
-            "consumerID": config.consumerID,
-            "consumerSecret": config.consumerSecret,
-        }
-        response = requests.post(url, json=payload, timeout=10)
-        response.raise_for_status()
-
-        data = response.json()
-        access_token = data.get("data", {}).get("accessToken", "")
-        if not access_token:
-            raise ValueError("No access token in response")
-
-        return access_token
-    except Exception as e:
-        logger.error(f"Failed to get SSI access token: {e}")
-        return ""
-
-def get_hose_symbols() -> set[str]:
-    """Fetch HOSE symbols from SSI API and keep only symbols with 3 characters, plus allowed indices."""
-    try:
-        access_token = get_ssi_access_token()
-        if not access_token:
-            return ALLOWED_INDICES.copy()
-
-        url = "https://fc-data.ssi.com.vn/api/v2/Market/Securities?Market=HOSE&PageSize=1000"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-
-        data = response.json()
-        symbols = {
-            str(item.get("Symbol") or "").strip().upper()
-            for item in (data.get("data") or [])
-            if str(item.get("Symbol") or "").strip().upper()
-        }
-        filtered = {symbol for symbol in symbols if SYMBOL_REGEX.match(symbol)}
-        # Add allowed indices
-        filtered.update(ALLOWED_INDICES)
-        return filtered
-    except Exception as e:
-        logger.error(f"Failed to fetch HOSE symbols from SSI API: {e}")
-        return ALLOWED_INDICES.copy()
+def get_target_symbols() -> set[str]:
+    """30 mã VN30 (từ DB) ∪ các chỉ số cần giữ. Lỗi DB → chỉ còn các chỉ số."""
+    vn30 = get_vn30_symbols(supabase)
+    return vn30 | ALLOWED_INDICES
 
 # ═════════════════════════════════════════════════════════════════════════════
 # IN-MEMORY CANDLE BUFFER
@@ -282,11 +241,11 @@ def main():
     logger.info("Starting SSI WebSocket stream...")
 
     global allowed_symbols
-    allowed_symbols = get_hose_symbols()
-    if not allowed_symbols:
-        logger.warning("HOSE symbol list is empty; stream will rely only on the 3-character symbol filter.")
+    allowed_symbols = get_target_symbols()
+    if not (allowed_symbols - ALLOWED_INDICES):
+        logger.warning("No VN30 symbols loaded from DB; stream will accept indices only until next refresh.")
     else:
-        logger.info(f"Loaded {len(allowed_symbols)} HOSE symbols for websocket filtering.")
+        logger.info(f"Loaded {len(allowed_symbols)} target symbols (VN30 + indices) for websocket filtering.")
 
     try:
         mm = MarketDataStream(config, MarketDataClient(config))
@@ -314,17 +273,18 @@ def main():
                         logger.error(f"❌ Error in flush_stale_candles: {e}", exc_info=True)
                     last_minute = current_minute
 
-                # Refresh HOSE allowlist periodically
+                # Refresh allowlist (VN30 + indices) periodically
                 if time.time() - last_refresh > REFRESH_INTERVAL:
                     try:
-                        allowed = get_hose_symbols()
-                        if allowed:
+                        allowed = get_target_symbols()
+                        # Chỉ thay khi thực sự lấy được mã VN30 (tránh tụt về indices-only khi DB lỗi)
+                        if allowed - ALLOWED_INDICES:
                             allowed_symbols.clear()
                             allowed_symbols.update(allowed)
-                            logger.info(f"Refreshed HOSE symbol list: {len(allowed_symbols)} symbols")
+                            logger.info(f"Refreshed target symbol list: {len(allowed_symbols)} symbols")
                         last_refresh = time.time()
                     except Exception as e:
-                        logger.warning(f"Failed to refresh HOSE symbols: {e}")
+                        logger.warning(f"Failed to refresh target symbols: {e}")
 
                 time.sleep(1)
             except Exception as e:

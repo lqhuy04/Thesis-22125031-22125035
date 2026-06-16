@@ -1,12 +1,12 @@
 import os
-import re
 import time
 import logging
-import requests
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
+
+from vn30_symbols import get_vn30_symbols
 
 load_dotenv()
 
@@ -31,7 +31,6 @@ KEEP_DAYS     = 365 * 5     # Giữ lại 5 năm dữ liệu daily
 CHUNK_DAYS    = 30
 LOOKBACK_DAYS = 3
 SLEEP_SECONDS = 1.1
-SYMBOL_REGEX  = re.compile(r'^[A-Z0-9]{3}$')
 ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
@@ -49,52 +48,12 @@ supabase = create_client(
 # SYMBOL MANAGEMENT
 # ═════════════════════════════════════════════════════════════════════════════
 
-def get_ssi_access_token() -> str:
-    """Get access token from SSI API using consumer credentials."""
-    try:
-        url = "https://fc-data.ssi.com.vn/api/v2/Market/AccessToken"
-        payload = {
-            "consumerID": config.consumerID,
-            "consumerSecret": config.consumerSecret,
-        }
-        response = requests.post(url, json=payload, timeout=10)
-        response.raise_for_status()
-
-        data = response.json()
-        access_token = data.get("data", {}).get("accessToken", "")
-        if not access_token:
-            raise ValueError("No access token in response")
-
-        return access_token
-    except Exception as e:
-        logger.error(f"Failed to get SSI access token: {e}")
-        return ""
-
-def get_hose_symbols() -> set[str]:
-    """Fetch HOSE symbols from SSI API and keep only symbols with 3 characters, plus allowed indices."""
-    try:
-        access_token = get_ssi_access_token()
-        if not access_token:
-            return ALLOWED_INDICES.copy()
-
-        url = "https://fc-data.ssi.com.vn/api/v2/Market/Securities?Market=HOSE&PageSize=1000"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-
-        data = response.json()
-        symbols = {
-            str(item.get("Symbol") or "").strip().upper()
-            for item in (data.get("data") or [])
-            if str(item.get("Symbol") or "").strip().upper()
-        }
-        filtered = {symbol for symbol in symbols if SYMBOL_REGEX.match(symbol)}
-        # Add allowed indices
-        filtered.update(ALLOWED_INDICES)
-        return filtered
-    except Exception as e:
-        logger.error(f"Failed to fetch HOSE symbols from SSI API: {e}")
-        return ALLOWED_INDICES.copy()
+def get_target_symbols() -> set[str]:
+    """30 mã VN30 (từ DB) ∪ các chỉ số cần giữ."""
+    vn30 = get_vn30_symbols(supabase)
+    if not vn30:
+        logger.warning("VN30 symbol list is empty (DB issue?); processing indices only")
+    return vn30 | ALLOWED_INDICES
 
 # ═════════════════════════════════════════════════════════════════════════════
 # SSI DATA
@@ -234,8 +193,8 @@ def main():
 
     logger.info(f"=== Starting daily sync: {from_date} → {today_str} ===")
 
-    symbols = get_hose_symbols()
-    logger.info(f"Fetched {len(symbols)} HOSE symbols")
+    symbols = get_target_symbols()
+    logger.info(f"Processing {len(symbols)} symbols (VN30 + indices)")
 
     if not symbols:
         logger.warning("No symbols to process")

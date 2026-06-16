@@ -1,3 +1,11 @@
+"""
+init_market_index_1m.py
+Nạp nến 1 PHÚT (1m) cho các CHỈ SỐ (VNINDEX, VN30, ...) vào bảng Stock_Price_1m.
+Tách riêng khỏi init_stock_price_1m.py (file đó chỉ nạp cổ phiếu VN30).
+
+Giá chỉ số giữ nguyên (không chia 1000).
+"""
+
 import os
 import logging
 import requests
@@ -5,8 +13,6 @@ import time
 from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 from supabase import create_client
-
-from vn30_symbols import get_vn30_symbols
 
 load_dotenv()
 
@@ -25,8 +31,7 @@ config = Config()
 
 TABLE         = "Stock_Price_1m"
 SLEEP_SECONDS = 1.1
-# Chỉ giữ để xác định hệ số nhân giá; file này chỉ init cổ phiếu VN30.
-ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
+INDEX_SYMBOLS = ["VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,12 +58,12 @@ def get_ssi_access_token() -> str:
         }
         response = requests.post(url, json=payload, timeout=10)
         response.raise_for_status()
-        
+
         data = response.json()
         access_token = data.get("data", {}).get("accessToken", "")
         if not access_token:
             raise ValueError("No access token in response")
-        
+
         logger.info("Successfully obtained SSI access token")
         return access_token
     except Exception as e:
@@ -90,7 +95,7 @@ def fetch_intraday_rows(symbol: str, from_date: str, to_date: str, access_token:
         return []
 
 def _aggregate_intraday_minutes(rows: list[dict]) -> list[dict]:
-    """Aggregate raw SSI trade rows into 1m candles without synthetic gap fill."""
+    """Aggregate raw SSI rows into 1m candles without synthetic gap fill."""
     if not rows:
         return []
 
@@ -121,7 +126,7 @@ def _aggregate_intraday_minutes(rows: list[dict]) -> list[dict]:
     return [aggregated[minute_dt] for minute_dt in sorted(aggregated)]
 
 def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str, access_token: str) -> list[dict]:
-    """Fetch intraday OHLC data for a specific symbol."""
+    """Fetch intraday OHLC data for one index. Giá chỉ số giữ nguyên (không chia 1000)."""
     try:
         rows = fetch_intraday_rows(symbol, from_date, to_date, access_token)
 
@@ -132,15 +137,15 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str, access_token:
             if not trading_date or not raw_time:
                 continue
 
-            dd, mm, yyyy    = trading_date.split("/")
+            dd, mm, yyyy = trading_date.split("/")
 
             result.append({
                 "symbol":       symbol,
                 "trading_time": f"{yyyy}-{mm}-{dd}T{raw_time[:5]}:00",
-                "open":         float(r.get("Open")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-                "high":         float(r.get("High")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-                "low":          float(r.get("Low")    or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-                "close":        float(r.get("Close")  or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+                "open":         float(r.get("Open")   or 0),
+                "high":         float(r.get("High")   or 0),
+                "low":          float(r.get("Low")    or 0),
+                "close":        float(r.get("Close")  or 0),
                 "volume":       float(r.get("Volume") or 0),
             })
 
@@ -155,10 +160,8 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str, access_token:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def upsert_candles(candles: list[dict]) -> None:
-    """Deduplicate and upsert candles to database."""
     if not candles:
         return
-    
     try:
         supabase.table(TABLE).upsert(candles, on_conflict="symbol,trading_time").execute()
     except Exception as e:
@@ -174,24 +177,21 @@ def main():
         logger.error("No SSI access token found. Exiting.")
         return
 
-    symbols = sorted(get_vn30_symbols(supabase))
-    if not symbols:
-        logger.error("No VN30 symbols found. Exiting.")
-        return
-    logger.info(f"Processing {len(symbols)} VN30 symbols: {symbols[:5]}...")
+    symbols = INDEX_SYMBOLS
+    logger.info(f"Processing {len(symbols)} index symbols: {symbols}")
 
     today     = date.today()
     to_date   = today.strftime("%d/%m/%Y")
     from_date = (today - timedelta(days=30)).strftime("%d/%m/%Y")
 
     logger.info(f"Date range: {from_date} → {to_date}")
-    
+
     total_candles_fetched = 0
     total_candles_upserted = 0
-    
+
     for idx, symbol in enumerate(symbols, 1):
         logger.info(f"[{idx}/{len(symbols)}] Fetching 1m data for {symbol}...")
-        
+
         candles = fetch_intraday_ohlc(symbol, from_date, to_date, access_token)
         if candles:
             total_candles_fetched += len(candles)
@@ -200,11 +200,11 @@ def main():
             logger.info(f"  → Upserted {len(candles)} candles")
         else:
             logger.info(f"  → No data fetched")
-    
-    logger.info(f"\n✅ Completed!")
+
+    logger.info("\n✅ Completed!")
     logger.info(f"Total candles fetched: {total_candles_fetched}")
     logger.info(f"Total candles upserted: {total_candles_upserted}")
-    
+
 if __name__ == "__main__":
     try:
         main()

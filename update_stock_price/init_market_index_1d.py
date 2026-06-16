@@ -1,3 +1,11 @@
+"""
+init_market_index_1d.py
+Nạp lịch sử nến NGÀY (1d) cho các CHỈ SỐ (VNINDEX, VN30, ...) vào bảng Stock_Price_1d.
+Tách riêng khỏi init_stock_price_1d.py (file đó chỉ nạp cổ phiếu VN30).
+
+Giá chỉ số giữ nguyên (không chia 1000).
+"""
+
 import os
 import sys
 import time
@@ -6,8 +14,6 @@ from datetime import date, timedelta
 from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
-
-from vn30_symbols import get_vn30_symbols
 
 load_dotenv()
 
@@ -29,9 +35,15 @@ TABLE         = "Stock_Price_1d"
 CHUNK_DAYS    = 30          # SSI giới hạn tối đa 30 ngày mỗi request
 SLEEP_SECONDS = 1.1         # Delay giữa các request để tránh rate-limit SSI
 YEARS_BACK    = 5           # Số năm lấy dữ liệu lịch sử
-# Chỉ giữ để xác định hệ số nhân giá (index giữ nguyên, cổ phiếu chia 1000).
-# File này chỉ init cổ phiếu VN30; index được init riêng ở init_market_index_1d.py.
-ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
+
+# Chỉ số → market dùng cho daily_ohlc của SSI.
+INDEX_MARKET = {
+    "VNINDEX":       "HOSE",
+    "VN30":          "HOSE",
+    "VN100":         "HOSE",
+    "HNXINDEX":      "HNX",
+    "HNXUpcomIndex": "HNX",
+}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,12 +73,9 @@ def generate_chunks(start: date, end: date, chunk_days: int):
 # ═════════════════════════════════════════════════════════════════════════════
 
 def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
-    """
-    Gọi client.daily_ohlc và chuẩn hoá kết quả về dict phù hợp với bảng DB.
-    Giá SSI trả về theo đơn vị VNĐ → chia 1000 cho cổ phiếu HOSE (đơn vị nghìn đồng);
-    các chỉ số (indices) giữ nguyên giá trị.
-    """
-    req  = model.daily_ohlc(symbol, from_date, to_date, 1, 100, "HOSE")
+    """Gọi client.daily_ohlc cho một chỉ số và chuẩn hoá kết quả. Giá giữ nguyên."""
+    market = INDEX_MARKET.get(symbol, "HOSE")
+    req  = model.daily_ohlc(symbol, from_date, to_date, 1, 100, market)
     data = client.daily_ohlc(config, req)
 
     if isinstance(data, dict):
@@ -76,10 +85,6 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
     else:
         logger.error(f"Unexpected response type: {type(data)}")
         return []
-
-    # DEBUG: in raw row đầu tiên để kiểm tra field names thực tế
-    if rows:
-        logger.info(f"[DEBUG] First raw row: {rows[0]}")
 
     result = []
     for r in rows:
@@ -96,7 +101,7 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
             dd, mm, yyyy = parts
             iso_date = f"{yyyy}-{mm}-{dd}"
         else:
-            logger.warning(f"Cannot parse date: {trading_date!r}, skipping")
+            logger.warning(f"[{symbol}] Cannot parse date: {trading_date!r}, skipping")
             continue
 
         def _float(key_variants: list[str]) -> float:
@@ -109,16 +114,13 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
                         pass
             return 0.0
 
-        # Indices remain the same, divide by 1000 for HOSE stocks
-        multiplier = 1 if symbol in ALLOWED_INDICES else 1/1000
-
         result.append({
             "symbol":       symbol,
             "trading_time": f"{iso_date}T14:45:00",
-            "open":         _float(["Open"])   * multiplier,
-            "high":         _float(["High"])   * multiplier,
-            "low":          _float(["Low"])    * multiplier,
-            "close":        _float(["Close"])  * multiplier,
+            "open":         _float(["Open"]),
+            "high":         _float(["High"]),
+            "low":          _float(["Low"]),
+            "close":        _float(["Close"]),
             "volume":       _float(["Volume"]),
         })
 
@@ -133,19 +135,16 @@ def upsert_candles(candles: list[dict]) -> None:
         return
     supabase.table(TABLE).upsert(candles, on_conflict="symbol,trading_time").execute()
 
-
-def resolve_symbols(cli_symbols: list[str] | None = None) -> list[str]:
-    if cli_symbols:
-        return [symbol.strip().upper() for symbol in cli_symbols if symbol.strip()]
-    return sorted(get_vn30_symbols(supabase))
-
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ═════════════════════════════════════════════════════════════════════════════
 
 def main(symbols: list[str] | None = None):
-    symbols = resolve_symbols(symbols)
-    logger.info(f"Init daily OHLC for {len(symbols)} symbols: {symbols}")
+    symbols = (
+        [s.strip().upper() for s in symbols if s.strip()]
+        if symbols else sorted(INDEX_MARKET.keys())
+    )
+    logger.info(f"Init daily OHLC (index) for {len(symbols)} symbols: {symbols}")
 
     today      = date.today()
     start_date = today - timedelta(days=365 * YEARS_BACK)
@@ -171,7 +170,6 @@ def main(symbols: list[str] | None = None):
                 candles = fetch_daily_ohlc(symbol, from_date, to_date)
                 logger.info(f"  [{symbol}]   Fetched {len(candles)} candles")
                 symbol_candles.extend(candles)
-
             except Exception as exc:
                 logger.error(f"  [{symbol}]   Error on chunk {from_date}→{to_date}: {exc}")
 
@@ -179,7 +177,6 @@ def main(symbols: list[str] | None = None):
             if chunk_idx < total_chunks or sym_idx < total_symbols:
                 time.sleep(SLEEP_SECONDS)
 
-        # Upsert candles for this symbol immediately
         upsert_candles(symbol_candles)
         total_upserted += len(symbol_candles)
         logger.info(f"[{sym_idx}/{total_symbols}] {symbol} done. Upserted {len(symbol_candles)} candles.")
