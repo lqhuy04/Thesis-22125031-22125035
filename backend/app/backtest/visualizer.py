@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from datetime import datetime
 from typing import Any
@@ -6,16 +7,14 @@ import numpy as np
 import pandas as pd
 
 
-def generate_backtest_html(
+def get_backtest_visualization_data(
     df: pd.DataFrame,
     trades: list[dict[str, Any]],
     metrics: dict[str, Any],
     symbol: str,
-    output_path: str,
-) -> None:
+) -> dict[str, Any]:
     """
-    Generates a standalone, fully-interactive TradingView-like HTML chart for the backtest.
-    Loads Lightweight Charts from CDN and saves the result in a local file.
+    Extracts and prepares all visualization data required for interactive charts.
     """
     # Create copy to avoid modifying original
     data = df.copy()
@@ -133,17 +132,75 @@ def generate_backtest_html(
         formatted_trade["segment_times"] = segment_points
         formatted_trades.append(formatted_trade)
 
+    return {
+        "symbol": symbol,
+        "ohlc_data": ohlc_data,
+        "volume_data": volume_data,
+        "sma20_data": sma20_data,
+        "sma50_data": sma50_data,
+        "rsi_data": rsi_data,
+        "macd_line_data": macd_line_data,
+        "macd_signal_data": macd_signal_data,
+        "macd_hist_data": macd_hist_data,
+        "trades": formatted_trades,
+        "metrics": metrics,
+    }
+
+
+def generate_backtest_json(
+    df: pd.DataFrame,
+    trades: list[dict[str, Any]],
+    metrics: dict[str, Any],
+    symbol: str,
+    output_path: str,
+) -> None:
+    """
+    Saves a sanitized JSON file containing all interactive visualization details.
+    """
+    viz_data = get_backtest_visualization_data(df, trades, metrics, symbol)
+    
+    def _sanitize(val: Any) -> Any:
+        if isinstance(val, dict):
+            return {k: _sanitize(v) for k, v in val.items()}
+        if isinstance(val, list):
+            return [_sanitize(v) for v in val]
+        if isinstance(val, float):
+            return val if math.isfinite(val) else None
+        return val
+        
+    sanitized_data = _sanitize(viz_data)
+    
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(sanitized_data, f, ensure_ascii=False, indent=2)
+    print(f"Visualization JSON saved successfully to {output_path}")
+
+
+def generate_backtest_html(
+    df: pd.DataFrame,
+    trades: list[dict[str, Any]],
+    metrics: dict[str, Any],
+    symbol: str,
+    output_path: str,
+) -> None:
+    """
+    Generates a standalone, fully-interactive TradingView-like HTML chart for the backtest.
+    Loads Lightweight Charts from CDN and saves the result in a local file.
+    """
+    viz_data = get_backtest_visualization_data(df, trades, metrics, symbol)
+
     # Serialize to JSON strings
-    ohlc_json = json.dumps(ohlc_data)
-    volume_json = json.dumps(volume_data)
-    sma20_json = json.dumps(sma20_data)
-    sma50_json = json.dumps(sma50_data)
-    rsi_json = json.dumps(rsi_data)
-    macd_line_json = json.dumps(macd_line_data)
-    macd_signal_json = json.dumps(macd_signal_data)
-    macd_hist_json = json.dumps(macd_hist_data)
-    trades_json = json.dumps(formatted_trades)
-    metrics_json = json.dumps(metrics)
+    ohlc_json = json.dumps(viz_data["ohlc_data"])
+    volume_json = json.dumps(viz_data["volume_data"])
+    sma20_json = json.dumps(viz_data["sma20_data"])
+    sma50_json = json.dumps(viz_data["sma50_data"])
+    rsi_json = json.dumps(viz_data["rsi_data"])
+    macd_line_json = json.dumps(viz_data["macd_line_data"])
+    macd_signal_json = json.dumps(viz_data["macd_signal_data"])
+    macd_hist_json = json.dumps(viz_data["macd_hist_data"])
+    trades_json = json.dumps(viz_data["trades"])
+    metrics_json = json.dumps(viz_data["metrics"])
+
 
     # HTML/JS template
     html_content = f"""<!DOCTYPE html>

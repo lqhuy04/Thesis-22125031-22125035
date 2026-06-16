@@ -57,7 +57,7 @@ class Settings(BaseSettings):
 
     # CORS — danh sách origin (cách nhau bởi dấu phẩy) được phép gọi từ trình duyệt.
     # App mobile không bị CORS kiểm soát; cấu hình này dành cho web admin / Expo web.
-    CORS_ORIGINS: str = "http://localhost:8081,http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:8081,http://localhost:3000,http://localhost:5500,http://127.0.0.1:5500"
 
     @property
     def cors_origins_list(self) -> list[str]:

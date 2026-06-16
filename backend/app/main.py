@@ -22,6 +22,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+import os
+from fastapi.staticfiles import StaticFiles
+current_dir = os.path.dirname(os.path.abspath(__file__))
+visualizations_dir = os.path.join(current_dir, "backtest", "visualizations")
+os.makedirs(visualizations_dir, exist_ok=True)
+app.mount("/visualizations", StaticFiles(directory=visualizations_dir), name="visualizations")
+
 # CORS — chỉ cho phép các origin khai báo trong CORS_ORIGINS (xem config/.env)
 app.add_middleware(
     CORSMiddleware,

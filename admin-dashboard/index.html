@@ -3,14 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Stockrium Admin Dashboard</title>
+    <title>Stockrium Admin Dashboard & Backtest</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
+    <!-- Lightweight Charts library from TradingView -->
+    <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
   </head>
   <body>
     <div class="bg-orb orb-1"></div>
@@ -18,79 +20,321 @@
     <div class="bg-grid"></div>
 
     <main class="layout">
+      <!-- Shared Hero Header -->
       <section class="hero card fade-in">
         <p class="kicker">Stockrium Admin</p>
-        <h1>Bảng điều khiển cập nhật dữ liệu cổ phiếu</h1>
+        <h1>Bảng điều khiển Stockrium</h1>
         <p class="subtitle">
-          Chọn mã cổ phiếu, cập nhật giá mới nhất theo endpoint nội bộ, và trigger cập
-          nhật tin tức nhanh cho toàn thị trường hoặc từng mã.
+          Cập nhật giá & tin tức nhanh, chạy backtest pipeline của mô hình AI, và xem trực quan hóa biểu đồ TradingView tương tác từ dữ liệu backtest.
         </p>
       </section>
 
-      <section class="controls card fade-in fade-delay-1">
-        <div class="field">
-          <label for="baseUrl">API Base URL</label>
-          <input id="baseUrl" type="text" value="http://localhost:8000" />
-          <p class="hint">Ví dụ: http://localhost:8000</p>
-        </div>
+      <!-- Tabs Navigation -->
+      <nav class="tabs-nav card fade-in fade-delay-1">
+        <button id="tab-data-btn" class="tab-btn active" type="button">Cập nhật dữ liệu</button>
+        <button id="tab-backtest-btn" class="tab-btn" type="button">Chạy Backtest & Trực quan hóa</button>
+      </nav>
 
-        <div class="symbol-row">
-          <div class="field field-grow">
-            <label for="symbolSelect">Chọn cổ phiếu</label>
-            <select id="symbolSelect">
-              <option value="">-- Chưa tải danh sách mã --</option>
-            </select>
+      <!-- Tab 1: Data Update Content -->
+      <div id="data-tab-content" class="tab-content active fade-in fade-delay-2">
+        <section class="controls card">
+          <div class="field">
+            <label for="baseUrl">API Base URL</label>
+            <input id="baseUrl" type="text" value="http://localhost:8000" />
+            <p class="hint">Ví dụ: http://localhost:8000</p>
           </div>
-          <button id="loadSymbolsBtn" class="btn btn-secondary" type="button">
-            Tải danh sách mã
-          </button>
-        </div>
 
-        <div class="switch-row">
-          <label class="switch">
-            <input id="newsBySymbol" type="checkbox" checked />
-            <span class="slider"></span>
-          </label>
-          <span class="switch-text">Cập nhật tin tức theo mã đã chọn</span>
-        </div>
+          <div class="symbol-row">
+            <div class="field field-grow">
+              <label for="symbolSelect">Chọn cổ phiếu</label>
+              <select id="symbolSelect">
+                <option value="">-- Chưa tải danh sách mã --</option>
+              </select>
+            </div>
+            <button id="loadSymbolsBtn" class="btn btn-secondary" type="button">
+              Tải danh sách mã
+            </button>
+          </div>
 
-        <div class="actions">
-          <button id="updatePriceBtn" class="btn btn-primary" type="button">
-            Cập nhật giá mới nhất
-          </button>
-          <button id="updateNewsBtn" class="btn btn-accent" type="button">
-            Cập nhật tin tức
-          </button>
-        </div>
-      </section>
+          <div class="switch-row">
+            <label class="switch">
+              <input id="newsBySymbol" type="checkbox" checked />
+              <span class="slider"></span>
+            </label>
+            <span class="switch-text">Cập nhật tin tức theo mã đã chọn</span>
+          </div>
 
-      <section class="result-wrap fade-in fade-delay-2">
-        <article class="result-card card">
+          <div class="actions">
+            <button id="updatePriceBtn" class="btn btn-primary" type="button">
+              Cập nhật giá mới nhất
+            </button>
+            <button id="updateNewsBtn" class="btn btn-accent" type="button">
+              Cập nhật tin tức
+            </button>
+          </div>
+        </section>
+
+        <section class="result-wrap">
+          <article class="result-card card">
+            <div class="result-header">
+              <h2>Kết quả cập nhật giá</h2>
+              <span id="priceStatus" class="badge">Chưa chạy</span>
+            </div>
+            <pre id="priceResult" class="result">Chưa có dữ liệu.</pre>
+          </article>
+
+          <article class="result-card card">
+            <div class="result-header">
+              <h2>Kết quả cập nhật tin tức</h2>
+              <span id="newsStatus" class="badge">Chưa chạy</span>
+            </div>
+            <pre id="newsResult" class="result">Chưa có dữ liệu.</pre>
+          </article>
+        </section>
+
+        <section class="history card">
           <div class="result-header">
-            <h2>Kết quả cập nhật giá</h2>
-            <span id="priceStatus" class="badge">Chưa chạy</span>
+            <h2>Nhật ký thao tác</h2>
+            <button id="clearLogBtn" class="btn btn-ghost" type="button">Xóa log</button>
           </div>
-          <pre id="priceResult" class="result">Chưa có dữ liệu.</pre>
-        </article>
+          <ul id="actionLog" class="log-list">
+            <li>Hệ thống sẵn sàng.</li>
+          </ul>
+        </section>
+      </div>
 
-        <article class="result-card card">
-          <div class="result-header">
-            <h2>Kết quả cập nhật tin tức</h2>
-            <span id="newsStatus" class="badge">Chưa chạy</span>
-          </div>
-          <pre id="newsResult" class="result">Chưa có dữ liệu.</pre>
-        </article>
-      </section>
+      <!-- Tab 2: Backtest & Visualizations Content -->
+      <div id="backtest-tab-content" class="tab-content fade-in fade-delay-2" style="display: none;">
+        <div class="backtest-setup-grid">
+          <!-- Backtest Parameters Form -->
+          <section class="backtest-controls card">
+            <h2>Thiết lập Backtest</h2>
+            <form id="backtestForm" class="form-grid">
+              
+              <div class="form-row-2">
+                <div class="field">
+                  <label for="backtestSymbol">Mã cổ phiếu</label>
+                  <input id="backtestSymbol" type="text" value="FPT" placeholder="Ví dụ: FPT, VNM..." />
+                </div>
+                <div class="field" style="display: flex; align-items: flex-end; padding-bottom: 12px; gap: 8px;">
+                  <label class="switch">
+                    <input id="vn30Option" type="checkbox" />
+                    <span class="slider"></span>
+                  </label>
+                  <span class="switch-text" style="font-weight: 600;">Chạy rổ VN30 (30 mã)</span>
+                </div>
+              </div>
 
-      <section class="history card fade-in fade-delay-3">
-        <div class="result-header">
-          <h2>Nhật ký thao tác</h2>
-          <button id="clearLogBtn" class="btn btn-ghost" type="button">Xóa log</button>
+              <div class="form-row-2">
+                <div class="field">
+                  <label for="startDate">Ngày bắt đầu</label>
+                  <input id="startDate" type="date" value="2024-01-01" />
+                </div>
+                <div class="field">
+                  <label for="endDate">Ngày kết thúc</label>
+                  <input id="endDate" type="date" value="2024-12-31" />
+                </div>
+              </div>
+
+              <div class="form-row-3">
+                <div class="field">
+                  <label for="marketSymbol">Benchmark</label>
+                  <input id="marketSymbol" type="text" value="VNINDEX" />
+                </div>
+                <div class="field">
+                  <label for="minSignalScore">Score tối thiểu</label>
+                  <input id="minSignalScore" type="number" min="1" max="5" value="3" />
+                </div>
+                <div class="field">
+                  <label for="maxHoldCandles">Nến giữ tối đa (Dự phòng)</label>
+                  <input id="maxHoldCandles" type="number" min="1" max="200" value="20" />
+                  <p class="hint" style="font-size: 0.72rem; margin-top: 4px; line-height: 1.2;">AI tự tính nến giữ tối ưu. Đây chỉ là giá trị dự phòng nếu AI lỗi.</p>
+                </div>
+              </div>
+
+              <div class="form-row-3">
+                <div class="field">
+                  <label for="transCost">Phí giao dịch (mỗi chiều)</label>
+                  <input id="transCost" type="number" min="0" max="0.05" step="0.0005" value="0.0015" />
+                </div>
+                <div class="field">
+                  <label for="lookbackDays">Số ngày 1m lookback</label>
+                  <input id="lookbackDays" type="number" min="7" max="120" value="30" />
+                </div>
+                <div class="field" style="display: flex; align-items: flex-end; padding-bottom: 12px; gap: 8px;">
+                  <label class="switch">
+                    <input id="useIntraday" type="checkbox" checked />
+                    <span class="slider"></span>
+                  </label>
+                  <span class="switch-text">Dùng intraday 1m</span>
+                </div>
+              </div>
+
+              <div class="switch-row" style="margin-top: 4px;">
+                <label class="switch">
+                  <input id="exitOnScoreDrop" type="checkbox" />
+                  <span class="slider"></span>
+                </label>
+                <span class="switch-text">Bán khi score giảm sâu (<3)</span>
+              </div>
+
+              <div class="form-actions" style="margin-top: 10px;">
+                <button id="runBacktestBtn" class="btn btn-primary" type="button" style="width: 100%; padding: 12px 20px;">
+                  Chạy Backtest Pipeline
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <!-- Local JSON Import -->
+          <section class="backtest-import card">
+            <h2>Hoặc tải file JSON</h2>
+            <p class="subtitle" style="font-size: 0.85rem; margin-bottom: 15px;">
+              Xem trực quan dữ liệu backtest bằng cách kéo thả hoặc tải lên file JSON xuất ra trước đó.
+            </p>
+            <div class="drag-drop-zone" id="dragDropZone">
+              <span class="icon">📁</span>
+              <p class="zone-text">Thả file JSON của bạn vào đây</p>
+              <p class="zone-subtext">hoặc</p>
+              <label class="btn btn-secondary file-label" style="display: inline-block;">
+                Chọn file JSON
+                <input type="file" id="jsonFilePicker" accept=".json" style="display: none;" />
+              </label>
+            </div>
+          </section>
         </div>
-        <ul id="actionLog" class="log-list">
-          <li>Hệ thống sẵn sàng.</li>
-        </ul>
-      </section>
+
+        <!-- VN30 Batch Running Progress Card (shown only when running VN30) -->
+        <section class="vn30-progress-card card" id="vn30ProgressCard" style="display: none; margin-top: 18px;">
+          <div class="result-header">
+            <h2>Tiến trình chạy VN30</h2>
+            <span id="vn30Status" class="badge running">Đang chạy 0/30</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="vn30ProgressBar" style="width: 0%;"></div>
+          </div>
+          <pre id="vn30Logs" class="result" style="min-height: 120px; max-height: 200px; overflow-y: auto; margin-top: 12px; padding: 10px; font-size: 0.8rem;">Khởi động tiến trình...</pre>
+        </section>
+
+        <!-- VN30 Summary Table (shown after/during running VN30) -->
+        <section class="vn30-results-card card" id="vn30ResultsCard" style="display: none; margin-top: 18px;">
+          <div class="result-header">
+            <h2>Bảng tổng hợp kết quả rổ VN30</h2>
+            <button id="exportVn30CsvBtn" class="btn btn-ghost" type="button" style="padding: 6px 12px; font-size: 0.8rem;">Tải CSV kết quả</button>
+          </div>
+          <div class="table-responsive">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th>Mã</th>
+                  <th>Lợi nhuận ròng</th>
+                  <th>Tỉ lệ thắng</th>
+                  <th>Số giao dịch</th>
+                  <th>Hệ số Sharpe</th>
+                  <th>Trạng thái</th>
+                  <th style="text-align: center;">Biểu đồ</th>
+                </tr>
+              </thead>
+              <tbody id="vn30ResultsBody">
+                <!-- Filled in JS -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Main Visualization Panel (shown when data is loaded) -->
+        <section class="viz-wrapper" id="vizWrapper" style="display: none; margin-top: 18px;">
+          <!-- Stats Summary Dashboard -->
+          <div class="stats-grid">
+            <div class="stat-card card">
+              <div class="stat-label">Net Profit (Lợi nhuận ròng)</div>
+              <div class="stat-value" id="statNetProfit">--</div>
+            </div>
+            <div class="stat-card card">
+              <div class="stat-label">Win Rate (Tỉ lệ thắng)</div>
+              <div class="stat-value" id="statWinRate">--</div>
+            </div>
+            <div class="stat-card card">
+              <div class="stat-label">Total Trades (Số giao dịch)</div>
+              <div class="stat-value" id="statTotalTrades">--</div>
+            </div>
+            <div class="stat-card card">
+              <div class="stat-label">Sharpe Ratio (Hệ số Sharpe)</div>
+              <div class="stat-value" id="statSharpe">--</div>
+            </div>
+          </div>
+
+          <!-- Chart & Execution Logs Grid -->
+          <div class="viz-main-grid">
+            <!-- Charts Column (left/top) -->
+            <div class="charts-column">
+              <!-- Main Price Candlestick Chart -->
+              <div class="chart-box card">
+                <div class="chart-header">
+                  <div class="chart-title-group">
+                    <span class="chart-title">Biểu đồ giá & Tín hiệu (<span id="vizSymbol">--</span>)</span>
+                    <div class="chart-indicator-tags">
+                      <span class="indicator-tag tag-sma20">SMA 20</span>
+                      <span class="indicator-tag tag-sma50">SMA 50</span>
+                    </div>
+                  </div>
+                  <div class="chart-legend" id="chartLegend">O: -- | H: -- | L: -- | C: --</div>
+                </div>
+                <div id="priceChart" class="chart-canvas"></div>
+              </div>
+              
+              <!-- Indicator Subcharts -->
+              <div class="sub-charts-grid">
+                <div class="chart-box card">
+                  <span class="chart-title indicator-title">RSI (14)</span>
+                  <div id="rsiChart" class="chart-canvas sub-chart"></div>
+                </div>
+                <div class="chart-box card">
+                  <span class="chart-title indicator-title">MACD</span>
+                  <div id="macdChart" class="chart-canvas sub-chart"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Execution Logs Sidebar (right/bottom) -->
+            <div class="logs-sidebar card">
+              <h2>Nhật ký lệnh backtest</h2>
+              <p class="subtitle" style="font-size: 0.78rem; margin-bottom: 12px;">Nhấp vào dòng để xem chi tiết và tự động di chuyển biểu đồ đến vị trí lệnh.</p>
+              
+              <div class="table-responsive log-table-container">
+                <table class="trade-logs-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 10%;">#</th>
+                      <th style="width: 35%;">Ngày vào</th>
+                      <th style="width: 30%;">Lý do ra</th>
+                      <th style="width: 25%; text-align: right;">Lợi nhuận</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tradeLogsBody">
+                    <!-- Loaded dynamically in JS -->
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Selected Trade Detail Card -->
+              <div class="trade-detail-panel card" id="tradeDetailPanel" style="display: none; margin-top: 15px;">
+                <h3>Chi tiết lệnh #<span id="detailIndex">--</span></h3>
+                <ul class="detail-list">
+                  <li><span class="lbl">Ngày vào:</span> <span id="detailEntryDate" class="val">--</span></li>
+                  <li><span class="lbl">Ngày ra:</span> <span id="detailExitDate" class="val">--</span></li>
+                  <li><span class="lbl">Giá vào:</span> <span id="detailEntryPrice" class="val">--</span></li>
+                  <li><span class="lbl">Giá ra:</span> <span id="detailExitPrice" class="val">--</span></li>
+                  <li><span class="lbl">Take Profit:</span> <span id="detailTP" class="val text-green">--</span></li>
+                  <li><span class="lbl">Stop Loss:</span> <span id="detailSL" class="val text-red">--</span></li>
+                  <li><span class="lbl">Độ tự tin AI:</span> <span id="detailConfidence" class="badge">--</span></li>
+                  <li><span class="lbl">Lý do ra:</span> <span id="detailExitReason" class="val font-semibold">--</span></li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
 
     <script src="./app.js"></script>

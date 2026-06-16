@@ -230,36 +230,28 @@ Viết văn bản phân tích tổng hợp (bằng tiếng Việt) chi tiết v�
         3. Tin tức: Tóm tắt dữ liệu tin tức, nhắc tới những thông tin/sự kiện nổi bật nhất (nếu có).
         4. Mức giá & Quản trị rủi ro (nếu recommendation = Mua): Nêu rõ mức giá đề xuất, số nến giữ tối đa và tỷ lệ Risk/Reward. Nếu recommendation = Chờ, giải thích các yếu tố kỹ thuật hoặc cơ bản nào chưa đạt điều kiện mà không đề xuất giá.
 
-PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ
+PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ VÀ QUẢN TRỊ RỦI RO
 
-Đọc `interval` từ technical analysis để xác định kỳ hạn, rồi áp dụng bảng sau:
+Hệ thống chỉ sử dụng khung nến ngày (`interval` = "1d"). Dựa vào kỳ hạn đầu tư (`investment_horizon` từ context), hãy áp dụng các giới hạn cứng (hard boundaries) sau đây để xác định mức chốt lời (TP), cắt lỗ (SL) và số nến giữ tối đa (max_hold_candles):
+- Kỳ hạn Ngắn hạn (nến 1d): TP từ 8% đến 15% từ giá mua; SL từ 4% đến 7% từ giá mua; max_hold_candles từ 5 đến 15 nến.
+- Kỳ hạn Trung hạn (nến 1d): TP từ 15% đến 30% từ giá mua; SL từ 7% đến 12% từ giá mua; max_hold_candles từ 15 đến 60 nến.
+- Kỳ hạn Dài hạn (nến 1d): TP từ 40% đến 80% từ giá mua; SL từ 15% đến 20% từ giá mua; max_hold_candles từ 120 đến 260 nến.
 
-┌──────────────┬──────────────┬──────────────────┬──────────────────┬──────────────────────┐
-│ Kỳ hạn       │ interval     │ TP (% từ entry)  │ SL (% từ entry)  │ max_hold_candles     │
-├──────────────┼──────────────┼──────────────────┼──────────────────┼──────────────────────┤
-│ Ngắn hạn     │ 1h           │ 4% - 8%          │ 2% - 4%          │ 24 - 72 nến (1-3 ngày)│
-│ Ngắn hạn     │ 1d           │ 8% - 15%         │ 4% - 7%          │ 5 - 15 nến           │
-│ Trung hạn    │ 1d           │ 15% - 30%        │ 7% - 12%         │ 15 - 60 nến          │
-│ Trung hạn    │ 1w           │ 20% - 40%        │ 10% - 15%        │ 8 - 24 nến           │
-│ Dài hạn      │ 1w           │ 40% - 80%        │ 15% - 20%        │ 24 - 52 nến          │
-│ Dài hạn      │ 1M           │ 50% - 100%       │ 15% - 25%        │ 6 - 18 nến           │
-└──────────────┴──────────────┴──────────────────┴──────────────────┴──────────────────────┘
-
-Trong phạm vi trên, tinh chỉnh thêm dựa vào:
-- Biên độ ATR gần nhất (nếu có trong technical): dùng 2*ATR làm SL tham chiếu
-- Vùng kháng cự gần nhất làm TP tham chiếu
-- Vùng hỗ trợ gần nhất làm SL tham chiếu
-- Nếu technical có bollinger band: SL không nên thấp hơn lower band
-
-Tỷ lệ Risk/Reward tối thiểu: TP/SL >= 1.5
-Nếu không đạt tỷ lệ này → recommendation = Chờ dù score >= 3.
+Quy tắc tinh chỉnh (refining rules):
+1. Các khoảng TP, SL và max_hold_candles nêu trên là GIỚI HẠN CỨNG. Mọi mức giá đề xuất MUA, CHỐT LỜI, CẮT LỖ phải tuân thủ tuyệt đối các khoảng này. Bạn chỉ được phép tinh chỉnh mức giá TRONG PHẠM VI các giới hạn đó dựa vào:
+   - Biên độ ATR gần nhất (nếu có): dùng 2*ATR làm SL tham chiếu.
+   - Vùng kháng cự gần nhất để xác định TP tham chiếu.
+   - Vùng hỗ trợ gần nhất để xác định SL tham chiếu.
+   - Dải Bollinger Bands (nếu có): SL không được thấp hơn đường biên dưới (lower band).
+   Tuyệt đối KHÔNG được tinh chỉnh vượt ra ngoài giới hạn cứng (ví dụ: đối với Trung hạn, SL tinh chỉnh bắt buộc phải nằm trong khoảng 7% đến 12%, tuyệt đối không được nhỏ hơn 7% hay lớn hơn 12%).
+2. Tỷ lệ Risk/Reward (TP/SL) tối thiểu phải đạt từ 1.5 trở lên. Nếu sau khi tinh chỉnh trong phạm vi giới hạn cứng mà không đạt tỷ lệ R/R >= 1.5, bạn phải chuyển recommendation sang "Chờ" (dù điểm số kỹ thuật >= 3).
 
 - Nếu recommendation = Mua:
-    * entry_price gần current_price (±0.5%)
+    * entry_price gần current_price (trong khoảng ±0.5%)
     * stop_loss_price < entry_price < take_profit_price
-    * Giải thích ngắn tỷ lệ R/R trong analysis
+    * Giải thích ngắn gọn tỷ lệ R/R trong phần analysis
 - Nếu recommendation = Chờ:
-    * entry_price, take_profit_price, stop_loss_price, max_hold_candles = null
+    * entry_price, take_profit_price, stop_loss_price, max_hold_candles đặt là null
 
 QUY TẮC BẮT BUỘC:
     ✓ Không bịa số liệu

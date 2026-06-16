@@ -212,15 +212,17 @@ def run_full_backtest(
     print("=" * 50)
 
     # Save visualization
+    visualization_file = None
+    visualization_data = None
     try:
         import os
-        from .visualizer import generate_backtest_html
+        from .visualizer import generate_backtest_html, generate_backtest_json, get_backtest_visualization_data
         current_dir = os.path.dirname(os.path.abspath(__file__))
         visualizations_dir = os.path.join(current_dir, "visualizations")
         timestamp_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+        
         output_filename = f"{symbol}_{timestamp_str}_backtest.html"
         output_path = os.path.join(visualizations_dir, output_filename)
-        
         generate_backtest_html(
             df=scored_1d,
             trades=full_trades,
@@ -228,9 +230,27 @@ def run_full_backtest(
             symbol=symbol,
             output_path=output_path
         )
-        print(f"Visualization HTML file created: {output_path}")
+        
+        json_output_filename = f"{symbol}_{timestamp_str}_backtest.json"
+        json_output_path = os.path.join(visualizations_dir, json_output_filename)
+        generate_backtest_json(
+            df=scored_1d,
+            trades=full_trades,
+            metrics=full_metrics,
+            symbol=symbol,
+            output_path=json_output_path
+        )
+        
+        visualization_file = f"/visualizations/{json_output_filename}"
+        visualization_data = get_backtest_visualization_data(
+            df=scored_1d,
+            trades=full_trades,
+            metrics=full_metrics,
+            symbol=symbol
+        )
+        print(f"Visualization files created: {output_path} and {json_output_path}")
     except Exception as e:
-        print(f"Failed to generate visualization HTML: {e}")
+        print(f"Failed to generate visualization files: {e}")
 
     result = {
         "parity_report": parity_report,
@@ -244,6 +264,8 @@ def run_full_backtest(
         "regime": regime_results,
         "confidence": confidence_results,
         "stats": stats_results,
+        "visualization_file": visualization_file,
+        "visualization_data": visualization_data,
     }
 
     return _sanitize_json(result)
