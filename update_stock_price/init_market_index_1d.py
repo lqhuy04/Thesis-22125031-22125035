@@ -133,7 +133,10 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
 def upsert_candles(candles: list[dict]) -> None:
     if not candles:
         return
-    supabase.table(TABLE).upsert(candles, on_conflict="symbol,trading_time").execute()
+    # Khử trùng lặp theo (symbol, trading_time) để tránh lỗi
+    # "ON CONFLICT DO UPDATE cannot affect row a second time" (giữ dòng sau cùng).
+    deduped = {(c["symbol"], c["trading_time"]): c for c in candles}
+    supabase.table(TABLE).upsert(list(deduped.values()), on_conflict="symbol,trading_time").execute()
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
