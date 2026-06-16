@@ -4,6 +4,17 @@ export default {
     skip: "Skip",
     start: "Start",
   },
+  onboarding: {
+    slide1Title: "Track the market",
+    slide1Desc:
+      "Follow stock prices, indices, and sector movements in real time.",
+    slide2Title: "In-depth analysis",
+    slide2Desc:
+      "Fundamental, technical, and news analysis gathered in one place.",
+    slide3Title: "AI recommendations",
+    slide3Desc:
+      "Get personalized investment suggestions based on your risk appetite.",
+  },
   auth: {
     signIn: "Sign In",
     forgotPassword: "Forgot Password?",
