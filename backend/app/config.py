@@ -110,3 +110,20 @@ class SSIConfig:
 
 def get_ssi_config():
     return SSIConfig()
+
+
+# Patch supabase.create_client to suppress "Storage endpoint URL should have a trailing slash" stdout print
+try:
+    import supabase
+    import contextlib
+    import io
+
+    _orig_create_client = supabase.create_client
+
+    def _patched_create_client(*args, **kwargs):
+        with contextlib.redirect_stdout(io.StringIO()):
+            return _orig_create_client(*args, **kwargs)
+
+    supabase.create_client = _patched_create_client
+except Exception:
+    pass

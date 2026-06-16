@@ -69,6 +69,8 @@ const els = {
   detailSL: document.getElementById("detailSL"),
   detailConfidence: document.getElementById("detailConfidence"),
   detailExitReason: document.getElementById("detailExitReason"),
+  cloudHistoryList: document.getElementById("cloudHistoryList"),
+  refreshCloudHistoryBtn: document.getElementById("refreshCloudHistoryBtn"),
 };
 
 let symbolsLoaded = false;
@@ -76,9 +78,9 @@ let vn30SummaryData = []; // Store stats for CSV export
 
 // 30 Tickers in VN30 Index Basket
 const VN30_TICKERS = [
-  "ACB", "BID", "BVH", "CTG", "FPT", "GAS", "GVR", "HDB", "HPG", "MBB",
-  "MSN", "MWG", "PLX", "POW", "SAB", "SHB", "SSB", "SSI", "STB", "TCB",
-  "TPB", "VCB", "VJC", "VHM", "VIC", "VNM", "VPB", "VRE", "VIB", "PNJ"
+  "ACB", "BID", "CTG", "DGC", "FPT", "GAS", "GVR", "HDB", "HPG", "LPB",
+  "MBB", "MSN", "MWG", "PLX", "SAB", "SHB", "SSB", "SSI", "STB", "TCB",
+  "TPB", "VCB", "VJC", "VHM", "VIC", "VNM", "VPB", "VRE", "VIB", "VPL"
 ];
 
 // Active Chart Instances (for window resize cleanup or updates)
@@ -378,6 +380,7 @@ async function runBacktest() {
       } else {
         alert("Không nhận được dữ liệu vẽ biểu đồ từ backend.");
       }
+      loadCloudHistory();
     } catch (error) {
       appendLog(`Lỗi chạy backtest ${params.symbol}: ${error.message}`);
       alert(`Lỗi chạy backtest: ${error.message}`);
@@ -464,6 +467,7 @@ async function runBacktest() {
     appendVn30Log("🎉 Đã hoàn thành toàn bộ 30 mã VN30!");
     updateProgressBar(30, 30, "Hoàn tất rổ VN30");
     appendLog("Chạy batch VN30 hoàn tất.");
+    loadCloudHistory();
     els.runBacktestBtn.disabled = false;
     els.runBacktestBtn.textContent = "Chạy Backtest Pipeline";
   }
@@ -596,6 +600,85 @@ function processBacktestJsonFile(file) {
   };
 
   reader.readAsText(file);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CLOUD BACKTEST HISTORY LOADER (SUPABASE STORAGE)
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadCloudHistory() {
+  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
+  if (!baseUrl) return;
+
+  els.cloudHistoryList.innerHTML = '<p class="hint">Đang tải lịch sử...</p>';
+
+  try {
+    const response = await fetch(`${baseUrl}/api/agentic/backtests`);
+    const payload = await response.json();
+    
+    if (payload && payload.result && Array.isArray(payload.data)) {
+      els.cloudHistoryList.innerHTML = "";
+      const files = payload.data;
+      
+      if (files.length === 0) {
+        els.cloudHistoryList.innerHTML = '<p class="hint">Không có lịch sử backtest trên cloud.</p>';
+        return;
+      }
+      
+      files.forEach((file) => {
+        const item = document.createElement("div");
+        item.className = "cloud-history-item";
+        
+        const parts = file.name.split("_");
+        const symbol = parts[0] || "Unknown";
+        const datePart = parts[1] || "";
+        const timePart = parts[2] || "";
+        let dateStr = "";
+        if (datePart.length === 8 && timePart.length === 6) {
+          dateStr = `${datePart.slice(6, 8)}/${datePart.slice(4, 6)}/${datePart.slice(0, 4)} ` +
+                    `${timePart.slice(0, 2)}:${timePart.slice(2, 4)}:${timePart.slice(4, 6)}`;
+        } else {
+          dateStr = file.created_at ? new Date(file.created_at).toLocaleString("vi-VN") : file.name;
+        }
+
+        item.innerHTML = `
+          <div class="cloud-history-info">
+            <span class="cloud-history-title">${symbol}</span>
+            <span class="cloud-history-date">${dateStr}</span>
+          </div>
+          <button class="btn btn-secondary btn-view-cloud" type="button" style="padding: 4px 10px; font-size: 0.75rem;">
+            Xem
+          </button>
+        `;
+        
+        item.querySelector(".btn-view-cloud").addEventListener("click", async () => {
+          appendLog(`Đang tải dữ liệu backtest ${file.name} từ Cloud...`);
+          try {
+            const dataResponse = await fetch(file.json_url);
+            if (!dataResponse.ok) {
+              throw new Error(`HTTP error ${dataResponse.status}`);
+            }
+            const vizData = await dataResponse.json();
+            
+            if (!vizData.symbol || !vizData.ohlc_data || !vizData.trades || !vizData.metrics) {
+              throw new Error("Cấu trúc file JSON không khớp với chuẩn dữ liệu Visualization.");
+            }
+            
+            appendLog(`Đọc dữ liệu Cloud thành công. Hiển thị biểu đồ ${vizData.symbol}...`);
+            renderVisualization(vizData);
+          } catch (err) {
+            appendLog(`Lỗi tải dữ liệu Cloud: ${err.message}`);
+            alert(`Lỗi tải dữ liệu Cloud: ${err.message}`);
+          }
+        });
+        
+        els.cloudHistoryList.appendChild(item);
+      });
+    } else {
+      els.cloudHistoryList.innerHTML = '<p class="hint text-red">Lỗi định dạng dữ liệu trả về.</p>';
+    }
+  } catch (err) {
+    els.cloudHistoryList.innerHTML = `<p class="hint text-red">Lỗi tải lịch sử: ${err.message}</p>`;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -955,6 +1038,7 @@ els.updateNewsBtn.addEventListener("click", updateNews);
 els.clearLogBtn.addEventListener("click", clearLog);
 els.runBacktestBtn.addEventListener("click", runBacktest);
 els.exportVn30CsvBtn.addEventListener("click", exportVn30Csv);
+els.refreshCloudHistoryBtn.addEventListener("click", loadCloudHistory);
 
 window.addEventListener("DOMContentLoaded", () => {
   appendLog("Dashboard đã khởi tạo.");
@@ -979,4 +1063,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (!symbolsLoaded) {
     loadSymbols();
   }
+
+  // Load cloud backtest history
+  loadCloudHistory();
 });

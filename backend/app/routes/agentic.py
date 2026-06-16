@@ -187,3 +187,19 @@ async def backtest_pipeline(body: BacktestPipelineRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=error_response(error_code=500001, error_desc=f"Loi he thong: {e}"),
         )
+
+
+@router.get(
+    "/backtests",
+    summary="Danh sách kết quả backtest từ Supabase Storage",
+)
+async def list_backtests():
+    try:
+        from app.utils.supabase_storage import list_backtest_files
+        res = list_backtest_files()
+        return success_response(data=res)
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=error_response(error_code=500001, error_desc=f"Loi lay danh sach: {e}"),
+        )

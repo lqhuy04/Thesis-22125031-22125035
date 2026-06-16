@@ -16,7 +16,7 @@ google-auth==2.47.0
 facebook-sdk==3.1.0
 
 # Database / cache
-supabase==2.27.1
+supabase==2.28.1
 psycopg[binary,pool]==3.3.4
 redis==7.4.0
 

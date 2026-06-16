@@ -186,22 +186,40 @@
             </form>
           </section>
 
-          <!-- Local JSON Import -->
-          <section class="backtest-import card">
-            <h2>Hoặc tải file JSON</h2>
-            <p class="subtitle" style="font-size: 0.85rem; margin-bottom: 15px;">
-              Xem trực quan dữ liệu backtest bằng cách kéo thả hoặc tải lên file JSON xuất ra trước đó.
-            </p>
-            <div class="drag-drop-zone" id="dragDropZone">
-              <span class="icon">📁</span>
-              <p class="zone-text">Thả file JSON của bạn vào đây</p>
-              <p class="zone-subtext">hoặc</p>
-              <label class="btn btn-secondary file-label" style="display: inline-block;">
-                Chọn file JSON
-                <input type="file" id="jsonFilePicker" accept=".json" style="display: none;" />
-              </label>
-            </div>
-          </section>
+          <div style="display: flex; flex-direction: column; gap: 18px;">
+            <!-- Local JSON Import -->
+            <section class="backtest-import card" style="height: 100%;">
+              <h2>Hoặc tải file JSON</h2>
+              <p class="subtitle" style="font-size: 0.85rem; margin-bottom: 15px;">
+                Xem trực quan dữ liệu backtest bằng cách kéo thả hoặc tải lên file JSON xuất ra trước đó.
+              </p>
+              <div class="drag-drop-zone" id="dragDropZone">
+                <span class="icon">📁</span>
+                <p class="zone-text">Thả file JSON của bạn vào đây</p>
+                <p class="zone-subtext">hoặc</p>
+                <label class="btn btn-secondary file-label" style="display: inline-block;">
+                  Chọn file JSON
+                  <input type="file" id="jsonFilePicker" accept=".json" style="display: none;" />
+                </label>
+              </div>
+            </section>
+
+            <!-- Cloud Backtest History -->
+            <section class="backtest-history card" style="padding: 24px;">
+              <h2>Lịch sử Backtest (Cloud)</h2>
+              <p class="subtitle" style="font-size: 0.85rem; margin-bottom: 15px;">
+                Xem trực tiếp các kết quả backtest được lưu trữ trên Supabase Storage.
+              </p>
+              <div id="cloudHistoryList" class="cloud-history-list-container" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                <p class="hint">Đang tải lịch sử...</p>
+              </div>
+              <div style="margin-top: 12px; text-align: right;">
+                <button id="refreshCloudHistoryBtn" class="btn btn-ghost" type="button" style="padding: 6px 12px; font-size: 0.8rem;">
+                  Làm mới
+                </button>
+              </div>
+            </section>
+          </div>
         </div>
 
         <!-- VN30 Batch Running Progress Card (shown only when running VN30) -->

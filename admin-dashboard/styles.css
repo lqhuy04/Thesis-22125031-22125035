@@ -836,3 +836,38 @@ select:focus {
 .font-semibold {
   font-weight: 600;
 }
+
+/* Cloud History list styles */
+.cloud-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(4, 16, 24, 0.5);
+  border: 1px solid rgba(184, 217, 206, 0.1);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  transition: all 0.2s ease;
+}
+
+.cloud-history-item:hover {
+  background: rgba(88, 240, 167, 0.05);
+  border-color: rgba(88, 240, 167, 0.3);
+}
+
+.cloud-history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.cloud-history-title {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cloud-history-date {
+  font-size: 0.7rem;
+  color: var(--muted);
+}

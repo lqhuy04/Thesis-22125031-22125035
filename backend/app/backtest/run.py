@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from typing import Any
+import logging
 import math
 import numpy as np
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 from agentic_ai.analyze.nodes.technical_analysis import technical_analysis_agent
 from agentic_ai.analyze.state import AgentState
@@ -216,20 +219,10 @@ def run_full_backtest(
     visualization_data = None
     try:
         import os
-        from .visualizer import generate_backtest_html, generate_backtest_json, get_backtest_visualization_data
+        from .visualizer import generate_backtest_json, get_backtest_visualization_data
         current_dir = os.path.dirname(os.path.abspath(__file__))
         visualizations_dir = os.path.join(current_dir, "visualizations")
         timestamp_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-        
-        output_filename = f"{symbol}_{timestamp_str}_backtest.html"
-        output_path = os.path.join(visualizations_dir, output_filename)
-        generate_backtest_html(
-            df=scored_1d,
-            trades=full_trades,
-            metrics=full_metrics,
-            symbol=symbol,
-            output_path=output_path
-        )
         
         json_output_filename = f"{symbol}_{timestamp_str}_backtest.json"
         json_output_path = os.path.join(visualizations_dir, json_output_filename)
@@ -248,9 +241,19 @@ def run_full_backtest(
             metrics=full_metrics,
             symbol=symbol
         )
-        print(f"Visualization files created: {output_path} and {json_output_path}")
+        print(f"Visualization JSON file created: {json_output_path}")
+
+        # Upload to Supabase Storage
+        json_supabase_url = None
+        try:
+            from app.utils.supabase_storage import upload_backtest_file
+            logger.info("Uploading JSON visualization to Supabase Storage...")
+            json_supabase_url = upload_backtest_file(json_output_path, json_output_filename, "application/json")
+        except Exception as upload_err:
+            print(f"Failed to upload to Supabase Storage: {upload_err}")
     except Exception as e:
         print(f"Failed to generate visualization files: {e}")
+        json_supabase_url = None
 
     result = {
         "parity_report": parity_report,
@@ -266,6 +269,7 @@ def run_full_backtest(
         "stats": stats_results,
         "visualization_file": visualization_file,
         "visualization_data": visualization_data,
+        "visualization_data_url": json_supabase_url,
     }
 
     return _sanitize_json(result)
