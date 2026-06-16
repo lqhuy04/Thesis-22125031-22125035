@@ -4,6 +4,17 @@ export default {
     skip: "Bỏ qua",
     start: "Bắt đầu",
   },
+  onboarding: {
+    slide1Title: "Theo dõi thị trường",
+    slide1Desc:
+      "Cập nhật giá cổ phiếu, chỉ số và biến động ngành theo thời gian thực.",
+    slide2Title: "Phân tích chuyên sâu",
+    slide2Desc:
+      "Phân tích cơ bản, kỹ thuật và tin tức được tổng hợp trong một nơi.",
+    slide3Title: "Khuyến nghị bằng AI",
+    slide3Desc:
+      "Nhận gợi ý đầu tư cá nhân hoá dựa trên khẩu vị rủi ro của bạn.",
+  },
   auth: {
     signIn: "Đăng nhập",
     forgotPassword: "Quên mật khẩu?",
