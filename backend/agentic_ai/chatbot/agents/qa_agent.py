@@ -1,11 +1,8 @@
 """
 agentic_ai/chatbot/agents/qa_agent.py — QA Agent
 
-Xử lý hai loại intent:
-  - KNOWLEDGE_QA  : Giải thích khái niệm chứng khoán/tài chính, không cần DB.
-  - MARKET_QUERY  : Tạm thời xử lý ở đây (Phase 2 sẽ chuyển sang market_agent
-                    có tool calls thực sự). Hiện tại thông báo rõ là chưa có
-                    dữ liệu real-time và đưa ra phân tích định tính.
+Xử lý intent KNOWLEDGE_QA: giải thích khái niệm chứng khoán/tài chính, không cần DB.
+(MARKET_QUERY đã được tách sang market_agent — text-to-SQL trên Supabase Postgres.)
 """
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -31,16 +28,6 @@ Quy tắc:
   hãy thành thật nói rõ và gợi ý cách tra cứu hoặc phân tích định tính.
 """.strip()
 
-MARKET_QUERY_NOTE = """
-
-Lưu ý thêm: Người dùng đang hỏi về dữ liệu thị trường cụ thể.
-Chức năng truy vấn dữ liệu thời gian thực đang được phát triển.
-Hãy:
-1. Thừa nhận rõ ràng rằng bạn chưa có dữ liệu real-time cho câu hỏi này.
-2. Cung cấp phân tích định tính, kiến thức tổng quát liên quan nếu có thể.
-3. Gợi ý người dùng tra cứu dữ liệu thực tế trên các nguồn uy tín (VPS, SSI, Fireant...).
-""".strip()
-
 
 # ─── Helper ──────────────────────────────────────────────────────────────────
 
@@ -57,26 +44,18 @@ def _build_openai_messages(system_prompt: str, history: list[BaseMessage], user_
 
 def qa_agent(state: ChatbotState) -> dict:
     user_input = state["user_input"]
-    intent = state.get("intent", "KNOWLEDGE_QA")
     history: list[BaseMessage] = state.get("messages", [])
 
-    print(f"[QA Agent] >>> Intent : {intent}")
+    print(f"[QA Agent] >>> Intent : KNOWLEDGE_QA")
     print(f"[QA Agent] >>> Input  : {user_input!r}")
     print(f"[QA Agent] >>> History: {len(history)} messages")
-
-    system_prompt = QA_SYSTEM_PROMPT
-    if intent == "MARKET_QUERY":
-        system_prompt = QA_SYSTEM_PROMPT + "\n\n" + MARKET_QUERY_NOTE
-        print(f"[QA Agent] >>> Mode   : MARKET_QUERY (no real-time data, qualitative only)")
-    else:
-        print(f"[QA Agent] >>> Mode   : KNOWLEDGE_QA")
 
     try:
         client = _get_openai_client()
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             temperature=0.4,
-            messages=_build_openai_messages(system_prompt, history, user_input),
+            messages=_build_openai_messages(QA_SYSTEM_PROMPT, history, user_input),
         )
         reply = response.choices[0].message.content
 
