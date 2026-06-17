@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/Text";
 import Octicons from "@expo/vector-icons/Octicons";
 import { AnalysisData, getAnalysis } from "@/helpers/AgenticHelpers";
+import { RadarChart, RadarAxis } from "@/components/ui/RadarChart";
 
 // ─── Skeleton Primitives ───────────────────────────────────────────────────────
 
@@ -145,17 +146,15 @@ const AIAnalysisSkeleton = ({
           height={18}
           style={{ marginBottom: 16 }}
         />
-        {["100%", "100%", "92%", "100%", "78%", "100%", "60%"].map(
-          (w, i) => (
-            <SkeletonBox
-              {...box}
-              key={i}
-              width={w as `${number}%`}
-              height={12}
-              style={{ marginBottom: 10 }}
-            />
-          ),
-        )}
+        {["100%", "100%", "92%", "100%", "78%", "100%", "60%"].map((w, i) => (
+          <SkeletonBox
+            {...box}
+            key={i}
+            width={w as `${number}%`}
+            height={12}
+            style={{ marginBottom: 10 }}
+          />
+        ))}
       </View>
     </ScrollView>
   );
@@ -196,6 +195,13 @@ const AIAnalysis = () => {
   const formatPrice = (value: number | null | undefined) =>
     value == null ? t("aiAnalysis.notAvailable") : value.toFixed(2);
 
+  // TODO: API chưa trả về điểm thành phần — tạm dùng mock data (giá trị 0..1).
+  const scoreData: RadarAxis[] = [
+    { label: t("aiAnalysis.newsScore"), value: 0.72 },
+    { label: t("aiAnalysis.fundamentalScore"), value: 0.85 },
+    { label: t("aiAnalysis.technicalScore"), value: 0.6 },
+  ];
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
       <ScreenHeader title={t("aiAnalysis.screenTitle")} />
@@ -210,11 +216,7 @@ const AIAnalysis = () => {
         />
       ) : analysis == null ? (
         <View style={styles.centered}>
-          <Octicons
-            name="alert"
-            size={32}
-            color={theme.text.primary + "55"}
-          />
+          <Octicons name="alert" size={32} color={theme.text.primary + "55"} />
           <Text
             typography="bodyLarge"
             color={theme.text.primary + "88"}
@@ -232,9 +234,7 @@ const AIAnalysis = () => {
           }}
         >
           {/* ── Symbol + Recommendation ── */}
-          <View
-            style={[styles.card, { backgroundColor: theme.background.bg }]}
-          >
+          <View style={[styles.card, { backgroundColor: theme.background.bg }]}>
             <View style={styles.rowBetween}>
               <View>
                 <Text
@@ -270,10 +270,7 @@ const AIAnalysis = () => {
             {/* Confidence */}
             <View style={{ marginTop: 16 }}>
               <View style={styles.rowBetween}>
-                <Text
-                  typography="bodyMedium"
-                  color={theme.text.primary + "88"}
-                >
+                <Text typography="bodyMedium" color={theme.text.primary + "88"}>
                   {t("aiAnalysis.confidence")}
                 </Text>
                 <Text typography="titleMedium" color={theme.text.primary}>
@@ -358,6 +355,27 @@ const AIAnalysis = () => {
                 )}
               </React.Fragment>
             ))}
+          </View>
+
+          {/* ── Score Breakdown (Radar) ── */}
+          <View
+            style={[
+              styles.card,
+              { backgroundColor: theme.background.bg, marginTop: 12 },
+            ]}
+          >
+            <Text
+              typography="titleMedium"
+              color={theme.text.primary}
+              style={{ marginBottom: 12 }}
+            >
+              {t("aiAnalysis.scoreBreakdown")}
+            </Text>
+            <RadarChart
+              data={scoreData}
+              size={280}
+              color={recommendationColor}
+            />
           </View>
 
           {/* ── Detailed Analysis ── */}

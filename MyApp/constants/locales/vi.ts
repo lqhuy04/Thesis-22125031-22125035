@@ -70,6 +70,10 @@ export default {
     noData: "Không có dữ liệu phân tích. Vui lòng thử lại.",
     loading: "AI đang phân tích...",
     notAvailable: "Chưa có đề xuất",
+    scoreBreakdown: "Điểm thành phần",
+    newsScore: "Tin tức",
+    fundamentalScore: "Cơ bản",
+    technicalScore: "Kỹ thuật",
   },
   priceChart: {
     chart: "Biểu đồ:",
@@ -451,6 +455,7 @@ export default {
   chatbot: {
     greeting: "Xin chào, tôi có thể giúp gì cho bạn?",
     suggestions: "Gợi ý dành cho bạn",
+    quickAnalysis: "Phân tích nhanh",
     viewMore: "Xem thêm",
     placeholder: "Hỏi tôi bất cứ điều gì...",
     today: "Hôm nay",

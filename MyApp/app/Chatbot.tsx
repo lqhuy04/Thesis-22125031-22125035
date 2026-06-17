@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ScrollView,
   View,
@@ -13,8 +13,10 @@ import { router } from "expo-router";
 import * as Crypto from "expo-crypto";
 import Feather from "@expo/vector-icons/Feather";
 import Octicons from "@expo/vector-icons/Octicons";
+import AntDesign from "@expo/vector-icons/AntDesign";
 import { Text } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getInvestingIdea, SuggestionItem } from "@/helpers/MarketHelpers";
 import ChatHistoryBottomSheet, {
   type ChatConversation,
 } from "@/components/chatbot/ChatHistoryBottomsheet";
@@ -51,6 +53,33 @@ const Chatbot = () => {
   const [historyVisible, setHistoryVisible] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
+
+  /** Các chip phân tích nhanh: top 3 mã tăng + top 3 mã giảm. */
+  const [quickChips, setQuickChips] = useState<
+    { symbol: string; isUp: boolean }[]
+  >([]);
+
+  useEffect(() => {
+    let mounted = true;
+    getInvestingIdea(3).then((res) => {
+      if (!mounted || !res.status || !res.data) return;
+      const gainers = (res.data.trend.top_gainers ?? []).slice(0, 3);
+      const decliners = (res.data.trend.top_decliners ?? []).slice(0, 3);
+      setQuickChips([
+        ...gainers.map((s: SuggestionItem) => ({
+          symbol: s.symbol,
+          isUp: true,
+        })),
+        ...decliners.map((s: SuggestionItem) => ({
+          symbol: s.symbol,
+          isUp: false,
+        })),
+      ]);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const fetchSessions = useCallback(async () => {
     const { status, data } = await getChatSessions();
@@ -157,7 +186,8 @@ const Chatbot = () => {
           flexDirection: "row",
           alignItems: "center",
           marginHorizontal: 12,
-          marginTop: insets.top + 48,
+          marginTop: insets.top + 12,
+          marginBottom: 12,
         }}
       >
         <View
@@ -184,6 +214,69 @@ const Chatbot = () => {
         </View>
       </View>
 
+      {/* ── Phân tích nhanh ── */}
+      {quickChips.length > 0 && (
+        <View>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginHorizontal: 12,
+              justifyContent: "space-between",
+              marginVertical: 12,
+            }}
+          >
+            <Text typography="titleMedium" color={theme.text.primary}>
+              {t("chatbot.quickAnalysis")}
+            </Text>
+
+            <TouchableOpacity onPress={() => router.push("/InvestmentIdeas")}>
+              <Text typography="labelLarge" color={theme.text.primary}>
+                {t("chatbot.viewMore")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginLeft: 12 }}
+          >
+            {quickChips.map((chip) => (
+              <TouchableOpacity
+                key={`${chip.symbol}-${chip.isUp ? "up" : "down"}`}
+                activeOpacity={0.8}
+                onPress={() =>
+                  router.push({
+                    pathname: "/AIAnalysis",
+                    params: { data: chip.symbol },
+                  })
+                }
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                  marginRight: 12,
+                  borderRadius: 16,
+                  backgroundColor: theme.background.bg,
+                  paddingVertical: 4,
+                  paddingHorizontal: 16,
+                }}
+              >
+                <Text typography="labelLarge" color={theme.text.primary}>
+                  {chip.symbol}
+                </Text>
+                <AntDesign
+                  name={chip.isUp ? "rise" : "fall"}
+                  size={16}
+                  color={chip.isUp ? theme.base.success : theme.base.error}
+                />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       <View
         style={{
           flex: 1,
@@ -198,8 +291,8 @@ const Chatbot = () => {
             uri: "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/increase.png",
           }}
           style={{
-            width: screenWidth * 0.45,
-            height: screenWidth * 0.45, // Giữ tỷ lệ hình ảnh
+            width: screenWidth * 0.38,
+            height: screenWidth * 0.38, // Giữ tỷ lệ hình ảnh
             alignSelf: "center",
             marginBottom: 24,
             opacity: 0.7,

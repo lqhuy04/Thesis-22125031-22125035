@@ -69,6 +69,10 @@ export default {
     noData: "No analysis data available. Please try again.",
     loading: "AI is analyzing...",
     notAvailable: "N/A",
+    scoreBreakdown: "Score Breakdown",
+    newsScore: "News",
+    fundamentalScore: "Fundamental",
+    technicalScore: "Technical",
   },
   priceChart: {
     chart: "Chart:",
@@ -451,6 +455,7 @@ export default {
   chatbot: {
     greeting: "Hi, how can I help you?",
     suggestions: "Suggestions for you",
+    quickAnalysis: "Quick analysis",
     viewMore: "View more",
     placeholder: "Ask me anything...",
     today: "Today",
