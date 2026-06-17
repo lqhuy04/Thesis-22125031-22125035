@@ -190,6 +190,7 @@ const Chatbot = () => {
           alignItems: "center",
           justifyContent: "center",
           paddingHorizontal: 48,
+          opacity: 0.8,
         }}
       >
         <Image

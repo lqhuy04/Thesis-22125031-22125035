@@ -14,6 +14,7 @@ Mọi SQL đều đi qua sql_runner.sanitize_sql() — LLM không bao giờ ch�
 """
 
 import json
+from datetime import datetime, timezone, timedelta
 
 import pandas as pd
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -24,11 +25,23 @@ from agentic_ai.chatbot.sql_runner import get_schema_ddl, run_select, UnsafeSQLE
 from agentic_ai.service.openai_service import _get_openai_client
 from app.services.technical_indicators_service import TechnicalIndicatorsService
 
+# Giờ Việt Nam (UTC+7) — dùng để cho LLM biết "hôm nay" là ngày nào.
+_VN_TZ = timezone(timedelta(hours=7))
+
+
+def _today_str() -> str:
+    """Ngày hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD."""
+    return datetime.now(_VN_TZ).strftime("%Y-%m-%d")
+
+
 # ─── Prompts ───────────────────────────────────────────────────────────────────
 
 GEN_SQL_SYSTEM_PROMPT = """
-Bạn là chuyên gia chuyển câu hỏi tiếng Việt về chứng khoán thành MỘT câu truy vấn
-PostgreSQL (SELECT) trên cơ sở dữ liệu thị trường chứng khoán Việt Nam.
+Bạn là chuyên gia chuyển câu hỏi (tiếng Việt hoặc tiếng Anh) về chứng khoán thành MỘT câu
+truy vấn PostgreSQL (SELECT) trên cơ sở dữ liệu thị trường chứng khoán Việt Nam.
+
+Hôm nay là ngày {today} (giờ Việt Nam). Khi user nói "hôm nay", "today", "hiện tại", "now"...
+hãy hiểu theo ngày này (vd lọc trading_time theo ngày này).
 
 QUY TẮC SINH SQL (bắt buộc tuân thủ):
 - Chỉ sinh MỘT câu SELECT (hoặc WITH ... SELECT). TUYỆT ĐỐI không INSERT/UPDATE/DELETE/DDL.
@@ -39,14 +52,30 @@ QUY TẮC SINH SQL (bắt buộc tuân thủ):
 - Các bảng FA_* (cơ bản) liên kết với "Stock" qua FA_*.stock_id = "Stock".id.
 - Tin tức: "Article" liên kết "Stock" qua bảng nối "Article_Stock" (article_id, stock_id).
 
+⚠️ ĐƠN VỊ GIÁ/KHỐI LƯỢNG (BẮT BUỘC):
+- Trong HAI bảng "Stock_Price_1d" và "Stock_Price_1m", các cột open, high, low, close, volume
+  được lưu ở dạng ĐÃ CHIA 1000 (giá trị thật = giá trị lưu × 1000).
+- Khi SELECT bất kỳ cột nào trong open/high/low/close/volume từ hai bảng này, BẮT BUỘC nhân
+  với 1000 NGAY TRONG SQL và GIỮ NGUYÊN tên cột (alias) để kết quả trả về là giá trị thật:
+    SELECT (close * 1000) AS close, (volume * 1000) AS volume FROM "Stock_Price_1d" ...
+  Với hàm tổng hợp cũng phải nhân 1000:
+    SELECT (MAX(high) * 1000) AS max_high FROM "Stock_Price_1d" ...
+- Các bảng KHÁC (vd "Current_Stock_Price") KHÔNG áp dụng quy tắc này — giữ nguyên giá trị.
+
 PHÂN TÍCH KỸ THUẬT (RSI, MACD, KDJ, Bollinger, SMA):
 - Các chỉ báo này KHÔNG lưu trong DB, phải tính từ dữ liệu nến.
 - Khi user hỏi chỉ báo kỹ thuật: đặt needs_technical_calc = true, và sinh SQL lấy
-  open, high, low, close, volume, trading_time từ bảng "Stock_Price_1d" của mã đó,
-  ORDER BY trading_time DESC LIMIT 200 (cần >= 50 nến để tính được).
+  (open * 1000) AS open, (high * 1000) AS high, (low * 1000) AS low,
+  (close * 1000) AS close, (volume * 1000) AS volume, trading_time
+  từ bảng "Stock_Price_1d" của mã đó, ORDER BY trading_time DESC LIMIT 200
+  (cần >= 50 nến để tính được; nhớ quy tắc ×1000 ở trên).
 
 NẾU KHÔNG THỂ TRẢ LỜI BẰNG DỮ LIỆU SẴN CÓ:
 - Đặt sql = "" và ghi no_query_reason giải thích ngắn gọn.
+
+NGÔN NGỮ:
+- Phát hiện ngôn ngữ của câu hỏi MỚI NHẤT và ghi vào trường language
+  (vd "Vietnamese", "English"). Dùng để trả lời đúng ngôn ngữ người dùng.
 
 Chỉ trả về đúng cấu trúc được yêu cầu.
 
@@ -58,10 +87,16 @@ SYNTHESIZE_SYSTEM_PROMPT = """
 Bạn là chuyên gia phân tích chứng khoán Việt Nam. Hãy trả lời câu hỏi của người dùng
 DỰA HOÀN TOÀN trên dữ liệu được cung cấp bên dưới (lấy từ cơ sở dữ liệu).
 
+Hôm nay là ngày {today} (giờ Việt Nam).
+
+⚠️ NGÔN NGỮ (QUAN TRỌNG NHẤT): BẮT BUỘC viết TOÀN BỘ câu trả lời bằng {language}.
+Không dùng ngôn ngữ khác, bất kể prompt này viết bằng tiếng Việt.
+
 Quy tắc:
-- Trả lời bằng tiếng Việt, rõ ràng, có cấu trúc nếu nhiều số liệu.
 - KHÔNG bịa thêm số liệu ngoài dữ liệu được cung cấp.
-- Nêu rõ thời điểm/ngày của dữ liệu nếu có trong kết quả.
+- Nếu kết quả CÓ cột thời gian (vd trading_time, trading_date) và mốc đó KHÔNG phải hôm nay
+  ({today}), nói rõ "dữ liệu ngày ..." — KHÔNG ngầm hiểu là dữ liệu của hôm nay.
+- Nếu kết quả KHÔNG có cột thời gian nào, đừng bịa/đoán ngày — chỉ trình bày số liệu.
 - Nếu dữ liệu rỗng, nói thẳng là không tìm thấy dữ liệu cho mã/câu hỏi đó.
 - Với chỉ báo kỹ thuật, diễn giải ý nghĩa (vd RSI > 70 là quá mua) dựa trên giá trị mới nhất.
 """.strip()
@@ -74,6 +109,7 @@ class GeneratedSQL(BaseModel):
     needs_technical_calc: bool        # True nếu cần tính chỉ báo kỹ thuật từ OHLC
     symbol: str | None                # Mã cổ phiếu chính (nếu xác định được)
     no_query_reason: str | None       # Lý do nếu sql rỗng
+    language: str                     # Ngôn ngữ câu hỏi (vd "Vietnamese", "English") để trả lời đúng ngôn ngữ
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -89,7 +125,7 @@ def _history_to_messages(history: list[BaseMessage], limit: int = 6) -> list[dic
 def _generate_sql(client, history: list[BaseMessage], user_input: str,
                   prev_error: str | None = None) -> GeneratedSQL:
     """Gọi LLM sinh SQL. prev_error != None → vòng retry, đính kèm lỗi để LLM sửa."""
-    system = GEN_SQL_SYSTEM_PROMPT.format(schema=get_schema_ddl())
+    system = GEN_SQL_SYSTEM_PROMPT.format(schema=get_schema_ddl(), today=_today_str())
     messages = [{"role": "system", "content": system}]
     messages += _history_to_messages(history)
     user_content = user_input
@@ -140,13 +176,15 @@ def _compute_technical(rows: list[dict]) -> dict | None:
 
 
 def _synthesize(client, history: list[BaseMessage], user_input: str,
-                rows: list[dict], technical: dict | None) -> str:
+                rows: list[dict], technical: dict | None,
+                language: str = "Vietnamese") -> str:
     """LLM lần 2: viết câu trả lời dựa trên dữ liệu lấy được."""
     data_payload = {"rows": rows[:50]}
     if technical is not None:
         data_payload["technical_indicators_latest"] = technical
 
-    messages = [{"role": "system", "content": SYNTHESIZE_SYSTEM_PROMPT}]
+    system = SYNTHESIZE_SYSTEM_PROMPT.format(today=_today_str(), language=language or "Vietnamese")
+    messages = [{"role": "system", "content": system}]
     messages += _history_to_messages(history, limit=4)
     messages.append({
         "role": "user",
@@ -224,8 +262,8 @@ def market_agent(state: ChatbotState) -> dict:
             technical = _compute_technical(rows)
             print(f"[Market Agent] >>> Technical: {technical is not None}")
 
-        # 4) Tổng hợp câu trả lời
-        reply = _synthesize(client, history, user_input, rows, technical)
+        # 4) Tổng hợp câu trả lời (đúng ngôn ngữ user đã hỏi)
+        reply = _synthesize(client, history, user_input, rows, technical, gen.language)
         print(f"[Market Agent] >>> Reply  : {reply[:120]}{'...' if len(reply) > 120 else ''}")
 
         return {

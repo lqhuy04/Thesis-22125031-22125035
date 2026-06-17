@@ -22,7 +22,9 @@ from agentic_ai.service.openai_service import _get_openai_client
 
 OUT_OF_SCOPE_REPLY = (
     "Xin lỗi, tôi chỉ hỗ trợ các câu hỏi liên quan đến chứng khoán và tài chính. "
-    "Bạn có câu hỏi nào về thị trường, phân tích kỹ thuật, hay đầu tư không?"
+    "Bạn có câu hỏi nào về thị trường, phân tích kỹ thuật, hay đầu tư không?\n\n"
+    "Sorry, I only support questions related to stocks and finance. "
+    "Do you have any questions about the market, technical analysis, or investing?"
 )
 
 INTENT_SYSTEM_PROMPT = """

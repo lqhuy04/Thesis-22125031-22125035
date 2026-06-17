@@ -22,75 +22,26 @@ interface SuggestionTab {
   questions: string[];
 }
 
-// Mock data — các nhóm gợi ý cho app chứng khoán
-export const SUGGESTION_TABS: SuggestionTab[] = [
-  {
-    label: "Phân tích cổ phiếu",
-    questions: [
-      "Phân tích cổ phiếu VNM 📊",
-      "Cổ phiếu nào đáng mua tuần này?",
-      "So sánh HPG và HSG",
-      "Định giá cổ phiếu FPT",
-      "Cổ phiếu VHM có tiềm năng không?",
-      "Phân tích cơ bản mã MWG",
-    ],
-  },
-  {
-    label: "Thị trường hôm nay",
-    questions: [
-      "Tóm tắt thị trường hôm nay 📈",
-      "VN-Index hôm nay thế nào?",
-      "Top cổ phiếu tăng mạnh nhất",
-      "Khối ngoại mua bán ròng gì?",
-      "Nhóm ngành nào đang dẫn dắt thị trường?",
-      "Tin tức tác động thị trường hôm nay",
-    ],
-  },
-  {
-    label: "Chỉ báo kỹ thuật",
-    questions: [
-      "RSI là gì và cách sử dụng? 📐",
-      "MACD của VNM đang báo hiệu gì?",
-      "Đường MA50 và MA200 là gì?",
-      "Cổ phiếu nào đang vùng quá bán?",
-      "Phân tích kỹ thuật mã HPG",
-      "Tín hiệu Bollinger Bands hiện tại",
-    ],
-  },
-  {
-    label: "Kiến thức đầu tư",
-    questions: [
-      "Sinh viên có nên đầu tư chứng khoán? 🎓",
-      "Làm sao để bắt đầu đầu tư?",
-      "Chỉ số P/E và P/B là gì?",
-      "Phân biệt cổ phiếu và trái phiếu",
-      "Khi nào nên cắt lỗ, chốt lời?",
-      "Đầu tư dài hạn hay lướt sóng?",
-    ],
-  },
-  {
-    label: "1 phút học đầu tư",
-    questions: [
-      "Cổ tức là gì? 💡",
-      "Vốn hóa thị trường là gì?",
-      "Hiểu về thanh khoản cổ phiếu",
-      "Margin là gì và rủi ro ra sao?",
-      "ETF khác gì so với cổ phiếu?",
-      "Cách đọc báo cáo tài chính",
-    ],
-  },
-  {
-    label: "Nói chuyện phiếm",
-    questions: [
-      "Kể chuyện cười về đầu tư 😄",
-      "Làm thơ về chứng khoán cho mình nghe",
-      "Warren Buffett dạy gì về đầu tư?",
-      "Bài học từ những cú sập thị trường",
-      "Giúp mình ra quyết định đầu tư",
-      "Tâm lý nhà đầu tư khi thị trường đỏ lửa",
-    ],
-  },
-];
+type TranslateFn = (key: string) => string;
+
+// Khoá các nhóm gợi ý — nội dung được lấy từ file localization
+const SUGGESTION_TAB_KEYS = [
+  "stockAnalysis",
+  "marketToday",
+  "technicalIndicators",
+  "investmentKnowledge",
+  "oneMinuteLearning",
+  "smallTalk",
+] as const;
+
+// Build danh sách tab từ translation theo ngôn ngữ hiện tại
+const buildSuggestionTabs = (t: TranslateFn): SuggestionTab[] =>
+  SUGGESTION_TAB_KEYS.map((key) => ({
+    label: t(`chatbot.suggestionTabs.${key}.label`),
+    questions: [1, 2, 3, 4, 5, 6].map((i) =>
+      t(`chatbot.suggestionTabs.${key}.q${i}`),
+    ),
+  }));
 
 interface Props {
   visible: boolean;
@@ -101,12 +52,14 @@ interface Props {
 
 const SuggestionsBottomSheet = ({
   visible,
-  tabs = SUGGESTION_TABS,
+  tabs: tabsProp,
   onClose,
   onSelectQuestion,
 }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
+
+  const tabs = tabsProp ?? buildSuggestionTabs(t);
 
   const [activeTab, setActiveTab] = useState(0);
 
