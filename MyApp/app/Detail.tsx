@@ -45,7 +45,7 @@ const Detail = () => {
         activeOpacity={0.85}
         onPress={() =>
           router.push({
-            pathname: "/AIAnalysis",
+            pathname: "/AIAnalysisConfig",
             params: { data: stockSymbol },
           })
         }

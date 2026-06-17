@@ -26,8 +26,34 @@ export type AnalysisData = {
   score: AnalysisScore;
 };
 
+export type TechnicalSelection = {
+  ma?: boolean;
+  boll?: boolean;
+  rsi?: boolean;
+  macd?: boolean;
+  kdj?: boolean;
+};
+
+export type FundamentalSelection = {
+  valuation?: boolean;
+  profitability?: boolean;
+  growth?: boolean;
+  financial_health?: boolean;
+  cash_flow?: boolean;
+};
+
+export type DataSelection = {
+  news?: boolean;
+  technical?: TechnicalSelection | boolean;
+  fundamental?: FundamentalSelection | boolean;
+};
+
+export type AnalysisMode = "auto" | "manual";
+
 export const getAnalysis = async (
   symbol: string,
+  mode: AnalysisMode = "auto",
+  dataSelection?: DataSelection,
 ): Promise<{
   status: boolean;
   data: AnalysisData | null;
@@ -35,13 +61,19 @@ export const getAnalysis = async (
   try {
     const riskAppetite = await getRiskAppetite();
 
+    const body: Record<string, unknown> = {
+      mode,
+      symbol,
+      risk_appetite: riskAppetite?.data,
+    };
+
+    if (mode === "manual" && dataSelection !== undefined) {
+      body.data_selection = dataSelection;
+    }
+
     const result = await sendMessage("api/agentic/analyze", {
       method: "POST",
-      body: JSON.stringify({
-        mode: "auto",
-        symbol: symbol,
-        risk_appetite: riskAppetite?.data,
-      }),
+      body: JSON.stringify(body),
     });
 
     const { errorCode, data } = result || {};

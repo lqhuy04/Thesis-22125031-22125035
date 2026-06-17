@@ -14,7 +14,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/Text";
 import Octicons from "@expo/vector-icons/Octicons";
 import LinearGradient from "react-native-linear-gradient";
-import { AnalysisData, getAnalysis } from "@/helpers/AgenticHelpers";
+import {
+  AnalysisData,
+  AnalysisMode,
+  DataSelection,
+  getAnalysis,
+} from "@/helpers/AgenticHelpers";
 import { RadarChart, RadarAxis } from "@/components/ui/RadarChart";
 
 const screenWidth = Dimensions.get("window").width;
@@ -212,8 +217,14 @@ const AIAnalysis = () => {
   const { t } = useLocalization();
   const insets = useSafeAreaInsets();
 
-  const { data } = useLocalSearchParams() || {};
+  const { data, mode, dataSelection } = useLocalSearchParams() || {};
   const stockSymbol = (data as string) ?? "";
+  const analysisMode = ((mode as string) ?? "auto") as AnalysisMode;
+  const dataSelectionStr = (dataSelection as string) ?? "";
+  const parsedDataSelection = useMemo<DataSelection | undefined>(
+    () => (dataSelectionStr ? JSON.parse(dataSelectionStr) : undefined),
+    [dataSelectionStr],
+  );
 
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -224,7 +235,7 @@ const AIAnalysis = () => {
     setIsLoading(true);
     setAnalysis(null);
 
-    getAnalysis(stockSymbol)
+    getAnalysis(stockSymbol, analysisMode, parsedDataSelection)
       .then((res) => {
         if (mounted && res.status) setAnalysis(res.data);
       })
@@ -235,7 +246,7 @@ const AIAnalysis = () => {
     return () => {
       mounted = false;
     };
-  }, [stockSymbol]);
+  }, [analysisMode, parsedDataSelection, stockSymbol]);
 
   const isBuy = analysis?.recommendation === t("aiAnalysis.buy");
 
@@ -441,32 +452,32 @@ const AIAnalysis = () => {
                 borderColor: `${PURPLE_GRADIENT[1]}55`,
               }}
             >
-            {selectedAxis === null ? (
-              <Text
-                typography="bodyMedium"
-                color={theme.text.primary + "55"}
-                style={{ textAlign: "center", lineHeight: 22 }}
-              >
-                {t("aiAnalysis.tapToViewDetail")}
-              </Text>
-            ) : (
-              <>
-                <Text
-                  typography="labelMedium"
-                  color={PURPLE_GRADIENT[0]}
-                  style={{ marginBottom: 6 }}
-                >
-                  {scoreData[selectedAxis].label}
-                </Text>
+              {selectedAxis === null ? (
                 <Text
                   typography="bodyMedium"
-                  color={theme.text.primary}
-                  style={{ lineHeight: 22 }}
+                  color={theme.text.primary + "55"}
+                  style={{ textAlign: "center", lineHeight: 22 }}
                 >
-                  {analysis.analysis[axisAnalysisKeys[selectedAxis]]}
+                  {t("aiAnalysis.tapToViewDetail")}
                 </Text>
-              </>
-            )}
+              ) : (
+                <>
+                  <Text
+                    typography="labelMedium"
+                    color={PURPLE_GRADIENT[0]}
+                    style={{ marginBottom: 6 }}
+                  >
+                    {scoreData[selectedAxis].label}
+                  </Text>
+                  <Text
+                    typography="bodyMedium"
+                    color={theme.text.primary}
+                    style={{ lineHeight: 22 }}
+                  >
+                    {analysis.analysis[axisAnalysisKeys[selectedAxis]]}
+                  </Text>
+                </>
+              )}
             </View>
           </View>
 
