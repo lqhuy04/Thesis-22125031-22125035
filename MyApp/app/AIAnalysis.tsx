@@ -2,13 +2,43 @@ import ScreenHeader from "@/components/ui/ScreenHeader";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Animated,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/Text";
 import Octicons from "@expo/vector-icons/Octicons";
+import LinearGradient from "react-native-linear-gradient";
 import { AnalysisData, getAnalysis } from "@/helpers/AgenticHelpers";
 import { RadarChart, RadarAxis } from "@/components/ui/RadarChart";
+
+const screenWidth = Dimensions.get("window").width;
+
+// Brand purple gradient, matching the app theme.
+const PURPLE_GRADIENT = ["#9D8CFF", "#7B5CFF", "#613DE4"] as const;
+
+// Small gradient accent bar shown to the left of section titles.
+const SectionTitle = ({ children }: { children: React.ReactNode }) => {
+  const { theme } = useTheme();
+  return (
+    <View style={styles.sectionTitleRow}>
+      <LinearGradient
+        colors={PURPLE_GRADIENT as unknown as string[]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.sectionAccent}
+      />
+      <Text typography="titleMedium" color={theme.text.primary}>
+        {children}
+      </Text>
+    </View>
+  );
+};
 
 // ─── Skeleton Primitives ───────────────────────────────────────────────────────
 
@@ -138,6 +168,23 @@ const AIAnalysisSkeleton = ({
         ))}
       </View>
 
+      {/* ── Score Breakdown (Radar) ── */}
+      <View style={[styles.card, { backgroundColor: cardBg, marginTop: 12 }]}>
+        <SkeletonBox
+          {...box}
+          width={140}
+          height={18}
+          style={{ marginBottom: 16 }}
+        />
+        <SkeletonBox
+          {...box}
+          width={200}
+          height={200}
+          borderRadius={100}
+          style={{ alignSelf: "center", marginVertical: 8 }}
+        />
+      </View>
+
       {/* ── Detailed Analysis ── */}
       <View style={[styles.card, { backgroundColor: cardBg, marginTop: 12 }]}>
         <SkeletonBox
@@ -190,7 +237,6 @@ const AIAnalysis = () => {
   }, [stockSymbol]);
 
   const isBuy = analysis?.recommendation === t("aiAnalysis.buy");
-  const recommendationColor = isBuy ? theme.base.success : theme.base.warning;
 
   const formatPrice = (value: number | null | undefined) =>
     value == null ? t("aiAnalysis.notAvailable") : value.toFixed(2);
@@ -233,68 +279,63 @@ const AIAnalysis = () => {
             paddingBottom: insets.bottom + 24,
           }}
         >
-          {/* ── Symbol + Recommendation ── */}
-          <View style={[styles.card, { backgroundColor: theme.background.bg }]}>
-            <View style={styles.rowBetween}>
+          {/* ── Symbol + Recommendation (hero) ── */}
+          <LinearGradient
+            colors={PURPLE_GRADIENT as unknown as string[]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.heroCard}
+          >
+            <View style={[styles.rowBetween, { margin: 12 }]}>
               <View>
                 <Text
                   typography="labelMedium"
-                  color={theme.text.primary + "88"}
+                  color="#FFFFFFAA"
                   style={{ marginBottom: 4 }}
                 >
                   {stockSymbol}
                 </Text>
-                <Text typography="titleMedium" color={theme.text.primary}>
+                <Text typography="titleLarge" color="#FFFFFF">
                   {t("aiAnalysis.recommendation")}
                 </Text>
               </View>
 
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: recommendationColor + "22" },
-                ]}
-              >
+              <View style={styles.heroBadge}>
                 <Octicons
                   name={isBuy ? "arrow-up-right" : "clock"}
                   size={16}
-                  color={recommendationColor}
+                  color="#FFFFFF"
                   style={{ marginRight: 6 }}
                 />
-                <Text typography="titleMedium" color={recommendationColor}>
+                <Text typography="titleMedium" color="#FFFFFF">
                   {analysis.recommendation}
                 </Text>
               </View>
             </View>
 
             {/* Confidence */}
-            <View style={{ marginTop: 16 }}>
-              <View style={styles.rowBetween}>
-                <Text typography="bodyMedium" color={theme.text.primary + "88"}>
+            <View style={{ marginTop: 20 }}>
+              <View style={[styles.rowBetween, { marginHorizontal: 12 }]}>
+                <Text typography="bodyMedium" color="#FFFFFFCC">
                   {t("aiAnalysis.confidence")}
                 </Text>
-                <Text typography="titleMedium" color={theme.text.primary}>
+                <Text typography="titleMedium" color="#FFFFFF">
                   {`${(analysis.confidence * 100).toFixed(0)}%`}
                 </Text>
               </View>
-              <View
-                style={[
-                  styles.progressTrack,
-                  { backgroundColor: theme.border.default },
-                ]}
-              >
+              <View style={[styles.progressTrack, styles.heroTrack]}>
                 <View
                   style={[
                     styles.progressFill,
                     {
                       width: `${Math.min(Math.max(analysis.confidence, 0), 1) * 100}%`,
-                      backgroundColor: recommendationColor,
+                      backgroundColor: "#FFFFFF",
                     },
                   ]}
                 />
               </View>
             </View>
-          </View>
+          </LinearGradient>
 
           {/* ── Trading Plan ── */}
           <View
@@ -303,13 +344,7 @@ const AIAnalysis = () => {
               { backgroundColor: theme.background.bg, marginTop: 12 },
             ]}
           >
-            <Text
-              typography="titleMedium"
-              color={theme.text.primary}
-              style={{ marginBottom: 12 }}
-            >
-              {t("aiAnalysis.tradingPlan")}
-            </Text>
+            <SectionTitle>{t("aiAnalysis.tradingPlan")}</SectionTitle>
 
             {[
               {
@@ -364,18 +399,8 @@ const AIAnalysis = () => {
               { backgroundColor: theme.background.bg, marginTop: 12 },
             ]}
           >
-            <Text
-              typography="titleMedium"
-              color={theme.text.primary}
-              style={{ marginBottom: 12 }}
-            >
-              {t("aiAnalysis.scoreBreakdown")}
-            </Text>
-            <RadarChart
-              data={scoreData}
-              size={280}
-              color={recommendationColor}
-            />
+            <SectionTitle>{t("aiAnalysis.scoreBreakdown")}</SectionTitle>
+            <RadarChart data={scoreData} size={280} />
           </View>
 
           {/* ── Detailed Analysis ── */}
@@ -385,13 +410,7 @@ const AIAnalysis = () => {
               { backgroundColor: theme.background.bg, marginTop: 12 },
             ]}
           >
-            <Text
-              typography="titleMedium"
-              color={theme.text.primary}
-              style={{ marginBottom: 12 }}
-            >
-              {t("aiAnalysis.analysis")}
-            </Text>
+            <SectionTitle>{t("aiAnalysis.analysis")}</SectionTitle>
             <Text
               typography="bodyLarge"
               color={theme.text.primary}
@@ -417,6 +436,36 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
   },
+  heroCard: {
+    borderRadius: 16,
+    shadowColor: "#613DE4",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  heroBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  heroTrack: {
+    backgroundColor: "rgba(255,255,255,0.25)",
+  },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sectionAccent: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
+    marginRight: 8,
+  },
   rowBetween: {
     flexDirection: "row",
     alignItems: "center",
@@ -430,10 +479,12 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   progressTrack: {
-    width: "100%",
+    width: screenWidth - 48,
     height: 8,
     borderRadius: 4,
     marginTop: 8,
+    marginBottom: 12,
+    marginHorizontal: 12,
     overflow: "hidden",
   },
   progressFill: {

@@ -2,6 +2,7 @@
 //
 // Animated radar (spider) chart built on react-native-svg + reanimated.
 // The data polygon grows out from the center and fades in on mount / data change.
+// Filled with the brand purple gradient and a soft radial glow for emphasis.
 // Each axis value is expected to be a ratio between 0 and 1 (rendered as %).
 
 import { Text } from "@/components/ui/Text";
@@ -15,10 +16,24 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import Svg, { Circle, Line, Path, Polygon } from "react-native-svg";
+import Svg, {
+  Circle,
+  Defs,
+  Line,
+  LinearGradient,
+  Path,
+  Polygon,
+  RadialGradient,
+  Stop,
+} from "react-native-svg";
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+// Brand purple gradient (light → deep), matching the app theme.
+const PURPLE_LIGHT = "#9D8CFF";
+const PURPLE_MID = "#7B5CFF";
+const PURPLE_DEEP = "#613DE4";
 
 export interface RadarAxis {
   label: string;
@@ -30,7 +45,6 @@ interface RadarChartProps {
   size?: number;
   maxValue?: number;
   levels?: number;
-  color?: string;
   duration?: number;
 }
 
@@ -43,13 +57,11 @@ const DataPolygon = ({
   points,
   centerX,
   centerY,
-  color,
 }: {
   progress: SharedValue<number>;
   points: Point[];
   centerX: number;
   centerY: number;
-  color: string;
 }) => {
   const animatedProps = useAnimatedProps(() => {
     let d = "";
@@ -59,15 +71,16 @@ const DataPolygon = ({
       d += `${i === 0 ? "M" : "L"}${x},${y} `;
     }
     d += "Z";
-    return { d, fillOpacity: 0.25 * progress.value };
+    return { d, fillOpacity: progress.value, strokeOpacity: progress.value };
   });
 
   return (
     <AnimatedPath
       animatedProps={animatedProps}
-      fill={color}
-      stroke={color}
-      strokeWidth={2}
+      fill="url(#radarFill)"
+      stroke={PURPLE_MID}
+      strokeWidth={2.5}
+      strokeLinejoin="round"
     />
   );
 };
@@ -77,13 +90,11 @@ const DataDot = ({
   point,
   centerX,
   centerY,
-  color,
 }: {
   progress: SharedValue<number>;
   point: Point;
   centerX: number;
   centerY: number;
-  color: string;
 }) => {
   const animatedProps = useAnimatedProps(() => ({
     cx: interpolate(progress.value, [0, 1], [centerX, point.x]),
@@ -94,10 +105,10 @@ const DataDot = ({
   return (
     <AnimatedCircle
       animatedProps={animatedProps}
-      r={4}
-      fill={color}
+      r={5}
+      fill={PURPLE_LIGHT}
       stroke="#FFFFFF"
-      strokeWidth={1.5}
+      strokeWidth={2}
     />
   );
 };
@@ -109,11 +120,9 @@ export const RadarChart = ({
   size = 260,
   maxValue = 1,
   levels = 4,
-  color,
   duration = 900,
 }: RadarChartProps) => {
   const { theme } = useTheme();
-  const accent = color ?? theme.base.primary;
   const webColor = theme.border.default;
 
   const padding = 48; // room for labels around the chart
@@ -184,6 +193,20 @@ export const RadarChart = ({
   return (
     <View style={{ width: size, height: size, alignSelf: "center" }}>
       <Svg width={size} height={size}>
+        <Defs>
+          <LinearGradient id="radarFill" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={PURPLE_LIGHT} stopOpacity={0.55} />
+            <Stop offset="1" stopColor={PURPLE_DEEP} stopOpacity={0.35} />
+          </LinearGradient>
+          <RadialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
+            <Stop offset="0" stopColor={PURPLE_MID} stopOpacity={0.28} />
+            <Stop offset="1" stopColor={PURPLE_MID} stopOpacity={0} />
+          </RadialGradient>
+        </Defs>
+
+        {/* Soft glow behind the web */}
+        <Circle cx={cx} cy={cy} r={radius} fill="url(#radarGlow)" />
+
         {rings.map((pts, i) => (
           <Polygon
             key={`ring-${i}`}
@@ -191,7 +214,7 @@ export const RadarChart = ({
             fill="none"
             stroke={webColor}
             strokeWidth={1}
-            opacity={0.6}
+            opacity={0.5}
           />
         ))}
         {axes.map((ax, i) => (
@@ -203,7 +226,7 @@ export const RadarChart = ({
             y2={ax.y}
             stroke={webColor}
             strokeWidth={1}
-            opacity={0.6}
+            opacity={0.5}
           />
         ))}
         <DataPolygon
@@ -211,7 +234,6 @@ export const RadarChart = ({
           points={dataPoints}
           centerX={cx}
           centerY={cy}
-          color={accent}
         />
         {dataPoints.map((p, i) => (
           <DataDot
@@ -220,7 +242,6 @@ export const RadarChart = ({
             point={p}
             centerX={cx}
             centerY={cy}
-            color={accent}
           />
         ))}
       </Svg>
@@ -244,7 +265,7 @@ export const RadarChart = ({
           >
             {ax.label}
           </Text>
-          <Text typography="labelMedium" color={accent}>
+          <Text typography="labelMedium" color={PURPLE_LIGHT}>
             {Math.round((ax.value / maxValue) * 100)}%
           </Text>
         </View>
