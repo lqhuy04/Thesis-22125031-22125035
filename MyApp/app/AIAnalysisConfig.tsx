@@ -9,7 +9,7 @@ import {
 } from "@/helpers/AgenticHelpers";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
@@ -186,8 +186,12 @@ const AIAnalysisConfig = () => {
   const [newsEnabled, setNewsEnabled] = useState(true);
   const [technicalEnabled, setTechnicalEnabled] = useState(true);
   const [fundamentalEnabled, setFundamentalEnabled] = useState(true);
-  const [technical, setTechnical] = useState<TechnicalSelection>({ ...DEFAULT_TECHNICAL });
-  const [fundamental, setFundamental] = useState<FundamentalSelection>({ ...DEFAULT_FUNDAMENTAL });
+  const [technical, setTechnical] = useState<TechnicalSelection>({
+    ...DEFAULT_TECHNICAL,
+  });
+  const [fundamental, setFundamental] = useState<FundamentalSelection>({
+    ...DEFAULT_FUNDAMENTAL,
+  });
 
   const PRESET_KEY = "ai_analysis_preset";
   const [hydrated, setHydrated] = useState(false);
@@ -199,9 +203,12 @@ const AIAnalysisConfig = () => {
         try {
           const preset = JSON.parse(raw);
           if (preset.mode) setMode(preset.mode);
-          if (typeof preset.newsEnabled === "boolean") setNewsEnabled(preset.newsEnabled);
-          if (typeof preset.technicalEnabled === "boolean") setTechnicalEnabled(preset.technicalEnabled);
-          if (typeof preset.fundamentalEnabled === "boolean") setFundamentalEnabled(preset.fundamentalEnabled);
+          if (typeof preset.newsEnabled === "boolean")
+            setNewsEnabled(preset.newsEnabled);
+          if (typeof preset.technicalEnabled === "boolean")
+            setTechnicalEnabled(preset.technicalEnabled);
+          if (typeof preset.fundamentalEnabled === "boolean")
+            setFundamentalEnabled(preset.fundamentalEnabled);
           if (preset.technical) setTechnical(preset.technical);
           if (preset.fundamental) setFundamental(preset.fundamental);
         } catch {}
@@ -215,9 +222,24 @@ const AIAnalysisConfig = () => {
     if (!hydrated) return;
     SecureStore.setItemAsync(
       PRESET_KEY,
-      JSON.stringify({ mode, newsEnabled, technicalEnabled, fundamentalEnabled, technical, fundamental }),
+      JSON.stringify({
+        mode,
+        newsEnabled,
+        technicalEnabled,
+        fundamentalEnabled,
+        technical,
+        fundamental,
+      }),
     );
-  }, [hydrated, mode, newsEnabled, technicalEnabled, fundamentalEnabled, technical, fundamental]);
+  }, [
+    hydrated,
+    mode,
+    newsEnabled,
+    technicalEnabled,
+    fundamentalEnabled,
+    technical,
+    fundamental,
+  ]);
 
   const technicalKeys = Object.keys(
     DEFAULT_TECHNICAL,
