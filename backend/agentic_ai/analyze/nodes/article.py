@@ -1,4 +1,5 @@
 from agentic_ai.analyze.state import AgentState
+from agentic_ai.analyze.selection import get_selection
 from app.services.articles_service import ArticlesService
 from agentic_ai.service.openai_service import _get_openai_client
 from datetime import datetime
@@ -29,6 +30,14 @@ def _build_articles_message(symbol: str, articles: list) -> str:
 
 
 def article_agent(state: AgentState) -> AgentState:
+    # Người dùng tắt nguồn tin tức → bỏ qua
+    if not get_selection(state)["news"]:
+        return {
+            "agent_results": {
+                "article_agent": "Người dùng đã tắt phân tích tin tức.",
+            },
+        }
+
     if not ARTICLES_ENABLED:
         return {
             "agent_results": {

@@ -2,6 +2,7 @@ from datetime import datetime
 import math
 import pandas as pd
 from agentic_ai.analyze.state import AgentState
+from agentic_ai.analyze.selection import get_selection
 from app.backtest.engine import IndicatorEngine
 from app.services.market_service import MarketService
 from app.services.technical_indicators_service import TechnicalIndicatorsService
@@ -315,70 +316,142 @@ def _format_technical_output(
     records: list[dict],
     current_price: float | None = None,
     current_price_time: datetime | None = None,
+    selection: dict | None = None,
 ) -> dict:
     if not records:
         return {"error": "Không đủ dữ liệu để phân tích kỹ thuật."}
 
+    # selection: bật/tắt từng chỉ số. None → bật tất cả (giữ tương thích backtest).
+    if selection is None:
+        selection = {k: True for k in ("ma", "boll", "rsi", "macd", "kdj")}
+
     latest   = records[-1]
     previous = records[-2] if len(records) >= 2 else None
 
-    # RSI
-    rsi_current  = _clean(latest.get("rsi_14"))
-    rsi_previous = _clean(previous.get("rsi_14")) if previous else None
-    rsi_score, rsi_reason = _score_rsi(rsi_current, rsi_previous)
-
-    # MA
-    sma20_current  = _clean(latest.get("sma_20"))
-    sma20_previous = _clean(previous.get("sma_20")) if previous else None
-    sma50_current  = _clean(latest.get("sma_50"))
-    sma50_previous = _clean(previous.get("sma_50")) if previous else None
-    price_for_ma   = current_price if current_price is not None else _clean(latest.get("close"))
-    ma_score, ma_reason = _score_ma(
-        sma20_current, sma20_previous,
-        sma50_current, sma50_previous,
-        price_for_ma,
-    )
-
-    # BOLL
-    bb_upper       = _clean(latest.get("bb_upper"))
-    bb_middle      = _clean(latest.get("bb_middle"))
-    bb_lower       = _clean(latest.get("bb_lower"))
     close_current  = _clean(latest.get("close"))
     close_previous = _clean(previous.get("close")) if previous else None
-    boll_score, boll_reason = _score_boll(
-        bb_upper, bb_middle, bb_lower,
-        close_current, close_previous,
-        current_price,
-    )
+
+    indicators: dict = {}
+    total_score = 0
+    max_score = 0
+
+    # RSI
+    if selection.get("rsi", True):
+        rsi_current  = _clean(latest.get("rsi_14"))
+        rsi_previous = _clean(previous.get("rsi_14")) if previous else None
+        rsi_score, rsi_reason = _score_rsi(rsi_current, rsi_previous)
+        total_score += rsi_score
+        max_score += 1
+        indicators["rsi"] = {
+            "value":  {"current": rsi_current, "previous": rsi_previous},
+            "score":  rsi_score,
+            "reason": rsi_reason,
+        }
+
+    # MA
+    if selection.get("ma", True):
+        sma20_current  = _clean(latest.get("sma_20"))
+        sma20_previous = _clean(previous.get("sma_20")) if previous else None
+        sma50_current  = _clean(latest.get("sma_50"))
+        sma50_previous = _clean(previous.get("sma_50")) if previous else None
+        price_for_ma   = current_price if current_price is not None else close_current
+        ma_score, ma_reason = _score_ma(
+            sma20_current, sma20_previous,
+            sma50_current, sma50_previous,
+            price_for_ma,
+        )
+        total_score += ma_score
+        max_score += 1
+        indicators["ma"] = {
+            "value": {
+                "sma20_current":  sma20_current,
+                "sma20_previous": sma20_previous,
+                "sma50_current":  sma50_current,
+                "sma50_previous": sma50_previous,
+            },
+            "score":  ma_score,
+            "reason": ma_reason,
+        }
+
+    # BOLL
+    if selection.get("boll", True):
+        bb_upper  = _clean(latest.get("bb_upper"))
+        bb_middle = _clean(latest.get("bb_middle"))
+        bb_lower  = _clean(latest.get("bb_lower"))
+        boll_score, boll_reason = _score_boll(
+            bb_upper, bb_middle, bb_lower,
+            close_current, close_previous,
+            current_price,
+        )
+        total_score += boll_score
+        max_score += 1
+        indicators["boll"] = {
+            "value": {
+                "upper":          bb_upper,
+                "middle":         bb_middle,
+                "lower":          bb_lower,
+                "close_current":  close_current,
+                "close_previous": close_previous,
+            },
+            "score":  boll_score,
+            "reason": boll_reason,
+        }
 
     # MACD
-    macd_current    = _clean(latest.get("macd"))
-    macd_previous   = _clean(previous.get("macd")) if previous else None
-    signal_current  = _clean(latest.get("macd_signal"))
-    signal_previous = _clean(previous.get("macd_signal")) if previous else None
-    hist_current    = _clean(latest.get("macd_histogram"))
-    hist_previous   = _clean(previous.get("macd_histogram")) if previous else None
-    macd_score, macd_reason = _score_macd(
-        macd_current, macd_previous,
-        signal_current, signal_previous,
-        hist_current, hist_previous,
-    )
+    if selection.get("macd", True):
+        macd_current    = _clean(latest.get("macd"))
+        macd_previous   = _clean(previous.get("macd")) if previous else None
+        signal_current  = _clean(latest.get("macd_signal"))
+        signal_previous = _clean(previous.get("macd_signal")) if previous else None
+        hist_current    = _clean(latest.get("macd_histogram"))
+        hist_previous   = _clean(previous.get("macd_histogram")) if previous else None
+        macd_score, macd_reason = _score_macd(
+            macd_current, macd_previous,
+            signal_current, signal_previous,
+            hist_current, hist_previous,
+        )
+        total_score += macd_score
+        max_score += 1
+        indicators["macd"] = {
+            "value": {
+                "macd_current":    macd_current,
+                "macd_previous":   macd_previous,
+                "signal_current":  signal_current,
+                "signal_previous": signal_previous,
+                "hist_current":    hist_current,
+                "hist_previous":   hist_previous,
+            },
+            "score":  macd_score,
+            "reason": macd_reason,
+        }
 
     # KDJ
-    k_current  = _clean(latest.get("kdj_k"))
-    k_previous = _clean(previous.get("kdj_k")) if previous else None
-    d_current  = _clean(latest.get("kdj_d"))
-    d_previous = _clean(previous.get("kdj_d")) if previous else None
-    j_current  = _clean(latest.get("kdj_j"))
-    j_previous = _clean(previous.get("kdj_j")) if previous else None
-    kdj_score, kdj_reason = _score_kdj(
-        k_current, k_previous,
-        d_current, d_previous,
-        j_current, j_previous,
-    )
-
-    # Tổng điểm
-    total_score = rsi_score + ma_score + boll_score + macd_score + kdj_score
+    if selection.get("kdj", True):
+        k_current  = _clean(latest.get("kdj_k"))
+        k_previous = _clean(previous.get("kdj_k")) if previous else None
+        d_current  = _clean(latest.get("kdj_d"))
+        d_previous = _clean(previous.get("kdj_d")) if previous else None
+        j_current  = _clean(latest.get("kdj_j"))
+        j_previous = _clean(previous.get("kdj_j")) if previous else None
+        kdj_score, kdj_reason = _score_kdj(
+            k_current, k_previous,
+            d_current, d_previous,
+            j_current, j_previous,
+        )
+        total_score += kdj_score
+        max_score += 1
+        indicators["kdj"] = {
+            "value": {
+                "k_current":  k_current,
+                "k_previous": k_previous,
+                "d_current":  d_current,
+                "d_previous": d_previous,
+                "j_current":  j_current,
+                "j_previous": j_previous,
+            },
+            "score":  kdj_score,
+            "reason": kdj_reason,
+        }
 
     # Display price
     display_price = current_price if current_price is not None else close_current
@@ -400,59 +473,9 @@ def _format_technical_output(
             "value": display_price,
             "time":  display_time,
         },
-        "total_score": total_score,   # tổng điểm 0–5, >= 3 → Mua
-        "indicators": {
-            "rsi": {
-                "value":  {"current": rsi_current, "previous": rsi_previous},
-                "score":  rsi_score,
-                "reason": rsi_reason,
-            },
-            "ma": {
-                "value": {
-                    "sma20_current":  sma20_current,
-                    "sma20_previous": sma20_previous,
-                    "sma50_current":  sma50_current,
-                    "sma50_previous": sma50_previous,
-                },
-                "score":  ma_score,
-                "reason": ma_reason,
-            },
-            "boll": {
-                "value": {
-                    "upper":          bb_upper,
-                    "middle":         bb_middle,
-                    "lower":          bb_lower,
-                    "close_current":  close_current,
-                    "close_previous": close_previous,
-                },
-                "score":  boll_score,
-                "reason": boll_reason,
-            },
-            "macd": {
-                "value": {
-                    "macd_current":    macd_current,
-                    "macd_previous":   macd_previous,
-                    "signal_current":  signal_current,
-                    "signal_previous": signal_previous,
-                    "hist_current":    hist_current,
-                    "hist_previous":   hist_previous,
-                },
-                "score":  macd_score,
-                "reason": macd_reason,
-            },
-            "kdj": {
-                "value": {
-                    "k_current":  k_current,
-                    "k_previous": k_previous,
-                    "d_current":  d_current,
-                    "d_previous": d_previous,
-                    "j_current":  j_current,
-                    "j_previous": j_previous,
-                },
-                "score":  kdj_score,
-                "reason": kdj_reason,
-            },
-        },
+        "total_score": total_score,   # tổng điểm các chỉ số được bật
+        "max_score": max_score,       # số chỉ số được bật (điểm tối đa)
+        "indicators": indicators,
     }
 
 
@@ -464,6 +487,7 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
     to_date   = myTask.get("to_date", "")
     use_current_price = myTask.get("use_current_price", True)
     indicator_source = myTask.get("indicator_source", "live")
+    selection = get_selection(state)["technical"]
 
     if use_current_price:
         current_price, current_price_time = _fetch_current_price(symbol)
@@ -474,7 +498,7 @@ def technical_analysis_agent(state: AgentState) -> AgentState:
     if isinstance(records, str):
         return {"agent_results": {"technical_analysis_agent": {"error": records}}}
 
-    output = _format_technical_output(symbol, interval, records, current_price, current_price_time)
+    output = _format_technical_output(symbol, interval, records, current_price, current_price_time, selection)
 
     print("[Technical Analysis Agent] Output:", output)
 

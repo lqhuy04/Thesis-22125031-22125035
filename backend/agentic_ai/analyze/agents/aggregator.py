@@ -15,6 +15,7 @@ dựa trên 3 nguồn với trọng số bằng nhau:
 """
 
 import json
+import math
 from typing import Literal
 from pydantic import BaseModel, Field
 
@@ -29,6 +30,9 @@ from agentic_ai.analyze.state import AgentState
 # Ngưỡng tối thiểu để chấp nhận lệnh Mua
 CONFIDENCE_THRESHOLD = 0.55
 
+# Tỷ lệ điểm kỹ thuật tối thiểu để cân nhắc Mua (3/5 = 0.6 — giữ tương thích khi bật đủ 5 chỉ số)
+BUY_SCORE_RATIO = 0.6
+
 # Trọng số từng nguồn (bằng nhau, tổng = 1.0)
 CONFIDENCE_WEIGHTS = {
     "technical":   1 / 3,
@@ -38,6 +42,24 @@ CONFIDENCE_WEIGHTS = {
 
 # Điểm trung lập khi nguồn thiếu dữ liệu (N/A)
 _NA_SCORE = 0.5
+
+# Các chuỗi đánh dấu "không có dữ liệu thực sự" cho fundamental/news.
+# Dùng để tính cờ has_*_data, tránh để LLM tự đoán.
+_NO_DATA_MARKERS = (
+    "Người dùng đã tắt",
+    "Tạm ngưng",
+    "Không có dữ liệu",
+    "Không có bài viết",
+    "Không có tin tức",
+)
+
+
+def _has_content(text) -> bool:
+    """True nếu text chứa nội dung phân tích thật (không phải câu báo thiếu dữ liệu)."""
+    s = str(text).strip() if text is not None else ""
+    if not s:
+        return False
+    return not any(marker in s for marker in _NO_DATA_MARKERS)
 
 # Map nhãn → điểm
 _FUNDAMENTAL_SCORE_MAP: dict[str, float] = {
@@ -55,25 +77,48 @@ _ARTICLE_SCORE_MAP: dict[str, float] = {
 }
 
 
+def _confidence_components(
+    technical_score: int,
+    fundamental_health: str,
+    article_sentiment: str,
+    technical_max_score: int = 5,
+) -> tuple[float, float, float]:
+    """
+    Trả về 3 thành phần điểm chuẩn hóa [0.0, 1.0]:
+      (technical_component, fundamental_component, article_component)
+
+      technical_component   = technical_score / technical_max_score
+      fundamental_component = _FUNDAMENTAL_SCORE_MAP[fundamental_health]
+      article_component     = _ARTICLE_SCORE_MAP[article_sentiment]
+
+    technical_max_score = số chỉ số kỹ thuật người dùng bật (mặc định 5).
+    Nếu người dùng tắt hết chỉ số kỹ thuật (max = 0) → coi technical là trung lập (0.5).
+
+    Khi nguồn thiếu dữ liệu (N/A) → dùng _NA_SCORE = 0.5 (trung lập).
+    """
+    if technical_max_score and technical_max_score > 0:
+        technical_component = max(0.0, min(technical_score, technical_max_score)) / float(technical_max_score)
+    else:
+        technical_component = _NA_SCORE
+    fundamental_component = _FUNDAMENTAL_SCORE_MAP.get(fundamental_health, _NA_SCORE)
+    article_component     = _ARTICLE_SCORE_MAP.get(article_sentiment, _NA_SCORE)
+
+    return technical_component, fundamental_component, article_component
+
+
 def _compute_confidence(
     technical_score: int,
     fundamental_health: str,
     article_sentiment: str,
+    technical_max_score: int = 5,
 ) -> float:
     """
     Tính confidence score [0.0, 1.0] hoàn toàn bằng rule cứng.
-
-    3 nguồn, trọng số đều nhau (1/3 mỗi nguồn):
-      technical_component   = technical_score / 5
-      fundamental_component = _FUNDAMENTAL_SCORE_MAP[fundamental_health]
-      article_component     = _ARTICLE_SCORE_MAP[article_sentiment]
-
-    Khi nguồn thiếu dữ liệu (N/A) → dùng _NA_SCORE = 0.5 (trung lập),
-    không redistribute trọng số sang nguồn khác.
+    3 nguồn, trọng số đều nhau (1/3 mỗi nguồn). Xem _confidence_components.
     """
-    technical_component   = max(0.0, min(technical_score, 5)) / 5.0
-    fundamental_component = _FUNDAMENTAL_SCORE_MAP.get(fundamental_health, _NA_SCORE)
-    article_component     = _ARTICLE_SCORE_MAP.get(article_sentiment, _NA_SCORE)
+    technical_component, fundamental_component, article_component = _confidence_components(
+        technical_score, fundamental_health, article_sentiment, technical_max_score
+    )
 
     w = CONFIDENCE_WEIGHTS
     score = (
@@ -88,6 +133,38 @@ def _compute_confidence(
 # ─────────────────────────────────────────────────────────────
 # 📦 Structured Output Schema
 # ─────────────────────────────────────────────────────────────
+
+class AnalysisBreakdown(BaseModel):
+    technical: str = Field(
+        description=(
+            "Phân tích kỹ thuật bằng tiếng Việt. Nếu has_technical_data = true: BẮT BUỘC đi qua từng "
+            "chỉ số CÓ trong dữ liệu (RSI, MA, Bollinger Bands, MACD, KDJ), nêu Tích cực/Tiêu cực, lý do, "
+            "dẫn chứng số liệu — KHÔNG được nói không có dữ liệu dù điểm thấp. "
+            "Chỉ khi has_technical_data = false mới ghi: 'Không có dữ liệu phân tích kỹ thuật.'"
+        )
+    )
+    fundamental: str = Field(
+        description=(
+            "Phân tích cơ bản bằng tiếng Việt. Nếu has_fundamental_data = true: BẮT BUỘC tóm tắt các nhóm "
+            "chỉ số CÓ trong dữ liệu (định giá, sinh lời, tăng trưởng, sức khỏe tài chính, dòng tiền). "
+            "Chỉ khi has_fundamental_data = false mới ghi: 'Không có dữ liệu phân tích cơ bản.'"
+        )
+    )
+    news: str = Field(
+        description=(
+            "Phân tích tin tức bằng tiếng Việt: tóm tắt và nhắc tới thông tin nổi bật. "
+            "Chỉ khi has_news_data = false mới ghi: 'Không có dữ liệu tin tức.'"
+        )
+    )
+    summary: str = Field(
+        description=(
+            "Kết luận tổng hợp bằng tiếng Việt. Nếu recommendation = Mua: nêu mức giá đề xuất, "
+            "số nến giữ tối đa và giải thích tỷ lệ R/R. Nếu recommendation = Chờ: giải thích yếu tố "
+            "kỹ thuật/cơ bản nào chưa đạt điều kiện. "
+            "TUYỆT ĐỐI không nhắc lại quyết định cuối (Mua/Chờ) và không nhắc điểm confidence."
+        )
+    )
+
 
 class InvestmentRecommendation(BaseModel):
     recommendation: Literal["Mua", "Chờ"] = Field(
@@ -132,21 +209,18 @@ class InvestmentRecommendation(BaseModel):
         ),
     )
 
-    analysis: str = Field(
+    analysis: AnalysisBreakdown = Field(
         description=(
-            "Phân tích tổng hợp bằng tiếng Việt, gồm các phần:\n"
-            "  1. Kỹ thuật: Đi qua từng chỉ số (RSI, MA, Bollinger Bands, MACD, KDJ), chỉ ra tích cực/tiêu cực, tại sao, dẫn chứng số liệu.\n"
-            "  2. Cơ bản: Tóm tắt phân tích cơ bản đầy đủ (định giá, sinh lời, tăng trưởng, sức khỏe tài chính, dòng tiền).\n"
-            "  3. Tin tức: Tóm tắt dữ liệu tin tức và nhắc tới những thông tin nổi bật (nếu có).\n"
-            "  4. Giá mua/TP/SL và thời gian giữ: mức giá đề xuất và giải thích R/R (nếu Mua). Không được nhắc lại recommendation và confidence."
+            "Phân tích tổng hợp bằng tiếng Việt, tách thành 4 phần: technical, fundamental, news, summary. "
+            "Mỗi phần chỉ dựa trên dữ liệu thực sự có, không bịa."
         )
     )
 
     # ── Raw signals để Python tính confidence ──────────────────
     technical_score: int = Field(
         description=(
-            "Điểm kỹ thuật tổng hợp đọc trực tiếp từ technical_analysis_agent. "
-            "Giá trị nguyên 0–5. KHÔNG tự tính lại."
+            "Điểm kỹ thuật tổng hợp đọc trực tiếp từ trường total_score của technical_analysis_agent. "
+            "Giá trị nguyên từ 0 đến max_score (số chỉ số được bật). KHÔNG tự tính lại."
         )
     )
 
@@ -188,10 +262,17 @@ LƯU Ý: Confidence KHÔNG do bạn tính — hệ thống sẽ tính sau từ 3
   - fundamental_health : đánh giá theo tiêu chí bên dưới (strong/neutral/weak/N/A)
   - article_sentiment  : đánh giá sentiment tin tức (positive/neutral/negative/N/A)
 
+LƯU Ý VỀ DỮ LIỆU NGƯỜI DÙNG CHỌN:
+Người dùng có thể tắt bớt một số chỉ số/nguồn. Chỉ phân tích những gì THỰC SỰ
+có trong dữ liệu được cung cấp. Nếu một chỉ số kỹ thuật, một nhóm chỉ số cơ bản,
+hoặc tin tức không xuất hiện trong dữ liệu → KHÔNG nhắc tới, KHÔNG bịa, coi như
+người dùng đã tắt nguồn đó.
+
 PHẦN I — ĐÁNH GIÁ TỪNG NGUỒN
 
 1. Technical (bắt buộc):
-     Đọc total_score từ technical_analysis_agent. KHÔNG tự tính lại.
+     Đọc total_score và max_score từ technical_analysis_agent. KHÔNG tự tính lại.
+     max_score = số chỉ số kỹ thuật được bật (có thể nhỏ hơn 5 nếu người dùng tắt bớt).
 
 2. Fundamental (tùy chọn):
      Nếu có dữ liệu: đánh giá sức khỏe tài chính là
@@ -209,26 +290,38 @@ PHẦN I — ĐÁNH GIÁ TỪNG NGUỒN
 
 PHẦN II — LOGIC TỔNG HỢP (CỨNG, KHÔNG OVERRIDE)
 
-Mua = technical_score >= 3
+Mua = technical_score >= 60% của max_score (làm tròn lên)
             VÀ fundamental_health != weak     (nếu có dữ liệu)
 
 Chờ = mọi trường hợp còn lại
 
-Ví dụ:
+Ví dụ (khi bật đủ 5 chỉ số, max_score = 5 → ngưỡng = 3):
     score=4, fundamental=strong   → Mua
     score=4, fundamental=weak     → Chờ
     score=4, fundamental=N/A      → Mua
     score=2, fundamental=strong   → Chờ
+Ví dụ (khi chỉ bật 3 chỉ số, max_score = 3 → ngưỡng = 2):
+    score=2, fundamental=N/A      → Mua
+    score=1, fundamental=strong   → Chờ
 
-PHẦN III — VIẾT analysis
+PHẦN III — VIẾT analysis (4 TRƯỜNG RIÊNG BIỆT)
 
-Viết văn bản phân tích tổng hợp (bằng tiếng Việt) chi tiết và khách quan, tuân thủ nghiêm ngặt các quy tắc cấu trúc sau:
-    - TUYỆT ĐỐI KHÔNG nhắc lại quyết định cuối cùng (Mua/Chờ) và điểm số confidence ở bất kỳ đâu trong phần analysis này.
-    - Cấu trúc bài phân tích gồm các phần sau:
-        1. Phân tích kỹ thuật: Đi qua từng chỉ số kỹ thuật cụ thể (RSI, MA, Bollinger Bands, MACD, KDJ). Với từng chỉ số, hãy chỉ rõ trạng thái là Tích cực hay Tiêu cực, lý giải tại sao và dẫn chứng số liệu/giá trị cụ thể.
-        2. Phân tích cơ bản: Tóm tắt phân tích cơ bản một cách đầy đủ và toàn diện dựa trên dữ liệu (gồm định giá, sức khỏe tài chính, khả năng sinh lời, tăng trưởng, dòng tiền).
-        3. Tin tức: Tóm tắt dữ liệu tin tức, nhắc tới những thông tin/sự kiện nổi bật nhất (nếu có).
-        4. Mức giá & Quản trị rủi ro (nếu recommendation = Mua): Nêu rõ mức giá đề xuất, số nến giữ tối đa và tỷ lệ Risk/Reward. Nếu recommendation = Chờ, giải thích các yếu tố kỹ thuật hoặc cơ bản nào chưa đạt điều kiện mà không đề xuất giá.
+Trường `analysis` là một object gồm 4 trường text riêng biệt (technical, fundamental, news, summary).
+Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ngặt:
+
+    QUY TẮC CỜ DỮ LIỆU (BẮT BUỘC, KHÔNG NGOẠI LỆ):
+    Dựa vào các cờ trong khối "CỜ DỮ LIỆU" của input:
+      - Nếu has_technical_data = true  → BẮT BUỘC viết phân tích kỹ thuật từ dữ liệu, TUYỆT ĐỐI KHÔNG được dùng câu "Không có dữ liệu phân tích kỹ thuật." (dù điểm số thấp hay tín hiệu tiêu cực vẫn phải phân tích).
+      - Nếu has_fundamental_data = true → BẮT BUỘC viết phân tích cơ bản, KHÔNG được dùng câu "Không có dữ liệu phân tích cơ bản."
+      - Nếu has_news_data = true        → BẮT BUỘC tóm tắt tin tức, KHÔNG được dùng câu "Không có dữ liệu tin tức."
+      - CHỈ được dùng câu fallback "Không có dữ liệu ..." khi cờ tương ứng = false.
+    Điểm số 0 hoặc tín hiệu tiêu cực KHÔNG đồng nghĩa với "không có dữ liệu" — vẫn phải phân tích đầy đủ.
+
+    - TUYỆT ĐỐI KHÔNG nhắc lại quyết định cuối cùng (Mua/Chờ) và điểm số confidence ở bất kỳ trường nào.
+    - analysis.technical: Đi qua từng chỉ số kỹ thuật CÓ trong dữ liệu (trong số RSI, MA, Bollinger Bands, MACD, KDJ). Với từng chỉ số có mặt, chỉ rõ trạng thái Tích cực/Tiêu cực, lý giải và dẫn chứng số liệu cụ thể. Không nhắc tới chỉ số không có.
+    - analysis.fundamental: Tóm tắt những nhóm chỉ số cơ bản CÓ trong dữ liệu (định giá, sức khỏe tài chính, khả năng sinh lời, tăng trưởng, dòng tiền). Bỏ qua nhóm không xuất hiện.
+    - analysis.news: Tóm tắt tin tức và thông tin/sự kiện nổi bật.
+    - analysis.summary: Kết luận tổng hợp. Nếu recommendation = Mua: nêu mức giá đề xuất, số nến giữ tối đa và tỷ lệ Risk/Reward. Nếu recommendation = Chờ: giải thích các yếu tố kỹ thuật/cơ bản nào chưa đạt điều kiện mà không đề xuất giá.
 
 PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ VÀ QUẢN TRỊ RỦI RO
 
@@ -279,10 +372,24 @@ def aggregator_agent(state: AgentState) -> AgentState:
     fundamental_text = fundamental if fundamental else "Không có dữ liệu"
     article_text     = article if article else "Không có dữ liệu"
 
+    # ── Cờ "thực sự có dữ liệu" tính bằng Python, không để LLM tự đoán ─────
+    # (LLM hay lười dùng câu fallback "Không có dữ liệu" dù dữ liệu vẫn có)
+    has_technical = (
+        isinstance(technical, dict)
+        and bool(technical.get("indicators"))
+        and not technical.get("error")
+    )
+    has_fundamental = _has_content(fundamental_text)
+    has_news        = _has_content(article_text)
+
     # Lấy interval từ plan để truyền cho aggregator
     plan = state.get("plan", {})
     interval = plan.get("technical_analysis_agent", {}).get("interval", "1d")
     investment_horizon = state.get("risk_appetite", {}).get("period", "Trung hạn")
+
+    # Số chỉ số kỹ thuật được bật (điểm tối đa). Mặc định 5 nếu không có.
+    technical_max_score = technical.get("max_score", 5) if isinstance(technical, dict) else 5
+    buy_threshold = math.ceil(BUY_SCORE_RATIO * technical_max_score) if technical_max_score else 0
 
     analysis_message = f"""
 DỮ LIỆU PHÂN TÍCH:
@@ -290,6 +397,13 @@ DỮ LIỆU PHÂN TÍCH:
 === CONTEXT ===
 interval: {interval}
 investment_horizon: {investment_horizon}
+technical_max_score: {technical_max_score}
+buy_threshold (technical_score tối thiểu để cân nhắc Mua): {buy_threshold}
+
+=== CỜ DỮ LIỆU (BẮT BUỘC TUÂN THỦ) ===
+has_technical_data: {str(has_technical).lower()}
+has_fundamental_data: {str(has_fundamental).lower()}
+has_news_data: {str(has_news).lower()}
 
 === TECHNICAL ANALYSIS ===
 {json.dumps(technical, ensure_ascii=False, indent=2)}
@@ -318,11 +432,23 @@ YÊU CẦU:
 
         parsed: InvestmentRecommendation = response.choices[0].message.parsed
 
-        # ── Tính confidence deterministic từ 3 raw signals ────────────────────
+        # ── Tính 3 thành phần điểm (0→1) và confidence deterministic ──────────
+        tech_component, fund_component, news_component = _confidence_components(
+            technical_score     = parsed.technical_score,
+            fundamental_health  = parsed.fundamental_health,
+            article_sentiment   = parsed.article_sentiment,
+            technical_max_score = technical_max_score,
+        )
+        score = {
+            "news":        round(news_component, 4),
+            "technical":   round(tech_component, 4),
+            "fundamental": round(fund_component, 4),
+        }
         confidence = _compute_confidence(
-            technical_score    = parsed.technical_score,
-            fundamental_health = parsed.fundamental_health,
-            article_sentiment  = parsed.article_sentiment,
+            technical_score     = parsed.technical_score,
+            fundamental_health  = parsed.fundamental_health,
+            article_sentiment   = parsed.article_sentiment,
+            technical_max_score = technical_max_score,
         )
 
         # ── Override recommendation nếu confidence dưới ngưỡng ────────────────
@@ -351,15 +477,17 @@ YÊU CẦU:
             "take_profit_price":    take_profit_price,
             "stop_loss_price":      stop_loss_price,
             "max_hold_candles":     max_hold_candles,
+            "analysis":             parsed.analysis.model_dump(),
+            "score":                score,
             "confidence":           confidence,
             "confidence_threshold": CONFIDENCE_THRESHOLD,
             "confidence_breakdown": {
-                "technical_score":    parsed.technical_score,
-                "fundamental_health": parsed.fundamental_health,
-                "article_sentiment":  parsed.article_sentiment,
-                "weights":            {k: round(v, 4) for k, v in CONFIDENCE_WEIGHTS.items()},
+                "technical_score":     parsed.technical_score,
+                "technical_max_score": technical_max_score,
+                "fundamental_health":  parsed.fundamental_health,
+                "article_sentiment":   parsed.article_sentiment,
+                "weights":             {k: round(v, 4) for k, v in CONFIDENCE_WEIGHTS.items()},
             },
-            "analysis":             parsed.analysis,
         }
 
         print("[Aggregator] Output:")
@@ -378,9 +506,15 @@ YÊU CẦU:
                 "take_profit_price":    None,
                 "stop_loss_price":      None,
                 "max_hold_candles":     None,
+                "analysis": {
+                    "technical":   "Lỗi hệ thống — vui lòng thử lại sau.",
+                    "fundamental": "Lỗi hệ thống — vui lòng thử lại sau.",
+                    "news":        "Lỗi hệ thống — vui lòng thử lại sau.",
+                    "summary":     "Lỗi hệ thống — vui lòng thử lại sau.",
+                },
+                "score":                {"news": 0.0, "technical": 0.0, "fundamental": 0.0},
                 "confidence":           0.0,
                 "confidence_threshold": CONFIDENCE_THRESHOLD,
                 "confidence_breakdown": {},
-                "analysis":             "Lỗi hệ thống — vui lòng thử lại sau.",
             },
         }

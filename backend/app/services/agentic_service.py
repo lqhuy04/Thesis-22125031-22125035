@@ -25,11 +25,16 @@ def run_stock_analysis(
     symbol: str,
     risk_appetite: dict,
     mode: str,
-    plan: Any | None
+    plan: Any | None,
+    data_selection: dict | None = None,
 ) -> dict:
+    # Chỉ chế độ manual mới tôn trọng lựa chọn dữ liệu của người dùng.
+    # Chế độ auto luôn dùng toàn bộ dữ liệu ({} → get_selection mặc định bật tất cả).
+    effective_selection = data_selection if mode == "manual" else {}
+
     initial_state = {
         "mode": mode,
-        
+
         "user_input": (
             f"Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu {symbol} "
             f"dựa vào khẩu vị rủi ro của nhà đầu tư."
@@ -37,6 +42,8 @@ def run_stock_analysis(
         "risk_appetite": risk_appetite,
 
         "symbol": symbol,
+
+        "data_selection": effective_selection or {},
 
         "plan": plan or {},
         "agent_results": {},

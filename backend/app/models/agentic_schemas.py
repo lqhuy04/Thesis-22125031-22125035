@@ -13,6 +13,33 @@ class RiskAppetite(BaseModel):
     period: str = Field(description="Kỳ hạn đầu tư, ví dụ: 'Ngắn hạn (Dưới 1 năm)'")
 
 
+# ─── Data selection (toggle nguồn dữ liệu cho AI) ──────────────────────────────
+
+class TechnicalSelection(BaseModel):
+    """Bật/tắt từng chỉ số kỹ thuật mà AI được phép phân tích."""
+    ma: bool = Field(default=True, description="Đường trung bình động (MA/SMA20, SMA50)")
+    boll: bool = Field(default=True, description="Bollinger Bands")
+    rsi: bool = Field(default=True, description="Chỉ số sức mạnh tương đối RSI")
+    macd: bool = Field(default=True, description="MACD")
+    kdj: bool = Field(default=True, description="KDJ")
+
+
+class FundamentalSelection(BaseModel):
+    """Bật/tắt từng nhóm chỉ số cơ bản mà AI được phép phân tích."""
+    valuation: bool = Field(default=True, description="Chỉ số định giá: P/E, P/B, EV/EBITDA, EPS")
+    profitability: bool = Field(default=True, description="Khả năng sinh lời: ROE, ROA, biên LN gộp, biên LN ròng")
+    growth: bool = Field(default=True, description="Tăng trưởng: doanh thu YoY, lợi nhuận YoY, doanh thu thuần, lợi nhuận ròng")
+    financial_health: bool = Field(default=True, description="Sức khỏe tài chính: thanh khoản hiện tại, Nợ/VCSH, khả năng trả lãi")
+    cash_flow: bool = Field(default=True, description="Dòng tiền: CFO, CAPEX, cổ tức đã trả")
+
+
+class DataSelection(BaseModel):
+    """Cấu hình người dùng chọn dữ liệu nào để AI phân tích. Mặc định bật tất cả."""
+    news: bool = Field(default=True, description="Tin tức / sentiment bài viết")
+    technical: TechnicalSelection = Field(default_factory=TechnicalSelection)
+    fundamental: FundamentalSelection = Field(default_factory=FundamentalSelection)
+
+
 # ─── /analyze (API mode) ──────────────────────────────────────────────────────
 
 class StockAnalysisRequest(BaseModel):
@@ -20,6 +47,10 @@ class StockAnalysisRequest(BaseModel):
     symbol: str = Field(description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
     risk_appetite: RiskAppetite
     plan: Any | None = Field(default=None, description="Kế hoạch phân tích thủ công, bỏ trống nếu dùng auto")
+    data_selection: DataSelection = Field(
+        default_factory=DataSelection,
+        description="Chọn nguồn/chỉ số dữ liệu cho AI phân tích. Bỏ trống = bật tất cả.",
+    )
 
 
 class InvestmentRecommendation(BaseModel):

@@ -15,6 +15,10 @@ class AgentState(TypedDict):
 
     symbol: str
 
+    # Người dùng chọn nguồn/chỉ số dữ liệu cho AI phân tích (xem selection.py).
+    # Thiếu → mặc định bật tất cả.
+    data_selection: dict
+
     # Pipeline fields
     plan: dict                         # Kế hoạch do Orchestrator tạo
     agent_results: Annotated[dict[str, Any], operator.or_]  # Kết quả sub-agents

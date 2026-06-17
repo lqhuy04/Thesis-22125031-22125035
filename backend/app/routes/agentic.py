@@ -35,6 +35,7 @@ async def analyze_stock(body: StockAnalysisRequest, current_user: dict = Depends
             symbol=body.symbol,
             risk_appetite=body.risk_appetite.model_dump(),
             plan=body.plan,
+            data_selection=body.data_selection.model_dump(),
         )
         return success_response(data=recommendation)
 
