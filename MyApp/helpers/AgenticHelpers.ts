@@ -1,6 +1,19 @@
 import { sendMessage } from "./api/ApiClients";
 import { getRiskAppetite } from "./ProfileHelpers";
 
+export type AnalysisDetail = {
+  technical: string;
+  fundamental: string;
+  news: string;
+  summary: string;
+};
+
+export type AnalysisScore = {
+  news: number;
+  technical: number;
+  fundamental: number;
+};
+
 export type AnalysisData = {
   recommendation: string;
   entry_price: number | null;
@@ -8,7 +21,9 @@ export type AnalysisData = {
   stop_loss_price: number | null;
   max_hold_candles: number | null;
   confidence: number;
-  analysis: string;
+  confidence_threshold: number;
+  analysis: AnalysisDetail;
+  score: AnalysisScore;
 };
 
 export const getAnalysis = async (

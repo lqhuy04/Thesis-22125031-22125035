@@ -8,7 +8,7 @@
 import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import React, { useEffect, useMemo } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import Animated, {
   interpolate,
   SharedValue,
@@ -46,6 +46,8 @@ interface RadarChartProps {
   maxValue?: number;
   levels?: number;
   duration?: number;
+  selectedIndex?: number | null;
+  onAxisPress?: (index: number) => void;
 }
 
 type Point = { x: number; y: number };
@@ -121,6 +123,8 @@ export const RadarChart = ({
   maxValue = 1,
   levels = 4,
   duration = 900,
+  selectedIndex = null,
+  onAxisPress,
 }: RadarChartProps) => {
   const { theme } = useTheme();
   const webColor = theme.border.default;
@@ -180,8 +184,8 @@ export const RadarChart = ({
         return {
           x: cx + radius * Math.cos(a),
           y: cy + radius * Math.sin(a),
-          lx: cx + (radius + padding * 0.6) * Math.cos(a),
-          ly: cy + (radius + padding * 0.6) * Math.sin(a),
+          lx: cx + (radius + padding * 0.8) * Math.cos(a),
+          ly: cy + (radius + padding * 0.8) * Math.sin(a),
           label: axis.label,
           value: axis.value,
         };
@@ -247,29 +251,33 @@ export const RadarChart = ({
       </Svg>
 
       {/* Labels overlay (RN text for theming/typography) */}
-      {axes.map((ax, i) => (
-        <View
-          key={`label-${i}`}
-          style={{
-            position: "absolute",
-            left: ax.lx - 44,
-            top: ax.ly - 16,
-            width: 88,
-            alignItems: "center",
-          }}
-        >
-          <Text
-            typography="labelSmall"
-            color={theme.text.primary + "99"}
-            style={{ textAlign: "center" }}
+      {axes.map((ax, i) => {
+        const isSelected = selectedIndex === i;
+        return (
+          <Pressable
+            key={`label-${i}`}
+            onPress={() => onAxisPress?.(i)}
+            style={{
+              position: "absolute",
+              left: ax.lx - 52,
+              top: ax.ly - 16,
+              width: 104,
+              alignItems: "center",
+            }}
           >
-            {ax.label}
-          </Text>
-          <Text typography="labelMedium" color={PURPLE_LIGHT}>
-            {Math.round((ax.value / maxValue) * 100)}%
-          </Text>
-        </View>
-      ))}
+            <Text
+              typography="labelMedium"
+              color={isSelected ? "#FFFFFF" : theme.text.primary + "99"}
+              style={{ textAlign: "center" }}
+            >
+              {ax.label}
+            </Text>
+            <Text typography="labelLarge" color={isSelected ? "#FFFFFF" : PURPLE_LIGHT}>
+              {Math.round((ax.value / maxValue) * 100)}%
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 };

@@ -40,6 +40,7 @@ export const SearchBar = ({
           returnKeyType="search"
           placeholder={t("common.searchPlaceholder")}
           placeholderTextColor={theme.text.primary}
+          numberOfLines={1}
           onBlur={() => {
             if (value.trim() !== "") onSearchPress?.();
           }}

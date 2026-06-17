@@ -1,7 +1,7 @@
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -217,6 +217,7 @@ const AIAnalysis = () => {
 
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedAxis, setSelectedAxis] = useState<number | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -241,12 +242,32 @@ const AIAnalysis = () => {
   const formatPrice = (value: number | null | undefined) =>
     value == null ? t("aiAnalysis.notAvailable") : value.toFixed(2);
 
-  // TODO: API chưa trả về điểm thành phần — tạm dùng mock data (giá trị 0..1).
-  const scoreData: RadarAxis[] = [
-    { label: t("aiAnalysis.newsScore"), value: 0.72 },
-    { label: t("aiAnalysis.fundamentalScore"), value: 0.85 },
-    { label: t("aiAnalysis.technicalScore"), value: 0.6 },
+  // Order must match axisAnalysisKeys below (index 0 = news, 1 = fundamental, 2 = technical).
+  const scoreData = useMemo<RadarAxis[]>(
+    () => [
+      { label: t("aiAnalysis.newsScore"), value: analysis?.score?.news ?? 0 },
+      {
+        label: t("aiAnalysis.fundamentalScore"),
+        value: analysis?.score?.fundamental ?? 0,
+      },
+      {
+        label: t("aiAnalysis.technicalScore"),
+        value: analysis?.score?.technical ?? 0,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [analysis?.score],
+  );
+
+  const axisAnalysisKeys: (keyof AnalysisData["analysis"])[] = [
+    "news",
+    "fundamental",
+    "technical",
   ];
+
+  const handleAxisPress = (index: number) => {
+    setSelectedAxis((prev) => (prev === index ? null : index));
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
@@ -400,10 +421,56 @@ const AIAnalysis = () => {
             ]}
           >
             <SectionTitle>{t("aiAnalysis.scoreBreakdown")}</SectionTitle>
-            <RadarChart data={scoreData} size={280} />
+
+            <View style={{ marginTop: 12, marginBottom: -24 }}>
+              <RadarChart
+                data={scoreData}
+                size={280}
+                selectedIndex={selectedAxis}
+                onAxisPress={handleAxisPress}
+              />
+            </View>
+
+            <View
+              style={{
+                marginTop: 4,
+                padding: 12,
+                borderRadius: 10,
+                backgroundColor: `${PURPLE_GRADIENT[2]}22`,
+                borderWidth: 1,
+                borderColor: `${PURPLE_GRADIENT[1]}55`,
+              }}
+            >
+            {selectedAxis === null ? (
+              <Text
+                typography="bodyMedium"
+                color={theme.text.primary + "55"}
+                style={{ textAlign: "center", lineHeight: 22 }}
+              >
+                {t("aiAnalysis.tapToViewDetail")}
+              </Text>
+            ) : (
+              <>
+                <Text
+                  typography="labelMedium"
+                  color={PURPLE_GRADIENT[0]}
+                  style={{ marginBottom: 6 }}
+                >
+                  {scoreData[selectedAxis].label}
+                </Text>
+                <Text
+                  typography="bodyMedium"
+                  color={theme.text.primary}
+                  style={{ lineHeight: 22 }}
+                >
+                  {analysis.analysis[axisAnalysisKeys[selectedAxis]]}
+                </Text>
+              </>
+            )}
+            </View>
           </View>
 
-          {/* ── Detailed Analysis ── */}
+          {/* ── Summary ── */}
           <View
             style={[
               styles.card,
@@ -416,7 +483,7 @@ const AIAnalysis = () => {
               color={theme.text.primary}
               style={{ lineHeight: 24 }}
             >
-              {analysis.analysis}
+              {analysis.analysis.summary}
             </Text>
           </View>
         </ScrollView>
