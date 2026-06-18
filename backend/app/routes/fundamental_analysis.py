@@ -12,7 +12,7 @@ import uuid
 router = APIRouter(prefix="/api/fundamental-analysis", tags=["Fundamental Metrics"], dependencies=[Depends(get_current_user)])
 
 @router.get("/{symbol}/balance-sheets", summary="Get Balance Sheets")
-async def get_balance_sheets(symbol: str):
+def get_balance_sheets(symbol: str):
     try:
         data = FundamentalAnalysisService.get_balance_sheets(symbol)
         return success_response(data=data)
@@ -20,7 +20,7 @@ async def get_balance_sheets(symbol: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{symbol}/cash-flows", summary="Get Cash Flows")
-async def get_cash_flows(symbol: str):
+def get_cash_flows(symbol: str):
     try:
         data = FundamentalAnalysisService.get_cash_flows(symbol)
         return success_response(data=data)
@@ -28,7 +28,7 @@ async def get_cash_flows(symbol: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{symbol}/financial-indicators", summary="Get Financial Indicators")
-async def get_financial_indicators(symbol: str):
+def get_financial_indicators(symbol: str):
     try:
         data = FundamentalAnalysisService.get_indicators(symbol)
         return success_response(data=data)
@@ -36,7 +36,7 @@ async def get_financial_indicators(symbol: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{symbol}/income-statements", summary="Get Income Statements")
-async def get_income_statements(symbol: str):
+def get_income_statements(symbol: str):
     try:
         data = FundamentalAnalysisService.get_income_statements(symbol)
         return success_response(data=data)
@@ -47,7 +47,7 @@ async def get_income_statements(symbol: str):
 @router.get("/{symbol}/summary",
             summary="Get Fundamental Summary",
             description="Get AI-generated fundamental analysis summary for a stock symbol")
-async def get_fundamental_summary(symbol: str):
+def get_fundamental_summary(symbol: str):
     request_id = str(uuid.uuid4())
 
     try:

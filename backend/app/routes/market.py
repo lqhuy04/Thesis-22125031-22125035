@@ -14,7 +14,7 @@ from app.middleware.auth_middleware import get_current_user
 router = APIRouter(prefix="/api", tags=["Market Data"], dependencies=[Depends(get_current_user)])
 
 @router.get("/all-symbol", response_model=Any)
-async def get_all_symbols():
+def get_all_symbols():
     request_id = str(uuid.uuid4())
     result = MarketService.get_all_symbols()
     return {
@@ -26,7 +26,7 @@ async def get_all_symbols():
     }
 
 @router.get("/search/{symbol}", response_model=Any)
-async def search_stock_by_symbol(
+def search_stock_by_symbol(
     symbol: str,
 ):
     request_id = str(uuid.uuid4())
@@ -40,7 +40,7 @@ async def search_stock_by_symbol(
     }
 
 @router.get("/price/{symbol}", response_model=Any)
-async def get_latest_historical_chart_data(
+def get_latest_historical_chart_data(
     symbol: str,
     interval: str = Query("15m", description="Interval: 15m, 1h, or 1d")
 ):
@@ -64,7 +64,7 @@ async def get_latest_historical_chart_data(
     }
     
 @router.post("/price/{symbol}", response_model=Any)
-async def update_price_data_for_symbol_with_time_interval(symbol: str):
+def update_price_data_for_symbol_with_time_interval(symbol: str):
     """
     🔄 Manually trigger price data update for a stock symbol
     
@@ -85,7 +85,7 @@ async def update_price_data_for_symbol_with_time_interval(symbol: str):
 
 
 @router.get("/current-price/{symbol}", response_model=Any)
-async def get_stock_price(symbol: str):
+def get_stock_price(symbol: str):
     """
     💰 Get ceiling/floor/reference price for a stock
     
@@ -111,7 +111,7 @@ async def get_stock_price(symbol: str):
 
 
 @router.get("/industry-movement", response_model=SectorStockMovementResponse)
-async def get_industry_movement(
+def get_industry_movement(
     industry: str = Query(..., description="Industry name, e.g. Bất động sản"),
     limit: int | None = Query(None, ge=1, description="Max number of stocks to return"),
 ):
@@ -131,7 +131,7 @@ async def get_industry_movement(
     }
 
 @router.get("/market-index", response_model=Any)
-async def get_market_indices():
+def get_market_indices():
     request_id = str(uuid.uuid4())
     vnindex_result = MarketService.get_market_index(index_id="VNINDEX")
     hnxindex_result = MarketService.get_market_index(index_id="HNXINDEX")
@@ -148,7 +148,7 @@ async def get_market_indices():
     }
 
 @router.get("/market-index/{index_id}", response_model=Any)
-async def get_market_index_by_id(index_id: str):
+def get_market_index_by_id(index_id: str):
     request_id = str(uuid.uuid4())
     result = MarketService.get_market_index(index_id=index_id)
     return {
@@ -161,7 +161,7 @@ async def get_market_index_by_id(index_id: str):
 
 
 @router.get("/top-impact/{index_id}", response_model=IndexImpactResponse)
-async def get_top_index_impact_stocks(
+def get_top_index_impact_stocks(
     index_id: str,
     limit: int = Query(10, ge=1, le=100, description="Number of top impacted stocks"),
 ):
@@ -177,7 +177,7 @@ async def get_top_index_impact_stocks(
 
 
 @router.get("/investing-idea", response_model=InvestingIdeaResponse)
-async def get_investing_idea(
+def get_investing_idea(
     limit: int = Query(100, ge=1, le=100, description="Number of stocks per list"),
 ):
     request_id = str(uuid.uuid4())
@@ -201,7 +201,7 @@ async def get_investing_idea(
     }
 
 @router.get("/test", response_model=Any)
-async def test():
+def test():
     request_id = str(uuid.uuid4())
     ssi_service = get_ssi_service()
     result = ssi_service.get_securities_list(

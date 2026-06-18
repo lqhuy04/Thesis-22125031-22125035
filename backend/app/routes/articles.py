@@ -12,7 +12,7 @@ from uuid import uuid4
 router = APIRouter(prefix="/api/articles", tags=["Articles"], dependencies=[Depends(get_current_user)])
 
 @router.get("", response_model=ArticlesListResponse)
-async def get_all_articles(
+def get_all_articles(
     limit: Optional[int] = Query(None, ge=1, le=500, description="Optional maximum number of latest articles")
 ):
     """
@@ -32,7 +32,7 @@ async def get_all_articles(
     )
 
 @router.get("/macro", response_model=ArticlesListResponse)
-async def get_macro_articles(
+def get_macro_articles(
     min_symbols: int = Query(2, ge=2, description="Minimum impacted symbols count"),
     limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
 ):
@@ -52,7 +52,7 @@ async def get_macro_articles(
     )
 
 @router.get("/business", response_model=ArticlesListResponse)
-async def get_business_articles(
+def get_business_articles(
     limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
 ):
     """
@@ -71,7 +71,7 @@ async def get_business_articles(
 
 
 @router.get("/today-highlight", response_model=TodayHighlightResponse)
-async def get_today_highlight_articles():
+def get_today_highlight_articles():
     """
     Lấy 10 mã cổ phiếu có tin mới nhất.
     Mỗi mã trả về tối đa 2 bài mới nhất chỉ gắn với đúng 1 mã cổ phiếu.
@@ -88,7 +88,7 @@ async def get_today_highlight_articles():
 
 
 @router.get("/today-highlight/debug")
-async def get_today_highlight_articles_debug(
+def get_today_highlight_articles_debug(
     stock_limit: int = Query(10, ge=1, le=50, description="Maximum number of stocks"),
     articles_per_stock: int = Query(2, ge=1, le=5, description="Maximum number of articles per stock"),
 ):
@@ -112,7 +112,7 @@ async def get_today_highlight_articles_debug(
     }
 
 @router.get("/stock/{stock_symbol}", response_model=ArticlesListResponse)
-async def get_articles_by_stock_symbol(
+def get_articles_by_stock_symbol(
     stock_symbol: str,
     limit: Optional[int] = Query(None, ge=1, le=500, description="Optional maximum number of latest articles"),
 ):
@@ -139,7 +139,7 @@ async def get_articles_by_stock_symbol(
 
 
 @router.get("/category/{category_id}", response_model=ArticlesListResponse)
-async def get_news_single_category(
+def get_news_single_category(
     category_id: str,
     limit: int = Query(100, ge=1, le=500, description="Maximum number of articles")
 ):
