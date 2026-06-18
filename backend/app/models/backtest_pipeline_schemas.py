@@ -4,9 +4,19 @@ Schemas for the LLM-backed backtest endpoint.
 
 from pydantic import BaseModel, Field
 
+from app.models.agentic_schemas import DataSelection
+
 
 class BacktestPipelineRequest(BaseModel):
     symbol: str = Field(description="Stock symbol, for example: VNM, FPT, VIC")
+    mode: str = Field(
+        default="auto",
+        description="auto = phân tích toàn bộ dữ liệu; manual = chỉ dùng data_selection",
+    )
+    data_selection: DataSelection = Field(
+        default_factory=DataSelection,
+        description="Chọn nguồn/chỉ số cho AI phân tích (chỉ áp dụng khi mode = manual)",
+    )
     start_date: str | None = Field(
         default=None,
         description="Optional inclusive start date in ISO format, for example 2021-01-01",

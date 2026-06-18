@@ -34,6 +34,13 @@ const els = {
   exitOnScoreDrop: document.getElementById("exitOnScoreDrop"),
   runBacktestBtn: document.getElementById("runBacktestBtn"),
 
+  // Mode + data selection
+  backtestModeControl: document.getElementById("backtestModeControl"),
+  dataSelectionPanel: document.getElementById("dataSelectionPanel"),
+  dsNews: document.getElementById("dsNews"),
+  dsTechCount: document.getElementById("dsTechCount"),
+  dsFundCount: document.getElementById("dsFundCount"),
+
   // Drag and Drop
   dragDropZone: document.getElementById("dragDropZone"),
   jsonFilePicker: document.getElementById("jsonFilePicker"),
@@ -327,6 +334,31 @@ function initTabs() {
 // ─────────────────────────────────────────────────────────────────────────────
 // BACKTEST EXECUTION CONTROLLER
 // ─────────────────────────────────────────────────────────────────────────────
+const DS_TECH_KEYS = ["ma", "boll", "rsi", "macd", "kdj"];
+const DS_FUND_KEYS = ["valuation", "profitability", "growth", "financial_health", "cash_flow"];
+
+function getBacktestMode() {
+  const activeBtn = els.backtestModeControl?.querySelector(".seg-btn.active");
+  return activeBtn ? activeBtn.dataset.mode : "auto";
+}
+
+function readChecks(selector, keys) {
+  const result = {};
+  keys.forEach((k) => {
+    const el = document.querySelector(`${selector}[value="${k}"]`);
+    result[k] = el ? el.checked : true;
+  });
+  return result;
+}
+
+function getDataSelection() {
+  return {
+    news: els.dsNews ? els.dsNews.checked : true,
+    technical: readChecks(".ds-tech", DS_TECH_KEYS),
+    fundamental: readChecks(".ds-fund", DS_FUND_KEYS),
+  };
+}
+
 function getBacktestParams(symbolOverride = null) {
   return {
     symbol: symbolOverride || els.backtestSymbol.value.trim().toUpperCase() || "FPT",
@@ -339,7 +371,36 @@ function getBacktestParams(symbolOverride = null) {
     one_minute_lookback_days: parseInt(els.lookbackDays.value) || 30,
     use_intraday: els.useIntraday.checked,
     exit_on_score_drop: els.exitOnScoreDrop.checked,
+    mode: getBacktestMode(),
+    data_selection: getDataSelection(),
   };
+}
+
+function updateDsCounts() {
+  const techOn = DS_TECH_KEYS.filter((k) => document.querySelector(`.ds-tech[value="${k}"]`)?.checked).length;
+  const fundOn = DS_FUND_KEYS.filter((k) => document.querySelector(`.ds-fund[value="${k}"]`)?.checked).length;
+  if (els.dsTechCount) els.dsTechCount.textContent = `${techOn}/${DS_TECH_KEYS.length}`;
+  if (els.dsFundCount) els.dsFundCount.textContent = `${fundOn}/${DS_FUND_KEYS.length}`;
+}
+
+function initDataSelectionControls() {
+  if (!els.backtestModeControl) return;
+
+  els.backtestModeControl.querySelectorAll(".seg-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      els.backtestModeControl.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      const isManual = btn.dataset.mode === "manual";
+      if (els.dataSelectionPanel) {
+        els.dataSelectionPanel.style.display = isManual ? "flex" : "none";
+      }
+    });
+  });
+
+  document.querySelectorAll(".ds-tech, .ds-fund").forEach((cb) => {
+    cb.addEventListener("change", updateDsCounts);
+  });
+  updateDsCounts();
 }
 
 async function runBacktest() {
@@ -1048,6 +1109,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Drag and drop JSON uploader init
   initDragDrop();
+
+  // Mode (auto/manual) + data selection toggles init
+  initDataSelectionControls();
 
   // Disable text symbol input if VN30 option is checked
   els.vn30Option.addEventListener("change", (e) => {

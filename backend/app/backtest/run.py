@@ -48,6 +48,8 @@ def run_full_backtest(
     min_signal_score: int = 3,
     exit_on_score_drop: bool = False,
     transaction_cost_pct: float = 0.0015,
+    mode: str = "auto",
+    data_selection: dict | None = None,
 ) -> dict[str, Any]:
     indicator_engine = IndicatorEngine()
     scoring_engine = ScoringEngine()
@@ -83,7 +85,7 @@ def run_full_backtest(
     scored_1d = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1d))
     scored_1m = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1m))
 
-    pipeline = BacktestPipeline(symbol, trade_config)
+    pipeline = BacktestPipeline(symbol, trade_config, mode=mode, data_selection=data_selection)
     signal_dates_1d = pipeline.filter_signal_dates(scored_1d, min_score=min_signal_score)
 
     print(f"Goi LLM cho {len(signal_dates_1d)} signal dates tren 1d...")

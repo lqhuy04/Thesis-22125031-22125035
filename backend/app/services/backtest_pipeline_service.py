@@ -114,11 +114,18 @@ def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
         "exit_on_score_drop": request.exit_on_score_drop,
     }
 
+    # Chỉ chế độ manual mới tôn trọng lựa chọn dữ liệu; auto dùng toàn bộ ({}).
+    effective_selection = (
+        request.data_selection.model_dump() if request.mode == "manual" else {}
+    )
+
     return run_full_backtest(
         df_1d=df_1d,
         df_1m=df_1m,
         market_df=market_df,
         symbol=symbol,
         min_signal_score=request.min_signal_score,
+        mode=request.mode,
+        data_selection=effective_selection,
         **trade_config,
     )

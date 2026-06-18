@@ -13,9 +13,17 @@ from agentic_ai.analyze.state import AgentState
 
 
 class BacktestPipeline:
-    def __init__(self, symbol: str, trade_config: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        symbol: str,
+        trade_config: dict[str, Any],
+        mode: str = "auto",
+        data_selection: dict | None = None,
+    ) -> None:
         self.symbol = symbol
         self.trade_config = trade_config
+        self.mode = mode
+        self.data_selection = data_selection or {}
         self._cache: dict[str, Any] = {}
 
     def _build_state(self, date: str, interval: str, lookback_days: int) -> AgentState:
@@ -39,10 +47,11 @@ class BacktestPipeline:
         }
 
         return {
-            "mode": "auto",
+            "mode": self.mode,
             "user_input": f"Backtest pipeline for {self.symbol} on {date}",
             "risk_appetite": {},
             "symbol": self.symbol,
+            "data_selection": self.data_selection,
             "plan": plan,
             "agent_results": {},
             "final_output": None,
