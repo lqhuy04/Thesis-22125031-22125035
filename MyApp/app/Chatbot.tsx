@@ -249,7 +249,7 @@ const Chatbot = () => {
                 onPress={() =>
                   router.push({
                     pathname: "/AIAnalysis",
-                    params: { data: chip.symbol },
+                    params: { data: chip.symbol, mode: "auto" },
                   })
                 }
                 style={{
