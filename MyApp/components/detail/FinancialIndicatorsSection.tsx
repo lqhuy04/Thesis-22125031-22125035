@@ -205,6 +205,16 @@ const FinancialIndicatorsSkeleton = ({
   );
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const fmt = (value: number | null | undefined, decimals = 2, suffix = "") =>
+  value == null || !isFinite(value) ? "N/A" : `${value.toFixed(decimals)}${suffix}`;
+
+const fmtPct = (value: number | null | undefined) => fmt(value != null ? value * 100 : null, 2, "%");
+
+const fmtBillion = (value: number | null | undefined, unit: string) =>
+  value == null ? "N/A" : `${(value / 1_000_000_000).toFixed(2)} ${unit}`;
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 interface FinancialIndicatorsSectionProps {
@@ -282,27 +292,27 @@ const FinancialIndicatorsSection = ({
         {[
           {
             label: t("financialIndicators.marketCap"),
-            value: `${(financialIndicators.market_cap / 1_000_000_000).toFixed(2)} ${t("financialIndicators.billionVND")}`,
+            value: fmtBillion(financialIndicators.market_cap, t("financialIndicators.billionVND")),
           },
           {
             label: t("financialIndicators.pe"),
-            value: financialIndicators.pe_ratio.toFixed(2),
+            value: fmt(financialIndicators.pe_ratio),
           },
           {
             label: t("financialIndicators.pb"),
-            value: financialIndicators.pb_ratio.toFixed(2),
+            value: fmt(financialIndicators.pb_ratio),
           },
           {
             label: t("financialIndicators.eps"),
-            value: financialIndicators.eps.toFixed(2),
+            value: fmt(financialIndicators.eps),
           },
           {
             label: t("financialIndicators.bvps"),
-            value: financialIndicators.bvps.toFixed(2),
+            value: fmt(financialIndicators.bvps),
           },
           {
             label: t("financialIndicators.evEbitda"),
-            value: financialIndicators.ev_ebitda.toFixed(2),
+            value: fmt(financialIndicators.ev_ebitda),
           },
         ].map(({ label, value }, i, arr) => (
           <React.Fragment key={label}>
@@ -346,23 +356,23 @@ const FinancialIndicatorsSection = ({
         {[
           {
             label: t("financialIndicators.roe"),
-            value: `${(financialIndicators.roe * 100).toFixed(2)}%`,
+            value: fmtPct(financialIndicators.roe),
           },
           {
             label: t("financialIndicators.roa"),
-            value: `${(financialIndicators.roa * 100).toFixed(2)}%`,
+            value: fmtPct(financialIndicators.roa),
           },
           {
             label: t("financialIndicators.roic"),
-            value: `${(financialIndicators.roic * 100).toFixed(2)}%`,
+            value: fmtPct(financialIndicators.roic),
           },
           {
             label: t("financialIndicators.grossMargin"),
-            value: `${(financialIndicators.gross_margin * 100).toFixed(2)}%`,
+            value: fmtPct(financialIndicators.gross_margin),
           },
           {
             label: t("financialIndicators.netMargin"),
-            value: `${(financialIndicators.net_margin * 100).toFixed(2)}%`,
+            value: fmtPct(financialIndicators.net_margin),
           },
         ].map(({ label, value }, i, arr) => (
           <React.Fragment key={label}>
@@ -406,19 +416,19 @@ const FinancialIndicatorsSection = ({
         {[
           {
             label: t("financialIndicators.debtToEquity"),
-            value: financialIndicators.debt_to_equity.toFixed(2),
+            value: fmt(financialIndicators.debt_to_equity),
           },
           {
             label: t("financialIndicators.debtToAsset"),
-            value: (1 - 1 / financialIndicators.financial_leverage).toFixed(2),
+            value: fmt(financialIndicators.financial_leverage != null ? 1 - 1 / financialIndicators.financial_leverage : null),
           },
           {
             label: t("financialIndicators.quickRatio"),
-            value: financialIndicators.quick_ratio.toFixed(2),
+            value: fmt(financialIndicators.quick_ratio),
           },
           {
             label: t("financialIndicators.currentRatio"),
-            value: financialIndicators.current_ratio.toFixed(2),
+            value: fmt(financialIndicators.current_ratio),
           },
         ].map(({ label, value }, i, arr) => (
           <React.Fragment key={label}>
