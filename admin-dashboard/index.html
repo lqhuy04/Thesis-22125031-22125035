@@ -178,6 +178,60 @@
                 <span class="switch-text">Bán khi score giảm sâu (<3)</span>
               </div>
 
+              <!-- Mode + Data selection (giống app mobile) -->
+              <div class="data-selection-block">
+                <div class="ds-mode-row">
+                  <span class="switch-text" style="font-weight: 600;">Chế độ phân tích AI</span>
+                  <div class="seg-control" id="backtestModeControl">
+                    <button type="button" class="seg-btn active" data-mode="auto">Tự động</button>
+                    <button type="button" class="seg-btn" data-mode="manual">Tùy chỉnh</button>
+                  </div>
+                </div>
+
+                <div id="dataSelectionPanel" class="ds-panel" style="display: none;">
+                  <p class="ds-hint">Chọn dữ liệu AI được phép phân tích (chỉ áp dụng ở chế độ Tùy chỉnh).</p>
+
+                  <!-- Tin tức -->
+                  <div class="ds-group ds-group-inline">
+                    <span class="ds-group-title">📰 Tin tức</span>
+                    <label class="switch switch-sm">
+                      <input id="dsNews" type="checkbox" checked />
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+
+                  <!-- Kỹ thuật -->
+                  <div class="ds-group">
+                    <div class="ds-group-head">
+                      <span class="ds-group-title">📈 Kỹ thuật</span>
+                      <span class="ds-count" id="dsTechCount">5/5</span>
+                    </div>
+                    <div class="ds-options">
+                      <label class="ds-check"><input type="checkbox" class="ds-tech" value="ma" checked /><span>MA</span></label>
+                      <label class="ds-check"><input type="checkbox" class="ds-tech" value="boll" checked /><span>Bollinger</span></label>
+                      <label class="ds-check"><input type="checkbox" class="ds-tech" value="rsi" checked /><span>RSI</span></label>
+                      <label class="ds-check"><input type="checkbox" class="ds-tech" value="macd" checked /><span>MACD</span></label>
+                      <label class="ds-check"><input type="checkbox" class="ds-tech" value="kdj" checked /><span>KDJ</span></label>
+                    </div>
+                  </div>
+
+                  <!-- Cơ bản -->
+                  <div class="ds-group">
+                    <div class="ds-group-head">
+                      <span class="ds-group-title">📊 Cơ bản</span>
+                      <span class="ds-count" id="dsFundCount">5/5</span>
+                    </div>
+                    <div class="ds-options">
+                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="valuation" checked /><span>Định giá</span></label>
+                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="profitability" checked /><span>Sinh lời</span></label>
+                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="growth" checked /><span>Tăng trưởng</span></label>
+                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="financial_health" checked /><span>Sức khỏe TC</span></label>
+                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="cash_flow" checked /><span>Dòng tiền</span></label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="form-actions" style="margin-top: 10px;">
                 <button id="runBacktestBtn" class="btn btn-primary" type="button" style="width: 100%; padding: 12px 20px;">
                   Chạy Backtest Pipeline

@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/technical-indicators", tags=["Technical Indicato
 @router.get("/{symbol}",
             summary="Calculate Technical Indicators",
             description="Calculate technical indicators for a stock symbol using TA-Lib")
-async def get_technical_indicators(
+def get_technical_indicators(
     symbol: str,
     interval: str = Query("15m", description="Interval: 1m, 5m, 15m, 30m, 1h, 1d, 1w, 1M"),
 ):

@@ -5,11 +5,20 @@ aggregator.py — Aggregator Agent (simplified)
 Rule: total_score >= 3/5 → Mua, ngược lại → Chờ.
 
 Confidence được tính deterministic trong Python (không để LLM tự sinh),
-dựa trên 3 nguồn với trọng số bằng nhau:
+dựa trên các nguồn THỰC SỰ có dữ liệu, với trọng số bằng nhau:
 
-  confidence = (1/3) * technical_component     # technical_score / 5
-             + (1/3) * fundamental_component   # strong=1.0 / neutral=0.5 / weak=0.0 / N/A=0.5
-             + (1/3) * article_component       # positive=1.0 / neutral=0.5 / negative=0.0 / N/A=0.5
+  confidence = Σ (wᵢ * componentᵢ)   chỉ tính trên nguồn đang hoạt động
+             ─────────────────────
+                  Σ wᵢ              (renormalize trên nguồn đang hoạt động)
+
+    technical_component   = technical_score / max_score
+    fundamental_component = strong=1.0 / neutral=0.5 / weak=0.0
+    article_component     = positive=1.0 / neutral=0.5 / negative=0.0
+
+Nguồn bị người dùng tắt hoặc không có dữ liệu (has_*_data = false) sẽ bị LOẠI
+khỏi công thức và trọng số của nó được chia đều lại cho các nguồn còn lại. Nhờ
+vậy mỗi nguồn còn hoạt động dùng đủ dải [0,1] thay vì bị kéo về 0.5 bởi các ô
+trung lập. Khi chỉ còn 1 nguồn → confidence = component của chính nguồn đó.
 
   Ngưỡng chấp nhận lệnh Mua: confidence >= CONFIDENCE_THRESHOLD (0.55)
 """
@@ -106,28 +115,67 @@ def _confidence_components(
     return technical_component, fundamental_component, article_component
 
 
+def _effective_weights(
+    has_technical: bool,
+    has_fundamental: bool,
+    has_article: bool,
+) -> dict[str, float]:
+    """
+    Trọng số HIỆU DỤNG sau khi loại các nguồn người dùng tắt / không có dữ liệu.
+
+    Trọng số gốc của các nguồn bị loại được chia đều lại (renormalize) cho các
+    nguồn còn hoạt động, nên tổng trọng số hiệu dụng luôn = 1.0 khi có ≥ 1 nguồn.
+    Nguồn bị loại có trọng số 0.0 → không đóng góp vào confidence.
+
+    Nếu không nguồn nào hoạt động (về lý thuyết không xảy ra vì technical bắt
+    buộc) → trả về toàn 0.0 (caller sẽ coi confidence là trung lập).
+    """
+    active = {
+        "technical":   has_technical,
+        "fundamental": has_fundamental,
+        "article":     has_article,
+    }
+    raw_total = sum(CONFIDENCE_WEIGHTS[k] for k, on in active.items() if on)
+    if raw_total <= 0:
+        return {k: 0.0 for k in CONFIDENCE_WEIGHTS}
+    return {
+        k: (CONFIDENCE_WEIGHTS[k] / raw_total if active[k] else 0.0)
+        for k in CONFIDENCE_WEIGHTS
+    }
+
+
 def _compute_confidence(
     technical_score: int,
     fundamental_health: str,
     article_sentiment: str,
+    has_technical: bool,
+    has_fundamental: bool,
+    has_article: bool,
     technical_max_score: int = 5,
-) -> float:
+) -> tuple[float, dict[str, float]]:
     """
-    Tính confidence score [0.0, 1.0] hoàn toàn bằng rule cứng.
-    3 nguồn, trọng số đều nhau (1/3 mỗi nguồn). Xem _confidence_components.
+    Tính confidence score [0.0, 1.0] hoàn toàn bằng rule cứng, chỉ trên các nguồn
+    THỰC SỰ có dữ liệu (has_* = true). Trọng số được renormalize trên nguồn hoạt
+    động. Xem _confidence_components và _effective_weights.
+
+    Trả về (confidence, effective_weights) để caller báo cáo lại trong breakdown.
     """
     technical_component, fundamental_component, article_component = _confidence_components(
         technical_score, fundamental_health, article_sentiment, technical_max_score
     )
 
-    w = CONFIDENCE_WEIGHTS
+    w = _effective_weights(has_technical, has_fundamental, has_article)
+    if sum(w.values()) <= 0:
+        # Không nguồn nào hoạt động → trung lập hoàn toàn.
+        return _NA_SCORE, w
+
     score = (
         w["technical"]   * technical_component
         + w["fundamental"] * fundamental_component
         + w["article"]     * article_component
     )
 
-    return round(score, 4)
+    return round(score, 4), w
 
 
 # ─────────────────────────────────────────────────────────────
@@ -444,10 +492,13 @@ YÊU CẦU:
             "technical":   round(tech_component, 4),
             "fundamental": round(fund_component, 4),
         }
-        confidence = _compute_confidence(
+        confidence, effective_weights = _compute_confidence(
             technical_score     = parsed.technical_score,
             fundamental_health  = parsed.fundamental_health,
             article_sentiment   = parsed.article_sentiment,
+            has_technical       = has_technical,
+            has_fundamental     = has_fundamental,
+            has_article         = has_news,
             technical_max_score = technical_max_score,
         )
 
@@ -486,7 +537,7 @@ YÊU CẦU:
                 "technical_max_score": technical_max_score,
                 "fundamental_health":  parsed.fundamental_health,
                 "article_sentiment":   parsed.article_sentiment,
-                "weights":             {k: round(v, 4) for k, v in CONFIDENCE_WEIGHTS.items()},
+                "weights":             {k: round(v, 4) for k, v in effective_weights.items()},
             },
         }
 
