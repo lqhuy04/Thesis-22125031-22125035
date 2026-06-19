@@ -1026,3 +1026,138 @@ select:focus {
   opacity: 0.45;
   pointer-events: none;
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   COMPARISON TABLE (Full vs Baseline) + AGENT REPORT
+   ─────────────────────────────────────────────────────────────────────────── */
+.text-muted {
+  color: var(--muted);
+}
+
+.comparison-table td:first-child {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* Agent report layout */
+.agent-report-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .agent-report-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.agent-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.agent-report-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.agent-report-item:hover {
+  border-color: var(--primary);
+  background: rgba(88, 240, 167, 0.06);
+}
+
+.agent-report-item.selected {
+  border-color: var(--primary);
+  background: rgba(88, 240, 167, 0.12);
+}
+
+.agent-report-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agent-report-date {
+  font-weight: 600;
+  font-family: monospace;
+  color: var(--text);
+}
+
+.agent-report-detail {
+  padding: 18px;
+  min-height: 200px;
+}
+
+.report-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.report-detail-header h3 {
+  margin: 0;
+  color: var(--text);
+}
+
+.report-badges {
+  display: flex;
+  gap: 8px;
+}
+
+.agent-sub-block {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--card-border);
+}
+
+.agent-sub-block h4 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.agent-analysis-text {
+  color: var(--muted);
+  line-height: 1.55;
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+.agent-sub-block details {
+  margin-top: 6px;
+}
+
+.agent-sub-block summary {
+  cursor: pointer;
+  color: var(--secondary);
+  font-size: 0.82rem;
+}
+
+.agent-raw-json {
+  margin-top: 8px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  font-size: 0.76rem;
+  max-height: 320px;
+  overflow: auto;
+  color: var(--muted);
+  white-space: pre;
+}

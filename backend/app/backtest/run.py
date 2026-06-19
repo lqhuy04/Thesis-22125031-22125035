@@ -233,15 +233,21 @@ def run_full_backtest(
             trades=full_trades,
             metrics=full_metrics,
             symbol=symbol,
-            output_path=json_output_path
+            output_path=json_output_path,
+            engine_trades=engine_trades,
+            engine_metrics=engine_metrics,
+            pipeline_results=pipeline_results,
         )
-        
+
         visualization_file = f"/visualizations/{json_output_filename}"
         visualization_data = get_backtest_visualization_data(
             df=scored_1d,
             trades=full_trades,
             metrics=full_metrics,
-            symbol=symbol
+            symbol=symbol,
+            engine_trades=engine_trades,
+            engine_metrics=engine_metrics,
+            pipeline_results=pipeline_results,
         )
         print(f"Visualization JSON file created: {json_output_path}")
 

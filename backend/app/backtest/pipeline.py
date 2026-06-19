@@ -100,6 +100,12 @@ class BacktestPipeline:
             "data_sources_used": final_output.get("data_sources_used", []),
             "total_score": total_score,
             "analysis": final_output.get("analysis"),
+            # Phân tích chi tiết của từng agent để dựng report trên web.
+            "agent_breakdown": {
+                "technical_analysis_agent": state["agent_results"].get("technical_analysis_agent"),
+                "fundamental_analysis_agent": state["agent_results"].get("fundamental_analysis_agent"),
+                "article_agent": state["agent_results"].get("article_agent"),
+            },
         }
 
     def run_pipeline_batch(

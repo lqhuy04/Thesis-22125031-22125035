@@ -78,6 +78,14 @@ const els = {
   detailExitReason: document.getElementById("detailExitReason"),
   cloudHistoryList: document.getElementById("cloudHistoryList"),
   refreshCloudHistoryBtn: document.getElementById("refreshCloudHistoryBtn"),
+
+  // Comparison (Full vs Baseline) + Agent report
+  comparisonCard: document.getElementById("comparisonCard"),
+  comparisonBody: document.getElementById("comparisonBody"),
+  agentReportCard: document.getElementById("agentReportCard"),
+  agentReportCount: document.getElementById("agentReportCount"),
+  agentReportList: document.getElementById("agentReportList"),
+  agentReportDetail: document.getElementById("agentReportDetail"),
 };
 
 let symbolsLoaded = false;
@@ -666,6 +674,21 @@ function processBacktestJsonFile(file) {
 // ─────────────────────────────────────────────────────────────────────────────
 // CLOUD BACKTEST HISTORY LOADER (SUPABASE STORAGE)
 // ─────────────────────────────────────────────────────────────────────────────
+// Derive a sortable timestamp for a cloud history file.
+// Filename format: {symbol}_{YYYYMMDD}_{HHMMSS}_backtest.json
+function cloudHistorySortKey(file) {
+  const parts = (file.name || "").split("_");
+  const datePart = parts[1] || "";
+  const timePart = parts[2] || "";
+  if (datePart.length === 8 && timePart.length === 6) {
+    const iso = `${datePart.slice(0, 4)}-${datePart.slice(4, 6)}-${datePart.slice(6, 8)}T` +
+                `${timePart.slice(0, 2)}:${timePart.slice(2, 4)}:${timePart.slice(4, 6)}`;
+    const t = new Date(iso).getTime();
+    if (!isNaN(t)) return t;
+  }
+  return file.created_at ? new Date(file.created_at).getTime() : 0;
+}
+
 async function loadCloudHistory() {
   const baseUrl = normalizeBaseUrl(els.baseUrl.value);
   if (!baseUrl) return;
@@ -678,8 +701,8 @@ async function loadCloudHistory() {
     
     if (payload && payload.result && Array.isArray(payload.data)) {
       els.cloudHistoryList.innerHTML = "";
-      const files = payload.data;
-      
+      const files = [...payload.data].sort((a, b) => cloudHistorySortKey(b) - cloudHistorySortKey(a));
+
       if (files.length === 0) {
         els.cloudHistoryList.innerHTML = '<p class="hint">Không có lịch sử backtest trên cloud.</p>';
         return;
@@ -759,6 +782,10 @@ async function renderVisualization(vizData) {
   els.statTotalTrades.innerText = vizData.metrics.volume.n_trades;
   els.statSharpe.innerText = vizData.metrics.risk.sharpe_ratio.toFixed(2);
   els.vizSymbol.innerText = vizData.symbol;
+
+  // 2b. Comparison table (Full vs Baseline) + Agent report panel
+  renderComparison(vizData);
+  renderAgentReports(vizData);
 
   // 3. Clear existing charts divs (destroys old graphs completely)
   els.priceChart.innerHTML = "";
@@ -1062,6 +1089,187 @@ async function renderVisualization(vizData) {
   charts.rsi = rsiChart;
   charts.macd = macdChart;
   charts.candlestickSeries = candlestickSeries;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPARISON TABLE (Full Pipeline vs Baseline) + AGENT REPORT
+// ─────────────────────────────────────────────────────────────────────────────
+function fmtPct(v) {
+  if (v === null || v === undefined || isNaN(v)) return "--";
+  return (v * 100).toFixed(1) + "%";
+}
+
+function fmtNum(v) {
+  if (v === null || v === undefined || isNaN(v)) return "--";
+  return Number(v).toFixed(2);
+}
+
+function renderComparison(vizData) {
+  const baseline = vizData.baseline;
+  if (!baseline || !baseline.metrics || Object.keys(baseline.metrics).length === 0) {
+    els.comparisonCard.style.display = "none";
+    return;
+  }
+
+  const full = vizData.metrics;
+  const base = baseline.metrics;
+
+  const rows = [
+    { label: "Số giao dịch", get: (m) => m?.volume?.n_trades, kind: "int" },
+    { label: "Tỉ lệ thắng", get: (m) => m?.volume?.win_rate, kind: "pct" },
+    { label: "Lợi nhuận ròng", get: (m) => m?.pnl?.total_return, kind: "pct" },
+    { label: "Lợi nhuận TB / lệnh", get: (m) => m?.pnl?.avg_return, kind: "pct" },
+    { label: "Hệ số Sharpe", get: (m) => m?.risk?.sharpe_ratio, kind: "num" },
+    { label: "Max Drawdown", get: (m) => m?.risk?.max_drawdown, kind: "pct" },
+    { label: "Profit Factor", get: (m) => m?.risk?.profit_factor, kind: "num" },
+  ];
+
+  els.comparisonBody.innerHTML = "";
+  rows.forEach((row) => {
+    const fv = row.get(full);
+    const bv = row.get(base);
+
+    let fullStr, baseStr, deltaStr, deltaClass = "";
+    if (row.kind === "int") {
+      fullStr = fv ?? "--";
+      baseStr = bv ?? "--";
+      const d = (Number(fv) || 0) - (Number(bv) || 0);
+      deltaStr = (d > 0 ? "+" : "") + d;
+    } else {
+      const fmt = row.kind === "pct" ? fmtPct : fmtNum;
+      fullStr = fmt(fv);
+      baseStr = fmt(bv);
+      const d = (Number(fv) || 0) - (Number(bv) || 0);
+      if (row.kind === "pct") {
+        deltaStr = (d > 0 ? "+" : "") + (d * 100).toFixed(1) + " pp";
+      } else {
+        deltaStr = (d > 0 ? "+" : "") + d.toFixed(2);
+      }
+      deltaClass = d > 0 ? "text-green font-semibold" : d < 0 ? "text-red font-semibold" : "";
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.label}</td>
+      <td style="text-align: right;">${fullStr}</td>
+      <td style="text-align: right; color: var(--muted);">${baseStr}</td>
+      <td style="text-align: right;" class="${deltaClass}">${deltaStr}</td>
+    `;
+    els.comparisonBody.appendChild(tr);
+  });
+
+  els.comparisonCard.style.display = "block";
+}
+
+function confidenceInfo(conf) {
+  if (typeof conf === "number") {
+    const cls = conf >= 0.7 ? "ok" : conf >= 0.4 ? "running" : "error";
+    return { text: conf.toFixed(2), cls };
+  }
+  const c = (conf || "").toString().toLowerCase();
+  const cls = (c === "high" || c === "cao")
+    ? "ok"
+    : (c === "medium" || c.includes("trung"))
+      ? "running"
+      : "error";
+  return { text: (conf || "N/A").toString().toUpperCase(), cls };
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function analysisSection(title, text) {
+  if (!text) return "";
+  return `<div class="agent-sub-block"><h4>${title}</h4><p class="agent-analysis-text">${escapeHtml(text)}</p></div>`;
+}
+
+function renderAgentReportDetail(report) {
+  const rec = report.recommendation || "N/A";
+  const conf = confidenceInfo(report.confidence);
+  const analysis = report.analysis;
+
+  const sources = Array.isArray(report.data_sources_used) && report.data_sources_used.length
+    ? report.data_sources_used.join(", ")
+    : "--";
+
+  // analysis là object {technical, fundamental, news, summary} từ aggregator.
+  // Phòng trường hợp file cũ lưu analysis dạng chuỗi.
+  let analysisHtml;
+  if (analysis && typeof analysis === "object") {
+    analysisHtml =
+      analysisSection("📝 Tổng hợp", analysis.summary) +
+      analysisSection("📈 Kỹ thuật", analysis.technical) +
+      analysisSection("📊 Cơ bản", analysis.fundamental) +
+      analysisSection("📰 Tin tức", analysis.news);
+    if (!analysisHtml) analysisHtml = '<p class="hint">Không có nội dung phân tích.</p>';
+  } else if (typeof analysis === "string" && analysis.trim()) {
+    analysisHtml = `<div class="agent-sub-block"><p class="agent-analysis-text">${escapeHtml(analysis)}</p></div>`;
+  } else {
+    analysisHtml = '<p class="hint">Không có nội dung phân tích.</p>';
+  }
+
+  els.agentReportDetail.innerHTML = `
+    <div class="report-detail-header">
+      <h3>Tín hiệu ngày ${report.date}</h3>
+      <div class="report-badges">
+        <span class="badge">${escapeHtml(rec)}</span>
+        <span class="badge ${conf.cls}">${escapeHtml(conf.text)}</span>
+      </div>
+    </div>
+    <ul class="detail-list">
+      <li><span class="lbl">Score kỹ thuật:</span> <span class="val">${report.total_score ?? "--"}</span></li>
+      <li><span class="lbl">Giá vào:</span> <span class="val">${report.entry_price ?? "--"}</span></li>
+      <li><span class="lbl">Take Profit:</span> <span class="val text-green">${report.take_profit_price ?? "--"}</span></li>
+      <li><span class="lbl">Stop Loss:</span> <span class="val text-red">${report.stop_loss_price ?? "--"}</span></li>
+      <li><span class="lbl">Nến giữ tối đa:</span> <span class="val">${report.max_hold_candles ?? "--"}</span></li>
+      <li><span class="lbl">Nguồn dữ liệu:</span> <span class="val">${escapeHtml(sources)}</span></li>
+    </ul>
+    ${analysisHtml}
+  `;
+}
+
+function renderAgentReports(vizData) {
+  // Chỉ hiển thị report cho các tín hiệu được khuyến nghị Mua.
+  const reports = (Array.isArray(vizData.agent_reports) ? vizData.agent_reports : [])
+    .filter((r) => r.recommendation === "Mua");
+
+  if (reports.length === 0) {
+    els.agentReportCard.style.display = "none";
+    return;
+  }
+
+  els.agentReportCount.textContent = `${reports.length} lệnh mua`;
+  els.agentReportList.innerHTML = "";
+  els.agentReportDetail.innerHTML = '<p class="hint">Chọn một lệnh mua ở danh sách bên trái để xem report.</p>';
+
+  reports.forEach((report) => {
+    const item = document.createElement("div");
+    item.className = "agent-report-item";
+    const rec = report.recommendation || "N/A";
+    const conf = confidenceInfo(report.confidence);
+
+    item.innerHTML = `
+      <div class="agent-report-item-main">
+        <span class="agent-report-date">${report.date}</span>
+        <span class="text-green font-semibold">${escapeHtml(rec)}</span>
+      </div>
+      <span class="badge ${conf.cls}">${escapeHtml(conf.text)}</span>
+    `;
+
+    item.addEventListener("click", () => {
+      document.querySelectorAll("#agentReportList .agent-report-item").forEach((el) => el.classList.remove("selected"));
+      item.classList.add("selected");
+      renderAgentReportDetail(report);
+    });
+
+    els.agentReportList.appendChild(item);
+  });
+
+  els.agentReportCard.style.display = "block";
 }
 
 function getOffsetDateString(dateStr, offsetDays) {

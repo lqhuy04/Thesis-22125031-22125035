@@ -147,7 +147,7 @@
                 </div>
                 <div class="field">
                   <label for="maxHoldCandles">Nến giữ tối đa (Dự phòng)</label>
-                  <input id="maxHoldCandles" type="number" min="1" max="200" value="20" />
+                  <input id="maxHoldCandles" type="number" min="1" max="200" value="" />
                   <p class="hint" style="font-size: 0.72rem; margin-top: 4px; line-height: 1.2;">AI tự tính nến giữ tối ưu. Đây chỉ là giá trị dự phòng nếu AI lỗi.</p>
                 </div>
               </div>
@@ -336,6 +336,29 @@
             </div>
           </div>
 
+          <!-- Comparison: Full Pipeline (AI) vs Baseline (Technical-only) -->
+          <section class="comparison-card card" id="comparisonCard" style="display: none; margin-bottom: 18px;">
+            <div class="result-header">
+              <h2>So sánh: Full Pipeline (AI) vs Baseline (Kỹ thuật)</h2>
+              <span class="hint" style="margin: 0;">Baseline = cùng tín hiệu kỹ thuật nhưng KHÔNG qua LLM</span>
+            </div>
+            <div class="table-responsive">
+              <table class="results-table comparison-table">
+                <thead>
+                  <tr>
+                    <th>Chỉ số</th>
+                    <th style="text-align: right;">Full Pipeline (AI)</th>
+                    <th style="text-align: right;">Baseline (Kỹ thuật)</th>
+                    <th style="text-align: right;">Chênh lệch (AI − Baseline)</th>
+                  </tr>
+                </thead>
+                <tbody id="comparisonBody">
+                  <!-- Filled in JS -->
+                </tbody>
+              </table>
+            </div>
+          </section>
+
           <!-- Chart & Execution Logs Grid -->
           <div class="viz-main-grid">
             <!-- Charts Column (left/top) -->
@@ -405,6 +428,25 @@
               </div>
             </div>
           </div>
+
+          <!-- Agent Report Panel -->
+          <section class="agent-report-card card" id="agentReportCard" style="display: none; margin-top: 18px;">
+            <div class="result-header">
+              <h2>Report của AI theo từng lệnh mua</h2>
+              <span id="agentReportCount" class="badge">0 lệnh mua</span>
+            </div>
+            <p class="subtitle" style="font-size: 0.78rem; margin-bottom: 12px;">
+              Nhấp vào một lệnh mua để xem phân tích của AI: tổng hợp, kỹ thuật, cơ bản và tin tức.
+            </p>
+            <div class="agent-report-layout">
+              <div class="agent-report-list" id="agentReportList">
+                <!-- Filled in JS -->
+              </div>
+              <div class="agent-report-detail card" id="agentReportDetail">
+                <p class="hint">Chọn một tín hiệu ở danh sách bên trái để xem report.</p>
+              </div>
+            </div>
+          </section>
         </section>
       </div>
     </main>
