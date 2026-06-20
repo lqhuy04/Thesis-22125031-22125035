@@ -177,48 +177,6 @@ export const removeWatchListRecords = async ({
   }
 };
 
-export const updateWatchListRecord = async ({
-  portfolio_id,
-  amount,
-  buy_price,
-  time,
-}: {
-  portfolio_id: string;
-  amount?: number;
-  buy_price?: number;
-  time?: string;
-}): Promise<{
-  status: boolean;
-}> => {
-  try {
-    const result = await sendMessage(`api/portfolio/${portfolio_id}`, {
-      method: "PUT",
-      body: JSON.stringify({
-        amount,
-        buy_price,
-        time,
-      }),
-    });
-
-    const { errorCode } = result || {};
-
-    if (errorCode === 0) {
-      return {
-        status: true,
-      };
-    } else {
-      return {
-        status: false,
-      };
-    }
-  } catch (error) {
-    console.error(error);
-    return {
-      status: false,
-    };
-  }
-};
-
 // ----------------------------------------------
 export type FavoriteItem = CurrentPriceData & {
   id: string;

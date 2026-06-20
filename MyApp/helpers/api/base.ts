@@ -2,7 +2,8 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 
 // Backend đã deploy trên Railway (dùng cho bản production build)
-const PRODUCTION_API_URL = "https://backend-server-production-1625.up.railway.app/";
+const PRODUCTION_API_URL =
+  "https://backend-server-production-1625.up.railway.app/";
 
 export const getBaseUrl = (): string => {
   // Bản production (build release) → luôn gọi backend đã deploy

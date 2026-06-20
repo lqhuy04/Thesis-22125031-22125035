@@ -1,9 +1,7 @@
 import {
-  addStockToWatchList,
   getWatchlist,
   HistoryItem,
   removeWatchListRecords,
-  updateWatchListRecord,
   WatchItem,
 } from "@/helpers/ProfileHelpers";
 
@@ -22,15 +20,13 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
+import { useLocalization } from "@/hooks/LocalizationContext";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { SearchStockItem, searchStocks } from "@/helpers/SearchHelper";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -42,19 +38,6 @@ const fmtTime = (iso?: string) => {
   const month = String(d.getMonth() + 1).padStart(2, "0");
   const year = d.getFullYear();
   return `${day}/${month}/${year}`;
-};
-
-const fmtDate = (d: Date) => {
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return `${day}/${month}/${d.getFullYear()}`;
-};
-
-const toISODay = (d: Date) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}T00:00:00.000Z`;
 };
 
 const MONEY_SCALE = 1000;
@@ -227,7 +210,6 @@ const WatchListSkeleton = () => (
     {/* List header */}
     <View style={styles.listHeader}>
       <SkeletonBox width={160} height={18} borderRadius={8} />
-      <SkeletonBox width={70} height={30} borderRadius={20} />
     </View>
 
     {/* Stock cards */}
@@ -237,557 +219,89 @@ const WatchListSkeleton = () => (
   </View>
 );
 
-// ─── EditHistoryModal ─────────────────────────────────────────────────────────
+// ─── ConfirmDeleteModal ───────────────────────────────────────────────────────
 
-type EditHistoryModalProps = {
+type ConfirmDeleteModalProps = {
   visible: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-  historyItem: HistoryItem | null;
-  symbol: string;
+  title: string;
+  deleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  children: React.ReactNode;
 };
 
-const EditHistoryModal = ({
+const ConfirmDeleteModal = ({
   visible,
-  onClose,
-  onSuccess,
-  historyItem,
-  symbol,
-}: EditHistoryModalProps) => {
+  title,
+  deleting,
+  onCancel,
+  onConfirm,
+  children,
+}: ConfirmDeleteModalProps) => {
   const { theme } = useTheme();
-
-  const [amount, setAmount] = useState("");
-  const [buyPrice, setBuyPrice] = useState("");
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (historyItem) {
-      setAmount(String(historyItem.amount));
-      setBuyPrice(String(historyItem.buy_price));
-      setDate(historyItem.time ? new Date(historyItem.time) : new Date());
-      setError("");
-    }
-  }, [historyItem, visible]);
-
-  const handleClose = () => {
-    setError("");
-    onClose();
-  };
-
-  const handleSave = async () => {
-    if (!historyItem) return;
-    const amt = parseInt(amount, 10);
-    const price = parseFloat(buyPrice);
-    if (!amt || amt <= 0) return setError("Số lượng không hợp lệ.");
-    if (!price || price <= 0) return setError("Giá mua không hợp lệ.");
-
-    setError("");
-    setSaving(true);
-    const res = await updateWatchListRecord({
-      portfolio_id: historyItem.id,
-      amount: amt,
-      buy_price: price,
-      time: toISODay(date),
-    });
-    setSaving(false);
-
-    if (res.status) {
-      onSuccess();
-    } else {
-      setError("Cập nhật thất bại, vui lòng thử lại.");
-    }
-  };
-
-  const inputStyle = [
-    styles.input,
-    {
-      borderColor: theme.border.default,
-      color: theme.text.primary,
-      backgroundColor: theme.background.surface,
-    },
-  ];
+  const { t } = useLocalization();
 
   return (
     <Modal
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={handleClose}
+      onRequestClose={onCancel}
     >
-      <Pressable style={styles.overlay} onPress={handleClose}>
+      <Pressable
+        style={styles.dateOverlay}
+        onPress={() => !deleting && onCancel()}
+      >
         <Pressable
           style={[
-            styles.sheet,
+            styles.datePopup,
             {
               backgroundColor: theme.background.bg,
               borderColor: theme.border.default,
             },
           ]}
-          onPress={() => {}}
         >
-          <View style={styles.modalHeader}>
-            <View
-              style={{ gap: 2, flexDirection: "row", alignItems: "center" }}
+          <Text
+            typography="titleLarge"
+            color={theme.text.primary}
+            style={{ marginBottom: 6 }}
+          >
+            {title}
+          </Text>
+          {children}
+
+          <View style={styles.confirmButtons}>
+            <TouchableOpacity
+              style={[
+                styles.confirmBtn,
+                {
+                  borderWidth: 1,
+                  borderColor: theme.border.default,
+                  backgroundColor: theme.background.surface,
+                },
+              ]}
+              onPress={onCancel}
+              disabled={deleting}
             >
-              <Text typography="titleLarge">Cập nhật lịch sử mua </Text>
-              <Text typography="titleLarge" color={theme.base.primary}>
-                {symbol}
+              <Text typography="titleMedium" color={theme.text.primary}>
+                {t("watchList.cancel")}
               </Text>
-            </View>
-            <TouchableOpacity onPress={handleClose}>
-              <SimpleLineIcons
-                name="close"
-                size={16}
-                color={theme.text.primary}
-              />
             </TouchableOpacity>
-          </View>
 
-          <Text typography="labelLarge" style={styles.fieldLabel}>
-            Số lượng (cp)
-          </Text>
-          <TextInput
-            style={inputStyle}
-            placeholder="VD: 100"
-            placeholderTextColor={theme.text.primary + "55"}
-            keyboardType="number-pad"
-            value={amount}
-            onChangeText={(t) => setAmount(t.replace(/[^0-9]/g, ""))}
-          />
-
-          <Text typography="labelLarge" style={styles.fieldLabel}>
-            Giá mua (nghìn ₫/cp)
-          </Text>
-          <TextInput
-            style={inputStyle}
-            placeholder="VD: 24.5"
-            placeholderTextColor={theme.text.primary + "55"}
-            keyboardType="decimal-pad"
-            value={buyPrice}
-            onChangeText={(t) => {
-              const filtered = t.replace(/[^0-9.]/g, "");
-              const parts = filtered.split(".");
-              if (parts.length > 2) return;
-              if (parts[1]?.length > 1) return;
-              setBuyPrice(filtered);
-            }}
-          />
-
-          <Text typography="labelLarge" style={styles.fieldLabel}>
-            Ngày mua
-          </Text>
-          <TouchableOpacity
-            style={[inputStyle, styles.dateTrigger]}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text typography="bodyMedium" color={theme.text.primary}>
-              {fmtDate(date)}
-            </Text>
-            <SimpleLineIcons
-              name="calendar"
-              size={14}
-              color={theme.text.primary + "88"}
-            />
-          </TouchableOpacity>
-
-          <Modal
-            visible={showDatePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowDatePicker(false)}
-          >
-            <Pressable
-              style={styles.dateOverlay}
-              onPress={() => setShowDatePicker(false)}
+            <TouchableOpacity
+              style={[styles.confirmBtn, { backgroundColor: theme.base.error }]}
+              onPress={onConfirm}
+              disabled={deleting}
             >
-              <Pressable
-                style={[
-                  styles.datePopup,
-                  {
-                    backgroundColor: theme.background.bg,
-                    borderColor: theme.border.default,
-                  },
-                ]}
-              >
-                <View style={styles.datePopupHeader}>
-                  <Text typography="titleMedium">Chọn ngày mua</Text>
-                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                    <SimpleLineIcons
-                      name="close"
-                      size={14}
-                      color={theme.text.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display="inline"
-                  maximumDate={new Date()}
-                  onChange={(_, selected) => {
-                    if (selected) {
-                      setDate(selected);
-                      setShowDatePicker(false);
-                    }
-                  }}
-                  style={styles.datePicker}
-                />
-              </Pressable>
-            </Pressable>
-          </Modal>
-
-          {!!error && (
-            <Text
-              typography="labelLarge"
-              color={theme.base.error}
-              style={styles.errorText}
-            >
-              {error}
-            </Text>
-          )}
-
-          <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: theme.base.primary }]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color={theme.text.onPrimary} />
-            ) : (
-              <Text typography="titleLarge" color={theme.text.onPrimary}>
-                Lưu
-              </Text>
-            )}
-          </TouchableOpacity>
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-};
-
-// ─── AddStockModal ────────────────────────────────────────────────────────────
-
-type AddStockModalProps = {
-  visible: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
-};
-
-const AddStockModal = ({ visible, onClose, onSuccess }: AddStockModalProps) => {
-  const { theme } = useTheme();
-
-  const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchStockItem[]>([]);
-  const [selectedStock, setSelectedStock] = useState<SearchStockItem | null>(
-    null,
-  );
-  const [searching, setSearching] = useState(false);
-  const [showDropdown, setShowDropdown] = useState(false);
-
-  const [amount, setAmount] = useState("");
-  const [buyPrice, setBuyPrice] = useState("");
-  const [date, setDate] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    if (query.length < 1) {
-      setSearchResults([]);
-      setShowDropdown(false);
-      return;
-    }
-    if (searchTimeout.current) clearTimeout(searchTimeout.current);
-    searchTimeout.current = setTimeout(async () => {
-      if (query.length < 1) return;
-      setSearching(true);
-      const res = await searchStocks(query);
-      const valid = res.filter((s) => s.stock_id != null);
-      setSearchResults(valid);
-      setShowDropdown(valid.length > 0);
-      setSearching(false);
-    }, 350);
-  }, [query]);
-
-  const reset = () => {
-    setQuery("");
-    setSearchResults([]);
-    setSelectedStock(null);
-    setShowDropdown(false);
-    setAmount("");
-    setBuyPrice("");
-    setDate(new Date());
-    setShowDatePicker(false);
-    setError("");
-  };
-
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
-
-  const handleSave = async () => {
-    if (!selectedStock) return setError("Vui lòng chọn mã cổ phiếu.");
-    const amt = parseInt(amount, 10);
-    const price = parseFloat(buyPrice);
-    if (!amt || amt <= 0) return setError("Số lượng không hợp lệ.");
-    if (!price || price <= 0) return setError("Giá mua không hợp lệ.");
-
-    setError("");
-    setSaving(true);
-    const res = await addStockToWatchList({
-      symbol: selectedStock.symbol,
-      amount: amt,
-      buy_price: price,
-      time: toISODay(date),
-    });
-    setSaving(false);
-
-    if (res.status) {
-      reset();
-      onSuccess();
-    } else {
-      setError("Lưu thất bại, vui lòng thử lại.");
-    }
-  };
-
-  const inputStyle = [
-    styles.input,
-    {
-      borderColor: theme.border.default,
-      color: theme.text.primary,
-      backgroundColor: theme.background.surface,
-    },
-  ];
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-    >
-      <Pressable style={styles.overlay} onPress={handleClose}>
-        <Pressable
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: theme.background.bg,
-              borderColor: theme.border.default,
-            },
-          ]}
-          onPress={() => {}}
-        >
-          <View style={styles.modalHeader}>
-            <Text typography="titleLarge">Thêm cổ phiếu</Text>
-            <TouchableOpacity onPress={handleClose}>
-              <SimpleLineIcons
-                name="close"
-                size={16}
-                color={theme.text.primary}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <Text typography="labelLarge" style={styles.fieldLabel}>
-            Mã cổ phiếu
-          </Text>
-          <View style={styles.searchWrapper}>
-            <View style={[inputStyle, styles.searchInputRow]}>
-              <TextInput
-                style={[styles.searchTextInput, { color: theme.text.primary }]}
-                placeholder="Tìm mã hoặc tên công ty..."
-                placeholderTextColor={theme.text.primary + "55"}
-                value={
-                  selectedStock
-                    ? `${selectedStock.symbol} – ${selectedStock.company_name}`
-                    : query
-                }
-                onChangeText={(t) => {
-                  setSelectedStock(null);
-                  setQuery(t);
-                  if (t.length === 0) {
-                    if (searchTimeout.current)
-                      clearTimeout(searchTimeout.current);
-                    setShowDropdown(false);
-                    setSearchResults([]);
-                  }
-                }}
-                onFocus={() => {
-                  if (selectedStock) {
-                    setSelectedStock(null);
-                    setQuery("");
-                  }
-                  if (searchResults.length > 0) setShowDropdown(true);
-                }}
-              />
-              {searching && (
-                <ActivityIndicator size="small" color={theme.base.primary} />
+              {deleting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text typography="titleMedium" color="#fff">
+                  {t("watchList.delete")}
+                </Text>
               )}
-            </View>
-
-            {showDropdown && (
-              <View
-                style={[
-                  styles.dropdown,
-                  {
-                    backgroundColor: theme.background.bg,
-                    borderColor: theme.border.default,
-                  },
-                ]}
-              >
-                <ScrollView
-                  keyboardShouldPersistTaps="handled"
-                  nestedScrollEnabled
-                  style={{ maxHeight: 200 }}
-                >
-                  {searchResults.map((s, i) => (
-                    <TouchableOpacity
-                      key={s.stock_id ?? `stock-${i}`}
-                      style={[
-                        styles.dropdownItem,
-                        { borderBottomColor: theme.border.default },
-                      ]}
-                      onPress={() => {
-                        setSelectedStock(s);
-                        setQuery("");
-                        setShowDropdown(false);
-                      }}
-                    >
-                      <Text typography="titleSmall" color={theme.base.primary}>
-                        {s.symbol}
-                      </Text>
-                      <Text typography="bodySmall" style={{ opacity: 0.55 }}>
-                        {s.company_name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+            </TouchableOpacity>
           </View>
-
-          <Text typography="labelLarge" style={styles.fieldLabel}>
-            Số lượng (cp)
-          </Text>
-          <TextInput
-            style={inputStyle}
-            placeholder="VD: 100"
-            placeholderTextColor={theme.text.primary + "55"}
-            keyboardType="number-pad"
-            value={amount}
-            onChangeText={(t) => setAmount(t.replace(/[^0-9]/g, ""))}
-          />
-
-          <Text typography="labelLarge" style={styles.fieldLabel}>
-            Giá mua (nghìn ₫/cp)
-          </Text>
-          <TextInput
-            style={inputStyle}
-            placeholder="VD: 24.5"
-            placeholderTextColor={theme.text.primary + "55"}
-            keyboardType="decimal-pad"
-            value={buyPrice}
-            onChangeText={(t) => {
-              const filtered = t.replace(/[^0-9.]/g, "");
-              const parts = filtered.split(".");
-              if (parts.length > 2) return;
-              if (parts[1]?.length > 1) return;
-              setBuyPrice(filtered);
-            }}
-          />
-
-          <Text typography="labelLarge" style={styles.fieldLabel}>
-            Ngày mua
-          </Text>
-          <TouchableOpacity
-            style={[inputStyle, styles.dateTrigger]}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text typography="bodyMedium" color={theme.text.primary}>
-              {fmtDate(date)}
-            </Text>
-            <SimpleLineIcons
-              name="calendar"
-              size={14}
-              color={theme.text.primary + "88"}
-            />
-          </TouchableOpacity>
-
-          <Modal
-            visible={showDatePicker}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowDatePicker(false)}
-          >
-            <Pressable
-              style={styles.dateOverlay}
-              onPress={() => setShowDatePicker(false)}
-            >
-              <Pressable
-                style={[
-                  styles.datePopup,
-                  {
-                    backgroundColor: theme.background.bg,
-                    borderColor: theme.border.default,
-                  },
-                ]}
-              >
-                <View style={styles.datePopupHeader}>
-                  <Text typography="titleMedium">Chọn ngày mua</Text>
-                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                    <SimpleLineIcons
-                      name="close"
-                      size={14}
-                      color={theme.text.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display="inline"
-                  maximumDate={new Date()}
-                  onChange={(_, selected) => {
-                    if (selected) {
-                      setDate(selected);
-                      setShowDatePicker(false);
-                    }
-                  }}
-                  style={styles.datePicker}
-                />
-              </Pressable>
-            </Pressable>
-          </Modal>
-
-          {!!error && (
-            <Text
-              typography="labelLarge"
-              color={theme.base.error}
-              style={styles.errorText}
-            >
-              {error}
-            </Text>
-          )}
-
-          <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: theme.base.primary }]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator color={theme.text.onPrimary} />
-            ) : (
-              <Text typography="titleLarge" color={theme.text.onPrimary}>
-                Lưu
-              </Text>
-            )}
-          </TouchableOpacity>
         </Pressable>
       </Pressable>
     </Modal>
@@ -815,7 +329,11 @@ const SummaryCard = ({ label, value, sub, gainColor }: SummaryCardProps) => {
         },
       ]}
     >
-      <Text typography="labelLarge" style={{ opacity: 0.5 }}>
+      <Text
+        typography="labelLarge"
+        color={theme.text.primary}
+        style={{ opacity: 0.5 }}
+      >
         {label}
       </Text>
       <Text typography="titleLarge" color={gainColor ?? theme.text.primary}>
@@ -844,6 +362,7 @@ const StockCard = ({
   onDeleted: () => void;
 }) => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [expanded, setExpanded] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -869,6 +388,8 @@ const StockCard = ({
     }
   };
 
+  const confirmParts = t("watchList.deleteStockConfirm").split("{symbol}");
+
   return (
     <View
       style={[
@@ -881,8 +402,14 @@ const StockCard = ({
     >
       <View style={styles.stockHeader}>
         <View style={styles.stockTitleGroup}>
-          <Text typography="titleLarge">{item.symbol}</Text>
-          <Text typography="bodyMedium" style={{ opacity: 0.45 }}>
+          <Text typography="titleLarge" color={theme.text.primary}>
+            {item.symbol}
+          </Text>
+          <Text
+            typography="bodyMedium"
+            color={theme.text.primary}
+            style={{ opacity: 0.45 }}
+          >
             {item.company_name}
           </Text>
         </View>
@@ -908,24 +435,37 @@ const StockCard = ({
 
       <View style={[styles.metaRow, { borderTopColor: theme.border.default }]}>
         {[
-          { label: "Giá hiện tại", val: fmt(item.CurrentPrice) },
-          { label: "Giá vốn TB", val: fmt(avg) },
-          { label: "Khối lượng", val: `${qty.toLocaleString("vi-VN")} cp` },
-          { label: "Giá trị", val: fmt(mktVal) },
-          { label: "Vốn", val: fmt(cost) },
+          { label: t("watchList.currentPrice"), val: fmt(item.CurrentPrice) },
+          { label: t("watchList.avgPrice"), val: fmt(avg) },
+          {
+            label: t("watchList.volume"),
+            val: `${qty.toLocaleString("vi-VN")} ${t("watchList.shares")}`,
+          },
+          { label: t("watchList.marketValue"), val: fmt(mktVal) },
+          { label: t("watchList.capital"), val: fmt(cost) },
         ].map(({ label, val }) => (
           <View key={label} style={styles.metaItem}>
-            <Text typography="labelLarge" style={{ opacity: 0.45 }}>
+            <Text
+              typography="labelLarge"
+              color={theme.text.primary}
+              style={{ opacity: 0.45 }}
+            >
               {label}
             </Text>
-            <Text typography="bodyLarge">{val}</Text>
+            <Text typography="bodyLarge" color={theme.text.primary}>
+              {val}
+            </Text>
           </View>
         ))}
       </View>
 
       <View style={styles.historyHeader}>
-        <Text typography="labelLarge" style={{ opacity: 0.6 }}>
-          Lịch sử mua
+        <Text
+          typography="labelLarge"
+          color={theme.text.primary}
+          style={{ opacity: 0.6 }}
+        >
+          {t("watchList.buyHistory")}
         </Text>
         <TouchableOpacity onPress={() => setExpanded(!expanded)}>
           <SimpleLineIcons
@@ -939,17 +479,33 @@ const StockCard = ({
       {expanded && item.history.length > 0 && (
         <View style={styles.historyTable}>
           <View style={styles.historyRowLine}>
-            <Text typography="titleSmall" style={styles.colLeft}>
-              SL
+            <Text
+              typography="titleSmall"
+              color={theme.text.primary}
+              style={styles.colLeft}
+            >
+              {t("watchList.colAmount")}
             </Text>
-            <Text typography="titleSmall" style={styles.colCenter}>
-              Giá
+            <Text
+              typography="titleSmall"
+              color={theme.text.primary}
+              style={styles.colCenter}
+            >
+              {t("watchList.colPrice")}
             </Text>
-            <Text typography="titleSmall" style={styles.colCenter}>
-              Thời gian
+            <Text
+              typography="titleSmall"
+              color={theme.text.primary}
+              style={styles.colCenter}
+            >
+              {t("watchList.colTime")}
             </Text>
-            <Text typography="titleSmall" style={styles.colRight}>
-              Hành động
+            <Text
+              typography="titleSmall"
+              color={theme.text.primary}
+              style={styles.colRight}
+            >
+              {t("watchList.colAction")}
             </Text>
           </View>
 
@@ -959,7 +515,6 @@ const StockCard = ({
               h={h}
               theme={theme}
               onDeleted={onDeleted}
-              symbol={item.symbol}
             />
           ))}
         </View>
@@ -969,80 +524,31 @@ const StockCard = ({
         style={[styles.deleteStockButton, { borderColor: theme.base.error }]}
         onPress={() => setConfirmVisible(true)}
       >
+        <SimpleLineIcons name="trash" size={14} color={theme.base.error} />
         <Text typography="titleMedium" color={theme.base.error}>
-          Xoá cổ phiếu
+          {t("watchList.deleteStock")}
         </Text>
       </TouchableOpacity>
 
-      <Modal
+      <ConfirmDeleteModal
         visible={confirmVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmVisible(false)}
+        title={t("watchList.deleteStock")}
+        deleting={deleting}
+        onCancel={() => setConfirmVisible(false)}
+        onConfirm={handleDelete}
       >
-        <Pressable
-          style={styles.dateOverlay}
-          onPress={() => !deleting && setConfirmVisible(false)}
+        <Text
+          typography="bodyLarge"
+          color={theme.text.primary}
+          style={{ opacity: 0.6, marginBottom: 12 }}
         >
-          <Pressable
-            style={[
-              styles.datePopup,
-              {
-                backgroundColor: theme.background.bg,
-                borderColor: theme.border.default,
-              },
-            ]}
-          >
-            <Text typography="titleLarge" style={{ marginBottom: 6 }}>
-              Xoá cổ phiếu
-            </Text>
-            <Text
-              typography="bodyLarge"
-              style={{ opacity: 0.6, marginBottom: 12 }}
-            >
-              Bạn có chắc muốn xoá{" "}
-              <Text typography="bodyMedium" color={theme.base.primary}>
-                {item.symbol}
-              </Text>{" "}
-              khỏi danh sách? Toàn bộ lịch sử mua sẽ bị xoá.
-            </Text>
-
-            <View style={styles.confirmButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  {
-                    borderWidth: 1,
-                    borderColor: theme.border.default,
-                    backgroundColor: theme.background.surface,
-                  },
-                ]}
-                onPress={() => setConfirmVisible(false)}
-                disabled={deleting}
-              >
-                <Text typography="titleMedium">Huỷ</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  { backgroundColor: theme.base.error },
-                ]}
-                onPress={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text typography="titleMedium" color="#fff">
-                    Xoá
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+          {confirmParts[0]}
+          <Text typography="bodyMedium" color={theme.base.primary}>
+            {item.symbol}
+          </Text>
+          {confirmParts[1]}
+        </Text>
+      </ConfirmDeleteModal>
     </View>
   );
 };
@@ -1051,18 +557,15 @@ const StockCard = ({
 
 const HistoryRow = ({
   h,
-  symbol,
   theme,
   onDeleted,
 }: {
   h: HistoryItem;
-  symbol: string;
   theme: any;
   onDeleted: () => void;
 }) => {
-  const [menuVisible, setMenuVisible] = useState(false);
+  const { t } = useLocalization();
   const [confirmVisible, setConfirmVisible] = useState(false);
-  const [editVisible, setEditVisible] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
@@ -1075,186 +578,48 @@ const HistoryRow = ({
     }
   };
 
+  const amountLabel = `${h.amount.toLocaleString()} ${t("watchList.shares")}`;
+  const confirmParts = t("watchList.deleteHistoryConfirm")
+    .replace("{date}", fmtTime(h.time))
+    .split("{amount}");
+
   return (
     <View style={styles.historyRowLine}>
-      <Text style={styles.colLeft}>{h.amount.toLocaleString()}</Text>
-      <Text style={styles.colCenter}>{fmt(h.buy_price)}</Text>
-      <Text style={styles.colCenter}>{fmtTime(h.time)}</Text>
+      <Text style={styles.colLeft} color={theme.text.primary}>
+        {h.amount.toLocaleString()}
+      </Text>
+      <Text style={styles.colCenter} color={theme.text.primary}>
+        {fmt(h.buy_price)}
+      </Text>
+      <Text style={styles.colCenter} color={theme.text.primary}>
+        {fmtTime(h.time)}
+      </Text>
 
       <View style={styles.colRight}>
-        <TouchableOpacity onPress={() => setMenuVisible(true)}>
-          <SimpleLineIcons
-            name="options-vertical"
-            size={12}
-            color={theme.text.primary}
-          />
+        <TouchableOpacity onPress={() => setConfirmVisible(true)}>
+          <SimpleLineIcons name="trash" size={14} color={theme.base.error} />
         </TouchableOpacity>
       </View>
 
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <Pressable
-          style={styles.dateOverlay}
-          onPress={() => setMenuVisible(false)}
-        >
-          <Pressable
-            style={[
-              styles.menuPopup,
-              {
-                backgroundColor: theme.background.bg,
-                borderColor: theme.border.default,
-              },
-            ]}
-          >
-            <Text typography="titleLarge" style={{ marginBottom: 2 }}>
-              {symbol}
-            </Text>
-            <Text
-              typography="labelLarge"
-              style={{ opacity: 0.45, marginBottom: 2 }}
-            >
-              {fmtTime(h.time)} · {h.amount.toLocaleString()} cp
-            </Text>
-            <Text
-              typography="labelLarge"
-              style={{ opacity: 0.45, marginBottom: 14 }}
-            >
-              Đơn giá: {fmt(h.buy_price)}
-            </Text>
-
-            <View style={styles.confirmButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  {
-                    borderWidth: 1,
-                    borderColor: theme.border.default,
-                    backgroundColor: theme.background.surface,
-                    flexDirection: "row",
-                    gap: 6,
-                  },
-                ]}
-                onPress={() => {
-                  setMenuVisible(false);
-                  setEditVisible(true);
-                }}
-              >
-                <SimpleLineIcons
-                  name="pencil"
-                  size={14}
-                  color={theme.text.primary}
-                />
-                <Text typography="titleMedium">Cập nhật</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  {
-                    backgroundColor: theme.base.error,
-                    flexDirection: "row",
-                    gap: 6,
-                  },
-                ]}
-                onPress={() => {
-                  setMenuVisible(false);
-                  setConfirmVisible(true);
-                }}
-              >
-                <SimpleLineIcons name="trash" size={14} color="#fff" />
-                <Text typography="titleMedium" color="#fff">
-                  Xoá
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      <EditHistoryModal
-        visible={editVisible}
-        onClose={() => setEditVisible(false)}
-        onSuccess={() => {
-          setEditVisible(false);
-          onDeleted();
-        }}
-        historyItem={h}
-        symbol={symbol}
-      />
-
-      <Modal
+      <ConfirmDeleteModal
         visible={confirmVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setConfirmVisible(false)}
+        title={t("watchList.deleteHistory")}
+        deleting={deleting}
+        onCancel={() => setConfirmVisible(false)}
+        onConfirm={handleDelete}
       >
-        <Pressable
-          style={styles.dateOverlay}
-          onPress={() => !deleting && setConfirmVisible(false)}
+        <Text
+          typography="bodyMedium"
+          color={theme.text.primary}
+          style={{ opacity: 0.6, marginBottom: 20 }}
         >
-          <Pressable
-            style={[
-              styles.datePopup,
-              {
-                backgroundColor: theme.background.bg,
-                borderColor: theme.border.default,
-              },
-            ]}
-          >
-            <Text typography="titleLarge" style={{ marginBottom: 6 }}>
-              Xoá lịch sử mua
-            </Text>
-            <Text
-              typography="bodyMedium"
-              style={{ opacity: 0.6, marginBottom: 20 }}
-            >
-              Bạn có chắc muốn xoá lần mua{" "}
-              <Text typography="bodyMedium" color={theme.base.primary}>
-                {h.amount.toLocaleString()} cp
-              </Text>{" "}
-              ngày {fmtTime(h.time)}?
-            </Text>
-
-            <View style={styles.confirmButtons}>
-              <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  {
-                    borderWidth: 1,
-                    borderColor: theme.border.default,
-                    backgroundColor: theme.background.surface,
-                  },
-                ]}
-                onPress={() => setConfirmVisible(false)}
-                disabled={deleting}
-              >
-                <Text typography="titleMedium">Huỷ</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  { backgroundColor: theme.base.error },
-                ]}
-                onPress={handleDelete}
-                disabled={deleting}
-              >
-                {deleting ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text typography="titleMedium" color="#fff">
-                    Xoá
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+          {confirmParts[0]}
+          <Text typography="bodyMedium" color={theme.base.primary}>
+            {amountLabel}
+          </Text>
+          {confirmParts[1]}
+        </Text>
+      </ConfirmDeleteModal>
     </View>
   );
 };
@@ -1263,10 +628,10 @@ const HistoryRow = ({
 
 const WatchListStock = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false); // ← thêm
+  const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<WatchItem[]>([]);
-  const [showAdd, setShowAdd] = useState(false);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -1311,11 +676,10 @@ const WatchListStock = () => {
   const gainColor = isProfit ? theme.base.success : theme.base.error;
 
   return (
-    <View style={[styles.safe, { backgroundColor: theme.background.bg }]}>
-      <ScreenHeader title="Quản lý tài sản" />
+    <View style={[styles.safe, { backgroundColor: theme.background.surface }]}>
+      <ScreenHeader title={t("watchList.screenTitle")} />
 
       {loading ? (
-        // ← Skeleton thay thế ActivityIndicator
         <ScrollView contentContainerStyle={styles.scroll}>
           <WatchListSkeleton />
         </ScrollView>
@@ -1323,7 +687,6 @@ const WatchListStock = () => {
         <ScrollView
           contentContainerStyle={styles.scroll}
           refreshControl={
-            // ← Pull-to-refresh
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => fetchData(true)}
@@ -1334,12 +697,12 @@ const WatchListStock = () => {
         >
           <View style={styles.summaryRow}>
             <SummaryCard
-              label="Tổng tài sản"
+              label={t("watchList.totalAsset")}
               value={fmt(totalAsset)}
-              sub={`Vốn: ${fmt(totalCostAll)}`}
+              sub={`${t("watchList.capitalLabel")}: ${fmt(totalCostAll)}`}
             />
             <SummaryCard
-              label="Lãi / Lỗ"
+              label={t("watchList.profitLoss")}
               value={`${sign}${fmt(totalPnl)}`}
               sub={`${sign}${totalPnlPct.toFixed(2)}%`}
               gainColor={gainColor}
@@ -1347,38 +710,38 @@ const WatchListStock = () => {
           </View>
 
           <View style={styles.listHeader}>
-            <Text typography="titleLarge">Danh sách cổ phiếu</Text>
-            <TouchableOpacity
-              style={[
-                styles.addButton,
-                { backgroundColor: theme.base.primary },
-              ]}
-              onPress={() => setShowAdd(true)}
-            >
-              <Text typography="titleMedium" color={theme.text.onPrimary}>
-                + Thêm
-              </Text>
-            </TouchableOpacity>
+            <Text typography="titleLarge" color={theme.text.primary}>
+              {t("watchList.stockList")}
+            </Text>
           </View>
 
-          {data.map((item) => (
-            <StockCard
-              key={item.id}
-              item={item}
-              onDeleted={() => fetchData()}
-            />
-          ))}
+          {data.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <SimpleLineIcons
+                name="graph"
+                size={36}
+                color={theme.text.primary}
+                style={{ opacity: 0.35 }}
+              />
+              <Text
+                typography="bodyLarge"
+                color={theme.text.primary}
+                style={{ opacity: 0.5, textAlign: "center" }}
+              >
+                {t("watchList.empty")}
+              </Text>
+            </View>
+          ) : (
+            data.map((item) => (
+              <StockCard
+                key={item.id}
+                item={item}
+                onDeleted={() => fetchData()}
+              />
+            ))
+          )}
         </ScrollView>
       )}
-
-      <AddStockModal
-        visible={showAdd}
-        onClose={() => setShowAdd(false)}
-        onSuccess={() => {
-          setShowAdd(false);
-          fetchData();
-        }}
-      />
     </View>
   );
 };
@@ -1389,7 +752,6 @@ export default WatchListStock;
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  loader: { flex: 1 },
   scroll: { gap: 12, marginHorizontal: 12, marginTop: 12 },
 
   summaryRow: { flexDirection: "row", gap: 10 },
@@ -1426,7 +788,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   historyTable: { marginTop: 8, gap: 6 },
-  historyRowLine: { flexDirection: "row", justifyContent: "space-between" },
+  historyRowLine: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   colLeft: { flex: 0.1, textAlign: "left" },
   colCenter: { flex: 0.35, textAlign: "center" },
   colRight: { flex: 0.2, textAlign: "center", alignItems: "center" },
@@ -1436,76 +802,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginVertical: 12,
   },
-  addButton: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20 },
 
-  overlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderWidth: 0.5,
-    padding: 20,
-    gap: 6,
-    paddingBottom: 36,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  emptyBox: {
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 48,
   },
-  fieldLabel: { marginTop: 10, marginBottom: 4, opacity: 0.55 },
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-  },
-  searchWrapper: { position: "relative", zIndex: 10 },
-  searchInputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 8,
-  },
-  searchTextInput: { flex: 1, fontSize: 15, padding: 0 },
-  dropdown: {
-    position: "absolute",
-    top: "100%",
-    left: 0,
-    right: 0,
-    borderWidth: 1,
-    borderRadius: 10,
-    marginTop: 4,
-    elevation: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  dropdownItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    gap: 2,
-  },
-  dateTrigger: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  errorText: { marginTop: 4 },
-  saveButton: {
-    marginTop: 16,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
+
   dateOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -1520,13 +824,6 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 8,
   },
-  datePopupHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  datePicker: { width: "100%" },
   confirmButtons: { flexDirection: "row", gap: 10 },
   confirmBtn: {
     flex: 1,
@@ -1544,18 +841,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
-  },
-  menuPopup: {
-    width: "85%",
-    borderRadius: 14,
-    borderWidth: 0.5,
-    padding: 16,
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
   },
 });
