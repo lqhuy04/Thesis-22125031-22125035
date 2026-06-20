@@ -29,13 +29,24 @@ const SkeletonTitle = () => {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
+        Animated.timing(shimmer, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmer, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
   }, [shimmer]);
 
-  const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.85] });
+  const opacity = shimmer.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.4, 0.85],
+  });
 
   return (
     <Animated.View
@@ -189,67 +200,97 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
             {t("home.marketToday")}
           </Text>
           <FlatList
-          data={indices}
-          keyExtractor={(item) => item.IndexId}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={CARD_WIDTH + CARD_GAP}
-          snapToAlignment="start"
-          decelerationRate="fast"
-          contentContainerStyle={{ paddingRight: width - CARD_WIDTH }}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  pathname: "/IndexDetail" as any,
-                  params: { data: JSON.stringify(item) },
-                })
-              }
-              style={{
-                width: CARD_WIDTH,
-                marginRight: CARD_GAP,
-                marginTop: 12,
-                borderRadius: 12,
-                backgroundColor: theme.background.bg,
-                padding: 12,
-                paddingBottom: 6,
-              }}
-            >
-              <Text typography="bodyMedium" color={theme.text.primary}>
-                {item.IndexName}
-              </Text>
-
-              <View
+            data={indices}
+            keyExtractor={(item) => item.IndexId}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={CARD_WIDTH + CARD_GAP}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            contentContainerStyle={{ paddingRight: width - CARD_WIDTH }}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/IndexDetail" as any,
+                    params: { data: JSON.stringify(item) },
+                  })
+                }
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginTop: 4,
+                  width: CARD_WIDTH,
+                  marginRight: CARD_GAP,
+                  marginTop: 12,
+                  borderRadius: 12,
+                  backgroundColor: theme.background.bg,
+                  padding: 12,
+                  paddingBottom: 6,
                 }}
               >
-                <Text typography="titleLarge" color={theme.text.primary}>
-                  {item.IndexValue}
+                <Text typography="bodyMedium" color={theme.text.primary}>
+                  {item.IndexName}
                 </Text>
+
                 <View
                   style={{
-                    borderRadius: 4,
-                    paddingVertical: 2,
-                    paddingHorizontal: 6,
-                    backgroundColor:
-                      Number(item.Change) > 0
-                        ? theme.base.success + "33"
-                        : theme.base.error + "33",
-                    marginLeft: 8,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    marginTop: 4,
                   }}
                 >
+                  <Text typography="titleLarge" color={theme.text.primary}>
+                    {item.IndexValue}
+                  </Text>
+                  <View
+                    style={{
+                      borderRadius: 4,
+                      paddingVertical: 2,
+                      paddingHorizontal: 6,
+                      backgroundColor:
+                        Number(item.Change) > 0
+                          ? theme.base.success + "33"
+                          : theme.base.error + "33",
+                      marginLeft: 8,
+                    }}
+                  >
+                    <Text
+                      typography="labelLarge"
+                      color={
+                        item.Change < 0
+                          ? theme.base.error
+                          : item.Change > 0
+                            ? theme.base.success
+                            : theme.base.warning
+                      }
+                    >
+                      <Text
+                        typography="labelSmall"
+                        color={
+                          item.Change < 0
+                            ? theme.base.error
+                            : item.Change > 0
+                              ? theme.base.success
+                              : theme.base.warning
+                        }
+                      >
+                        {item.Change > 0
+                          ? "▲"
+                          : item.Change === 0
+                            ? ""
+                            : "▼"}{" "}
+                      </Text>
+                      {item.Change >= 0 ? item.Change : item.Change * -1}
+                    </Text>
+                  </View>
                   <Text
-                    typography="labelLarge"
+                    typography="labelMedium"
                     color={
-                      item.Change < 0
+                      item.RatioChange < 0
                         ? theme.base.error
-                        : item.Change > 0
+                        : item.RatioChange > 0
                           ? theme.base.success
                           : theme.base.warning
                     }
+                    style={{ marginLeft: 8 }}
                   >
                     <Text
                       typography="labelSmall"
@@ -267,138 +308,101 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                           ? ""
                           : "▼"}{" "}
                     </Text>
-                    {item.Change >= 0 ? item.Change : item.Change * -1}
+                    {item.RatioChange >= 0
+                      ? item.RatioChange
+                      : item.RatioChange * -1}
+                    %
                   </Text>
                 </View>
+
                 <Text
-                  typography="labelMedium"
-                  color={
-                    item.RatioChange < 0
-                      ? theme.base.error
-                      : item.RatioChange > 0
-                        ? theme.base.success
-                        : theme.base.warning
-                  }
-                  style={{ marginLeft: 8 }}
+                  typography="bodySmall"
+                  color={theme.text.primary + "80"}
+                  style={{ marginTop: 4 }}
                 >
-                  <Text
-                    typography="labelSmall"
-                    color={
-                      item.Change < 0
-                        ? theme.base.error
-                        : item.Change > 0
-                          ? theme.base.success
-                          : theme.base.warning
-                    }
-                  >
-                    {item.Change > 0 ? "▲" : item.Change === 0 ? "" : "▼"}{" "}
-                  </Text>
-                  {item.RatioChange >= 0
-                    ? item.RatioChange
-                    : item.RatioChange * -1}
-                  %
+                  {(Number(item.TotalVol) / 1000000).toFixed(0)}{" "}
+                  {t("home.millionShares")}
+                  {"   "}|{"   "}
+                  {(Number(item.TotalVal) / 1000000000).toFixed(2)}{" "}
+                  {t("home.billion")}
                 </Text>
-              </View>
 
-              <Text
-                typography="bodySmall"
-                color={theme.text.primary + "80"}
-                style={{ marginTop: 4 }}
-              >
-                {(Number(item.TotalVol) / 1000000).toFixed(0)}{" "}
-                {t("home.millionShares")}
-                {"   "}|{"   "}
-                {(Number(item.TotalVal) / 1000000000).toFixed(2)}{" "}
-                {t("home.billion")}
-              </Text>
+                {(() => {
+                  const adv = Number(item.Advances) || 0;
+                  const noChg = Number(item.NoChanges) || 0;
+                  const dec = Number(item.Declines) || 0;
+                  const total = adv + noChg + dec;
 
-              {(() => {
-                const adv = Number(item.Advances) || 0;
-                const noChg = Number(item.NoChanges) || 0;
-                const dec = Number(item.Declines) || 0;
-                const total = adv + noChg + dec;
+                  const advPct = total === 0 ? 33.33 : (adv / total) * 100;
+                  const noChgPct = total === 0 ? 33.33 : (noChg / total) * 100;
+                  const decPct = total === 0 ? 33.34 : (dec / total) * 100;
 
-                const advPct = total === 0 ? 33.33 : (adv / total) * 100;
-                const noChgPct = total === 0 ? 33.33 : (noChg / total) * 100;
-                const decPct = total === 0 ? 33.34 : (dec / total) * 100;
-
-                return (
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      height: 4,
-                      borderRadius: 2,
-                      overflow: "hidden",
-                      marginTop: 8,
-                      marginBottom: 2,
-                    }}
-                  >
+                  return (
                     <View
                       style={{
-                        flex: advPct,
-                        backgroundColor: theme.base.success,
+                        flexDirection: "row",
+                        height: 4,
+                        borderRadius: 2,
+                        overflow: "hidden",
+                        marginTop: 8,
+                        marginBottom: 2,
                       }}
-                    />
+                    >
+                      <View
+                        style={{
+                          flex: advPct,
+                          backgroundColor: theme.base.success,
+                        }}
+                      />
+                      <View
+                        style={{
+                          flex: noChgPct,
+                          backgroundColor: theme.base.warning,
+                        }}
+                      />
+                      <View
+                        style={{
+                          flex: decPct,
+                          backgroundColor: theme.base.error,
+                        }}
+                      />
+                    </View>
+                  );
+                })()}
+
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginVertical: 4,
+                  }}
+                >
+                  <Text typography="bodySmall" color={theme.base.success}>
+                    {item.Advances} {t("home.ticker")} {"▲"}
+                  </Text>
+
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text typography="bodySmall" color={theme.base.warning}>
+                      {item.NoChanges} {t("home.ticker")}
+                    </Text>
                     <View
                       style={{
-                        flex: noChgPct,
+                        width: 6,
+                        height: 2,
                         backgroundColor: theme.base.warning,
-                      }}
-                    />
-                    <View
-                      style={{
-                        flex: decPct,
-                        backgroundColor: theme.base.error,
+                        marginLeft: 8,
                       }}
                     />
                   </View>
-                );
-              })()}
 
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Text typography="bodySmall" color={theme.base.success}>
-                    {item.Advances} {t("home.ticker")}
-                  </Text>
-                  <MaterialIcons
-                    name="arrow-drop-up"
-                    size={28}
-                    color={theme.base.success}
-                  />
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
-                  <Text typography="bodySmall" color={theme.base.warning}>
-                    {item.NoChanges} {t("home.ticker")}
-                  </Text>
-                  <View
-                    style={{
-                      width: 6,
-                      height: 2,
-                      backgroundColor: theme.base.warning,
-                      marginLeft: 8,
-                    }}
-                  />
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "center" }}>
                   <Text typography="bodySmall" color={theme.base.error}>
-                    {item.Declines} {t("home.ticker")}
+                    {item.Declines} {t("home.ticker")} {"▼"}
                   </Text>
-                  <MaterialIcons
-                    name="arrow-drop-down"
-                    size={28}
-                    color={theme.base.error}
-                  />
                 </View>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
+              </TouchableOpacity>
+            )}
+          />
         </>
       )}
     </View>

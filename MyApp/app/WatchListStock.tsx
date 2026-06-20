@@ -41,7 +41,7 @@ const fmtTime = (iso?: string) => {
 };
 
 const MONEY_SCALE = 1000;
-const fmt = (n: number) => (n * MONEY_SCALE).toLocaleString("vi-VN") + " ₫";
+const fmt = (n: number) => (n * MONEY_SCALE).toLocaleString("vi-VN") + " đ";
 
 const avgBuyPrice = (item: WatchItem): number => {
   const qty = item.history.reduce((s, h) => s + h.amount, 0);
@@ -336,7 +336,11 @@ const SummaryCard = ({ label, value, sub, gainColor }: SummaryCardProps) => {
       >
         {label}
       </Text>
-      <Text typography="titleLarge" color={gainColor ?? theme.text.primary}>
+      <Text
+        typography="titleLarge"
+        color={gainColor ?? theme.text.primary}
+        style={{ marginTop: 4, marginBottom: 2 }}
+      >
         {value}
       </Text>
       {sub ? (
@@ -369,8 +373,13 @@ const StockCard = ({
 
   const gain = pnl(item);
   const pct = pnlPct(item);
-  const isProfit = gain >= 0;
-  const gainColor = isProfit ? theme.base.success : theme.base.error;
+  const isZero = gain === 0;
+  const isProfit = gain > 0;
+  const gainColor = isZero
+    ? theme.base.warning
+    : isProfit
+      ? theme.base.success
+      : theme.base.error;
   const sign = isProfit ? "+" : "";
   const qty = totalQty(item);
   const mktVal = marketValue(item);
@@ -521,11 +530,14 @@ const StockCard = ({
       )}
 
       <TouchableOpacity
-        style={[styles.deleteStockButton, { borderColor: theme.base.error }]}
+        style={[
+          styles.deleteStockButton,
+          { backgroundColor: theme.base.error },
+        ]}
         onPress={() => setConfirmVisible(true)}
       >
-        <SimpleLineIcons name="trash" size={14} color={theme.base.error} />
-        <Text typography="titleMedium" color={theme.base.error}>
+        <SimpleLineIcons name="trash" size={14} color={theme.text.onPrimary} />
+        <Text typography="titleMedium" color={theme.text.onPrimary}>
           {t("watchList.deleteStock")}
         </Text>
       </TouchableOpacity>
@@ -671,18 +683,21 @@ const WatchListStock = () => {
     [totalPnl, totalCostAll],
   );
 
-  const isProfit = totalPnl >= 0;
+  const isZero = totalPnl === 0;
+  const isProfit = totalPnl > 0;
   const sign = isProfit ? "+" : "";
-  const gainColor = isProfit ? theme.base.success : theme.base.error;
+  const gainColor = isZero
+    ? theme.base.warning
+    : isProfit
+      ? theme.base.success
+      : theme.base.error;
 
   return (
     <View style={[styles.safe, { backgroundColor: theme.background.surface }]}>
       <ScreenHeader title={t("watchList.screenTitle")} />
 
       {loading ? (
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <WatchListSkeleton />
-        </ScrollView>
+        <WatchListSkeleton />
       ) : (
         <ScrollView
           contentContainerStyle={styles.scroll}
@@ -754,7 +769,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { gap: 12, marginHorizontal: 12, marginTop: 12 },
 
-  summaryRow: { flexDirection: "row", gap: 10 },
+  summaryRow: { flexDirection: "row", gap: 10, marginTop: 4 },
   summaryCard: {
     flex: 1,
     borderRadius: 12,
@@ -800,7 +815,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginVertical: 12,
+    marginTop: 12,
   },
 
   emptyBox: {
@@ -840,6 +855,5 @@ const styles = StyleSheet.create({
     marginTop: 14,
     paddingVertical: 10,
     borderRadius: 10,
-    borderWidth: 1,
   },
 });

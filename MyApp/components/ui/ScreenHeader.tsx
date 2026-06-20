@@ -32,7 +32,7 @@ const ScreenHeader = ({ hiddenBack = false, title, onPressBack }: Props) => {
             width: 20,
             height: 20,
             borderRadius: 10,
-            backgroundColor: theme.border.default,
+            backgroundColor: theme.text.primary + "20",
             alignItems: "center",
             justifyContent: "center",
             marginRight: 12,

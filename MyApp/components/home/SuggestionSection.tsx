@@ -697,7 +697,7 @@ const SuggestionSection = () => {
                             flex: 6.5,
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 8,
+                            gap: 12,
                             marginRight: 16,
                           }}
                         >
@@ -707,7 +707,7 @@ const SuggestionSection = () => {
                                 stock.logo ??
                                 "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
                             }}
-                            style={{ width: 24, height: 24, borderRadius: 8 }}
+                            style={{ width: 32, height: 32, borderRadius: 8 }}
                           />
                           <View style={{ flex: 2 }}>
                             <Text

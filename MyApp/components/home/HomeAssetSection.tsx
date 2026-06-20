@@ -1,11 +1,20 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Animated, Dimensions, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { getWatchlist, WatchItem } from "@/helpers/ProfileHelpers";
-import { router } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { SWITCH_TAB_EVENT, tabEvents } from "@/helpers/api/tabEvents";
+
+const ASSETS_TAB_INDEX = 3;
 
 const totalQty = (item: WatchItem) =>
   item.history.reduce((s, h) => s + h.amount, 0);
@@ -23,8 +32,16 @@ const useShimmer = () => {
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(shimmer, { toValue: 1, duration: 900, useNativeDriver: true }),
-        Animated.timing(shimmer, { toValue: 0, duration: 900, useNativeDriver: true }),
+        Animated.timing(shimmer, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shimmer, {
+          toValue: 0,
+          duration: 900,
+          useNativeDriver: true,
+        }),
       ]),
     ).start();
   }, [shimmer]);
@@ -76,7 +93,15 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
   const screenWidth = Dimensions.get("window").width;
   const insets = useSafeAreaInsets();
 
-  const SkeletonBox = ({ w, h, mt = 0 }: { w: number | `${number}%`; h: number; mt?: number }) => (
+  const SkeletonBox = ({
+    w,
+    h,
+    mt = 0,
+  }: {
+    w: number | `${number}%`;
+    h: number;
+    mt?: number;
+  }) => (
     <Animated.View
       style={{
         width: w,
@@ -99,7 +124,7 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
       }}
     >
       <TouchableOpacity
-        onPress={() => router.push("/WatchListStock")}
+        onPress={() => tabEvents.emit(SWITCH_TAB_EVENT, ASSETS_TAB_INDEX)}
         activeOpacity={1}
         style={{
           borderRadius: 12,
@@ -118,9 +143,18 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
           </>
         ) : (
           <>
-            <Text typography="titleMedium" color={theme.text.primary}>
-              {t("home.asset")}
-            </Text>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
+            >
+              <Text typography="titleMedium" color={theme.text.primary}>
+                {t("home.asset")}
+              </Text>
+              <Ionicons
+                name="chevron-forward"
+                size={14}
+                color={theme.text.primary}
+              />
+            </View>
 
             <Text
               typography="headlineLarge"

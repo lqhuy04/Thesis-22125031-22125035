@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   TouchableOpacity,
@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import WatchListStock from "./WatchListStock";
 import Octicons from "@expo/vector-icons/Octicons";
+import { SWITCH_TAB_EVENT, tabEvents } from "@/helpers/api/tabEvents";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const FEATURED_SIZE = 48;
@@ -85,6 +86,14 @@ const Tabs = () => {
     setVisitedTabs((prev) => new Set(prev).add(index));
     animateTo(index);
   };
+
+  useEffect(() => {
+    const handler = (index: number) => handleTabPress(index);
+    tabEvents.on(SWITCH_TAB_EVENT, handler);
+    return () => {
+      tabEvents.off(SWITCH_TAB_EVENT, handler);
+    };
+  }, []);
 
   const translateX = indicatorAnim.interpolate({
     inputRange: TABS.map((_, i) => i),
