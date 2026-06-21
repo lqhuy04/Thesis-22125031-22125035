@@ -28,7 +28,7 @@ router = APIRouter(prefix="/api/agentic", tags=["agentic-ai"])
     summary="Phân tích cổ phiếu",
     description="Chạy full pipeline: tin tức + cơ bản + kỹ thuật → structured output. Không có memory.",
 )
-async def analyze_stock(body: StockAnalysisRequest, current_user: dict = Depends(get_current_user)):
+def analyze_stock(body: StockAnalysisRequest, current_user: dict = Depends(get_current_user)):
     try:
         recommendation = run_stock_analysis(
             mode=body.mode,
@@ -61,7 +61,7 @@ async def analyze_stock(body: StockAnalysisRequest, current_user: dict = Depends
         "Giữ nguyên session_id giữa các lần gọi để duy trì lịch sử hội thoại."
     ),
 )
-async def chat(body: ChatRequest, current_user: dict = Depends(get_current_user)):
+def chat(body: ChatRequest, current_user: dict = Depends(get_current_user)):
     try:
         result = run_chat(
             session_id=body.session_id,
@@ -95,7 +95,7 @@ async def chat(body: ChatRequest, current_user: dict = Depends(get_current_user)
     summary="Danh sách cuộc trò chuyện của user",
     description="Trả về danh sách session chat của người dùng đang đăng nhập, mới nhất trước.",
 )
-async def chat_sessions(current_user: dict = Depends(get_current_user)):
+def chat_sessions(current_user: dict = Depends(get_current_user)):
     try:
         data = list_chat_sessions(user_id=current_user["user_id"])
         return success_response(data=data)
@@ -111,7 +111,7 @@ async def chat_sessions(current_user: dict = Depends(get_current_user)):
     summary="Lịch sử tin nhắn của một cuộc trò chuyện",
     description="Trả về toàn bộ tin nhắn (role + content) của một session, kiểm tra quyền sở hữu.",
 )
-async def chat_history(session_id: str, current_user: dict = Depends(get_current_user)):
+def chat_history(session_id: str, current_user: dict = Depends(get_current_user)):
     try:
         data = get_chat_history(session_id=session_id, user_id=current_user["user_id"])
         return success_response(data={"session_id": session_id, "messages": data})
@@ -138,7 +138,7 @@ async def chat_history(session_id: str, current_user: dict = Depends(get_current
     summary="Xóa một cuộc trò chuyện",
     description="Xóa session và toàn bộ lịch sử hội thoại, kiểm tra quyền sở hữu.",
 )
-async def remove_chat_session(session_id: str, current_user: dict = Depends(get_current_user)):
+def remove_chat_session(session_id: str, current_user: dict = Depends(get_current_user)):
     try:
         delete_chat_session(session_id=session_id, user_id=current_user["user_id"])
         return success_response(data={"session_id": session_id})
@@ -168,7 +168,7 @@ async def remove_chat_session(session_id: str, current_user: dict = Depends(get_
         "tren du lieu lich su, chi goi LLM tai cac ngay co tin hieu ky thuat."
     ),
 )
-async def backtest_pipeline(body: BacktestPipelineRequest):
+def backtest_pipeline(body: BacktestPipelineRequest):
     try:
         result = run_backtest_pipeline(body)
         return success_response(data=result)
@@ -194,7 +194,7 @@ async def backtest_pipeline(body: BacktestPipelineRequest):
     "/backtests",
     summary="Danh sách kết quả backtest từ Supabase Storage",
 )
-async def list_backtests():
+def list_backtests():
     try:
         from app.utils.supabase_storage import list_backtest_files
         res = list_backtest_files()

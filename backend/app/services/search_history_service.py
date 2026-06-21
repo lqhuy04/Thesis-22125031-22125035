@@ -142,7 +142,7 @@ class SearchHistoryService:
         return stock_id
 
     @staticmethod
-    async def list_search_history_by_user_id(user_id: str) -> List[Dict[str, Any]]:
+    def list_search_history_by_user_id(user_id: str) -> List[Dict[str, Any]]:
         try:
             result = (
                 supabase.table(SearchHistoryService.TABLE_NAME)
@@ -158,7 +158,7 @@ class SearchHistoryService:
             raise ValueError(f"Failed to list search history by user_id: {str(e)}")
 
     @staticmethod
-    async def add_search_history(symbol: str, user_id: str) -> List[Dict[str, Any]]:
+    def add_search_history(symbol: str, user_id: str) -> List[Dict[str, Any]]:
         try:
             sym = SearchHistoryService._normalize_symbol(symbol)
             if not sym:
@@ -175,7 +175,7 @@ class SearchHistoryService:
                 .execute()
             )
             if existing.data:
-                return await SearchHistoryService.list_search_history_by_user_id(user_id)
+                return SearchHistoryService.list_search_history_by_user_id(user_id)
 
             ordered_rows = (
                 supabase.table(SearchHistoryService.TABLE_NAME)
@@ -203,7 +203,7 @@ class SearchHistoryService:
                 }
             ).execute()
 
-            return await SearchHistoryService.list_search_history_by_user_id(user_id)
+            return SearchHistoryService.list_search_history_by_user_id(user_id)
         except ValueError:
             raise
         except Exception as e:
@@ -211,7 +211,7 @@ class SearchHistoryService:
             raise ValueError(f"Failed to add search history: {str(e)}")
 
     @staticmethod
-    async def remove_search_history_by_symbol(symbol: str, user_id: str) -> List[Dict[str, Any]]:
+    def remove_search_history_by_symbol(symbol: str, user_id: str) -> List[Dict[str, Any]]:
         try:
             sym = SearchHistoryService._normalize_symbol(symbol)
             if not sym:
@@ -225,7 +225,7 @@ class SearchHistoryService:
                 .eq("stock_id", stock_id) \
                 .execute()
 
-            return await SearchHistoryService.list_search_history_by_user_id(user_id)
+            return SearchHistoryService.list_search_history_by_user_id(user_id)
         except ValueError:
             raise
         except Exception as e:
@@ -233,7 +233,7 @@ class SearchHistoryService:
             raise ValueError(f"Failed to remove search history by symbol: {str(e)}")
 
     @staticmethod
-    async def clear_search_history(user_id: str) -> List[Dict[str, Any]]:
+    def clear_search_history(user_id: str) -> List[Dict[str, Any]]:
         try:
             supabase.table(SearchHistoryService.TABLE_NAME) \
                 .delete() \

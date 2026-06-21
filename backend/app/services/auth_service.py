@@ -5,6 +5,7 @@ from app.utils.token import create_access_token, create_refresh_token, verify_to
 from app.utils.email import send_reset_email, send_verification_email
 from app.utils.otp import OTPService
 from app.services.redis_session_service import RedisSessionService
+import asyncio
 import httpx
 import google.auth.transport.requests
 import google.oauth2.id_token
@@ -21,7 +22,7 @@ class AuthService:
             raise ValueError("User already exists")
         
         # Create user
-        hashed_pwd = hash_password(password)
+        hashed_pwd = await asyncio.to_thread(hash_password, password)
         new_user = supabase.table("User").insert({
             "email": email,
             "hash_password": hashed_pwd,
@@ -61,7 +62,7 @@ class AuthService:
         user = user_result.data[0]
         
         # Verify password
-        if not verify_password(password, user["hash_password"]):
+        if not await asyncio.to_thread(verify_password, password, user["hash_password"]):
             raise ValueError("Invalid credentials")
 
         # Block login until email is verified
@@ -141,11 +142,11 @@ class AuthService:
         if has_password:
             if not old_password:
                 raise ValueError("Old password is required")
-            if not verify_password(old_password, user["hash_password"]):
+            if not await asyncio.to_thread(verify_password, old_password, user["hash_password"]):
                 raise ValueError("Invalid email or password")
 
         # Update password
-        hashed_pwd = hash_password(new_password)
+        hashed_pwd = await asyncio.to_thread(hash_password, new_password)
         result = supabase.table("User").update({
             "hash_password": hashed_pwd
         }).eq("id", user["id"]).execute()
@@ -237,7 +238,7 @@ class AuthService:
         user = user_result.data[0]
 
         # Update password
-        hashed_pwd = hash_password(new_password)
+        hashed_pwd = await asyncio.to_thread(hash_password, new_password)
         result = supabase.table("User").update({
             "hash_password": hashed_pwd
         }).eq("id", user["id"]).execute()
@@ -295,10 +296,12 @@ class AuthService:
                 settings.GOOGLE_ANDROID_CLIENT_ID,   # Android
             ]
             
-            # Verify Google token
+            # Verify Google token (verify_oauth2_token thực hiện HTTP đồng bộ để
+            # tải cert của Google -> đẩy sang thread để không chặn event loop)
             request = google.auth.transport.requests.Request()
-            id_info = google.oauth2.id_token.verify_oauth2_token(
-                token, request, valid_client_ids, clock_skew_in_seconds=10
+            id_info = await asyncio.to_thread(
+                google.oauth2.id_token.verify_oauth2_token,
+                token, request, valid_client_ids, clock_skew_in_seconds=10,
             )
             
             # Extract user information

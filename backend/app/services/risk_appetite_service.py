@@ -13,7 +13,7 @@ class RiskAppetiteService:
     """Service for risk appetite database operations"""
 
     @staticmethod
-    async def get_risk_appetite_by_user(user_id: str) -> Optional[Dict]:
+    def get_risk_appetite_by_user(user_id: str) -> Optional[Dict]:
         """
         Get risk appetite record for a specific user
 
@@ -37,7 +37,7 @@ class RiskAppetiteService:
             raise ValueError(f"Failed to fetch risk appetite: {str(e)}")
 
     @staticmethod
-    async def upsert_risk_appetite(
+    def upsert_risk_appetite(
         user_id: str,
         period: str,
     ) -> Dict:

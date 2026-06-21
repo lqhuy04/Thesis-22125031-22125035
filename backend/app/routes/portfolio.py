@@ -18,11 +18,11 @@ router = APIRouter(prefix="/api/portfolio", tags=["Portfolio"])
 
 
 @router.get("", summary="List Portfolios For Current User")
-async def list_portfolios_by_user_id(current_user: dict = Depends(get_current_user)):
+def list_portfolios_by_user_id(current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
     try:
         user_id = current_user.get("user_id")
-        data = await PortfolioService.list_portfolios_by_user_id(user_id)
+        data = PortfolioService.list_portfolios_by_user_id(user_id)
         return success_response(data=data, request_id=request_id)
     except ValueError as e:
         return error_response(error_code=500001, error_desc=str(e), request_id=request_id)
@@ -31,11 +31,11 @@ async def list_portfolios_by_user_id(current_user: dict = Depends(get_current_us
 
 
 @router.post("", summary="Create Portfolio")
-async def create_portfolio(request: PortfolioCreateRequest, current_user: dict = Depends(get_current_user)):
+def create_portfolio(request: PortfolioCreateRequest, current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
 
     try:
-        data = await PortfolioService.create_portfolio(
+        data = PortfolioService.create_portfolio(
             symbol=request.symbol,
             user_id=current_user.get("user_id"),
             amount=request.amount,
@@ -50,12 +50,12 @@ async def create_portfolio(request: PortfolioCreateRequest, current_user: dict =
 
 
 @router.put("/{portfolio_id}", summary="Update Portfolio By ID")
-async def update_portfolio_by_id(portfolio_id: str, request: PortfolioUpdateRequest):
+def update_portfolio_by_id(portfolio_id: str, request: PortfolioUpdateRequest):
     request_id = str(uuid.uuid4())
 
     try:
         # ensure the user owns the transaction? Service handles authorization if needed.
-        data = await PortfolioService.update_portfolio(
+        data = PortfolioService.update_portfolio(
             portfolio_id=portfolio_id,
             amount=request.amount,
             buy_price=request.buy_price,
@@ -77,11 +77,11 @@ class DeletePortfolioRequest(BaseModel):
     portfolio_ids: List[str]
 
 @router.delete("", summary="Delete Multiple Portfolios")
-async def delete_portfolios(req: DeletePortfolioRequest):
+def delete_portfolios(req: DeletePortfolioRequest):
     request_id = str(uuid.uuid4())
 
     try:
-        deleted = await PortfolioService.delete_portfolios(req.portfolio_ids)
+        deleted = PortfolioService.delete_portfolios(req.portfolio_ids)
 
         if not deleted:
             raise HTTPException(status_code=404, detail="Portfolios not found")

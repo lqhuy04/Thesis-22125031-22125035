@@ -40,7 +40,7 @@ class PortfolioService:
         }
 
     @staticmethod
-    async def list_portfolios_by_user_id(user_id: str) -> List[Dict]:
+    def list_portfolios_by_user_id(user_id: str) -> List[Dict]:
         try:
             # fetch user transactions ordered by time (oldest first)
             result = (
@@ -141,7 +141,7 @@ class PortfolioService:
             raise ValueError(f"Failed to list portfolios by user_id: {str(e)}")
 
     @staticmethod
-    async def create_portfolio(symbol: str, user_id: str, amount: float, buy_price: float, time: Optional[datetime] = None) -> Dict:
+    def create_portfolio(symbol: str, user_id: str, amount: float, buy_price: float, time: Optional[datetime] = None) -> Dict:
         try:
             # resolve symbol -> stock_id
             sym = symbol.strip().upper()
@@ -197,7 +197,7 @@ class PortfolioService:
             raise ValueError(f"Failed to create portfolio transaction: {str(e)}")
 
     @staticmethod
-    async def update_portfolio(
+    def update_portfolio(
         portfolio_id: str,
         amount: Optional[float] = None,
         buy_price: Optional[float] = None,
@@ -233,7 +233,7 @@ class PortfolioService:
             raise ValueError(f"Failed to update portfolio transaction: {str(e)}")
 
     @staticmethod
-    async def delete_portfolios(portfolio_ids: List[str]) -> bool:
+    def delete_portfolios(portfolio_ids: List[str]) -> bool:
         try:
             if not portfolio_ids:
                 return False

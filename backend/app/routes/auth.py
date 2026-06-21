@@ -206,7 +206,7 @@ async def social_login(request: SocialLoginRequest):
         )
 
 @router.get("/me")
-async def get_me(current_user: dict = Depends(get_current_user)):
+def get_me(current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
     try:
         # This is a protected route example

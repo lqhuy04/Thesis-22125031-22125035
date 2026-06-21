@@ -54,7 +54,7 @@ class FavoriteService:
             return 0.0
 
     @staticmethod
-    async def list_favorites_by_user_id(user_id: str) -> List[Dict]:
+    def list_favorites_by_user_id(user_id: str) -> List[Dict]:
         try:
             # fetch user favorites
             result = (
@@ -148,7 +148,7 @@ class FavoriteService:
             raise ValueError(f"Failed to list favorites by user_id: {str(e)}")
 
     @staticmethod
-    async def add_favorite(symbol: str, user_id: str) -> Dict:
+    def add_favorite(symbol: str, user_id: str) -> Dict:
         try:
             # resolve symbol -> stock_id from BI_Profile
             stock_id = FavoriteService._resolve_stock_id_by_symbol(symbol)
@@ -184,7 +184,7 @@ class FavoriteService:
             raise ValueError(f"Failed to add favorite: {str(e)}")
 
     @staticmethod
-    async def remove_favorite_by_symbol(symbol: str, user_id: str) -> bool:
+    def remove_favorite_by_symbol(symbol: str, user_id: str) -> bool:
         try:
             stock_id = FavoriteService._resolve_stock_id_by_symbol(symbol)
             result = (
@@ -202,7 +202,7 @@ class FavoriteService:
 
 
     @staticmethod
-    async def check_is_favorited(symbol: str, user_id: str) -> Dict:
+    def check_is_favorited(symbol: str, user_id: str) -> Dict:
         """
         Efficiently check if a stock is favorited by a user.
         Uses limit(1) to avoid fetching unnecessary data.

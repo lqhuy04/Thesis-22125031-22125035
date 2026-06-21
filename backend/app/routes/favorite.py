@@ -16,11 +16,11 @@ router = APIRouter(prefix="/api/favorite", tags=["Favorite"])
 
 
 @router.get("", summary="List Favorites For Current User")
-async def list_favorites_by_user_id(current_user: dict = Depends(get_current_user)):
+def list_favorites_by_user_id(current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
     try:
         user_id = current_user.get("user_id")
-        data = await FavoriteService.list_favorites_by_user_id(user_id)
+        data = FavoriteService.list_favorites_by_user_id(user_id)
         return success_response(data=data, request_id=request_id)
     except ValueError as e:
         return error_response(error_code=500001, error_desc=str(e), request_id=request_id)
@@ -29,11 +29,11 @@ async def list_favorites_by_user_id(current_user: dict = Depends(get_current_use
 
 
 @router.post("", summary="Add Favorite")
-async def add_favorite(request: FavoriteCreateRequest, current_user: dict = Depends(get_current_user)):
+def add_favorite(request: FavoriteCreateRequest, current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
 
     try:
-        data = await FavoriteService.add_favorite(
+        data = FavoriteService.add_favorite(
             symbol=request.symbol,
             user_id=current_user.get("user_id"),
         )
@@ -43,11 +43,11 @@ async def add_favorite(request: FavoriteCreateRequest, current_user: dict = Depe
     except Exception:
         return error_response(error_code=500001, error_desc="Internal server error", request_id=request_id)
 @router.delete("", summary="Delete Favorite")
-async def delete_favorites(request: DeleteFavoriteRequest, current_user: dict = Depends(get_current_user)):
+def delete_favorites(request: DeleteFavoriteRequest, current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
 
     try:
-        deleted = await FavoriteService.remove_favorite_by_symbol(
+        deleted = FavoriteService.remove_favorite_by_symbol(
             symbol=request.symbol,
             user_id=current_user.get("user_id"),
         )
@@ -77,12 +77,12 @@ async def delete_favorites(request: DeleteFavoriteRequest, current_user: dict = 
 
 
 @router.post("/check", summary="Check If Stock Is Favorited")
-async def check_is_favorited(request: CheckFavoriteRequest, current_user: dict = Depends(get_current_user)):
+def check_is_favorited(request: CheckFavoriteRequest, current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
 
     try:
         user_id = current_user.get("user_id")
-        data = await FavoriteService.check_is_favorited(
+        data = FavoriteService.check_is_favorited(
             symbol=request.symbol,
             user_id=user_id,
         )

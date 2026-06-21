@@ -16,11 +16,11 @@ router = APIRouter(prefix="/api/search-history", tags=["Search History"])
 
 
 @router.get("", summary="List Search History For Current User")
-async def list_search_history(current_user: dict = Depends(get_current_user)):
+def list_search_history(current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
     try:
         user_id = current_user.get("user_id")
-        data = await SearchHistoryService.list_search_history_by_user_id(user_id)
+        data = SearchHistoryService.list_search_history_by_user_id(user_id)
         return success_response(data=data, request_id=request_id)
     except ValueError as e:
         return error_response(error_code=500001, error_desc=str(e), request_id=request_id)
@@ -29,10 +29,10 @@ async def list_search_history(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("", summary="Add Search History")
-async def add_search_history(request: SearchHistoryCreateRequest, current_user: dict = Depends(get_current_user)):
+def add_search_history(request: SearchHistoryCreateRequest, current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
     try:
-        data = await SearchHistoryService.add_search_history(
+        data = SearchHistoryService.add_search_history(
             symbol=request.symbol,
             user_id=current_user.get("user_id"),
         )
@@ -44,10 +44,10 @@ async def add_search_history(request: SearchHistoryCreateRequest, current_user: 
 
 
 @router.delete("/{symbol}", summary="Remove Search History Item")
-async def remove_search_history(symbol: str, current_user: dict = Depends(get_current_user)):
+def remove_search_history(symbol: str, current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
     try:
-        data = await SearchHistoryService.remove_search_history_by_symbol(
+        data = SearchHistoryService.remove_search_history_by_symbol(
             symbol=symbol,
             user_id=current_user.get("user_id"),
         )
@@ -59,10 +59,10 @@ async def remove_search_history(symbol: str, current_user: dict = Depends(get_cu
 
 
 @router.delete("", summary="Clear Search History")
-async def clear_search_history(current_user: dict = Depends(get_current_user)):
+def clear_search_history(current_user: dict = Depends(get_current_user)):
     request_id = str(uuid.uuid4())
     try:
-        data = await SearchHistoryService.clear_search_history(current_user.get("user_id"))
+        data = SearchHistoryService.clear_search_history(current_user.get("user_id"))
         return success_response(data=data, request_id=request_id)
     except ValueError as e:
         return error_response(error_code=400001, error_desc=str(e), request_id=request_id)

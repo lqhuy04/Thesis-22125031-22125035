@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/risk-appetite", tags=["Risk Appetite"])
 @router.get("/",
             summary="Get Risk Appetite",
             description="Retrieve the authenticated user's risk appetite profile.")
-async def get_risk_appetite(current_user: dict = Depends(get_current_user)):
+def get_risk_appetite(current_user: dict = Depends(get_current_user)):
     """
     Get risk appetite for the currently authenticated user.
     Requires a valid Bearer token.
@@ -24,7 +24,7 @@ async def get_risk_appetite(current_user: dict = Depends(get_current_user)):
 
     try:
         user_id = current_user["user_id"]
-        data = await RiskAppetiteService.get_risk_appetite_by_user(user_id)
+        data = RiskAppetiteService.get_risk_appetite_by_user(user_id)
 
         if not data:
             return error_response(
@@ -58,7 +58,7 @@ async def get_risk_appetite(current_user: dict = Depends(get_current_user)):
 @router.post("/",
              summary="Create or Update Risk Appetite",
              description="Save or update the authenticated user's risk appetite profile.")
-async def save_risk_appetite(
+def save_risk_appetite(
     request: RiskAppetiteRequest,
     current_user: dict = Depends(get_current_user),
 ):
@@ -71,7 +71,7 @@ async def save_risk_appetite(
     try:
         user_id = current_user["user_id"]
 
-        data = await RiskAppetiteService.upsert_risk_appetite(
+        data = RiskAppetiteService.upsert_risk_appetite(
             user_id=user_id,
             period=request.period.value,
         )
