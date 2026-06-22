@@ -219,9 +219,10 @@ class AnalysisBreakdown(BaseModel):
     )
     summary: str = Field(
         description=(
-            "Kết luận tổng hợp bằng tiếng Việt. Nếu recommendation = Mua: nêu mức giá đề xuất, "
-            "số nến giữ tối đa và giải thích tỷ lệ R/R. Nếu recommendation = Chờ: giải thích yếu tố "
-            "kỹ thuật/cơ bản nào chưa đạt điều kiện. "
+            "Kết luận tổng hợp ĐỊNH TÍNH bằng tiếng Việt. TUYỆT ĐỐI KHÔNG nêu con số giá mua / "
+            "chốt lời / cắt lỗ / số nến giữ / tỷ lệ R/R cụ thể — hệ thống tự tính và chèn vào cuối. "
+            "Nếu recommendation = Mua: giải thích vì sao đáng mua và mức độ phù hợp kỳ hạn. "
+            "Nếu recommendation = Chờ: giải thích yếu tố kỹ thuật/cơ bản nào chưa đạt điều kiện. "
             "TUYỆT ĐỐI không nhắc lại quyết định cuối (Mua/Chờ) và không nhắc điểm confidence."
         )
     )
@@ -411,7 +412,7 @@ Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ng
     - analysis.technical: Đi qua từng chỉ số kỹ thuật CÓ trong dữ liệu (trong số RSI, MA, Bollinger Bands, MACD, KDJ). Với từng chỉ số có mặt, chỉ rõ trạng thái Tích cực/Tiêu cực, lý giải và dẫn chứng số liệu cụ thể. Không nhắc tới chỉ số không có.
     - analysis.fundamental: Tóm tắt những nhóm chỉ số cơ bản CÓ trong dữ liệu (định giá, sức khỏe tài chính, khả năng sinh lời, tăng trưởng, dòng tiền). Bỏ qua nhóm không xuất hiện.
     - analysis.news: Tóm tắt tin tức và thông tin/sự kiện nổi bật.
-    - analysis.summary: Kết luận tổng hợp. Nếu recommendation = Mua: nêu mức giá đề xuất, số nến giữ tối đa và tỷ lệ Risk/Reward. Nếu recommendation = Chờ: giải thích các yếu tố kỹ thuật/cơ bản nào chưa đạt điều kiện mà không đề xuất giá.
+    - analysis.summary: Kết luận tổng hợp ĐỊNH TÍNH. TUYỆT ĐỐI KHÔNG nêu con số giá mua / chốt lời / cắt lỗ / số nến giữ / tỷ lệ R/R cụ thể — hệ thống sẽ tự tính và chèn các con số chính xác này vào cuối summary. Nếu recommendation = Mua: giải thích vì sao đáng mua và mức độ phù hợp với kỳ hạn (không kèm số liệu giá). Nếu recommendation = Chờ: giải thích các yếu tố kỹ thuật/cơ bản nào chưa đạt điều kiện.
 
 PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ VÀ QUẢN TRỊ RỦI RO
 
@@ -589,6 +590,8 @@ YÊU CẦU:
             )
             recommendation = "Chờ"
 
+        analysis_dict = parsed.analysis.model_dump()
+
         if recommendation == "Chờ":
             entry_price       = None
             take_profit_price = None
@@ -623,13 +626,30 @@ YÊU CẦU:
                 stop_loss_price   = parsed.stop_loss_price
                 max_hold_candles  = parsed.max_hold_candles
 
+            # Chèn dòng số liệu CHÍNH XÁC (sau khi đã ép giới hạn) vào summary, để
+            # phần văn bản không mâu thuẫn với các trường giá/TP/SL hiển thị.
+            # LLM được yêu cầu KHÔNG tự nêu con số (xem PHẦN III).
+            if entry_price and take_profit_price and stop_loss_price:
+                tp_pct = (take_profit_price - entry_price) / entry_price * 100
+                sl_pct = (entry_price - stop_loss_price) / entry_price * 100
+                rr = (tp_pct / sl_pct) if sl_pct > 0 else 0.0
+                hold_txt = f"{max_hold_candles} nến" if max_hold_candles else "—"
+                base_summary = (analysis_dict.get("summary") or "").strip()
+                analysis_dict["summary"] = (
+                    f"{base_summary}\n\n"
+                    f"📌 Mức giá hệ thống đề xuất theo kỳ hạn: mua quanh {entry_price}, "
+                    f"chốt lời {take_profit_price} (+{tp_pct:.1f}%), "
+                    f"cắt lỗ {stop_loss_price} (−{sl_pct:.1f}%), "
+                    f"giữ tối đa {hold_txt}, tỷ lệ R/R ≈ {rr:.1f}."
+                ).strip()
+
         output = {
             "recommendation":       recommendation,
             "entry_price":          entry_price,
             "take_profit_price":    take_profit_price,
             "stop_loss_price":      stop_loss_price,
             "max_hold_candles":     max_hold_candles,
-            "analysis":             parsed.analysis.model_dump(),
+            "analysis":             analysis_dict,
             "score":                score,
             "confidence":           confidence,
             "confidence_threshold": CONFIDENCE_THRESHOLD,
