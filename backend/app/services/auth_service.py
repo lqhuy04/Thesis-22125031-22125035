@@ -85,6 +85,28 @@ class AuthService:
         }
 
     @staticmethod
+    async def admin_login():
+        """
+        Log in with the server-side admin credentials (settings.ADMIN_EMAIL /
+        ADMIN_PASSWORD) and verify the account has role = 'admin'. Used by the
+        admin dashboard so credentials never live in frontend code.
+        """
+        email = settings.ADMIN_EMAIL
+        password = settings.ADMIN_PASSWORD
+        if not email or not password:
+            raise ValueError("Admin credentials are not configured on the server")
+
+        result = await AuthService.login(email, password)
+
+        role_result = supabase.table("User").select("role").eq("email", email).execute()
+        role = role_result.data[0].get("role") if role_result.data else None
+        if role != "admin":
+            raise ValueError("Configured account does not have admin privileges")
+
+        result["role"] = role
+        return result
+
+    @staticmethod
     async def verify_email(email: str, otp: str):
         user_result = supabase.table("User").select("*").eq("email", email).execute()
 

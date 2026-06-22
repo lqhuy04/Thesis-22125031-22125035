@@ -3,6 +3,7 @@ app/services/agentic_service.py
 """
 
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from langchain_core.messages import AIMessage
 
@@ -58,6 +59,81 @@ def run_stock_analysis(
         raise RuntimeError(result["error"])
 
     return result["final_output"]
+
+
+# ─── Admin API mode (single symbol or full index basket) ──────────────────────
+
+SUPPORTED_UNIVERSES = ("VN30", "VN100")
+
+# Bounded concurrency: each symbol runs a full LLM pipeline. Too many parallel
+# runs would hammer the LLM provider; a small pool keeps batch runs reasonable.
+_ADMIN_BATCH_WORKERS = 4
+
+
+def run_admin_analysis(
+    mode: str,
+    risk_appetite: dict,
+    plan: Any | None,
+    data_selection: dict | None = None,
+    symbol: str | None = None,
+    universe: str | None = None,
+) -> dict:
+    """
+    Admin variant of run_stock_analysis. When `universe` is VN30/VN100 the index
+    members are resolved from Supabase and analyzed with bounded concurrency.
+    Otherwise a single `symbol` is analyzed.
+
+    Returns a uniform shape:
+        {"universe": str, "count": int, "results": [{"symbol", "status", ...}]}
+    """
+    uni = (universe or "").strip().upper()
+
+    if uni in SUPPORTED_UNIVERSES:
+        from app.utils.market_index import get_index_symbols
+
+        symbols = get_index_symbols(uni)
+        if not symbols:
+            raise ValueError(f"Không tìm thấy mã cổ phiếu nào cho rổ {uni}.")
+
+        results: list[dict] = []
+
+        def _one(sym: str) -> dict:
+            try:
+                rec = run_stock_analysis(
+                    symbol=sym,
+                    risk_appetite=risk_appetite,
+                    mode=mode,
+                    plan=plan,
+                    data_selection=data_selection,
+                )
+                return {"symbol": sym, "status": "ok", "recommendation": rec}
+            except Exception as e:  # noqa: BLE001 — báo lỗi từng mã, không làm hỏng cả rổ
+                return {"symbol": sym, "status": "error", "error": str(e)}
+
+        with ThreadPoolExecutor(max_workers=_ADMIN_BATCH_WORKERS) as pool:
+            futures = {pool.submit(_one, s): s for s in symbols}
+            for fut in as_completed(futures):
+                results.append(fut.result())
+
+        results.sort(key=lambda r: r["symbol"])
+        return {"universe": uni, "count": len(results), "results": results}
+
+    # Single-symbol path (behaves like /analyze)
+    if not symbol or not symbol.strip():
+        raise ValueError("Cần cung cấp 'symbol' khi không chọn rổ VN30/VN100.")
+
+    rec = run_stock_analysis(
+        symbol=symbol.strip().upper(),
+        risk_appetite=risk_appetite,
+        mode=mode,
+        plan=plan,
+        data_selection=data_selection,
+    )
+    return {
+        "universe": "single",
+        "count": 1,
+        "results": [{"symbol": symbol.strip().upper(), "status": "ok", "recommendation": rec}],
+    }
 
 
 # ─── Chatbot mode ─────────────────────────────────────────────────────────────

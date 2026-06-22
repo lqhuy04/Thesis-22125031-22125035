@@ -82,6 +82,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     CHATBOT_API_KEY: str = ""
 
+    # Admin dashboard auto-login. The static admin dashboard calls
+    # POST /api/auth/admin-login (no body); the server logs in with these
+    # credentials so they never live in frontend code. The account must have
+    # role = 'admin' in the User table.
+    ADMIN_EMAIL: str = ""
+    ADMIN_PASSWORD: str = ""
+
     # Serper
     SERPER_API_URL: str = "https://google.serper.dev/search"
     SERPER_API_KEY: str = ""

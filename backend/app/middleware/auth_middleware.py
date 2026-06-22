@@ -41,3 +41,40 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail=str(e),
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+
+async def get_current_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """
+    Dependency that requires the authenticated user to have role = 'admin'.
+
+    Role is read from the User table (authoritative, always fresh) rather than
+    the JWT, so promoting/demoting a user takes effect without re-issuing tokens.
+    """
+    # Lazy import to avoid an import cycle at module load time.
+    from app.services.auth_service import supabase
+
+    user_id = current_user["user_id"]
+    try:
+        res = (
+            supabase.table("User")
+            .select("role")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to verify admin role",
+        )
+
+    rows = getattr(res, "data", None) or []
+    role = rows[0].get("role") if rows else None
+
+    if role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+
+    return {**current_user, "role": role}

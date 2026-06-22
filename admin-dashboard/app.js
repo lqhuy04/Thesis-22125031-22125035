@@ -86,7 +86,39 @@ const els = {
   agentReportCount: document.getElementById("agentReportCount"),
   agentReportList: document.getElementById("agentReportList"),
   agentReportDetail: document.getElementById("agentReportDetail"),
+
+  // Admin auth
+  adminAuthBadge: document.getElementById("adminAuthBadge"),
+
+  // Analyze tab
+  tabAnalyzeBtn: document.getElementById("tab-analyze-btn"),
+  analyzeTabContent: document.getElementById("analyze-tab-content"),
+  analyzeForm: document.getElementById("analyzeForm"),
+  analyzeSourceControl: document.getElementById("analyzeSourceControl"),
+  analyzeSymbolField: document.getElementById("analyzeSymbolField"),
+  analyzeSymbol: document.getElementById("analyzeSymbol"),
+  analyzeRiskPeriod: document.getElementById("analyzeRiskPeriod"),
+  analyzeModeControl: document.getElementById("analyzeModeControl"),
+  analyzeDataSelectionPanel: document.getElementById("analyzeDataSelectionPanel"),
+  anNews: document.getElementById("anNews"),
+  anTechCount: document.getElementById("anTechCount"),
+  anFundCount: document.getElementById("anFundCount"),
+  runAnalyzeBtn: document.getElementById("runAnalyzeBtn"),
+  analyzeProgressCard: document.getElementById("analyzeProgressCard"),
+  analyzeStatus: document.getElementById("analyzeStatus"),
+  analyzeProgressBar: document.getElementById("analyzeProgressBar"),
+  analyzeLogs: document.getElementById("analyzeLogs"),
+  analyzeSingleResult: document.getElementById("analyzeSingleResult"),
+  analyzeResultsCard: document.getElementById("analyzeResultsCard"),
+  analyzeUniverseName: document.getElementById("analyzeUniverseName"),
+  analyzeResultsBody: document.getElementById("analyzeResultsBody"),
+  analyzeDetailPanel: document.getElementById("analyzeDetailPanel"),
+  exportAnalyzeCsvBtn: document.getElementById("exportAnalyzeCsvBtn"),
 };
+
+// Admin auth token obtained via POST /api/auth/admin-login
+let adminToken = null;
+let analyzeSummaryData = [];
 
 let symbolsLoaded = false;
 let vn30SummaryData = []; // Store stats for CSV export
@@ -167,16 +199,25 @@ function parseSymbolList(payload) {
     .filter(Boolean);
 }
 
-async function requestJson(url, options = {}) {
+async function requestJson(url, options = {}, _isRetry = false) {
   const response = await fetch(url, {
     method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+      ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
       ...(options.headers || {}),
     },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   });
+
+  // Access token expired/revoked → re-login once and retry transparently.
+  if (response.status === 401 && !_isRetry) {
+    const ok = await adminLogin();
+    if (ok) {
+      return requestJson(url, options, true);
+    }
+  }
 
   let body;
   try {
@@ -191,6 +232,49 @@ async function requestJson(url, options = {}) {
   }
 
   return body;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN AUTO-LOGIN
+// ─────────────────────────────────────────────────────────────────────────────
+function setAdminAuthBadge(type, text) {
+  if (!els.adminAuthBadge) return;
+  els.adminAuthBadge.classList.remove("ok", "error", "running");
+  if (type) els.adminAuthBadge.classList.add(type);
+  els.adminAuthBadge.textContent = text;
+}
+
+async function adminLogin() {
+  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
+  if (!baseUrl) return false;
+
+  setAdminAuthBadge("running", "Đang đăng nhập admin...");
+  try {
+    // Send without the (possibly stale) Authorization header.
+    const response = await fetch(`${baseUrl}/api/auth/admin-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+    });
+    const payload = await response.json();
+
+    if (response.ok && payload?.result && payload?.data?.token) {
+      adminToken = payload.data.token;
+      setAdminAuthBadge("ok", "Admin đã đăng nhập");
+      appendLog("Đăng nhập admin thành công.");
+      return true;
+    }
+
+    adminToken = null;
+    const msg = payload?.errorDesc || response.statusText;
+    setAdminAuthBadge("error", "Đăng nhập admin lỗi");
+    appendLog(`Đăng nhập admin thất bại: ${msg}`);
+    return false;
+  } catch (error) {
+    adminToken = null;
+    setAdminAuthBadge("error", "Đăng nhập admin lỗi");
+    appendLog(`Lỗi đăng nhập admin: ${error.message}`);
+    return false;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -324,18 +408,22 @@ function clearLog() {
 // TAB SWITCHING
 // ─────────────────────────────────────────────────────────────────────────────
 function initTabs() {
-  els.tabDataBtn.addEventListener("click", () => {
-    els.tabDataBtn.classList.add("active");
-    els.tabBacktestBtn.classList.remove("active");
-    els.dataTabContent.style.display = "block";
-    els.backtestTabContent.style.display = "none";
-  });
+  const tabs = [
+    { btn: els.tabDataBtn, content: els.dataTabContent },
+    { btn: els.tabBacktestBtn, content: els.backtestTabContent },
+    { btn: els.tabAnalyzeBtn, content: els.analyzeTabContent },
+  ];
 
-  els.tabBacktestBtn.addEventListener("click", () => {
-    els.tabBacktestBtn.classList.add("active");
-    els.tabDataBtn.classList.remove("active");
-    els.backtestTabContent.style.display = "block";
-    els.dataTabContent.style.display = "none";
+  tabs.forEach(({ btn, content }) => {
+    if (!btn || !content) return;
+    btn.addEventListener("click", () => {
+      tabs.forEach((t) => {
+        if (!t.btn || !t.content) return;
+        const active = t.btn === btn;
+        t.btn.classList.toggle("active", active);
+        t.content.style.display = active ? "block" : "none";
+      });
+    });
   });
 }
 
@@ -696,9 +784,8 @@ async function loadCloudHistory() {
   els.cloudHistoryList.innerHTML = '<p class="hint">Đang tải lịch sử...</p>';
 
   try {
-    const response = await fetch(`${baseUrl}/api/agentic/backtests`);
-    const payload = await response.json();
-    
+    const payload = await requestJson(`${baseUrl}/api/agentic/backtests`);
+
     if (payload && payload.result && Array.isArray(payload.data)) {
       els.cloudHistoryList.innerHTML = "";
       const files = [...payload.data].sort((a, b) => cloudHistorySortKey(b) - cloudHistorySortKey(a));
@@ -1299,6 +1386,297 @@ window.addEventListener("resize", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AI ANALYZE TAB (Admin) — single symbol or VN30/VN100 basket
+// ─────────────────────────────────────────────────────────────────────────────
+const AN_TECH_KEYS = ["ma", "boll", "rsi", "macd", "kdj"];
+const AN_FUND_KEYS = ["valuation", "profitability", "growth", "financial_health", "cash_flow"];
+
+function getAnalyzeSource() {
+  const btn = els.analyzeSourceControl?.querySelector(".seg-btn.active");
+  return btn ? btn.dataset.source : "single";
+}
+
+function getAnalyzeMode() {
+  const btn = els.analyzeModeControl?.querySelector(".seg-btn.active");
+  return btn ? btn.dataset.mode : "auto";
+}
+
+function getAnalyzeDataSelection() {
+  return {
+    news: els.anNews ? els.anNews.checked : true,
+    technical: readChecks(".an-tech", AN_TECH_KEYS),
+    fundamental: readChecks(".an-fund", AN_FUND_KEYS),
+  };
+}
+
+function updateAnalyzeDsCounts() {
+  const techOn = AN_TECH_KEYS.filter((k) => document.querySelector(`.an-tech[value="${k}"]`)?.checked).length;
+  const fundOn = AN_FUND_KEYS.filter((k) => document.querySelector(`.an-fund[value="${k}"]`)?.checked).length;
+  if (els.anTechCount) els.anTechCount.textContent = `${techOn}/${AN_TECH_KEYS.length}`;
+  if (els.anFundCount) els.anFundCount.textContent = `${fundOn}/${AN_FUND_KEYS.length}`;
+}
+
+function buildAnalyzeBody(symbol) {
+  const mode = getAnalyzeMode();
+  const body = {
+    mode,
+    symbol,
+    risk_appetite: { period: els.analyzeRiskPeriod.value },
+  };
+  if (mode === "manual") {
+    body.data_selection = getAnalyzeDataSelection();
+  }
+  return body;
+}
+
+function initAnalyzeControls() {
+  if (els.analyzeSourceControl) {
+    els.analyzeSourceControl.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        els.analyzeSourceControl.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        // Single-symbol input only relevant for the "single" source.
+        if (els.analyzeSymbolField) {
+          els.analyzeSymbolField.style.display = btn.dataset.source === "single" ? "" : "none";
+        }
+      });
+    });
+  }
+
+  if (els.analyzeModeControl) {
+    els.analyzeModeControl.querySelectorAll(".seg-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        els.analyzeModeControl.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        if (els.analyzeDataSelectionPanel) {
+          els.analyzeDataSelectionPanel.style.display = btn.dataset.mode === "manual" ? "flex" : "none";
+        }
+      });
+    });
+  }
+
+  document.querySelectorAll(".an-tech, .an-fund").forEach((cb) => {
+    cb.addEventListener("change", updateAnalyzeDsCounts);
+  });
+  updateAnalyzeDsCounts();
+}
+
+function recommendationBadgeClass(rec) {
+  const r = (rec || "").toString();
+  if (r === "Mua") return "ok";
+  if (r === "Bán") return "error";
+  return "running"; // Giữ / Chờ
+}
+
+function analysisBlocksHtml(rec) {
+  const a = rec && rec.analysis;
+  if (a && typeof a === "object") {
+    return (
+      analysisSection("📝 Tổng hợp", a.summary) +
+      analysisSection("📈 Kỹ thuật", a.technical) +
+      analysisSection("📊 Cơ bản", a.fundamental) +
+      analysisSection("📰 Tin tức", a.news)
+    ) || '<p class="hint">Không có nội dung phân tích.</p>';
+  }
+  if (typeof a === "string" && a.trim()) {
+    return `<div class="agent-sub-block"><p class="agent-analysis-text">${escapeHtml(a)}</p></div>`;
+  }
+  return '<p class="hint">Không có nội dung phân tích.</p>';
+}
+
+function recommendationDetailHtml(symbol, rec) {
+  const conf = confidenceInfo(rec.confidence);
+  return `
+    <div class="report-detail-header">
+      <h3>${escapeHtml(symbol)}</h3>
+      <div class="report-badges">
+        <span class="badge ${recommendationBadgeClass(rec.recommendation)}">${escapeHtml(rec.recommendation || "N/A")}</span>
+        <span class="badge ${conf.cls}">${escapeHtml(conf.text)}</span>
+      </div>
+    </div>
+    <ul class="detail-list">
+      <li><span class="lbl">Giá vào:</span> <span class="val">${rec.entry_price ?? "--"}</span></li>
+      <li><span class="lbl">Take Profit:</span> <span class="val text-green">${rec.take_profit_price ?? "--"}</span></li>
+      <li><span class="lbl">Stop Loss:</span> <span class="val text-red">${rec.stop_loss_price ?? "--"}</span></li>
+      <li><span class="lbl">Nến giữ tối đa:</span> <span class="val">${rec.max_hold_candles ?? "--"}</span></li>
+    </ul>
+    ${analysisBlocksHtml(rec)}
+  `;
+}
+
+function renderSingleRecommendation(symbol, rec) {
+  els.analyzeSingleResult.style.display = "block";
+  els.analyzeSingleResult.innerHTML = recommendationDetailHtml(symbol, rec);
+  els.analyzeSingleResult.scrollIntoView({ behavior: "smooth" });
+}
+
+function addAnalyzeTableRow(symbol, rec, status, errMsg = "") {
+  const tr = document.createElement("tr");
+  const recText = rec ? (rec.recommendation || "N/A") : "N/A";
+  const conf = rec ? confidenceInfo(rec.confidence) : { text: "--", cls: "" };
+  const summary = rec && rec.analysis && rec.analysis.summary ? rec.analysis.summary : "";
+  const shortSummary = summary.length > 90 ? summary.slice(0, 90) + "…" : summary;
+  const statusClass = status === "ok" ? "badge ok" : "badge error";
+  const recClass = rec ? `badge ${recommendationBadgeClass(recText)}` : "badge";
+
+  tr.innerHTML = `
+    <td><strong>${escapeHtml(symbol)}</strong></td>
+    <td><span class="${recClass}">${escapeHtml(recText)}</span></td>
+    <td><span class="badge ${conf.cls}">${escapeHtml(conf.text)}</span></td>
+    <td style="max-width: 320px; color: var(--muted); font-size: 0.82rem;">${escapeHtml(shortSummary)}</td>
+    <td><span class="${statusClass}" title="${escapeHtml(errMsg)}">${status === "ok" ? "OK" : "Lỗi"}</span></td>
+    <td style="text-align: center;">
+      <button class="btn btn-ghost btn-view-analyze" type="button" style="padding: 4px 10px; font-size: 0.75rem;" ${rec ? "" : "disabled"}>Xem</button>
+    </td>
+  `;
+
+  if (rec) {
+    tr.querySelector(".btn-view-analyze").addEventListener("click", () => {
+      els.analyzeDetailPanel.style.display = "block";
+      els.analyzeDetailPanel.innerHTML = recommendationDetailHtml(symbol, rec);
+      els.analyzeDetailPanel.scrollIntoView({ behavior: "smooth" });
+    });
+  }
+
+  els.analyzeResultsBody.appendChild(tr);
+}
+
+function appendAnalyzeLog(msg) {
+  els.analyzeLogs.textContent += `[${new Date().toLocaleTimeString("vi-VN")}] ${msg}\n`;
+  els.analyzeLogs.scrollTop = els.analyzeLogs.scrollHeight;
+}
+
+function updateAnalyzeProgress(current, total, label = "") {
+  const percent = total ? Math.round((current / total) * 100) : 0;
+  els.analyzeProgressBar.style.width = `${percent}%`;
+  els.analyzeStatus.textContent = label || `Đang chạy ${current}/${total} (${percent}%)`;
+  els.analyzeStatus.classList.toggle("ok", percent === 100);
+  els.analyzeStatus.classList.toggle("running", percent !== 100);
+}
+
+async function runAnalyze() {
+  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
+  if (!baseUrl) {
+    alert("Không thể phân tích: API Base URL đang trống.");
+    return;
+  }
+  if (!adminToken) {
+    const ok = await adminLogin();
+    if (!ok) {
+      alert("Chưa đăng nhập admin. Kiểm tra ADMIN_EMAIL/ADMIN_PASSWORD ở backend.");
+      return;
+    }
+  }
+
+  const source = getAnalyzeSource();
+  els.runAnalyzeBtn.disabled = true;
+
+  // Reset result panels
+  els.analyzeSingleResult.style.display = "none";
+  els.analyzeProgressCard.style.display = "none";
+  els.analyzeResultsCard.style.display = "none";
+  els.analyzeDetailPanel.style.display = "none";
+
+  try {
+    if (source === "single") {
+      const symbol = (els.analyzeSymbol.value || "").trim().toUpperCase();
+      if (!symbol) {
+        alert("Vui lòng nhập mã cổ phiếu.");
+        return;
+      }
+      els.runAnalyzeBtn.textContent = `Đang phân tích ${symbol}...`;
+      appendLog(`Phân tích AI cho ${symbol}...`);
+
+      const payload = await requestJson(`${baseUrl}/api/agentic/admin-analyze`, {
+        method: "POST",
+        body: buildAnalyzeBody(symbol),
+      });
+      const entry = payload?.data?.results?.[0];
+      if (entry && entry.status === "ok" && entry.recommendation) {
+        renderSingleRecommendation(symbol, entry.recommendation);
+        appendLog(`Phân tích ${symbol} hoàn thành: ${entry.recommendation.recommendation}.`);
+      } else {
+        throw new Error(entry?.error || "Không nhận được kết quả phân tích.");
+      }
+    } else {
+      // VN30 / VN100 — fetch the universe then loop per symbol with progress.
+      els.analyzeProgressCard.style.display = "block";
+      els.analyzeResultsCard.style.display = "block";
+      els.analyzeUniverseName.textContent = source;
+      els.analyzeResultsBody.innerHTML = "";
+      els.analyzeLogs.textContent = "";
+      analyzeSummaryData = [];
+      updateAnalyzeProgress(0, 1, "Đang tải danh sách mã...");
+
+      els.runAnalyzeBtn.textContent = `Đang tải rổ ${source}...`;
+      const uniPayload = await requestJson(`${baseUrl}/api/agentic/admin-universe/${source}`);
+      const symbols = uniPayload?.data?.symbols || [];
+      if (symbols.length === 0) {
+        throw new Error(`Rổ ${source} không có mã nào (kiểm tra bảng MarketIndex).`);
+      }
+
+      appendLog(`Bắt đầu phân tích rổ ${source} (${symbols.length} mã)...`);
+      els.runAnalyzeBtn.textContent = `Đang chạy ${source}...`;
+
+      for (let i = 0; i < symbols.length; i++) {
+        const sym = symbols[i];
+        updateAnalyzeProgress(i, symbols.length, `Đang xử lý ${sym} (${i + 1}/${symbols.length})...`);
+        appendAnalyzeLog(`[${i + 1}/${symbols.length}] Phân tích ${sym}...`);
+
+        try {
+          const payload = await requestJson(`${baseUrl}/api/agentic/admin-analyze`, {
+            method: "POST",
+            body: buildAnalyzeBody(sym),
+          });
+          const entry = payload?.data?.results?.[0];
+          if (entry && entry.status === "ok" && entry.recommendation) {
+            const rec = entry.recommendation;
+            addAnalyzeTableRow(sym, rec, "ok");
+            analyzeSummaryData.push({ symbol: sym, rec, status: "ok" });
+            appendAnalyzeLog(`✅ ${sym}: ${rec.recommendation} (tự tin ${confidenceInfo(rec.confidence).text}).`);
+          } else {
+            throw new Error(entry?.error || "Kết quả rỗng");
+          }
+        } catch (err) {
+          addAnalyzeTableRow(sym, null, "error", err.message);
+          analyzeSummaryData.push({ symbol: sym, rec: null, status: "error" });
+          appendAnalyzeLog(`❌ ${sym} lỗi: ${err.message}`);
+        }
+
+        updateAnalyzeProgress(i + 1, symbols.length);
+        await new Promise((r) => setTimeout(r, 150));
+      }
+
+      appendAnalyzeLog(`🎉 Hoàn thành rổ ${source}!`);
+      updateAnalyzeProgress(symbols.length, symbols.length, `Hoàn tất rổ ${source}`);
+      appendLog(`Phân tích rổ ${source} hoàn tất.`);
+    }
+  } catch (error) {
+    appendLog(`Lỗi phân tích: ${error.message}`);
+    alert(`Lỗi phân tích: ${error.message}`);
+  } finally {
+    els.runAnalyzeBtn.disabled = false;
+    els.runAnalyzeBtn.textContent = "Chạy phân tích";
+  }
+}
+
+function exportAnalyzeCsv() {
+  if (analyzeSummaryData.length === 0) return;
+  let csv = "data:text/csv;charset=utf-8,Symbol,Recommendation,Confidence,Status\n";
+  analyzeSummaryData.forEach((row) => {
+    const rec = row.rec ? (row.rec.recommendation || "") : "";
+    const conf = row.rec ? confidenceInfo(row.rec.confidence).text : "";
+    csv += `${row.symbol},${rec},${conf},${row.status}\n`;
+  });
+  const link = document.createElement("a");
+  link.setAttribute("href", encodeURI(csv));
+  link.setAttribute("download", `AI_Analyze_${els.analyzeUniverseName.textContent}_${new Date().toISOString().slice(0, 10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // INITIALIZATION
 // ─────────────────────────────────────────────────────────────────────────────
 els.loadSymbolsBtn.addEventListener("click", loadSymbols);
@@ -1308,8 +1686,10 @@ els.clearLogBtn.addEventListener("click", clearLog);
 els.runBacktestBtn.addEventListener("click", runBacktest);
 els.exportVn30CsvBtn.addEventListener("click", exportVn30Csv);
 els.refreshCloudHistoryBtn.addEventListener("click", loadCloudHistory);
+els.runAnalyzeBtn.addEventListener("click", runAnalyze);
+els.exportAnalyzeCsvBtn.addEventListener("click", exportAnalyzeCsv);
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   appendLog("Dashboard đã khởi tạo.");
 
   // Tabs Navigation init
@@ -1320,6 +1700,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // Mode (auto/manual) + data selection toggles init
   initDataSelectionControls();
+
+  // AI analyze tab controls init
+  initAnalyzeControls();
+
+  // Auto-login as admin so protected endpoints (backtest, admin-analyze) work.
+  await adminLogin();
 
   // Disable text symbol input if VN30 option is checked
   els.vn30Option.addEventListener("change", (e) => {

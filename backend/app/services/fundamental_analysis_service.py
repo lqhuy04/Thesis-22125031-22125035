@@ -31,8 +31,11 @@ class FundamentalAnalysisService:
 
             if not result.data:
                 return None
-        
-            return result.data.get("FA_Summary")[0] or None
+
+            # FA_Summary may be an empty list for newly-listed stocks with no
+            # summary row yet — avoid IndexError on [0].
+            fa_summary = result.data.get("FA_Summary") or []
+            return fa_summary[0] if fa_summary else None
 
         except Exception as e:
             print(f"Error fetching fundamental summary: {e}")

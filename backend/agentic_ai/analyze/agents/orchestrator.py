@@ -9,6 +9,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 from agentic_ai.service.openai_service import _get_openai_client
 from agentic_ai.analyze.state import AgentState
+from agentic_ai.analyze.horizon import interval_for
  
  
 # ─── Schema định nghĩa output của LLM ────────────────────────────────────────
@@ -112,5 +113,12 @@ def orchestrator_agent(state: AgentState) -> dict:
     # Chuyển về dict để lưu vào AgentState
     plan_dict = plan.model_dump()
  
+    # Khung nến là hàm xác định của kỳ hạn (short→1d, mid→1w, long→1M). Ép cứng
+    # bằng Python thay vì tin vào LLM, để mỗi kỳ hạn thực sự phân tích trên khung
+    # nến khác nhau. DB chỉ có 1d; MarketService tự aggregate sang 1w/1M.
+    period = (risk_appetite or {}).get("period")
+    if period:
+        plan_dict.setdefault("technical_analysis_agent", {})["interval"] = interval_for(period)
+
     print(f"[Orchestrator] Kế hoạch:\n{json.dumps(plan_dict, ensure_ascii=False, indent=2)}")
     return {"plan": plan_dict}

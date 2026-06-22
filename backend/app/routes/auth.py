@@ -84,6 +84,40 @@ async def login(request: LoginRequest):
         )
 
 
+@router.post("/admin-login", response_model=AuthResponse)
+async def admin_login():
+    """Auto-login for the admin dashboard using server-side credentials."""
+    request_id = str(uuid.uuid4())
+    try:
+        result = await AuthService.admin_login()
+        return AuthResponse(
+            data=AuthData(
+                token=result["token"],
+                refresh_token=result.get("refresh_token")
+            ).dict(),
+            errorCode=0,
+            errorDesc="Admin login successful",
+            requestId=request_id,
+            result=True
+        )
+    except ValueError as e:
+        return AuthResponse(
+            data={},
+            errorCode=401001,
+            errorDesc=str(e),
+            requestId=request_id,
+            result=False
+        )
+    except Exception:
+        return AuthResponse(
+            data={},
+            errorCode=500001,
+            errorDesc="Internal server error",
+            requestId=request_id,
+            result=False
+        )
+
+
 @router.post("/verify-email")
 async def verify_email(request: VerifyOTPRequest):
     request_id = str(uuid.uuid4())

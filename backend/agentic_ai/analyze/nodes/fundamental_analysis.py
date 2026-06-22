@@ -27,7 +27,7 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
 
     parts = [f"## Phân tích cơ bản ({year}){sector_note}", ""]
     parts.append("### Tóm tắt tổng quan")
-    parts.append(summary.get("summary", "Không có dữ liệu"))
+    parts.append((summary or {}).get("summary", "Không có dữ liệu"))
 
     if selection.get("valuation", True):
         parts += [
@@ -92,13 +92,25 @@ def fundamental_analysis_agent(state: AgentState) -> AgentState:
             },
         }
 
-    balance_sheets = FundamentalAnalysisService.get_balance_sheets(symbol)
-    income_statements = FundamentalAnalysisService.get_income_statements(symbol)
-    cash_flows = FundamentalAnalysisService.get_cash_flows(symbol)
-    indicators = FundamentalAnalysisService.get_indicators(symbol)
-    summary = FundamentalAnalysisService.get_summary(symbol)
+    # Dữ liệu cơ bản có thể thiếu (mã mới niêm yết, chưa có báo cáo...). Một lỗi
+    # tầng dữ liệu của 1 mã KHÔNG được làm hỏng cả pipeline (đặc biệt khi chạy rổ
+    # VN30/VN100). Thiếu/lỗi dữ liệu → coi như không có dữ liệu cơ bản; aggregator
+    # nhận diện qua marker "Không có dữ liệu" và loại nguồn này khỏi confidence.
+    try:
+        income_statements = FundamentalAnalysisService.get_income_statements(symbol)
+        cash_flows = FundamentalAnalysisService.get_cash_flows(symbol)
+        indicators = FundamentalAnalysisService.get_indicators(symbol)
+        summary = FundamentalAnalysisService.get_summary(symbol)
 
-    output = _format_fundamental_output(summary, indicators, income_statements, cash_flows, selection)
+        if not indicators and not income_statements and not cash_flows and not summary:
+            output = "Không có dữ liệu phân tích cơ bản."
+        else:
+            output = _format_fundamental_output(
+                summary, indicators, income_statements, cash_flows, selection
+            )
+    except Exception as e:
+        print(f"[Fundamental Analysis Agent] Lỗi lấy dữ liệu cơ bản cho {symbol}: {e}")
+        output = "Không có dữ liệu phân tích cơ bản."
 
     print("[Fundamental Analysis Agent] Output:", output)
 

@@ -5,14 +5,15 @@ routes/agentic.py
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 
-from app.middleware.auth_middleware import get_current_user
+from app.middleware.auth_middleware import get_current_user, get_current_admin
 from app.models.base_schemas import success_response, error_response
-from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest
+from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest, AdminAnalysisRequest
 from app.models.backtest_pipeline_schemas import BacktestPipelineRequest
 from app.services.backtest_pipeline_service import run_backtest_pipeline
 from app.services.agentic_service import (
     run_chat,
     run_stock_analysis,
+    run_admin_analysis,
     list_chat_sessions,
     get_chat_history,
     delete_chat_session,
@@ -48,6 +49,66 @@ def analyze_stock(body: StockAnalysisRequest, current_user: dict = Depends(get_c
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=error_response(error_code=500, error_desc=f"Lỗi hệ thống: {e}"),
+        )
+
+
+# ─── Admin API mode: structured output, role = admin only ────────────────────
+
+@router.post(
+    "/admin-analyze",
+    summary="Phân tích cổ phiếu (Admin)",
+    description=(
+        "Giống /analyze nhưng chỉ dành cho admin. Hỗ trợ chạy theo rổ chỉ số "
+        "VN30 (30 mã) hoặc VN100 (100 mã); bỏ trống `universe` để phân tích 1 mã."
+    ),
+)
+def admin_analyze(body: AdminAnalysisRequest, current_user: dict = Depends(get_current_admin)):
+    try:
+        result = run_admin_analysis(
+            mode=body.mode,
+            universe=body.universe,
+            symbol=body.symbol,
+            risk_appetite=body.risk_appetite.model_dump(),
+            plan=body.plan,
+            data_selection=body.data_selection.model_dump(),
+        )
+        return success_response(data=result)
+
+    except ValueError as e:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content=error_response(error_code=400001, error_desc=str(e)),
+        )
+    except RuntimeError as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=error_response(error_code=500, error_desc=str(e)),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=error_response(error_code=500, error_desc=f"Lỗi hệ thống: {e}"),
+        )
+
+
+@router.get(
+    "/admin-universe/{name}",
+    summary="Danh sách mã của một rổ chỉ số (Admin)",
+    description="Trả về danh sách mã cổ phiếu thuộc rổ VN30 / VN100 từ Supabase.",
+)
+def admin_universe(name: str, current_user: dict = Depends(get_current_admin)):
+    try:
+        from app.utils.market_index import get_index_symbols
+        symbols = get_index_symbols(name)
+        return success_response(data={
+            "universe": name.strip().upper(),
+            "count": len(symbols),
+            "symbols": symbols,
+        })
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=error_response(error_code=500, error_desc=f"Lỗi lấy danh sách mã: {e}"),
         )
 
 
@@ -168,7 +229,7 @@ def remove_chat_session(session_id: str, current_user: dict = Depends(get_curren
         "tren du lieu lich su, chi goi LLM tai cac ngay co tin hieu ky thuat."
     ),
 )
-def backtest_pipeline(body: BacktestPipelineRequest):
+def backtest_pipeline(body: BacktestPipelineRequest, current_user: dict = Depends(get_current_admin)):
     try:
         result = run_backtest_pipeline(body)
         return success_response(data=result)
@@ -194,7 +255,7 @@ def backtest_pipeline(body: BacktestPipelineRequest):
     "/backtests",
     summary="Danh sách kết quả backtest từ Supabase Storage",
 )
-def list_backtests():
+def list_backtests(current_user: dict = Depends(get_current_admin)):
     try:
         from app.utils.supabase_storage import list_backtest_files
         res = list_backtest_files()

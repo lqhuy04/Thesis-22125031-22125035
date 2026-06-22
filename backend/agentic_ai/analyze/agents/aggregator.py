@@ -30,6 +30,19 @@ from pydantic import BaseModel, Field
 
 from agentic_ai.service.openai_service import _get_openai_client
 from agentic_ai.analyze.state import AgentState
+from agentic_ai.analyze.horizon import enforce_price_boundaries
+
+# Raised by the OpenAI SDK when structured parsing fails because the model hit
+# the output token cap (finish_reason = "length"). Tuple fallback for older SDKs
+# makes `except _LengthError` a no-op rather than a NameError.
+try:
+    from openai import LengthFinishReasonError as _LengthError
+except ImportError:  # pragma: no cover
+    _LengthError = ()
+
+# Bound the aggregator output. Plenty for the 4 analysis fields + signals, while
+# preventing a degenerate repetition loop from running to the model's 16k cap.
+_MAX_OUTPUT_TOKENS = 3000
 
 
 # ─────────────────────────────────────────────────────────────
@@ -217,17 +230,18 @@ class AnalysisBreakdown(BaseModel):
 class InvestmentRecommendation(BaseModel):
     recommendation: Literal["Mua", "Chờ"] = Field(
         description=(
-            "Quyết định cuối dựa trên tổng hợp 2 nguồn:\n"
-            "  - technical_score: 0–5\n"
-            "  - fundamental_health: strong | neutral | weak\n"
+            "Quyết định cuối dựa trên tổng hợp CẢ 3 nguồn (xem PHẦN II):\n"
+            "  - technical_score    : 0–max_score (tín hiệu kích hoạt)\n"
+            "  - fundamental_health : strong | neutral | weak | N/A (bộ lọc)\n"
+            "  - article_sentiment  : positive | neutral | negative | N/A (bộ lọc)\n"
             "\n"
-            "  Logic tổng hợp:\n"
-            "  Mua  = technical_score >= 3\n"
-            "         VÀ fundamental_health != weak (nếu có dữ liệu)\n"
-            "  Chờ  = mọi trường hợp còn lại\n"
+            "  Mua = (technical_score >= 60% của max_score, làm tròn lên)\n"
+            "        VÀ fundamental_health != weak      (chỉ xét nếu có dữ liệu)\n"
+            "        VÀ article_sentiment  != negative  (chỉ xét nếu có dữ liệu)\n"
+            "  Chờ = mọi trường hợp còn lại\n"
             "\n"
-            "  Nếu fundamental không có dữ liệu\n"
-            "  → bỏ qua điều kiện đó, chỉ dùng technical"
+            "  Nguồn nào N/A (không có dữ liệu) → bỏ qua điều kiện của nó, KHÔNG\n"
+            "  coi là điểm trừ. Chỉ tín hiệu xấu rõ ràng (weak / negative) mới chặn Mua."
         )
     )
 
@@ -338,24 +352,52 @@ PHẦN I — ĐÁNH GIÁ TỪNG NGUỒN
 
 PHẦN II — LOGIC TỔNG HỢP (CỨNG, KHÔNG OVERRIDE)
 
-Mua = technical_score >= 60% của max_score (làm tròn lên)
-            VÀ fundamental_health != weak     (nếu có dữ liệu)
+Quyết định dựa trên CẢ 3 NGUỒN: technical, fundamental, article. Mỗi nguồn chỉ
+tham gia khi THỰC SỰ có dữ liệu (xem khối "CỜ DỮ LIỆU": has_technical_data,
+has_fundamental_data, has_news_data). Nguồn nào không có dữ liệu (N/A / cờ = false)
+thì BỎ QUA điều kiện của nó — KHÔNG coi là điểm trừ, KHÔNG vì thiếu dữ liệu mà
+chuyển sang Chờ.
 
-Chờ = mọi trường hợp còn lại
+Vai trò mỗi nguồn:
+  1. Technical = TÍN HIỆU KÍCH HOẠT (bắt buộc nếu có dữ liệu).
+       Điều kiện kỹ thuật ĐẠT  ⇔  technical_score >= 60% của max_score (làm tròn lên).
+       (Nếu người dùng tắt hết chỉ số kỹ thuật → max_score = 0 → bỏ điều kiện kỹ
+        thuật, quyết định dựa trên fundamental + article.)
+  2. Fundamental = BỘ LỌC XÁC NHẬN.  Chỉ chặn Mua khi fundamental_health = weak.
+       strong/neutral = không chặn; N/A = bỏ qua.
+  3. Article = BỘ LỌC XÁC NHẬN.  Chỉ chặn Mua khi article_sentiment = negative.
+       positive/neutral = không chặn; N/A = bỏ qua.
 
-Ví dụ (khi bật đủ 5 chỉ số, max_score = 5 → ngưỡng = 3):
-    score=4, fundamental=strong   → Mua
-    score=4, fundamental=weak     → Chờ
-    score=4, fundamental=N/A      → Mua
-    score=2, fundamental=strong   → Chờ
-Ví dụ (khi chỉ bật 3 chỉ số, max_score = 3 → ngưỡng = 2):
-    score=2, fundamental=N/A      → Mua
-    score=1, fundamental=strong   → Chờ
+QUY TẮC:
+  Mua  ⇔  điều kiện kỹ thuật ĐẠT
+          VÀ fundamental_health != weak      (chỉ xét nếu có dữ liệu)
+          VÀ article_sentiment  != negative  (chỉ xét nếu có dữ liệu)
+  Chờ  =  mọi trường hợp còn lại
+          (điều kiện kỹ thuật KHÔNG đạt, HOẶC fundamental = weak,
+           HOẶC article = negative)
+
+Lưu ý: nguồn có dữ liệu nhưng trung lập (neutral) hoặc thiếu (N/A) đều KHÔNG ngăn
+lệnh Mua nếu kỹ thuật đã đạt; chỉ tín hiệu xấu rõ ràng (weak / negative) mới chặn.
+
+Ví dụ (đủ 5 chỉ số, max_score = 5 → ngưỡng kỹ thuật = 3):
+    score=4, fundamental=strong,  article=positive  → Mua
+    score=4, fundamental=neutral, article=N/A        → Mua
+    score=4, fundamental=N/A,     article=N/A        → Mua   (chỉ còn technical)
+    score=4, fundamental=strong,  article=negative   → Chờ   (tin tức tiêu cực chặn)
+    score=4, fundamental=weak,    article=positive   → Chờ   (cơ bản yếu chặn)
+    score=2, fundamental=strong,  article=positive   → Chờ   (kỹ thuật chưa đạt)
+Ví dụ (chỉ bật 3 chỉ số, max_score = 3 → ngưỡng kỹ thuật = 2):
+    score=2, fundamental=N/A,     article=neutral    → Mua
+    score=2, fundamental=weak,    article=N/A        → Chờ
+    score=1, fundamental=strong,  article=positive   → Chờ   (kỹ thuật chưa đạt)
 
 PHẦN III — VIẾT analysis (4 TRƯỜNG RIÊNG BIỆT)
 
 Trường `analysis` là một object gồm 4 trường text riêng biệt (technical, fundamental, news, summary).
 Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ngặt:
+
+    GIỚI HẠN ĐỘ DÀI (BẮT BUỘC): mỗi trường trong analysis viết TỐI ĐA 4–6 câu,
+    ngắn gọn, đi thẳng vào ý. TUYỆT ĐỐI không lặp lại câu/ý đã viết.
 
     QUY TẮC CỜ DỮ LIỆU (BẮT BUỘC, KHÔNG NGOẠI LỆ):
     Dựa vào các cờ trong khối "CỜ DỮ LIỆU" của input:
@@ -467,16 +509,31 @@ YÊU CẦU:
 {user_input}
 """
 
-    try:
-        response = client.beta.chat.completions.parse(
+    def _parse(extra_system: str | None = None):
+        messages = [
+            {"role": "system", "content": AGGREGATOR_SYSTEM_PROMPT},
+            {"role": "user",   "content": analysis_message},
+        ]
+        if extra_system:
+            messages.append({"role": "system", "content": extra_system})
+        return client.beta.chat.completions.parse(
             model="gpt-4o-mini",
             temperature=0.2,
-            messages=[
-                {"role": "system", "content": AGGREGATOR_SYSTEM_PROMPT},
-                {"role": "user",   "content": analysis_message},
-            ],
+            max_tokens=_MAX_OUTPUT_TOKENS,
+            messages=messages,
             response_format=InvestmentRecommendation,
         )
+
+    try:
+        try:
+            response = _parse()
+        except _LengthError:
+            # Bị cắt do vượt giới hạn token (thường do model lặp). Thử lại 1 lần
+            # với yêu cầu viết cực ngắn để vừa trong giới hạn.
+            print("[Aggregator] Vượt giới hạn token → thử lại với analysis cực ngắn.")
+            response = _parse(
+                "QUAN TRỌNG: Mỗi trường trong analysis CHỈ viết 2–3 câu thật ngắn gọn."
+            )
 
         parsed: InvestmentRecommendation = response.choices[0].message.parsed
 
@@ -502,8 +559,29 @@ YÊU CẦU:
             technical_max_score = technical_max_score,
         )
 
-        # ── Override recommendation nếu confidence dưới ngưỡng ────────────────
         recommendation = parsed.recommendation
+
+        # ── Áp dụng CỨNG logic Phần II bằng Python (không phụ thuộc LLM) ──────
+        # Chỉ tín hiệu xấu rõ ràng mới chặn Mua; nguồn N/A bị bỏ qua, không trừ điểm.
+        if recommendation == "Mua":
+            veto_reasons = []
+            # 1. Cổng kỹ thuật — bỏ qua nếu người dùng tắt hết chỉ số (max_score = 0)
+            if technical_max_score and parsed.technical_score < buy_threshold:
+                veto_reasons.append(
+                    f"technical_score={parsed.technical_score} < ngưỡng {buy_threshold}"
+                )
+            # 2. Cơ bản yếu chặn Mua (chỉ khi nguồn có dữ liệu)
+            if has_fundamental and parsed.fundamental_health == "weak":
+                veto_reasons.append("fundamental_health=weak")
+            # 3. Tin tức tiêu cực chặn Mua (chỉ khi nguồn có dữ liệu)
+            if has_news and parsed.article_sentiment == "negative":
+                veto_reasons.append("article_sentiment=negative")
+
+            if veto_reasons:
+                print(f"[Aggregator] Veto Mua → Chờ ({'; '.join(veto_reasons)})")
+                recommendation = "Chờ"
+
+        # ── Override recommendation nếu confidence dưới ngưỡng ────────────────
         if recommendation == "Mua" and confidence < CONFIDENCE_THRESHOLD:
             print(
                 f"[Aggregator] confidence={confidence} < threshold={CONFIDENCE_THRESHOLD} "
@@ -517,10 +595,33 @@ YÊU CẦU:
             stop_loss_price   = None
             max_hold_candles  = None
         else:
-            entry_price       = parsed.entry_price
-            take_profit_price = parsed.take_profit_price
-            stop_loss_price   = parsed.stop_loss_price
-            max_hold_candles  = parsed.max_hold_candles
+            # Giá mua: ưu tiên LLM, fallback current_price từ technical.
+            tech_current_price = (
+                (technical.get("current_price") or {}).get("value")
+                if isinstance(technical, dict) else None
+            )
+            entry = parsed.entry_price or tech_current_price
+
+            period = state.get("risk_appetite", {}).get("period")
+            if period:
+                # Ép TP/SL/hold đúng giới hạn cứng theo kỳ hạn (LLM hay bỏ qua,
+                # đặc biệt SL). Backtest truyền risk_appetite rỗng → giữ giá trị LLM.
+                bounded = enforce_price_boundaries(
+                    period,
+                    entry,
+                    parsed.take_profit_price,
+                    parsed.stop_loss_price,
+                    parsed.max_hold_candles,
+                )
+                entry_price       = bounded["entry_price"]
+                take_profit_price = bounded["take_profit_price"]
+                stop_loss_price   = bounded["stop_loss_price"]
+                max_hold_candles  = bounded["max_hold_candles"]
+            else:
+                entry_price       = entry
+                take_profit_price = parsed.take_profit_price
+                stop_loss_price   = parsed.stop_loss_price
+                max_hold_candles  = parsed.max_hold_candles
 
         output = {
             "recommendation":       recommendation,

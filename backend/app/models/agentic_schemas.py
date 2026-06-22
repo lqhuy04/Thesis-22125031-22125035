@@ -53,6 +53,27 @@ class StockAnalysisRequest(BaseModel):
     )
 
 
+# ─── /admin-analyze (Admin API mode) ──────────────────────────────────────────
+
+class AdminAnalysisRequest(BaseModel):
+    """Như /analyze nhưng dành cho admin và hỗ trợ chạy theo rổ chỉ số."""
+    mode: str = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
+    universe: str | None = Field(
+        default=None,
+        description="Rổ phân tích: 'VN30' | 'VN100'. Bỏ trống = phân tích 1 mã (symbol).",
+    )
+    symbol: str | None = Field(
+        default=None,
+        description="Mã cổ phiếu khi không dùng rổ, ví dụ: VNM, FPT, VIC",
+    )
+    risk_appetite: RiskAppetite
+    plan: Any | None = Field(default=None, description="Kế hoạch phân tích thủ công, bỏ trống nếu dùng auto")
+    data_selection: DataSelection = Field(
+        default_factory=DataSelection,
+        description="Chọn nguồn/chỉ số dữ liệu cho AI phân tích. Bỏ trống = bật tất cả.",
+    )
+
+
 class InvestmentRecommendation(BaseModel):
     summary: str
     recommendation: Literal["Mua", "Giữ", "Chờ", "Bán"]
