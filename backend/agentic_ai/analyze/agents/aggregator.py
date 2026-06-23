@@ -40,9 +40,9 @@ try:
 except ImportError:  # pragma: no cover
     _LengthError = ()
 
-# Bound the aggregator output. Plenty for the 4 analysis fields + signals, while
-# preventing a degenerate repetition loop from running to the model's 16k cap.
-_MAX_OUTPUT_TOKENS = 3000
+# Bound the aggregator output. Room for the 4 detailed analysis fields + signals,
+# while preventing a degenerate repetition loop from running to the model's 16k cap.
+_MAX_OUTPUT_TOKENS = 5000
 
 
 # ─────────────────────────────────────────────────────────────
@@ -198,16 +198,20 @@ def _compute_confidence(
 class AnalysisBreakdown(BaseModel):
     technical: str = Field(
         description=(
-            "Phân tích kỹ thuật bằng tiếng Việt. Nếu has_technical_data = true: BẮT BUỘC đi qua từng "
-            "chỉ số CÓ trong dữ liệu (RSI, MA, Bollinger Bands, MACD, KDJ), nêu Tích cực/Tiêu cực, lý do, "
-            "dẫn chứng số liệu — KHÔNG được nói không có dữ liệu dù điểm thấp. "
+            "Phân tích kỹ thuật CHI TIẾT bằng tiếng Việt. Nếu has_technical_data = true: BẮT BUỘC đi qua "
+            "TỪNG chỉ số CÓ trong dữ liệu (RSI, MA, Bollinger Bands, MACD, KDJ), mỗi chỉ số 2–4 câu nêu: "
+            "giá trị hiện tại (và kỳ trước nếu có), trạng thái Tích cực/Tiêu cực, VÌ SAO (ngưỡng + cơ chế), "
+            "và hàm ý. Kết lại: chỉ số nào ỦNG HỘ, chỉ số nào CẢN TRỞ, vì sao tổng điểm như vậy. "
+            "KHÔNG nói không có dữ liệu dù điểm thấp. "
             "Chỉ khi has_technical_data = false mới ghi: 'Không có dữ liệu phân tích kỹ thuật.'"
         )
     )
     fundamental: str = Field(
         description=(
-            "Phân tích cơ bản bằng tiếng Việt. Nếu has_fundamental_data = true: BẮT BUỘC tóm tắt các nhóm "
-            "chỉ số CÓ trong dữ liệu (định giá, sinh lời, tăng trưởng, sức khỏe tài chính, dòng tiền). "
+            "Phân tích cơ bản CHI TIẾT bằng tiếng Việt. Nếu has_fundamental_data = true: BẮT BUỘC phân tích "
+            "TỪNG nhóm chỉ số CÓ trong dữ liệu (định giá, sinh lời, tăng trưởng, sức khỏe tài chính, dòng tiền), "
+            "mỗi nhóm 2–3 câu: con số cụ thể, so với ngưỡng/ngành/lịch sử, và VÌ SAO tốt hay đáng lo. "
+            "Nếu thiếu chỉ số quan trọng thì nêu rõ ảnh hưởng tới độ tin cậy. "
             "Chỉ khi has_fundamental_data = false mới ghi: 'Không có dữ liệu phân tích cơ bản.'"
         )
     )
@@ -397,8 +401,13 @@ PHẦN III — VIẾT analysis (4 TRƯỜNG RIÊNG BIỆT)
 Trường `analysis` là một object gồm 4 trường text riêng biệt (technical, fundamental, news, summary).
 Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ngặt:
 
-    GIỚI HẠN ĐỘ DÀI (BẮT BUỘC): mỗi trường trong analysis viết TỐI ĐA 4–6 câu,
-    ngắn gọn, đi thẳng vào ý. TUYỆT ĐỐI không lặp lại câu/ý đã viết.
+    ĐỘ CHI TIẾT (BẮT BUỘC):
+    - Phân tích PHẢI cụ thể, giải thích rõ VÌ SAO mạnh / VÌ SAO yếu — KHÔNG nói chung chung.
+    - Mỗi chỉ số kỹ thuật: 2–4 câu. Mỗi nhóm chỉ số cơ bản: 2–3 câu.
+    - Với mỗi mục, luôn kèm 4 ý: (1) số liệu cụ thể (giá trị hiện tại và kỳ trước nếu có);
+      (2) so sánh với ngưỡng / đường tham chiếu / giá trị kỳ trước; (3) CƠ CHẾ vì sao điều đó
+      tích cực hay tiêu cực; (4) hàm ý cho xu hướng giá hoặc định giá.
+    - TUYỆT ĐỐI không lặp lại câu/ý đã viết, không viết sáo rỗng, không lan man.
 
     QUY TẮC CỜ DỮ LIỆU (BẮT BUỘC, KHÔNG NGOẠI LỆ):
     Dựa vào các cờ trong khối "CỜ DỮ LIỆU" của input:
@@ -409,9 +418,24 @@ Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ng
     Điểm số 0 hoặc tín hiệu tiêu cực KHÔNG đồng nghĩa với "không có dữ liệu" — vẫn phải phân tích đầy đủ.
 
     - TUYỆT ĐỐI KHÔNG nhắc lại quyết định cuối cùng (Mua/Chờ) và điểm số confidence ở bất kỳ trường nào.
-    - analysis.technical: Đi qua từng chỉ số kỹ thuật CÓ trong dữ liệu (trong số RSI, MA, Bollinger Bands, MACD, KDJ). Với từng chỉ số có mặt, chỉ rõ trạng thái Tích cực/Tiêu cực, lý giải và dẫn chứng số liệu cụ thể. Không nhắc tới chỉ số không có.
-    - analysis.fundamental: Tóm tắt những nhóm chỉ số cơ bản CÓ trong dữ liệu (định giá, sức khỏe tài chính, khả năng sinh lời, tăng trưởng, dòng tiền). Bỏ qua nhóm không xuất hiện.
-    - analysis.news: Tóm tắt tin tức và thông tin/sự kiện nổi bật.
+    - analysis.technical: Đi qua TỪNG chỉ số CÓ trong dữ liệu (RSI, MA, Bollinger Bands, MACD, KDJ).
+      Với mỗi chỉ số: nêu giá trị hiện tại (và kỳ trước nếu có), trạng thái Tích cực/Tiêu cực, VÌ SAO
+      (dựa trên ngưỡng và cơ chế của chỉ số đó), và hàm ý. Định hướng cách lý giải:
+        • RSI: <30 quá bán, 30–50 yếu/đang hồi phục, 50–70 tăng động lực, >70 quá mua; đang tăng hay giảm so với kỳ trước.
+        • MA: vị trí giá so với SMA20/SMA50; SMA20>SMA50 = xu hướng tăng, SMA20<SMA50 = xu hướng giảm ("death cross"); độ dốc của đường MA.
+        • Bollinger: giá nằm ở dải trên/giữa/dưới; dải mở rộng (biến động/đà mạnh) hay co hẹp (tích lũy, sắp bứt phá).
+        • MACD: MACD so với Signal (vừa cắt lên = tín hiệu mua, cắt xuống = bán); histogram tăng (đà mạnh dần) hay giảm (đà yếu dần).
+        • KDJ: K so với D (cắt lên/xuống), J tăng tốc hay suy yếu, vùng quá mua (>80) / quá bán (<20).
+      Cuối phần, nêu RÕ chỉ số nào đang ỦNG HỘ và chỉ số nào đang CẢN TRỞ, và vì sao tổng điểm kỹ thuật ra như vậy.
+    - analysis.fundamental: Phân tích TỪNG nhóm chỉ số CÓ dữ liệu (định giá, sinh lời, tăng trưởng, sức khỏe tài chính, dòng tiền).
+      Với mỗi nhóm: nêu con số cụ thể, so sánh với ngưỡng/ngành/lịch sử, và VÌ SAO tốt hay đáng lo. Định hướng:
+        • Định giá: P/E, P/B cao hay thấp so với ngành & lịch sử → cổ phiếu đắt hay rẻ.
+        • Sinh lời: ROE > 15% là tốt; biên lợi nhuận gộp/ròng; xu hướng cải thiện hay suy giảm.
+        • Tăng trưởng: doanh thu & lợi nhuận YoY dương/âm, tốc độ nhanh/chậm, có bền vững không.
+        • Sức khỏe tài chính: Nợ/VCSH thấp = an toàn, cao = rủi ro; thanh khoản hiện tại; khả năng trả lãi.
+        • Dòng tiền: CFO dương/ổn định là dấu hiệu tốt; CAPEX; cổ tức đã trả.
+      Nếu thiếu chỉ số quan trọng (vd nợ/VCSH), nêu rõ điều đó HẠN CHẾ độ tin cậy của đánh giá ra sao.
+    - analysis.news: Tóm tắt các tin tức/sự kiện nổi bật và GIẢI THÍCH tác động (tích cực/tiêu cực) tới triển vọng cổ phiếu.
     - analysis.summary: Kết luận tổng hợp ĐỊNH TÍNH. TUYỆT ĐỐI KHÔNG nêu con số giá mua / chốt lời / cắt lỗ / số nến giữ / tỷ lệ R/R cụ thể — hệ thống sẽ tự tính và chèn các con số chính xác này vào cuối summary. Nếu recommendation = Mua: giải thích vì sao đáng mua và mức độ phù hợp với kỳ hạn (không kèm số liệu giá). Nếu recommendation = Chờ: giải thích các yếu tố kỹ thuật/cơ bản nào chưa đạt điều kiện.
 
 PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ VÀ QUẢN TRỊ RỦI RO
