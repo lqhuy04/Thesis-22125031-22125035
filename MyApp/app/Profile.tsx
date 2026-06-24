@@ -21,6 +21,7 @@ import {
   UserProfile,
 } from "@/helpers/AuthenticationHelper";
 import { Language, useLocalization } from "@/hooks/LocalizationContext";
+import { resetOnboarding } from "@/helpers/onboarding";
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
@@ -155,7 +156,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
-  const { toggleTheme, isDark } = useTheme();
+  const { toggleTheme, isDark, resetTheme } = useTheme();
   const { language, setLanguage, t } = useLocalization();
   const [showLangSheet, setShowLangSheet] = useState(false);
 
@@ -467,6 +468,10 @@ const Profile = () => {
                 }}
                 onPress={async () => {
                   await logOut();
+                  // Đưa Onboarding, theme, lang về mặc định
+                  await resetOnboarding();
+                  await resetTheme();
+                  await setLanguage("vi");
                   setConfirmLogout(false);
                   router.replace("/Authentication");
                 }}

@@ -87,7 +87,7 @@ export default function Onboarding() {
         onPress={finish}
         hitSlop={12}
       >
-        <Text style={[styles.skipText, { color: theme.text.secondary }]}>
+        <Text style={[styles.skipText, { color: theme.text.primary + "88" }]}>
           {t("ui.skip")}
         </Text>
       </Pressable>
@@ -114,7 +114,9 @@ export default function Onboarding() {
             <Text style={[styles.title, { color: theme.text.primary }]}>
               {t(item.titleKey)}
             </Text>
-            <Text style={[styles.description, { color: theme.text.secondary }]}>
+            <Text
+              style={[styles.description, { color: theme.text.primary + "88" }]}
+            >
               {t(item.descKey)}
             </Text>
           </View>

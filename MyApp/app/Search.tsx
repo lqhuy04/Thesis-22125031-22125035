@@ -244,12 +244,17 @@ const Search = () => {
   const [searchResults, setSearchResults] = useState<SearchStockItem[]>([]);
   const [searchHistory, setSearchHistory] = useState<SearchHistoryItem[]>([]);
 
+  // Khoá điều hướng để tránh push nhiều trang Detail khi bấm nhanh nhiều lần
+  const isNavigatingRef = useRef(false);
+
   const showHistory = useMemo(() => {
     return searchResults.length === 0 && !text;
   }, [searchResults.length, text]);
 
   useFocusEffect(
     useCallback(() => {
+      // Mở khoá điều hướng mỗi khi màn hình được focus lại (vd: quay về từ Detail)
+      isNavigatingRef.current = false;
       setHistoryLoading(true);
       getSearchHistory().then((history) => {
         setSearchHistory(history);
@@ -260,16 +265,42 @@ const Search = () => {
 
   const distributedHistories = chunkArray(searchHistory, 3);
 
-  const onSearch = () => {
+  const onSearch = useCallback((keyword: string) => {
+    const query = keyword.trim();
+    if (query === "") {
+      setSearchResults([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    searchStocks(text).then((results) => {
+    searchStocks(query).then((results) => {
       setSearchResults(results);
       setLoading(false);
     });
-  };
+  }, []);
+
+  // Vừa gõ vừa search: debounce 400ms sau lần gõ cuối mới gọi API
+  useEffect(() => {
+    if (text.trim() === "") {
+      setSearchResults([]);
+      setLoading(false);
+      return;
+    }
+
+    const handler = setTimeout(() => {
+      onSearch(text);
+    }, 400);
+
+    return () => clearTimeout(handler);
+  }, [text, onSearch]);
 
   const goToStock = useCallback(
     async (symbol: string) => {
+      // Chỉ cho phép điều hướng một lần; bấm trùng sẽ bị bỏ qua
+      if (isNavigatingRef.current) return;
+      isNavigatingRef.current = true;
+
       await saveSearchHistory(symbol);
       if (returnTo === "BuyStock") {
         // Quay lại trang mua với mã mới thay vì mở trang Detail.
@@ -314,11 +345,8 @@ const Search = () => {
         <View style={{ flex: 1 }}>
           <SearchBar
             value={text}
-            onChange={(val) => {
-              setText(val);
-              if (val === "") setSearchResults([]);
-            }}
-            onSearchPress={onSearch}
+            onChange={setText}
+            onSearchPress={() => onSearch(text)}
             autoFocus={true}
           />
         </View>

@@ -27,7 +27,7 @@ import { Text } from "@/components/ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
-import ScreenHeader from "@/components/ui/ScreenHeader";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -644,6 +644,7 @@ const WatchListStock = () => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<WatchItem[]>([]);
+  const insets = useSafeAreaInsets();
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -693,9 +694,15 @@ const WatchListStock = () => {
       : theme.base.error;
 
   return (
-    <View style={[styles.safe, { backgroundColor: theme.background.surface }]}>
-      <ScreenHeader title={t("watchList.screenTitle")} />
-
+    <View
+      style={[
+        styles.safe,
+        {
+          backgroundColor: theme.background.surface,
+          marginTop: insets.top,
+        },
+      ]}
+    >
       {loading ? (
         <WatchListSkeleton />
       ) : (
@@ -767,7 +774,7 @@ export default WatchListStock;
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  scroll: { gap: 12, marginHorizontal: 12, marginTop: 12 },
+  scroll: { gap: 12, marginHorizontal: 12 },
 
   summaryRow: { flexDirection: "row", gap: 10, marginTop: 4 },
   summaryCard: {

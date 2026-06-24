@@ -93,8 +93,7 @@ export default {
     deleteStockConfirm:
       "Bạn có chắc muốn xoá {symbol} khỏi danh sách? Toàn bộ lịch sử mua sẽ bị xoá.",
     deleteHistory: "Xoá lịch sử mua",
-    deleteHistoryConfirm:
-      "Bạn có chắc muốn xoá lần mua {amount} ngày {date}?",
+    deleteHistoryConfirm: "Bạn có chắc muốn xoá lần mua {amount} ngày {date}?",
     cancel: "Huỷ",
     delete: "Xoá",
   },
@@ -490,7 +489,7 @@ export default {
     searchResult: "Kết quả tìm kiếm",
   },
   common: {
-    searchPlaceholder: "Tìm kiếm theo mã chứng khoán, tên công ty...",
+    searchPlaceholder: "Nhập mã chứng khoán, tên công ty...",
     cancel: "Huỷ",
     searchHistory: "Lịch sử tìm kiếm",
   },

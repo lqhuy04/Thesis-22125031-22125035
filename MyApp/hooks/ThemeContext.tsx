@@ -7,6 +7,7 @@ const THEME_KEY = "app_theme";
 type ThemeContextType = {
   theme: Theme;
   toggleTheme: () => void;
+  resetTheme: () => void;
   isDark: boolean;
 };
 
@@ -32,6 +33,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
     await SecureStore.setItemAsync(THEME_KEY, next ? "dark" : "light");
   };
 
+  // Đưa theme về mặc định (light)
+  const resetTheme = async () => {
+    setIsDark(false);
+    await SecureStore.setItemAsync(THEME_KEY, "light");
+  };
+
   if (!loaded) return null; // tránh flash theme sai
 
   return (
@@ -40,6 +47,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
         isDark,
         theme: isDark ? darkTheme : lightTheme,
         toggleTheme,
+        resetTheme,
       }}
     >
       {children}
