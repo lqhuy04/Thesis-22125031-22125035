@@ -5,14 +5,19 @@ import {
   Image,
   FlatList,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
-import { getIndustryMovement } from "@/helpers/MarketHelpers";
+import { getAllStocks, getIndustryMovement } from "@/helpers/MarketHelpers";
 import { CurrentPriceData } from "@/helpers/DetailHelpers";
 import { useLocalSearchParams } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
+
+// Sentinel value cho tab "Tất cả" (không phải tên ngành thật)
+export const ALL_VALUE = "__all__";
+const PAGE_SIZE = 20;
 
 // --- Skeleton Item ---
 const SkeletonItem = ({ theme }: { theme: any }) => {
@@ -111,6 +116,7 @@ const IndustryMovement = () => {
 
   const categories = useMemo(
     () => [
+      { label: t("home.industryAll"), value: ALL_VALUE },
       { label: t("home.industryRealEstate"), value: "Bất động sản" },
       { label: t("home.industryBanking"), value: "Ngân hàng" },
       { label: t("home.industryOilGas"), value: "Dầu khí" },
@@ -133,15 +139,21 @@ const IndustryMovement = () => {
   const cache = useRef<Record<string, CurrentPriceData[]>>({});
   const categoryListRef = useRef<FlatList>(null);
 
+  // Trạng thái phân trang riêng cho tab "Tất cả"
+  const allPageRef = useRef<number>(1);
+  const allTotalPagesRef = useRef<number>(1);
+
   const [data, setData] = useState<CurrentPriceData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [chosenIndex, setChosenIndex] = useState<number>(initialIndex);
 
   useEffect(() => {
-    if (initialIndex > 0) {
+    // FlatList chỉ chứa các industry (không có tab "Tất cả") → lệch index 1
+    if (initialIndex > 1) {
       setTimeout(() => {
         categoryListRef.current?.scrollToIndex({
-          index: initialIndex,
+          index: initialIndex - 1,
           animated: false,
           viewPosition: 0.5,
         });
@@ -160,6 +172,22 @@ const IndustryMovement = () => {
     setLoading(true);
     setData([]);
 
+    if (key === ALL_VALUE) {
+      allPageRef.current = 1;
+      allTotalPagesRef.current = 1;
+
+      getAllStocks(1, PAGE_SIZE).then((result) => {
+        if (result.status) {
+          cache.current[key] = result.data;
+          allPageRef.current = result.page;
+          allTotalPagesRef.current = result.totalPages;
+          setData(result.data);
+        }
+        setLoading(false);
+      });
+      return;
+    }
+
     getIndustryMovement(key).then((result) => {
       if (result?.status) {
         cache.current[key] = result.data;
@@ -169,14 +197,69 @@ const IndustryMovement = () => {
     });
   }, [categories, chosenIndex]);
 
-  const handleTabPress = (index: number) => {
-    setChosenIndex(index);
-    categoryListRef.current?.scrollToIndex({
-      index,
-      animated: true,
-      viewPosition: 0.5,
+  // Kéo xuống hết trang → load thêm page tiếp theo (chỉ cho tab "Tất cả")
+  const handleLoadMore = () => {
+    if (categories[chosenIndex].value !== ALL_VALUE) return;
+    if (loading || loadingMore) return;
+    if (allPageRef.current >= allTotalPagesRef.current) return;
+
+    const nextPage = allPageRef.current + 1;
+    setLoadingMore(true);
+
+    getAllStocks(nextPage, PAGE_SIZE).then((result) => {
+      if (result.status && result.data.length > 0) {
+        allPageRef.current = result.page;
+        allTotalPagesRef.current = result.totalPages;
+        setData((prev) => {
+          const merged = [...prev, ...result.data];
+          cache.current[ALL_VALUE] = merged;
+          return merged;
+        });
+      }
+      setLoadingMore(false);
     });
   };
+
+  const handleTabPress = (index: number) => {
+    setChosenIndex(index);
+    // Chỉ scroll FlatList cho các tab industry (index >= 1); tab "Tất cả" cố định
+    if (index > 0) {
+      categoryListRef.current?.scrollToIndex({
+        index: index - 1,
+        animated: true,
+        viewPosition: 0.5,
+      });
+    }
+  };
+
+  const renderTabButton = (
+    item: { label: string; value: string },
+    index: number,
+  ) => (
+    <TouchableOpacity
+      style={{
+        backgroundColor:
+          chosenIndex === index ? theme.base.primary : theme.border.default,
+        paddingHorizontal: 12,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 12,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      onPress={() => handleTabPress(index)}
+    >
+      <Text
+        typography="labelLarge"
+        color={
+          chosenIndex === index ? theme.text.onPrimary : theme.text.primary
+        }
+      >
+        {" "}
+        {item.label}{" "}
+      </Text>
+    </TouchableOpacity>
+  );
 
   const SKELETON_COUNT = 8;
 
@@ -185,50 +268,45 @@ const IndustryMovement = () => {
       <ScreenHeader title={categories[chosenIndex].label} />
 
       {/* Category tabs */}
-      <FlatList
-        ref={categoryListRef}
-        data={categories}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(_, index) => index.toString()}
-        style={{ backgroundColor: theme.background.bg, maxHeight: 48 }}
-        contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
-        getItemLayout={(_, index) => ({
-          length: 120,
-          offset: 120 * index,
-          index,
-        })}
-        renderItem={({ item, index }) => (
-          <TouchableOpacity
-            style={{
-              backgroundColor:
-                chosenIndex === index
-                  ? theme.base.primary + "20"
-                  : theme.border.default,
-              borderWidth: 2,
-              borderColor:
-                chosenIndex === index
-                  ? theme.base.primary + "40"
-                  : theme.border.default,
-              paddingVertical: 4,
-              paddingHorizontal: 6,
-              borderRadius: 16,
-              marginRight: 8,
-            }}
-            onPress={() => handleTabPress(index)}
-          >
-            <Text
-              typography="labelLarge"
-              color={
-                chosenIndex === index ? theme.base.primary : theme.text.primary
-              }
-            >
-              {" "}
-              {item.label}{" "}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
+      <View
+        style={{
+          backgroundColor: theme.background.bg,
+          flexDirection: "row",
+          alignItems: "center",
+          maxHeight: 48,
+          paddingLeft: 12,
+          paddingVertical: 8,
+        }}
+      >
+        {/* Tab "Tất cả" cố định */}
+        {renderTabButton(categories[0], 0)}
+
+        {/* Divider dọc */}
+        <View
+          style={{
+            width: 1,
+            height: 24,
+            backgroundColor: theme.border.default,
+            marginRight: 12,
+          }}
+        />
+
+        {/* Các tab industry có thể scroll */}
+        <FlatList
+          ref={categoryListRef}
+          data={categories.slice(1)}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(_, index) => (index + 1).toString()}
+          style={{ flex: 1 }}
+          getItemLayout={(_, index) => ({
+            length: 120,
+            offset: 120 * index,
+            index,
+          })}
+          renderItem={({ item, index }) => renderTabButton(item, index + 1)}
+        />
+      </View>
 
       {/* List */}
       {loading ? (
@@ -257,6 +335,16 @@ const IndustryMovement = () => {
             flex: 1,
           }}
           keyExtractor={(_, index) => index.toString()}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={{ paddingVertical: 16 }}>
+                <ActivityIndicator color={theme.base.primary} />
+              </View>
+            ) : null
+          }
+          showsVerticalScrollIndicator={false}
           renderItem={({ item, index }) => {
             const currentPrice = item.CurrentPrice;
             const priceChange = item.PriceChange;

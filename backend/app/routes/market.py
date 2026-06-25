@@ -25,6 +25,37 @@ def get_all_symbols():
         "result": True
     }
 
+@router.get("/all-stocks", response_model=Any)
+def get_all_stocks(
+    page: int = Query(1, ge=1, description="Page number (1-based)"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page (default 20)"),
+):
+    """
+    📋 Get paginated list of ALL stocks with movement data
+
+    Each item has the same fields as the industry-movement endpoint
+    (stock_id, symbol, company_name, logo, exchange, PriceChange, PerPriceChange,
+    CeilingPrice, FloorPrice, RefPrice, CurrentPrice, TotalMatchVol, TotalMatchVal),
+    sorted by TotalMatchVal DESC.
+
+    **Example:** `/api/all-stocks?page=1&page_size=20`
+    """
+    request_id = str(uuid.uuid4())
+    payload = MarketService.get_all_stocks_movement(page=page, page_size=page_size)
+
+    has_data = len(payload.get("items", [])) > 0
+    return {
+        "data": payload.get("items", []),
+        "page": payload.get("page", page),
+        "pageSize": payload.get("page_size", page_size),
+        "total": payload.get("total", 0),
+        "totalPages": payload.get("total_pages", 0),
+        "errorCode": 0 if has_data else 500001,
+        "errorDesc": "" if has_data else "No stock data found",
+        "requestId": request_id,
+        "result": has_data,
+    }
+
 @router.get("/search/{symbol}", response_model=Any)
 def search_stock_by_symbol(
     symbol: str,

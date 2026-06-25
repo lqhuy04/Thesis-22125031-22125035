@@ -219,6 +219,47 @@ export const getIndustryMovement = async (
   }
 };
 
+export const getAllStocks = async (
+  page: number = 1,
+  pageSize: number = 20,
+): Promise<{
+  status: boolean;
+  data: CurrentPriceData[];
+  page: number;
+  totalPages: number;
+}> => {
+  try {
+    const result = await sendMessage(
+      `api/all-stocks?page=${page}&page_size=${pageSize}`,
+    );
+
+    const { errorCode, data, page: resPage, totalPages } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: data as CurrentPriceData[],
+        page: resPage ?? page,
+        totalPages: totalPages ?? 0,
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+      page,
+      totalPages: 0,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+      page,
+      totalPages: 0,
+    };
+  }
+};
+
 export type TodayHighlight = CurrentPriceData & {
   news: New[];
 };

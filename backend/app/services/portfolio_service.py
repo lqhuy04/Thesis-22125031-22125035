@@ -76,7 +76,7 @@ class PortfolioService:
                 try:
                     profile_result = (
                         supabase.table("BI_Profile")
-                        .select("stock_id, symbol, company_name, exchange")
+                        .select("stock_id, symbol, company_name, exchange, logo")
                         .in_("stock_id", stock_ids)
                         .execute()
                     )
@@ -123,6 +123,7 @@ class PortfolioService:
                     "stock_id": sid,
                     "symbol": symbol,
                     "company_name": profile.get("company_name"),
+                    "logo": profile.get("logo"),
                     "exchange": profile.get("exchange"),
                     "PriceChange": price_change,
                     "PerPriceChange": per_price_change,

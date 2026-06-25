@@ -439,6 +439,7 @@ export default {
     newsTitleBank: "Banking",
     newsTitleRealEstate: "Real Estate",
     industryMovement: "Industry Sector Movement",
+    industryAll: "All",
     industryRealEstate: "Real Estate",
     industryBanking: "Banking",
     industryOilGas: "Oil & Gas",
@@ -474,6 +475,9 @@ export default {
     logoutConfirm: "Are you sure you want to log out of your account?",
     favoriteList: "Watchlist",
     indayChange: "Intraday change",
+    emptyFavoriteTitle: "You're not following any tickers yet",
+    emptyFavoriteDesc: "Tickers you're interested in will be saved here.",
+    viewAllStocks: "View all tickers",
   },
   market: {
     tabMarket: "Market",

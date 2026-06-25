@@ -420,7 +420,7 @@ export default {
   },
   home: {
     asset: "Tài sản ròng",
-    yourInvestment: "Khoản đầu tư của bạn đang: ",
+    yourInvestment: "Khoản đầu tư của bạn: ",
     marketToday: "Thị trường hôm nay",
     millionShares: "triệu cổ phiếu",
     ticker: "mã",
@@ -437,6 +437,7 @@ export default {
     newsTitleBank: "Ngân hàng",
     newsTitleRealEstate: "Bất động sản",
     industryMovement: "Diễn biến nhóm ngành",
+    industryAll: "Tất cả",
     industryRealEstate: "Bất động sản",
     industryBanking: "Ngân hàng",
     industryOilGas: "Dầu khí",
@@ -472,6 +473,9 @@ export default {
     logoutConfirm: "Bạn có chắc muốn đăng xuất khỏi tài khoản không?",
     favoriteList: "Danh mục theo dõi",
     indayChange: "Thay đổi trong ngày",
+    emptyFavoriteTitle: "Hiện bạn đang chưa theo dõi mã nào",
+    emptyFavoriteDesc: "Các mã bạn quan tâm sẽ được lưu trữ tại đây.",
+    viewAllStocks: "Xem tất cả mã",
   },
   market: {
     tabMarket: "Thị trường",

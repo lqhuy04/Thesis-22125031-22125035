@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   TouchableOpacity,
@@ -71,21 +71,27 @@ const Tabs = () => {
 
   const indicatorAnim = useRef(new Animated.Value(0)).current;
 
-  const animateTo = (index: number) => {
-    Animated.spring(indicatorAnim, {
-      toValue: index,
-      useNativeDriver: true,
-      tension: 80,
-      friction: 12,
-    }).start();
-  };
+  const animateTo = useCallback(
+    (index: number) => {
+      Animated.spring(indicatorAnim, {
+        toValue: index,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 12,
+      }).start();
+    },
+    [indicatorAnim],
+  );
 
-  const handleTabPress = (index: number) => {
-    pagerRef.current?.setPage(index);
-    setActiveIndex(index);
-    setVisitedTabs((prev) => new Set(prev).add(index));
-    animateTo(index);
-  };
+  const handleTabPress = useCallback(
+    (index: number) => {
+      pagerRef.current?.setPage(index);
+      setActiveIndex(index);
+      setVisitedTabs((prev) => new Set(prev).add(index));
+      animateTo(index);
+    },
+    [animateTo],
+  );
 
   useEffect(() => {
     const handler = (index: number) => handleTabPress(index);
@@ -93,7 +99,7 @@ const Tabs = () => {
     return () => {
       tabEvents.off(SWITCH_TAB_EVENT, handler);
     };
-  }, []);
+  }, [handleTabPress]);
 
   const translateX = indicatorAnim.interpolate({
     inputRange: TABS.map((_, i) => i),
@@ -128,8 +134,8 @@ const Tabs = () => {
         style={[
           styles.tabBarWrapper,
           {
-            height: TAB_BAR_HEIGHT + insets.bottom,
-            paddingBottom: insets.bottom,
+            height: TAB_BAR_HEIGHT + insets.bottom + 4,
+            paddingBottom: insets.bottom + 4,
             backgroundColor: theme.background.bg,
             zIndex: 1,
           },
@@ -190,7 +196,7 @@ const Tabs = () => {
             height: 60,
             borderRadius: 30,
             backgroundColor: theme.background.bg,
-            marginBottom: -2,
+            marginBottom: 0,
           }}
         >
           <TouchableOpacity
@@ -221,6 +227,7 @@ const Tabs = () => {
             backgroundColor: theme.base.primary,
             justifyContent: "center",
             alignItems: "center",
+            marginBottom: 4,
           }}
         >
           <Text typography="bodySmall" color={theme.text.onPrimary}>

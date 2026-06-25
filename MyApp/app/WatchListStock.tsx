@@ -15,6 +15,7 @@ import React, {
 import {
   ActivityIndicator,
   Animated,
+  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -28,6 +29,7 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import SimpleLineIcons from "@expo/vector-icons/SimpleLineIcons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -168,7 +170,13 @@ const SkeletonStockCard = () => {
     >
       {/* Header */}
       <View style={styles.stockHeader}>
-        <View style={{ gap: 6 }}>
+        <SkeletonBox
+          width={48}
+          height={48}
+          borderRadius={12}
+          style={{ marginRight: 12 }}
+        />
+        <View style={{ gap: 6, flex: 1 }}>
           <SkeletonBox width={60} height={18} borderRadius={6} />
           <SkeletonBox width={120} height={12} borderRadius={6} />
         </View>
@@ -370,6 +378,7 @@ const StockCard = ({
   const [expanded, setExpanded] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const isNavigatingRef = useRef(false);
 
   const gain = pnl(item);
   const pct = pnlPct(item);
@@ -397,6 +406,17 @@ const StockCard = ({
     }
   };
 
+  const goToStock = useCallback(async (symbol: string) => {
+    // Chỉ cho phép điều hướng một lần; bấm trùng sẽ bị bỏ qua
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+
+    router.push({
+      pathname: "/Detail",
+      params: { data: symbol },
+    });
+  }, []);
+
   const confirmParts = t("watchList.deleteStockConfirm").split("{symbol}");
 
   return (
@@ -409,7 +429,14 @@ const StockCard = ({
         },
       ]}
     >
-      <View style={styles.stockHeader}>
+      <TouchableOpacity
+        style={styles.stockHeader}
+        onPress={() => goToStock(item.symbol)}
+      >
+        <Image
+          source={{ uri: item.logo }}
+          style={{ width: 48, height: 48, borderRadius: 12, marginRight: 12 }}
+        />
         <View style={styles.stockTitleGroup}>
           <Text typography="titleLarge" color={theme.text.primary}>
             {item.symbol}
@@ -440,7 +467,7 @@ const StockCard = ({
             {pct.toFixed(2)}%
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
       <View style={[styles.metaRow, { borderTopColor: theme.border.default }]}>
         {[
@@ -699,7 +726,7 @@ const WatchListStock = () => {
         styles.safe,
         {
           backgroundColor: theme.background.surface,
-          marginTop: insets.top,
+          paddingTop: insets.top,
         },
       ]}
     >
@@ -788,11 +815,10 @@ const styles = StyleSheet.create({
   stockCard: { borderRadius: 14, borderWidth: 0.5, padding: 14 },
   stockHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: 12,
   },
-  stockTitleGroup: { gap: 2 },
+  stockTitleGroup: { gap: 2, flex: 1 },
   pnlBox: { alignItems: "flex-end", gap: 2 },
   textRight: { textAlign: "right" },
   metaRow: {

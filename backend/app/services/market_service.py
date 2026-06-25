@@ -923,7 +923,7 @@ class MarketService:
                     "TotalMatchVal": MarketService._to_float(price.get("total_match_val")),
                 })
 
-            items.sort(key=lambda x: x.get("TotalMatchVal", 0.0), reverse=True)
+            items.sort(key=lambda x: x.get("symbol", ""))
 
             if limit is not None:
                 limit = max(limit, 1)
@@ -934,6 +934,105 @@ class MarketService:
             print(f"Error fetching industry stocks movement for {industry}: {e}")
             return {"items": []}
         
+    @staticmethod
+    def get_all_stocks_movement(
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Dict[str, Any]:
+        """
+        Get paginated movement list for ALL stocks, sorted by TotalMatchVal DESC.
+        Each item has the same fields as get_industry_stocks_movement.
+        Data source is BI_Profile joined with Current_Stock_Price.
+        """
+        try:
+            page = max(page, 1)
+            page_size = max(page_size, 1)
+
+            profiles = MarketService._fetch_all_rows(
+                "BI_Profile",
+                "stock_id, symbol, company_name, exchange, logo",
+            )
+            profiles = [
+                p for p in profiles
+                if p.get("symbol") and len(str(p.get("symbol"))) <= 3
+            ]
+
+            if not profiles:
+                return {
+                    "items": [],
+                    "page": page,
+                    "page_size": page_size,
+                    "total": 0,
+                    "total_pages": 0,
+                }
+
+            profile_by_symbol: Dict[str, Dict[str, Any]] = {
+                str(p.get("symbol", "")).upper(): p for p in profiles
+                if p.get("symbol")
+            }
+            symbols = list(profile_by_symbol.keys())
+
+            prices: List[Dict[str, Any]] = []
+            for symbol_chunk in MarketService._chunked(symbols, chunk_size=100):
+                price_result = (
+                    supabase.table("Current_Stock_Price")
+                    .select(
+                        "symbol, price_change, per_price_change, ceiling_price, floor_price, "
+                        "ref_price, current_price, total_match_vol, total_match_val"
+                    )
+                    .in_("symbol", symbol_chunk)
+                    .execute()
+                )
+                if price_result.data:
+                    prices.extend(price_result.data)
+
+            items: List[Dict[str, Any]] = []
+            for price in prices:
+                symbol = str(price.get("symbol", "")).upper()
+                profile = profile_by_symbol.get(symbol)
+                if not profile:
+                    continue
+
+                items.append({
+                    "stock_id": profile.get("stock_id") or "",
+                    "symbol": symbol,
+                    "company_name": profile.get("company_name") or "",
+                    "logo": profile.get("logo") or "",
+                    "exchange": profile.get("exchange") or "",
+                    "PriceChange": MarketService._to_float(price.get("price_change")),
+                    "PerPriceChange": MarketService._to_float(price.get("per_price_change")),
+                    "CeilingPrice": MarketService._to_float(price.get("ceiling_price")),
+                    "FloorPrice": MarketService._to_float(price.get("floor_price")),
+                    "RefPrice": MarketService._to_float(price.get("ref_price")),
+                    "CurrentPrice": MarketService._to_float(price.get("current_price")),
+                    "TotalMatchVol": MarketService._to_float(price.get("total_match_vol")),
+                    "TotalMatchVal": MarketService._to_float(price.get("total_match_val")),
+                })
+
+            items.sort(key=lambda x: x.get("symbol", ""))
+
+            total = len(items)
+            total_pages = (total + page_size - 1) // page_size
+            start = (page - 1) * page_size
+            end = start + page_size
+
+            return {
+                "items": items[start:end],
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "total_pages": total_pages,
+            }
+        except Exception as e:
+            print(f"Error fetching all stocks movement: {e}")
+            return {
+                "items": [],
+                "page": page,
+                "page_size": page_size,
+                "total": 0,
+                "total_pages": 0,
+            }
+
     @staticmethod
     def get_market_index(index_id: str) -> Dict[str, Any]:
         try:

@@ -18,6 +18,8 @@ import { Text } from "@/components/ui/Text";
 import { router, useFocusEffect } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import Entypo from "@expo/vector-icons/Entypo";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { ALL_VALUE } from "@/app/IndustryMovement";
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
@@ -171,6 +173,13 @@ const WatchlistSection = () => {
     shimmer.start();
     return () => shimmer.stop();
   }, [animatedOpacity]);
+
+  const goToAllStocks = useCallback(() => {
+    router.push({
+      pathname: "/IndustryMovement",
+      params: { industry: ALL_VALUE },
+    });
+  }, []);
 
   const fetchFavorites = useCallback(async () => {
     const res = await getFavoritelist();
@@ -370,72 +379,133 @@ const WatchlistSection = () => {
           >
             {t("profile.favoriteList")}
           </Text>
-          <View
-            style={{
-              borderRadius: 12,
-              backgroundColor: theme.background.bg,
-              paddingBottom: 12,
-            }}
-          >
+
+          {sortedFavorites.length === 0 ? (
             <View
               style={{
-                flexDirection: "row",
-                margin: 12,
-                alignItems: "center",
+                borderRadius: 12,
+                backgroundColor: theme.background.bg,
+                padding: 16,
               }}
             >
-              <Text
-                typography="labelLarge"
-                color={theme.text.primary}
-                style={{ flex: 1 }}
-              >
-                {t("home.tickerUpper")}
-              </Text>
-
-              <TouchableOpacity
-                onPress={() =>
-                  setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
-                }
-                style={{ flexDirection: "row", alignItems: "center" }}
-              >
-                <Text typography="labelLarge" color={theme.base.primary}>
-                  {t("profile.indayChange")}
-                </Text>
-                <View style={{ marginLeft: 4, alignItems: "center" }}>
-                  <Entypo
-                    name="chevron-small-up"
-                    size={16}
-                    color={
-                      sortOrder === "asc"
-                        ? theme.base.primary
-                        : theme.text.primary
-                    }
-                    style={{ marginBottom: -2 }}
-                  />
-                  <Entypo
-                    name="chevron-small-down"
-                    size={16}
-                    color={
-                      sortOrder === "desc"
-                        ? theme.base.primary
-                        : theme.text.primary
-                    }
-                    style={{ marginTop: -2 }}
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <View
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 12,
+                    backgroundColor: theme.base.primary + "14",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 12,
+                  }}
+                >
+                  <Ionicons
+                    name="file-tray-outline"
+                    size={28}
+                    color={theme.base.primary}
                   />
                 </View>
-              </TouchableOpacity>
-            </View>
 
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text typography="titleMedium" color={theme.text.primary}>
+                    {t("profile.emptyFavoriteTitle")}
+                  </Text>
+                  <Text
+                    typography="bodyMedium"
+                    color={theme.text.primary + "80"}
+                  >
+                    {t("profile.emptyFavoriteDesc")}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ alignItems: "flex-end", marginTop: 16 }}>
+                <TouchableOpacity
+                  onPress={goToAllStocks}
+                  style={{
+                    backgroundColor: theme.base.primary,
+                    borderRadius: 20,
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                  }}
+                >
+                  <Text typography="labelLarge" color={theme.text.onPrimary}>
+                    {t("profile.viewAllStocks")}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
             <View
               style={{
-                width: "100%",
-                height: 1,
-                backgroundColor: theme.border.default,
+                borderRadius: 12,
+                backgroundColor: theme.background.bg,
+                paddingBottom: 12,
               }}
-            />
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  margin: 12,
+                  alignItems: "center",
+                }}
+              >
+                <Text
+                  typography="labelLarge"
+                  color={theme.text.primary}
+                  style={{ flex: 1 }}
+                >
+                  {t("home.tickerUpper")}
+                </Text>
 
-            {sortedFavorites.map((item, index) => renderItem({ item, index }))}
-          </View>
+                <TouchableOpacity
+                  onPress={() =>
+                    setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
+                  }
+                  style={{ flexDirection: "row", alignItems: "center" }}
+                >
+                  <Text typography="labelLarge" color={theme.base.primary}>
+                    {t("profile.indayChange")}
+                  </Text>
+                  <View style={{ marginLeft: 4, alignItems: "center" }}>
+                    <Entypo
+                      name="chevron-small-up"
+                      size={16}
+                      color={
+                        sortOrder === "asc"
+                          ? theme.base.primary
+                          : theme.text.primary
+                      }
+                      style={{ marginBottom: -2 }}
+                    />
+                    <Entypo
+                      name="chevron-small-down"
+                      size={16}
+                      color={
+                        sortOrder === "desc"
+                          ? theme.base.primary
+                          : theme.text.primary
+                      }
+                      style={{ marginTop: -2 }}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </View>
+
+              <View
+                style={{
+                  width: "100%",
+                  height: 1,
+                  backgroundColor: theme.border.default,
+                }}
+              />
+
+              {sortedFavorites.map((item, index) =>
+                renderItem({ item, index }),
+              )}
+            </View>
+          )}
         </View>
       )}
     </View>
