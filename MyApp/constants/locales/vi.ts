@@ -77,6 +77,7 @@ export default {
     profitLoss: "Lãi / Lỗ",
     capitalLabel: "Vốn",
     stockList: "Danh sách cổ phiếu",
+    sync: "Đồng bộ",
     empty: "Bạn chưa theo dõi cổ phiếu nào.",
     currentPrice: "Giá hiện tại",
     avgPrice: "Giá vốn TB",

@@ -76,6 +76,7 @@ export default {
     profitLoss: "Profit / Loss",
     capitalLabel: "Cost",
     stockList: "Stock List",
+    sync: "Sync",
     empty: "You are not tracking any stocks yet.",
     currentPrice: "Current Price",
     avgPrice: "Avg. Cost",

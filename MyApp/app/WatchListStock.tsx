@@ -445,13 +445,14 @@ const StockCard = ({
             typography="bodyMedium"
             color={theme.text.primary}
             style={{ opacity: 0.45 }}
+            numberOfLines={1}
           >
             {item.company_name}
           </Text>
         </View>
         <View style={styles.pnlBox}>
           <Text
-            typography="bodyLarge"
+            typography="labelLarge"
             color={gainColor}
             style={styles.textRight}
           >
@@ -762,6 +763,24 @@ const WatchListStock = () => {
             <Text typography="titleLarge" color={theme.text.primary}>
               {t("watchList.stockList")}
             </Text>
+            <TouchableOpacity
+              style={[
+                styles.syncButton,
+                { backgroundColor: theme.base.primary },
+              ]}
+              onPress={() => fetchData(true)}
+              disabled={refreshing}
+            >
+              <SimpleLineIcons
+                name="refresh"
+                size={14}
+                color={theme.text.onPrimary}
+              />
+
+              <Text typography="labelMedium" color={theme.text.onPrimary}>
+                {t("watchList.sync")}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {data.length === 0 ? (
@@ -789,6 +808,8 @@ const WatchListStock = () => {
               />
             ))
           )}
+
+          <View style={{ height: 24 }} />
         </ScrollView>
       )}
     </View>
@@ -818,7 +839,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  stockTitleGroup: { gap: 2, flex: 1 },
+  stockTitleGroup: { gap: 2, flex: 1, marginRight: 12 },
   pnlBox: { alignItems: "flex-end", gap: 2 },
   textRight: { textAlign: "right" },
   metaRow: {
@@ -849,6 +870,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 12,
+  },
+  syncButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
 
   emptyBox: {

@@ -238,10 +238,7 @@ const BuyStock = () => {
                 },
               ]}
             >
-              <Text
-                typography="titleLarge"
-                color={theme.text.primary}
-              >
+              <Text typography="titleLarge" color={theme.text.primary}>
                 {fmtPrice(priceData?.CurrentPrice)}
               </Text>
             </View>
@@ -326,7 +323,7 @@ const BuyStock = () => {
 
             <Text
               typography="bodyMedium"
-              color={theme.text.secondary}
+              color={theme.text.primary + "88"}
               style={{ textAlign: "center" }}
             >
               {result
@@ -335,7 +332,10 @@ const BuyStock = () => {
             </Text>
 
             <TouchableOpacity
-              style={[styles.modalButton, { backgroundColor: theme.base.primary }]}
+              style={[
+                styles.modalButton,
+                { backgroundColor: theme.base.primary },
+              ]}
               activeOpacity={0.8}
               onPress={() => {
                 const ok = result;
