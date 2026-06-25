@@ -2,6 +2,7 @@
 app/services/agentic_service.py
 """
 
+import unicodedata
 from typing import Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -144,6 +145,12 @@ def run_chat(session_id: str, message: str, user_id: str) -> str:
     Lịch sử hội thoại được giữ qua PostgresSaver theo thread_id = session_id.
     Map session ↔ user được lưu ở bảng chat_sessions để liệt kê/đọc lại sau này.
     """
+    # Chuẩn hóa Unicode (NFC) NGAY tại cửa ngõ: tiếng Việt có thể được gõ ở nhiều
+    # dạng tổ hợp dấu (NFC/NFD) khiến LLM tokenize khác nhau → cùng câu hỏi ra kết
+    # quả khác nhau. Chuẩn hóa một lần ở đây để MỌI agent (intent_classifier, qa,
+    # chat, market) đều nhận chuỗi nhất quán.
+    message = unicodedata.normalize("NFC", message).strip() if message else message
+
     # Kiểm tra quyền sở hữu session
     owner = ChatSessionService.get_owner(session_id)
     if owner is None:

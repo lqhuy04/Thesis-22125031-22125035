@@ -14,6 +14,7 @@ Mọi SQL đều đi qua sql_runner.sanitize_sql() — LLM không bao giờ ch�
 """
 
 import json
+import unicodedata
 from datetime import datetime, timezone, timedelta
 
 import pandas as pd
@@ -32,6 +33,32 @@ _VN_TZ = timezone(timedelta(hours=7))
 def _today_str() -> str:
     """Ngày hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD."""
     return datetime.now(_VN_TZ).strftime("%Y-%m-%d")
+
+
+def _normalize_text(text: str) -> str:
+    """Chuẩn hóa Unicode về dạng NFC để câu hỏi có dấu/không dấu được tokenize ổn định.
+
+    Tiếng Việt có thể được gõ ở nhiều dạng tổ hợp dấu khác nhau (NFC vs NFD);
+    chuẩn hóa giúp LLM nhận cùng một chuỗi token cho cùng một câu, giảm việc
+    cùng câu hỏi mà ra kết quả khác nhau.
+    """
+    if not text:
+        return text
+    return unicodedata.normalize("NFC", text).strip()
+
+
+def _fallback_sql_for_symbol(symbol: str) -> str:
+    """Câu SQL mặc định khi đã xác định được mã CK nhưng LLM không sinh SQL.
+
+    Lấy bảng tổng quan cơ bản FA_Summary của mã đó — luôn có dữ liệu để đánh giá,
+    không phụ thuộc vào quyết định bỏ cuộc thiếu ổn định của LLM.
+    """
+    sym = symbol.strip().upper().replace("'", "")
+    return (
+        'SELECT * FROM "FA_Summary" '
+        'WHERE stock_id = (SELECT id FROM "Stock" '
+        f"WHERE stock_symbol = '{sym}') LIMIT 1"
+    )
 
 
 # ─── Prompts ───────────────────────────────────────────────────────────────────
@@ -70,8 +97,20 @@ PHÂN TÍCH KỸ THUẬT (RSI, MACD, KDJ, Bollinger, SMA):
   từ bảng "Stock_Price_1d" của mã đó, ORDER BY trading_time DESC LIMIT 200
   (cần >= 50 nến để tính được; nhớ quy tắc ×1000 ở trên).
 
+⭐ KHI ĐÃ XÁC ĐỊNH ĐƯỢC MÃ CỔ PHIẾU (BẮT BUỘC):
+- Nếu xác định được một mã CK (ghi vào trường symbol) và câu hỏi mang tính ĐÁNH GIÁ
+  định tính (vd "có tiềm năng không", "có nên mua không", "đánh giá", "sức khỏe tài chính",
+  "định giá", "cổ phiếu này thế nào")... thì TUYỆT ĐỐI KHÔNG để sql rỗng.
+  PHẢI sinh truy vấn lấy dữ liệu cơ bản tổng quan:
+    SELECT * FROM "FA_Summary"
+    WHERE stock_id = (SELECT id FROM "Stock" WHERE stock_symbol = 'MÃ') LIMIT 1
+  (có thể bổ sung JOIN/UNION với "FA_Indicator" nếu cần thêm chỉ số định giá).
+- Chỉ đặt sql = "" khi câu hỏi THỰC SỰ nằm ngoài phạm vi dữ liệu (không có mã CK nào,
+  hoặc hỏi thứ không thể suy ra từ schema). Đừng bỏ cuộc chỉ vì câu hỏi mang tính định tính.
+
 NẾU KHÔNG THỂ TRẢ LỜI BẰNG DỮ LIỆU SẴN CÓ:
-- Đặt sql = "" và ghi no_query_reason giải thích ngắn gọn.
+- Đặt sql = "" và ghi no_query_reason giải thích ngắn gọn. (Lưu ý: nếu đã có symbol, hãy
+  ưu tiên sinh SQL FA_Summary như quy tắc ⭐ ở trên thay vì để rỗng.)
 
 NGÔN NGỮ:
 - Phát hiện ngôn ngữ của câu hỏi MỚI NHẤT và ghi vào trường language
@@ -206,7 +245,8 @@ def _synthesize(client, history: list[BaseMessage], user_input: str,
 # ─── Agent function ────────────────────────────────────────────────────────────
 
 def market_agent(state: ChatbotState) -> dict:
-    user_input = state["user_input"]
+    # Cách 3: chuẩn hóa Unicode (NFC) để câu hỏi có dấu/không dấu ổn định khi tokenize.
+    user_input = _normalize_text(state["user_input"])
     history: list[BaseMessage] = state.get("messages", [])
 
     print(f"[Market Agent] >>> Input  : {user_input!r}")
@@ -220,7 +260,14 @@ def market_agent(state: ChatbotState) -> dict:
         print(f"[Market Agent] >>> SQL    : {gen.sql!r}")
         print(f"[Market Agent] >>> TechCalc: {gen.needs_technical_calc} | Symbol: {gen.symbol}")
 
-        # Không thể tạo truy vấn → trả lời lịch sự, không bịa
+        # Cách 1: LLM bỏ cuộc (sql rỗng) nhưng VẪN xác định được mã CK →
+        # tự build query FA_Summary mặc định thay vì từ chối. Quyết định "đã có mã
+        # thì luôn truy vấn được" phải deterministic, không lệ thuộc ý LLM.
+        if not gen.sql.strip() and gen.symbol and gen.symbol.strip():
+            gen.sql = _fallback_sql_for_symbol(gen.symbol)
+            print(f"[Market Agent] >>> Fallback SQL (symbol={gen.symbol}): {gen.sql!r}")
+
+        # Thật sự không thể tạo truy vấn (không có cả mã CK) → trả lời lịch sự, không bịa
         if not gen.sql.strip():
             reason = gen.no_query_reason or "Câu hỏi cần dữ liệu chưa có trong hệ thống."
             print(f"[Market Agent] >>> NoQuery: {reason}")

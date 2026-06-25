@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python -c \"import ast; ast.parse\\(open\\('app/utils/email.py'\\).read\\(\\)\\); ast.parse\\(open\\('app/config.py'\\).read\\(\\)\\); print\\('SYNTAX OK'\\)\")",
       "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/utils/email.py'\\).read\\(\\)\\); ast.parse\\(open\\('app/config.py'\\).read\\(\\)\\); print\\('SYNTAX OK'\\)\")",
-      "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/services/auth_service.py'\\).read\\(\\)\\); print\\('SYNTAX OK'\\)\")"
+      "Bash(python3 -c \"import ast; ast.parse\\(open\\('app/services/auth_service.py'\\).read\\(\\)\\); print\\('SYNTAX OK'\\)\")",
+      "Bash(python -c ' *)"
     ]
   }
 }
