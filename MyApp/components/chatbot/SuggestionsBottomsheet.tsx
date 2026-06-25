@@ -14,6 +14,7 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import Feather from "@expo/vector-icons/Feather";
 import Octicons from "@expo/vector-icons/Octicons";
 import { Text } from "../ui/Text";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -58,6 +59,7 @@ const SuggestionsBottomSheet = ({
 }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
+  const insets = useSafeAreaInsets();
 
   const tabs = tabsProp ?? buildSuggestionTabs(t);
 
@@ -123,7 +125,10 @@ const SuggestionsBottomSheet = ({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: theme.background.bg },
+          {
+            backgroundColor: theme.background.bg,
+            paddingBottom: insets.bottom + 12,
+          },
           { transform: [{ translateY: slideAnim }] },
         ]}
       >
@@ -164,7 +169,9 @@ const SuggestionsBottomSheet = ({
                 >
                   <Text
                     typography="titleMedium"
-                    color={isActive ? theme.base.primary : theme.text.secondary}
+                    color={
+                      isActive ? theme.base.primary : theme.text.primary + "88"
+                    }
                   >
                     {tab.label}
                   </Text>
@@ -217,7 +224,7 @@ const SuggestionsBottomSheet = ({
               <Feather
                 name="chevron-right"
                 size={20}
-                color={theme.text.secondary}
+                color={theme.text.primary + "88"}
               />
             </TouchableOpacity>
           ))}
@@ -239,7 +246,6 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.82,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingBottom: 24,
     paddingTop: 12,
     elevation: 20,
     shadowColor: "#000",

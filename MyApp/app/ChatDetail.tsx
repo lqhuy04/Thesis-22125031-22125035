@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   TextInput,
   KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import Markdown from "react-native-markdown-display";
@@ -22,6 +21,7 @@ import { typography } from "@/constants/typography";
 import type { ChatConversation } from "@/components/chatbot/ChatHistoryBottomsheet";
 import { getChatHistory, sendChatMessage } from "@/helpers/AgenticHelpers";
 import Octicons from "@expo/vector-icons/Octicons";
+import useKeyboardVisible from "@/hooks/KeyboardContext";
 
 interface ChatMessage {
   id: string;
@@ -41,14 +41,38 @@ const TypingIndicator = ({ color }: { color: string }) => {
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(dot1, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.timing(dot2, { toValue: 1, duration: 350, useNativeDriver: true }),
-        Animated.timing(dot3, { toValue: 1, duration: 350, useNativeDriver: true }),
+        Animated.timing(dot1, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dot2, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dot3, {
+          toValue: 1,
+          duration: 350,
+          useNativeDriver: true,
+        }),
         Animated.delay(300),
         Animated.parallel([
-          Animated.timing(dot1, { toValue: 0.3, duration: 200, useNativeDriver: true }),
-          Animated.timing(dot2, { toValue: 0.3, duration: 200, useNativeDriver: true }),
-          Animated.timing(dot3, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+          Animated.timing(dot1, {
+            toValue: 0.3,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot2, {
+            toValue: 0.3,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot3, {
+            toValue: 0.3,
+            duration: 200,
+            useNativeDriver: true,
+          }),
         ]),
       ]),
     );
@@ -77,6 +101,7 @@ const TypingIndicator = ({ color }: { color: string }) => {
 const ChatDetail = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
+  const isKeyboardOpen = useKeyboardVisible(true);
 
   const { data, initialMessage } = useLocalSearchParams() || {};
   const conversation = data
@@ -113,10 +138,7 @@ const ChatDetail = () => {
       {
         id: genId(),
         role: "assistant",
-        content:
-          status && reply
-            ? reply.reply
-            : t("chatbot.errorMessage"),
+        content: status && reply ? reply.reply : t("chatbot.errorMessage"),
       },
     ]);
     setSending(false);
@@ -170,191 +192,188 @@ const ChatDetail = () => {
       angleCenter={{ x: 0.5, y: 0.5 }}
       style={{ flex: 1 }}
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-      <ScreenHeader title={conversation?.title ?? t("chatbot.chatTitle")} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={"padding"}>
+        <ScreenHeader title={conversation?.title ?? t("chatbot.chatTitle")} />
 
-      {loading ? (
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
-          <ActivityIndicator size="large" color={theme.base.primary} />
-        </View>
-      ) : (
-        <ScrollView
-          ref={scrollRef}
-          style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={() =>
-            scrollRef.current?.scrollToEnd({ animated: true })
-          }
-        >
-          {messages.length === 0 ? (
-            <View style={{ paddingTop: 48, alignItems: "center" }}>
-              <Text
-                typography="bodyLarge"
-                color={theme.text.secondary}
-                style={{ textAlign: "center" }}
-              >
-                {t("chatbot.emptyMessage")}
-              </Text>
-            </View>
-          ) : (
-            messages.map((msg) =>
-              msg.role === "user" ? (
-                <View
-                  key={msg.id}
-                  style={{
-                    alignSelf: "flex-end",
-                    maxWidth: "82%",
-                    backgroundColor: theme.base.primary,
-                    borderTopLeftRadius: 16,
-                    borderTopRightRadius: 16,
-                    borderBottomLeftRadius: 16,
-                    borderBottomRightRadius: 4,
-                    paddingHorizontal: 16,
-                    paddingVertical: 12,
-                    marginVertical: 8,
-                  }}
+        {loading ? (
+          <View
+            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+          >
+            <ActivityIndicator size="large" color={theme.base.primary} />
+          </View>
+        ) : (
+          <ScrollView
+            ref={scrollRef}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+            showsVerticalScrollIndicator={false}
+            onContentSizeChange={() =>
+              scrollRef.current?.scrollToEnd({ animated: true })
+            }
+          >
+            {messages.length === 0 ? (
+              <View style={{ paddingTop: 48, alignItems: "center" }}>
+                <Text
+                  typography="bodyLarge"
+                  color={theme.text.secondary}
+                  style={{ textAlign: "center" }}
                 >
-                  <Text typography="bodyLarge" color={theme.text.onPrimary}>
-                    {msg.content}
-                  </Text>
-                </View>
-              ) : (
-                <View key={msg.id} style={{ marginVertical: 8 }}>
-                  <Markdown
+                  {t("chatbot.emptyMessage")}
+                </Text>
+              </View>
+            ) : (
+              messages.map((msg) =>
+                msg.role === "user" ? (
+                  <View
+                    key={msg.id}
                     style={{
-                      body: {
-                        ...typography.bodyLarge,
-                        color: theme.text.primary,
-                      },
-                      strong: {
-                        fontFamily: typography.titleMedium.fontFamily,
-                      },
-                      bullet_list: { marginVertical: 4 },
-                      list_item: { marginVertical: 2 },
+                      alignSelf: "flex-end",
+                      maxWidth: "82%",
+                      backgroundColor: theme.base.primary,
+                      borderTopLeftRadius: 16,
+                      borderTopRightRadius: 16,
+                      borderBottomLeftRadius: 16,
+                      borderBottomRightRadius: 4,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      marginVertical: 8,
                     }}
                   >
-                    {msg.content}
-                  </Markdown>
-
-                  {msg.image ? (
-                    <Image
-                      source={{ uri: msg.image }}
+                    <Text typography="bodyLarge" color={theme.text.onPrimary}>
+                      {msg.content}
+                    </Text>
+                  </View>
+                ) : (
+                  <View key={msg.id} style={{ marginVertical: 8 }}>
+                    <Markdown
                       style={{
-                        width: 160,
-                        height: 160,
-                        alignSelf: "center",
-                        marginTop: 12,
-                        opacity: 0.85,
+                        body: {
+                          ...typography.bodyLarge,
+                          color: theme.text.onPrimary,
+                        },
+                        strong: {
+                          fontFamily: typography.titleMedium.fontFamily,
+                        },
+                        bullet_list: { marginVertical: 4 },
+                        list_item: { marginVertical: 2 },
                       }}
-                      resizeMode="contain"
-                    />
-                  ) : null}
-                </View>
-              ),
-            )
-          )}
+                    >
+                      {msg.content}
+                    </Markdown>
 
-          {sending ? (
-            <View
-              style={{
-                marginVertical: 8,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
+                    {msg.image ? (
+                      <Image
+                        source={{ uri: msg.image }}
+                        style={{
+                          width: 160,
+                          height: 160,
+                          alignSelf: "center",
+                          marginTop: 12,
+                          opacity: 0.85,
+                        }}
+                        resizeMode="contain"
+                      />
+                    ) : null}
+                  </View>
+                ),
+              )
+            )}
+
+            {sending ? (
               <View
                 style={{
-                  width: 36,
-                  height: 36,
-                  backgroundColor: theme.background.bg,
-                  borderRadius: 18,
+                  marginVertical: 8,
+                  flexDirection: "row",
                   alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: 10,
                 }}
               >
-                <Octicons
-                  name="dependabot"
-                  size={22}
-                  color={theme.text.primary}
-                />
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    backgroundColor: theme.background.bg,
+                    borderRadius: 18,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: 10,
+                  }}
+                >
+                  <Octicons
+                    name="dependabot"
+                    size={22}
+                    color={theme.text.primary}
+                  />
+                </View>
+                <TypingIndicator color={theme.text.onPrimary} />
               </View>
-              <TypingIndicator color={theme.text.primary} />
-            </View>
-          ) : null}
-        </ScrollView>
-      )}
+            ) : null}
+          </ScrollView>
+        )}
 
-      {/* Composer: nhập + gửi tin nhắn */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginBottom: 24,
-          paddingHorizontal: 12,
-        }}
-      >
+        {/* Composer: nhập + gửi tin nhắn */}
         <View
           style={{
-            minHeight: 56,
-            backgroundColor: theme.background.bg,
-            borderRadius: 28,
-            flex: 1,
-            borderWidth: 4,
-            borderColor: theme.background.surface,
             flexDirection: "row",
             alignItems: "center",
-            paddingLeft: 12,
-            paddingRight: 4,
+            marginBottom: isKeyboardOpen ? 24 : 0,
+            paddingHorizontal: 12,
           }}
         >
-          <Octicons
-            name="sparkles-fill"
-            size={16}
-            color={theme.text.primary}
-            style={{ marginRight: 8 }}
-          />
-          <TextInput
+          <View
             style={{
-              paddingVertical: 10,
-              flex: 1,
-              color: theme.text.primary,
+              minHeight: 56,
               backgroundColor: theme.background.bg,
-            }}
-            value={input}
-            onChangeText={setInput}
-            autoCapitalize="none"
-            autoFocus
-            multiline
-            returnKeyType="send"
-            placeholder={t("chatbot.placeholder")}
-            placeholderTextColor={theme.text.primary + "88"}
-          />
-          <TouchableOpacity
-            activeOpacity={0.8}
-            disabled={!input.trim()}
-            onPress={() => send(input)}
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
+              borderRadius: 28,
+              flex: 1,
+              borderWidth: 4,
+              borderColor: theme.background.surface,
+              flexDirection: "row",
               alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: input.trim()
-                ? theme.base.primary
-                : theme.background.surface,
+              paddingLeft: 12,
+              paddingRight: 4,
             }}
           >
-            <Feather name="send" size={18} color={theme.text.onPrimary} />
-          </TouchableOpacity>
+            <Octicons
+              name="sparkles-fill"
+              size={16}
+              color={theme.text.primary}
+              style={{ marginRight: 8 }}
+            />
+            <TextInput
+              style={{
+                paddingVertical: 10,
+                flex: 1,
+                color: theme.text.primary,
+                backgroundColor: theme.background.bg,
+              }}
+              value={input}
+              onChangeText={setInput}
+              autoCapitalize="none"
+              autoFocus
+              multiline
+              returnKeyType="send"
+              placeholder={t("chatbot.placeholder")}
+              placeholderTextColor={theme.text.primary + "88"}
+            />
+            <TouchableOpacity
+              activeOpacity={0.8}
+              disabled={!input.trim()}
+              onPress={() => send(input)}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: input.trim()
+                  ? theme.base.primary
+                  : theme.background.surface,
+              }}
+            >
+              <Feather name="send" size={18} color={theme.text.onPrimary} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
       </KeyboardAvoidingView>
     </LinearGradient>
   );

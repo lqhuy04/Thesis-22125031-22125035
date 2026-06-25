@@ -56,7 +56,7 @@ const ModeCard = ({
       styles.modeCard,
       {
         backgroundColor: theme.background.bg,
-        borderColor: selected ? PURPLE_GRADIENT[1] : theme.border.default,
+        borderColor: selected ? theme.base.primary : theme.border.default,
         borderWidth: selected ? 1.5 : 1,
       },
     ]}
@@ -65,25 +65,25 @@ const ModeCard = ({
       <View
         style={[
           styles.radioOuter,
-          { borderColor: selected ? PURPLE_GRADIENT[1] : theme.border.default },
+          { borderColor: selected ? theme.base.primary : theme.border.default },
         ]}
       >
         {selected && (
           <View
-            style={[styles.radioInner, { backgroundColor: PURPLE_GRADIENT[1] }]}
+            style={[styles.radioInner, { backgroundColor: theme.base.primary }]}
           />
         )}
       </View>
       <View style={{ flex: 1 }}>
         <Text
           typography="titleSmall"
-          color={selected ? PURPLE_GRADIENT[0] : theme.text.primary}
+          color={selected ? theme.base.primary : theme.text.primary}
         >
           {title}
         </Text>
         <Text
           typography="bodySmall"
-          color={theme.text.secondary}
+          color={theme.text.primary + "88"}
           style={{ marginTop: 2 }}
         >
           {description}
@@ -337,7 +337,7 @@ const AIAnalysisConfig = () => {
           >
             <Text
               typography="titleSmall"
-              color={theme.text.secondary}
+              color={theme.text.primary + "88"}
               style={{ marginBottom: 12 }}
             >
               {t("aiAnalysis.dataSourceTitle")}
@@ -424,7 +424,7 @@ const AIAnalysisConfig = () => {
           styles.bottomBar,
           {
             paddingBottom: insets.bottom + 12,
-            backgroundColor: theme.background.surface,
+            backgroundColor: theme.background.bg,
           },
         ]}
       >

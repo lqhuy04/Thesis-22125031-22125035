@@ -4,7 +4,6 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
@@ -16,11 +15,13 @@ import Octicons from "@expo/vector-icons/Octicons";
 import { Text } from "@/components/ui/Text";
 import type { ChatConversation } from "@/components/chatbot/ChatHistoryBottomsheet";
 import ScreenHeader from "@/components/ui/ScreenHeader";
+import useKeyboardVisible from "@/hooks/KeyboardContext";
 
 const ChatCompose = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [input, setInput] = useState("");
+  const isKeyboardOpen = useKeyboardVisible(true);
 
   /** Tạo phiên mới (UUID) và điều hướng sang ChatDetail, gửi luôn tin đầu tiên. */
   const startNewConversation = () => {
@@ -53,10 +54,7 @@ const ChatCompose = () => {
       angleCenter={{ x: 0.5, y: 0.5 }}
       style={{ flex: 1 }}
     >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <ScreenHeader title={t("tabs.chatbot")} />
 
         {/* Tiêu đề */}
@@ -88,7 +86,7 @@ const ChatCompose = () => {
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text typography="headlineMedium" color={theme.text.primary}>
+              <Text typography="headlineMedium" color={theme.text.onPrimary}>
                 {t("chatbot.greeting")}
               </Text>
             </View>
@@ -100,7 +98,7 @@ const ChatCompose = () => {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            marginBottom: 24,
+            marginBottom: isKeyboardOpen ? 24 : 0,
             paddingHorizontal: 12,
           }}
         >

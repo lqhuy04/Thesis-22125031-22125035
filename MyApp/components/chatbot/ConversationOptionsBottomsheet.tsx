@@ -13,6 +13,7 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import Feather from "@expo/vector-icons/Feather";
 import { Text } from "../ui/Text";
 import type { ChatConversation } from "./ChatHistoryBottomsheet";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -33,6 +34,7 @@ const ConversationOptionsBottomSheet = ({
 }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
+  const insets = useSafeAreaInsets();
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -68,7 +70,12 @@ const ConversationOptionsBottomSheet = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="none" onShow={openSheet}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onShow={openSheet}
+    >
       {/* Backdrop */}
       <Animated.View
         style={[
@@ -84,7 +91,10 @@ const ConversationOptionsBottomSheet = ({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: theme.background.surface },
+          {
+            backgroundColor: theme.background.surface,
+            paddingBottom: insets.bottom + 12,
+          },
           { transform: [{ translateY: slideAnim }] },
         ]}
       >
@@ -105,11 +115,7 @@ const ConversationOptionsBottomSheet = ({
         {/* Card chứa các tuỳ chọn */}
         <View style={[styles.card, { backgroundColor: theme.background.bg }]}>
           {/* Chia sẻ — sắp ra mắt (disabled) */}
-          <TouchableOpacity
-            disabled
-            activeOpacity={0.7}
-            style={styles.option}
-          >
+          <TouchableOpacity disabled activeOpacity={0.7} style={styles.option}>
             <Feather name="share-2" size={22} color={theme.text.secondary} />
             <Text
               typography="bodyLarge"
@@ -171,7 +177,6 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingBottom: 36,
     paddingTop: 12,
     elevation: 20,
     shadowColor: "#000",

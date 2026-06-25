@@ -111,6 +111,7 @@ export default {
     analysis: "Tóm tắt",
     noData: "Không có dữ liệu phân tích. Vui lòng thử lại.",
     loading: "AI đang phân tích...",
+    analyzing: "Đang phân tích...",
     notAvailable: "Chưa có đề xuất",
     scoreBreakdown: "Phân tích chi tiết",
     newsScore: "Tin tức",

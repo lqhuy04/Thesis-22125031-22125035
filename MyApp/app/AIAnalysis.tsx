@@ -1,14 +1,8 @@
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Animated,
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { Dimensions, Image, ScrollView, StyleSheet, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/Text";
@@ -45,170 +39,37 @@ const SectionTitle = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// ─── Skeleton Primitives ───────────────────────────────────────────────────────
+// ─── Loading Indicator ───────────────────────────────────────────────────────
 
-interface SkeletonBoxProps {
-  width?: number | `${number}%`;
-  height?: number;
-  borderRadius?: number;
-  style?: object;
-  animatedValue: Animated.Value;
-  baseColor: string;
-  highlightColor: string;
-}
-
-const SkeletonBox = ({
-  width = "100%",
-  height = 16,
-  borderRadius = 6,
-  style,
-  animatedValue,
-  baseColor,
-  highlightColor,
-}: SkeletonBoxProps) => {
-  const backgroundColor = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [baseColor, highlightColor],
-  });
-
-  return (
-    <Animated.View
-      style={[{ width, height, borderRadius, backgroundColor }, style]}
-    />
-  );
+const LOADING_GIF = {
+  uri: "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/stock-market.gif",
 };
 
-const AIAnalysisSkeleton = ({
-  cardBg,
-  baseColor,
-  highlightColor,
-  dividerColor,
-  contentPadding,
-}: {
-  cardBg: string;
-  baseColor: string;
-  highlightColor: string;
-  dividerColor: string;
-  contentPadding: number;
-}) => {
-  const animatedValue = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: false,
-        }),
-        Animated.timing(animatedValue, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: false,
-        }),
-      ]),
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [animatedValue]);
-
-  const box = { animatedValue, baseColor, highlightColor };
-
+const AIAnalysisLoading = () => {
+  const { theme } = useTheme();
+  const { t } = useLocalization();
   return (
-    <ScrollView
-      style={{ flex: 1 }}
-      contentContainerStyle={{ padding: 12, paddingBottom: contentPadding }}
-      scrollEnabled={false}
-    >
-      {/* ── Symbol + Recommendation ── */}
-      <View style={[styles.card, { backgroundColor: cardBg }]}>
-        <View style={styles.rowBetween}>
-          <View>
-            <SkeletonBox
-              {...box}
-              width={48}
-              height={12}
-              style={{ marginBottom: 8 }}
-            />
-            <SkeletonBox {...box} width={140} height={18} />
-          </View>
-          <SkeletonBox {...box} width={96} height={32} borderRadius={20} />
-        </View>
-
-        {/* Confidence */}
-        <View style={{ marginTop: 16 }}>
-          <View style={styles.rowBetween}>
-            <SkeletonBox {...box} width={88} height={14} />
-            <SkeletonBox {...box} width={44} height={16} />
-          </View>
-          <SkeletonBox
-            {...box}
-            height={8}
-            borderRadius={4}
-            style={{ marginTop: 8 }}
-          />
-        </View>
+    <View style={styles.centered}>
+      <View
+        style={{
+          width: 200,
+          height: 200,
+          borderRadius: 100,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#ffffff",
+        }}
+      >
+        <Image source={LOADING_GIF} style={styles.loadingGif} />
       </View>
-
-      {/* ── Trading Plan ── */}
-      <View style={[styles.card, { backgroundColor: cardBg, marginTop: 12 }]}>
-        <SkeletonBox
-          {...box}
-          width={120}
-          height={18}
-          style={{ marginBottom: 16 }}
-        />
-        {[0, 1, 2, 3].map((i, _, arr) => (
-          <React.Fragment key={i}>
-            <View style={styles.rowBetween}>
-              <SkeletonBox {...box} width="35%" height={14} />
-              <SkeletonBox {...box} width={56} height={16} />
-            </View>
-            {i < arr.length - 1 && (
-              <View
-                style={[styles.divider, { backgroundColor: dividerColor }]}
-              />
-            )}
-          </React.Fragment>
-        ))}
-      </View>
-
-      {/* ── Score Breakdown (Radar) ── */}
-      <View style={[styles.card, { backgroundColor: cardBg, marginTop: 12 }]}>
-        <SkeletonBox
-          {...box}
-          width={140}
-          height={18}
-          style={{ marginBottom: 16 }}
-        />
-        <SkeletonBox
-          {...box}
-          width={200}
-          height={200}
-          borderRadius={100}
-          style={{ alignSelf: "center", marginVertical: 8 }}
-        />
-      </View>
-
-      {/* ── Detailed Analysis ── */}
-      <View style={[styles.card, { backgroundColor: cardBg, marginTop: 12 }]}>
-        <SkeletonBox
-          {...box}
-          width={140}
-          height={18}
-          style={{ marginBottom: 16 }}
-        />
-        {["100%", "100%", "92%", "100%", "78%", "100%", "60%"].map((w, i) => (
-          <SkeletonBox
-            {...box}
-            key={i}
-            width={w as `${number}%`}
-            height={12}
-            style={{ marginBottom: 10 }}
-          />
-        ))}
-      </View>
-    </ScrollView>
+      <Text
+        typography="titleLarge"
+        color={theme.text.primary + "88"}
+        style={{ marginTop: 16, textAlign: "center" }}
+      >
+        {t("aiAnalysis.analyzing")}
+      </Text>
+    </View>
   );
 };
 
@@ -285,13 +146,7 @@ const AIAnalysis = () => {
       <ScreenHeader title={t("aiAnalysis.screenTitle")} />
 
       {isLoading ? (
-        <AIAnalysisSkeleton
-          cardBg={theme.background.bg}
-          baseColor={theme.border.default}
-          highlightColor={theme.background.bg}
-          dividerColor={theme.border.default}
-          contentPadding={insets.bottom + 24}
-        />
+        <AIAnalysisLoading />
       ) : analysis == null ? (
         <View style={styles.centered}>
           <Octicons name="alert" size={32} color={theme.text.primary + "55"} />
@@ -509,6 +364,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 32,
+  },
+  loadingGif: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
   },
   card: {
     borderRadius: 12,

@@ -14,6 +14,7 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import Feather from "@expo/vector-icons/Feather";
 import { Text } from "../ui/Text";
 import ConversationOptionsBottomSheet from "./ConversationOptionsBottomsheet";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -47,6 +48,7 @@ const ChatHistoryBottomSheet = ({
 }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
+  const insets = useSafeAreaInsets();
 
   const [optionsTarget, setOptionsTarget] = useState<ChatConversation | null>(
     null,
@@ -107,7 +109,10 @@ const ChatHistoryBottomSheet = ({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: theme.background.bg },
+          {
+            backgroundColor: theme.background.bg,
+            paddingBottom: insets.bottom + 12,
+          },
           { transform: [{ translateY: slideAnim }] },
         ]}
       >
@@ -236,7 +241,6 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT * 0.82,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingBottom: 36,
     paddingTop: 12,
     elevation: 20,
     shadowColor: "#000",

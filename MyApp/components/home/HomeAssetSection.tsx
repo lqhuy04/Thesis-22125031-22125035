@@ -108,7 +108,7 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
         height: h,
         marginTop: mt,
         borderRadius: 4,
-        backgroundColor: theme.text.primary + "30",
+        backgroundColor: theme.text.onPrimary + "30",
         opacity,
       }}
     />
@@ -128,7 +128,7 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
         activeOpacity={1}
         style={{
           borderRadius: 12,
-          backgroundColor: theme.background.bg + "36",
+          backgroundColor: theme.background.bg + "24",
           borderWidth: 1,
           borderColor: theme.background.bg,
           padding: 24,
@@ -146,25 +146,25 @@ const HomeAssetSection = ({ registerRefresh }: Props) => {
             <View
               style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
             >
-              <Text typography="titleMedium" color={theme.text.primary}>
+              <Text typography="titleMedium" color={theme.text.onPrimary}>
                 {t("home.asset")}
               </Text>
               <Ionicons
                 name="chevron-forward"
                 size={14}
-                color={theme.text.primary}
+                color={theme.text.onPrimary}
               />
             </View>
 
             <Text
               typography="headlineLarge"
               style={{ marginVertical: 8, fontSize: 36, lineHeight: 48 }}
-              color={theme.text.primary}
+              color={theme.text.onPrimary}
             >
               {totalAsset.toLocaleString("vi-VN")} đ
             </Text>
 
-            <Text typography="bodyMedium" color={theme.text.primary}>
+            <Text typography="bodyMedium" color={theme.text.onPrimary}>
               {t("home.yourInvestment")}
               <Text
                 typography="labelLarge"

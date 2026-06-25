@@ -111,6 +111,7 @@ export default {
     analysis: "Summary",
     noData: "No analysis data available. Please try again.",
     loading: "AI is analyzing...",
+    analyzing: "Analyzing...",
     notAvailable: "N/A",
     scoreBreakdown: "Detailed Analysis",
     newsScore: "News",

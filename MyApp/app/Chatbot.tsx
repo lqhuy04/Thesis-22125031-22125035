@@ -186,7 +186,7 @@ const Chatbot = () => {
           flexDirection: "row",
           alignItems: "center",
           marginHorizontal: 12,
-          marginTop: insets.top + 12,
+          marginTop: insets.top + 24,
           marginBottom: 12,
         }}
       >
@@ -208,7 +208,7 @@ const Chatbot = () => {
             flex: 1,
           }}
         >
-          <Text typography="headlineMedium" color={theme.text.primary}>
+          <Text typography="headlineMedium" color={theme.text.onPrimary}>
             {t("chatbot.greeting")}
           </Text>
         </View>
@@ -226,12 +226,12 @@ const Chatbot = () => {
               marginVertical: 12,
             }}
           >
-            <Text typography="titleMedium" color={theme.text.primary}>
+            <Text typography="titleMedium" color={theme.text.onPrimary}>
               {t("chatbot.quickAnalysis")}
             </Text>
 
             <TouchableOpacity onPress={() => router.push("/InvestmentIdeas")}>
-              <Text typography="labelLarge" color={theme.text.primary}>
+              <Text typography="labelLarge" color={theme.text.onPrimary}>
                 {t("chatbot.viewMore")}
               </Text>
             </TouchableOpacity>
@@ -300,17 +300,17 @@ const Chatbot = () => {
         />
         <Text
           typography="bodyMedium"
-          color={theme.text.primary}
+          color={theme.text.onPrimary}
           style={{ textAlign: "center", opacity: 0.8 }}
         >
           <Text
             typography="bodyMedium"
-            color={theme.text.primary}
+            color={theme.text.onPrimary}
             style={{ fontStyle: "italic" }}
           >
             {quote}
           </Text>{" "}
-          <Text typography="bodyMedium" color={theme.text.primary}>
+          <Text typography="bodyMedium" color={theme.text.onPrimary}>
             {author}
           </Text>
         </Text>
@@ -325,12 +325,12 @@ const Chatbot = () => {
           marginBottom: 12,
         }}
       >
-        <Text typography="titleMedium" color={theme.text.primary}>
+        <Text typography="titleMedium" color={theme.text.onPrimary}>
           {t("chatbot.suggestions")}
         </Text>
 
         <TouchableOpacity onPress={() => setSuggestionsVisible(true)}>
-          <Text typography="labelLarge" color={theme.text.primary}>
+          <Text typography="labelLarge" color={theme.text.onPrimary}>
             {t("chatbot.viewMore")}
           </Text>
         </TouchableOpacity>
@@ -357,7 +357,7 @@ const Chatbot = () => {
               borderTopRightRadius: 16,
               borderBottomRightRadius: 4,
               backgroundColor: theme.background.bg,
-              padding: 16,
+              padding: 12,
               width: 128,
               height: 128,
               marginRight: 12,
