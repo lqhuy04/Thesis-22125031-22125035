@@ -309,16 +309,21 @@ export type SuggestionMsgType =
   | "top_searched"
   | "top_watchlist";
 
+// Time window for trend categories (top_gainers / top_decliners / top_volume).
+export type SuggestionInterval = "today" | "1w" | "1mo" | "3mo" | "6mo";
+
 export const getInvestingIdea = async (
   msgType: SuggestionMsgType,
   limit?: number,
+  interval?: SuggestionInterval,
 ): Promise<{
   status: boolean;
   data: SuggestionItem[];
 }> => {
   try {
     const result = await sendMessage(
-      `api/investing-idea?msgType=${msgType}&limit=${limit != null ? limit : 5}`,
+      `api/investing-idea?msgType=${msgType}&limit=${limit != null ? limit : 5}` +
+        (interval ? `&interval=${interval}` : ""),
     );
 
     const { errorCode, data } = result || {};

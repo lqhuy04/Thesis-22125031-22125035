@@ -20,10 +20,14 @@ import LinearGradient from "react-native-linear-gradient";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import {
   getInvestingIdea,
+  SuggestionInterval,
   SuggestionItem,
   SuggestionMsgType,
 } from "@/helpers/MarketHelpers";
 import { Text } from "@/components/ui/Text";
+import IntervalBottomsheet, {
+  INTERVAL_OPTIONS,
+} from "@/components/ui/IntervalBottomsheet";
 import AntDesign from "@expo/vector-icons/build/AntDesign";
 import Entypo from "@expo/vector-icons/build/Entypo";
 import Feather from "@expo/vector-icons/build/Feather";
@@ -32,6 +36,22 @@ import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { router } from "expo-router";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Trend categories support a time-window `interval`; others ignore it.
+const TREND_MSG_TYPES: SuggestionMsgType[] = [
+  "top_gainers",
+  "top_decliners",
+  "top_volume",
+];
+const isTrendMsgType = (msgType: SuggestionMsgType) =>
+  TREND_MSG_TYPES.includes(msgType);
+
+// Cache key includes the interval only for trend tabs so each (tab, interval)
+// pair is fetched and cached independently; non-trend tabs key by msgType alone.
+const cacheKeyFor = (
+  msgType: SuggestionMsgType,
+  interval: SuggestionInterval,
+) => (isTrendMsgType(msgType) ? `${msgType}__${interval}` : msgType);
 
 // ---------------------------------------------------------------------------
 // Skeleton
@@ -134,19 +154,19 @@ const InvestmentIdeasSkeleton = () => {
           width={50}
           height={11}
           animatedOpacity={animatedOpacity}
-          style={{ flex: 6.5, marginRight: 12 }}
+          style={{ flex: 6, marginRight: 12 }}
         />
         <SkeletonBox
           width={36}
           height={11}
           animatedOpacity={animatedOpacity}
-          style={{ flex: 1.5, marginRight: 12 }}
+          style={{ flex: 1, marginRight: 12 }}
         />
         <SkeletonBox
           width={52}
           height={11}
           animatedOpacity={animatedOpacity}
-          style={{ flex: 2 }}
+          style={{ flex: 2.5 }}
         />
       </View>
 
@@ -180,7 +200,7 @@ const InvestmentIdeasSkeleton = () => {
             animatedOpacity={animatedOpacity}
           />
           {/* Symbol + Company name */}
-          <View style={{ flex: 6.5, marginLeft: 10, gap: 5, marginRight: 12 }}>
+          <View style={{ flex: 6, marginLeft: 10, gap: 5, marginRight: 12 }}>
             <SkeletonBox
               width={44}
               height={13}
@@ -193,7 +213,7 @@ const InvestmentIdeasSkeleton = () => {
             />
           </View>
           {/* Price + change */}
-          <View style={{ flex: 1.5, marginRight: 12, gap: 4 }}>
+          <View style={{ flex: 1, marginRight: 12, gap: 4 }}>
             <SkeletonBox
               width={30}
               height={13}
@@ -209,7 +229,7 @@ const InvestmentIdeasSkeleton = () => {
           <SkeletonBox
             width={"100%"}
             height={30}
-            style={{ flex: 2 }}
+            style={{ flex: 2.5 }}
             borderRadius={6}
             animatedOpacity={animatedOpacity}
           />
@@ -267,19 +287,19 @@ const PageTableSkeleton = () => {
           width={50}
           height={11}
           animatedOpacity={animatedOpacity}
-          style={{ flex: 6.5, marginRight: 12 }}
+          style={{ flex: 6, marginRight: 12 }}
         />
         <SkeletonBox
           width={36}
           height={11}
           animatedOpacity={animatedOpacity}
-          style={{ flex: 1.5, marginRight: 12 }}
+          style={{ flex: 1, marginRight: 12 }}
         />
         <SkeletonBox
           width={52}
           height={11}
           animatedOpacity={animatedOpacity}
-          style={{ flex: 2 }}
+          style={{ flex: 2.5 }}
         />
       </View>
 
@@ -313,7 +333,7 @@ const PageTableSkeleton = () => {
             animatedOpacity={animatedOpacity}
           />
           {/* Symbol + Company name */}
-          <View style={{ flex: 6.5, marginLeft: 10, gap: 5, marginRight: 12 }}>
+          <View style={{ flex: 6, marginLeft: 10, gap: 5, marginRight: 12 }}>
             <SkeletonBox
               width={44}
               height={13}
@@ -326,7 +346,7 @@ const PageTableSkeleton = () => {
             />
           </View>
           {/* Price + change */}
-          <View style={{ flex: 1.5, marginRight: 12, gap: 4 }}>
+          <View style={{ flex: 1, marginRight: 12, gap: 4 }}>
             <SkeletonBox
               width={30}
               height={13}
@@ -342,7 +362,7 @@ const PageTableSkeleton = () => {
           <SkeletonBox
             width={"100%"}
             height={30}
-            style={{ flex: 2 }}
+            style={{ flex: 2.5 }}
             borderRadius={6}
             animatedOpacity={animatedOpacity}
           />
@@ -358,14 +378,17 @@ const PageTableSkeleton = () => {
 const InvestmentIdeas = () => {
   const { t } = useLocalization();
   const { theme } = useTheme();
-  const [dataMap, setDataMap] = useState<
-    Partial<Record<SuggestionMsgType, SuggestionItem[]>>
-  >({});
-  const loadingRef = useRef<Set<SuggestionMsgType>>(new Set());
+  const [dataMap, setDataMap] = useState<Record<string, SuggestionItem[]>>({});
+  const loadingRef = useRef<Set<string>>(new Set());
   const [activeGroup, setActiveGroup] = useState<
     "trend" | "community" | "top_choice"
   >("top_choice");
   const [currentPage, setCurrentPage] = useState(0);
+
+  // Selected time window for trend tabs + bottom-sheet visibility.
+  const [selectedInterval, setSelectedInterval] =
+    useState<SuggestionInterval>("today");
+  const [intervalSheetVisible, setIntervalSheetVisible] = useState(false);
 
   type SortKey = "symbol" | "price" | "change";
   type SortDir = "asc" | "desc";
@@ -473,26 +496,35 @@ const InvestmentIdeas = () => {
 
   // ------------------------------------------------------------------
   // Lazy-load a single category, cached by msgType. Each tab loads once.
-  const loadTab = useCallback((msgType: SuggestionMsgType) => {
-    setDataMap((prev) => {
-      if (prev[msgType] !== undefined || loadingRef.current.has(msgType)) {
+  const loadTab = useCallback(
+    (msgType: SuggestionMsgType, interval: SuggestionInterval) => {
+      const key = cacheKeyFor(msgType, interval);
+      setDataMap((prev) => {
+        if (prev[key] !== undefined || loadingRef.current.has(key)) {
+          return prev;
+        }
+        loadingRef.current.add(key);
+        getInvestingIdea(
+          msgType,
+          20,
+          isTrendMsgType(msgType) ? interval : undefined,
+        )
+          .then((res) => {
+            setDataMap((curr) => ({ ...curr, [key]: res?.data ?? [] }));
+          })
+          .finally(() => loadingRef.current.delete(key));
         return prev;
-      }
-      loadingRef.current.add(msgType);
-      getInvestingIdea(msgType, 20)
-        .then((res) => {
-          setDataMap((curr) => ({ ...curr, [msgType]: res?.data ?? [] }));
-        })
-        .finally(() => loadingRef.current.delete(msgType));
-      return prev;
-    });
-  }, []);
+      });
+    },
+    [],
+  );
 
-  // Load whichever page is currently visible (also covers initial mount).
+  // Load whichever page is currently visible (also covers initial mount and
+  // interval changes for trend tabs).
   useEffect(() => {
     const tab = tabs[currentPage];
-    if (tab) loadTab(tab.msgType);
-  }, [currentPage, loadTab, tabs]);
+    if (tab) loadTab(tab.msgType, selectedInterval);
+  }, [currentPage, selectedInterval, loadTab, tabs]);
 
   // ------------------------------------------------------------------
   // Handlers
@@ -558,7 +590,7 @@ const InvestmentIdeas = () => {
         {/* Symbol column */}
         <View
           style={{
-            flex: 6.5,
+            flex: 6,
             flexDirection: "row",
             alignItems: "center",
             marginRight: 12,
@@ -596,7 +628,7 @@ const InvestmentIdeas = () => {
             </Text>
           </View>
         </View>
-        <View style={{ flex: 1.5, marginRight: 12 }}>
+        <View style={{ flex: 1, marginRight: 12 }}>
           <Text typography="labelLarge" color={theme.text.primary}>
             {stock.current_price.toLocaleString("vi-VN")}
           </Text>
@@ -609,7 +641,7 @@ const InvestmentIdeas = () => {
           style={{
             backgroundColor: changeBg,
             borderRadius: 6,
-            flex: 2,
+            flex: 2.5,
             alignItems: "center",
             justifyContent: "center",
             paddingVertical: 6,
@@ -627,11 +659,15 @@ const InvestmentIdeas = () => {
   // Render one full-screen page
   // ------------------------------------------------------------------
   const renderPage = ({ item }: { item: (typeof tabs)[0] }) => {
-    const listData = dataMap[item.msgType];
+    const listData = dataMap[cacheKeyFor(item.msgType, selectedInterval)];
 
     if (listData === undefined) {
       return <PageTableSkeleton />;
     }
+
+    const intervalLabelKey =
+      INTERVAL_OPTIONS.find((o) => o.value === selectedInterval)?.labelKey ??
+      "suggestion.intervalToday";
 
     const sortedData = [...listData].sort((a, b) => {
       if (!sortKey) return 0;
@@ -664,7 +700,7 @@ const InvestmentIdeas = () => {
             <TouchableOpacity
               onPress={() => handleSortPress("symbol")}
               style={{
-                flex: 6.5,
+                flex: 6,
                 flexDirection: "row",
                 alignItems: "center",
                 marginRight: 12,
@@ -706,7 +742,7 @@ const InvestmentIdeas = () => {
             <TouchableOpacity
               onPress={() => handleSortPress("price")}
               style={{
-                flex: 1.5,
+                flex: 1,
                 flexDirection: "row",
                 alignItems: "center",
                 marginRight: 12,
@@ -745,46 +781,96 @@ const InvestmentIdeas = () => {
             </TouchableOpacity>
 
             {/* % Change — sortable */}
-            <TouchableOpacity
-              onPress={() => handleSortPress("change")}
+            <View
               style={{
-                flex: 2,
+                flex: 2.5,
                 flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "center",
+                justifyContent: "space-between",
               }}
             >
-              <Text
-                typography="bodySmall"
-                color={
-                  sortKey === "change" ? theme.base.primary : theme.text.primary
-                }
+              <TouchableOpacity
+                onPress={() => handleSortPress("change")}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
               >
-                %
-              </Text>
-              <View style={{ marginLeft: 4, alignItems: "center" }}>
-                <Entypo
-                  name="chevron-small-up"
-                  size={14}
+                <Text
+                  typography="bodySmall"
                   color={
-                    sortKey === "change" && sortDir === "asc"
+                    sortKey === "change"
                       ? theme.base.primary
-                      : theme.text.primary + "40"
+                      : theme.text.primary
                   }
-                  style={{ marginBottom: -2 }}
-                />
-                <Entypo
-                  name="chevron-small-down"
-                  size={14}
-                  color={
-                    sortKey === "change" && sortDir === "desc"
-                      ? theme.base.primary
-                      : theme.text.primary + "40"
-                  }
-                  style={{ marginTop: -2 }}
-                />
-              </View>
-            </TouchableOpacity>
+                >
+                  %
+                </Text>
+                <View style={{ marginLeft: 4, alignItems: "center" }}>
+                  <Entypo
+                    name="chevron-small-up"
+                    size={14}
+                    color={
+                      sortKey === "change" && sortDir === "asc"
+                        ? theme.base.primary
+                        : theme.text.primary + "40"
+                    }
+                    style={{ marginBottom: -2 }}
+                  />
+                  <Entypo
+                    name="chevron-small-down"
+                    size={14}
+                    color={
+                      sortKey === "change" && sortDir === "desc"
+                        ? theme.base.primary
+                        : theme.text.primary + "40"
+                    }
+                    style={{ marginTop: -2 }}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {/* {item.group === "trend" ? (
+                <TouchableOpacity
+                  onPress={() => setIntervalSheetVisible(true)}
+                  style={{ flexDirection: "row", alignItems: "center" }}
+                >
+                  <Text typography="bodySmall" color={theme.text.primary}>
+                    {t(intervalLabelKey)}
+                  </Text>
+                  <Text
+                    typography="bodySmall"
+                    color={theme.text.primary}
+                    style={{ marginLeft: 3 }}
+                  >
+                    ▼
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <View />
+              )} */}
+
+              <TouchableOpacity
+                onPress={() =>
+                  activeGroup === "trend" && setIntervalSheetVisible(true)
+                }
+                style={{ flexDirection: "row", alignItems: "center" }}
+                activeOpacity={item.group === "trend" ? 0.7 : 1}
+              >
+                <Text typography="bodySmall" color={theme.text.primary}>
+                  {item.group === "trend"
+                    ? t(intervalLabelKey)
+                    : t("suggestion.intervalToday")}
+                </Text>
+                <Text
+                  typography="bodySmall"
+                  color={theme.text.primary}
+                  style={{ marginLeft: 3 }}
+                >
+                  ▼
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Rows */}
@@ -799,7 +885,7 @@ const InvestmentIdeas = () => {
   // ------------------------------------------------------------------
   // Loading state — show full skeleton until the first tab has loaded.
   // ------------------------------------------------------------------
-  if (dataMap[tabs[0].msgType] === undefined) {
+  if (dataMap[cacheKeyFor(tabs[0].msgType, selectedInterval)] === undefined) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
         <LinearGradient
@@ -1057,6 +1143,13 @@ const InvestmentIdeas = () => {
         })}
         renderItem={renderPage}
         style={{ flex: 1 }}
+      />
+
+      <IntervalBottomsheet
+        visible={intervalSheetVisible}
+        selectedInterval={selectedInterval}
+        onSelect={setSelectedInterval}
+        onClose={() => setIntervalSheetVisible(false)}
       />
     </View>
   );

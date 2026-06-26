@@ -403,6 +403,12 @@ export default {
     screenDescTrend:
       "Top cổ phiếu thu hút dòng tiền và đang dẫn dắt xu hướng thị trường",
     screenDescCommunity: "Những cổ phiếu hot đang được nhà đầu tư săn đón",
+    intervalTitle: "Thời gian",
+    intervalToday: "Hôm nay",
+    interval1w: "1 tuần",
+    interval1mo: "1 tháng",
+    interval3mo: "3 tháng",
+    interval6mo: "6 tháng",
   },
   fundamentalAnalysis: {
     fundamentalAnalysisMetricsSectionTitle: "Số liệu chính",

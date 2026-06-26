@@ -216,10 +216,19 @@ def get_investing_idea(
             "cheap_under_50k, top_searched, top_watchlist"
         ),
     ),
+    interval: str = Query(
+        "today",
+        description=(
+            "Time window for trend ranking (top_gainers / top_decliners / top_volume): "
+            "today, 1w, 1mo, 3mo, 6mo. Defaults to 'today'. Ignored for other categories."
+        ),
+    ),
     limit: int = Query(100, ge=1, le=100, description="Number of stocks in the list"),
 ):
     request_id = str(uuid.uuid4())
-    data = MarketService.get_investing_idea_by_type(msg_type=msgType, limit=limit)
+    data = MarketService.get_investing_idea_by_type(
+        msg_type=msgType, limit=limit, interval=interval
+    )
 
     has_data = len(data) > 0
     return {

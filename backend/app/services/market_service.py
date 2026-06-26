@@ -1179,8 +1179,166 @@ class MarketService:
         "top_watchlist",
     }
 
+    # Trend categories that support a period-based `interval`.
+    _INVESTING_IDEA_TREND_TYPES = {"top_gainers", "top_decliners", "top_volume"}
+
+    # interval -> số ngày lịch lùi về để lấy nến mốc so sánh.
+    _INVESTING_IDEA_PERIOD_DAYS = {
+        "1w": 7,
+        "1mo": 30,
+        "3mo": 90,
+        "6mo": 180,
+    }
+
     @staticmethod
-    def get_investing_idea_by_type(msg_type: str, limit: int = 100) -> List[Dict[str, Any]]:
+    def _fetch_daily_rows_in_range(
+        start_iso: str,
+        end_iso: Optional[str] = None,
+        select_fields: str = "symbol, trading_time, close, volume",
+    ) -> List[Dict[str, Any]]:
+        """
+        Paginate Stock_Price_1d lấy các row có trading_time trong [start_iso, end_iso].
+        end_iso None nghĩa là không giới hạn cận trên.
+        trading_time lưu dạng ISO ("YYYY-MM-DDTHH:MM:SS") nên so sánh chuỗi = so sánh thời gian.
+        """
+        page_size = 1000
+        offset = 0
+        rows: List[Dict[str, Any]] = []
+
+        while True:
+            query = (
+                supabase.table("Stock_Price_1d")
+                .select(select_fields)
+                .gte("trading_time", start_iso)
+            )
+            if end_iso:
+                query = query.lte("trading_time", end_iso)
+
+            response = (
+                query.order("trading_time", desc=False)
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+
+            batch = response.data if response.data else []
+            if not batch:
+                break
+
+            rows.extend(batch)
+
+            if len(batch) < page_size:
+                break
+
+            offset += page_size
+
+        return rows
+
+    @staticmethod
+    def _build_period_trend_rows(
+        profile_by_symbol: Dict[str, Dict[str, Any]],
+        price_by_symbol: Dict[str, Dict[str, Any]],
+        period_days: int,
+    ) -> List[Dict[str, Any]]:
+        """
+        Tính % thay đổi giá và % thay đổi khối lượng theo kỳ cho mỗi mã,
+        bằng cách chỉ fetch HAI lát mỏng từ Stock_Price_1d:
+          1. Cửa sổ "recent": vài ngày gần nhất  → nến mới nhất mỗi mã.
+          2. Cửa sổ "past": quanh (latest - period_days) → nến gần nhất tại/trước mốc.
+
+        Trả về list row (định dạng public_row) với:
+          - per_price_change = % thay đổi close theo kỳ
+          - _vol_change      = % thay đổi volume theo kỳ (None nếu vol mốc <= 0)
+        """
+        # ── Mốc thời gian mới nhất toàn bảng (1 query rẻ) ──────────────────
+        latest_resp = (
+            supabase.table("Stock_Price_1d")
+            .select("trading_time")
+            .order("trading_time", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if not latest_resp.data:
+            return []
+        try:
+            global_latest = datetime.fromisoformat(latest_resp.data[0]["trading_time"])
+        except Exception:
+            return []
+
+        latest_date = global_latest.date()
+        target_date = latest_date - timedelta(days=period_days)
+
+        def pick_latest(rows: List[Dict[str, Any]], cap_date=None) -> Dict[str, Dict[str, Any]]:
+            """Per symbol giữ nến có trading_time lớn nhất (<= cap_date nếu có)."""
+            picked: Dict[str, Dict[str, Any]] = {}
+            for r in rows:
+                symbol = str(r.get("symbol") or "").upper().strip()
+                if symbol not in profile_by_symbol:
+                    continue
+                try:
+                    dt = datetime.fromisoformat(r["trading_time"])
+                except Exception:
+                    continue
+                if cap_date is not None and dt.date() > cap_date:
+                    continue
+                prev = picked.get(symbol)
+                if prev is None or dt > prev["_dt"]:
+                    picked[symbol] = {
+                        "_dt": dt,
+                        "close": MarketService._to_float(r.get("close")),
+                        "volume": MarketService._to_float(r.get("volume")),
+                    }
+            return picked
+
+        # ── Lát 1: nến mới nhất (4 ngày lịch gần nhất là đủ) ──────────────
+        recent_rows = MarketService._fetch_daily_rows_in_range(
+            start_iso=(latest_date - timedelta(days=4)).isoformat()
+        )
+        latest_by_symbol = pick_latest(recent_rows)
+
+        # ── Lát 2: nến tại/trước target (đệm 12 ngày cho cuối tuần/lễ) ────
+        past_rows = MarketService._fetch_daily_rows_in_range(
+            start_iso=(target_date - timedelta(days=12)).isoformat(),
+            end_iso=target_date.isoformat() + "T23:59:59",
+        )
+        past_by_symbol = pick_latest(past_rows, cap_date=target_date)
+
+        rows: List[Dict[str, Any]] = []
+        for symbol, latest in latest_by_symbol.items():
+            past = past_by_symbol.get(symbol)
+            if not past:
+                continue
+
+            close_now, close_past = latest["close"], past["close"]
+            if close_past <= 0:
+                continue  # không tính được % giá
+
+            price_change_pct = (close_now - close_past) / close_past * 100.0
+
+            vol_now, vol_past = latest["volume"], past["volume"]
+            vol_change_pct = (
+                (vol_now - vol_past) / vol_past * 100.0 if vol_past > 0 else None
+            )
+
+            profile = profile_by_symbol[symbol]
+            price = price_by_symbol.get(symbol, {})
+            rows.append({
+                "logo": profile.get("logo") or "",
+                "symbol": symbol,
+                "company_name": profile.get("company_name") or "",
+                "current_price": MarketService._to_float(price.get("current_price")),
+                "price_change": MarketService._to_float(price.get("price_change")),
+                "per_price_change": round(price_change_pct, 2),
+                "_vol_change": round(vol_change_pct, 2) if vol_change_pct is not None else None,
+            })
+
+        return rows
+
+    @staticmethod
+    def get_investing_idea_by_type(
+        msg_type: str,
+        limit: int = 100,
+        interval: str = "today",
+    ) -> List[Dict[str, Any]]:
         """
         Build a single investing-idea category list and return it as a flat list.
 
@@ -1189,6 +1347,12 @@ class MarketService:
         - cheap_under_50k                            (top choice)
         - top_searched / top_watchlist               (community)
 
+        `interval` (chỉ áp dụng cho 3 loại trend):
+        - "today" (mặc định): xếp hạng theo dữ liệu Current_Stock_Price như cũ.
+        - "1w" / "1mo" / "3mo" / "6mo": xếp hạng theo % thay đổi của close
+          (gainers/decliners) hoặc volume (top_volume) giữa nến mới nhất và nến
+          cách 1 tuần / 1 / 3 / 6 tháng trong bảng Stock_Price_1d.
+
         Excludes UPCOM exchange; only includes HOSE and HNX.
         """
         try:
@@ -1196,6 +1360,7 @@ class MarketService:
                 return []
 
             limit = max(1, min(limit, 100))
+            interval = (interval or "today").strip().lower()
 
             profiles = MarketService._fetch_all_rows(
                 "BI_Profile",
@@ -1266,6 +1431,37 @@ class MarketService:
                     ranked_items.append(public_row(profile, price))
 
                 return ranked_items
+
+            # ── Period-based trend (1w / 1mo / 3mo / 6mo) ────────────────────
+            if (
+                interval in MarketService._INVESTING_IDEA_PERIOD_DAYS
+                and msg_type in MarketService._INVESTING_IDEA_TREND_TYPES
+            ):
+                period_rows = MarketService._build_period_trend_rows(
+                    profile_by_symbol,
+                    price_by_symbol,
+                    MarketService._INVESTING_IDEA_PERIOD_DAYS[interval],
+                )
+
+                if msg_type == "top_gainers":
+                    selected = sorted(
+                        period_rows, key=lambda x: x["per_price_change"], reverse=True
+                    )[:limit]
+                elif msg_type == "top_decliners":
+                    selected = sorted(
+                        period_rows, key=lambda x: x["per_price_change"]
+                    )[:limit]
+                else:  # top_volume
+                    selected = sorted(
+                        [r for r in period_rows if r["_vol_change"] is not None],
+                        key=lambda x: x["_vol_change"],
+                        reverse=True,
+                    )[:limit]
+
+                return [
+                    {k: v for k, v in row.items() if not k.startswith("_")}
+                    for row in selected
+                ]
 
             # ── Trend / top-choice categories: rank by price metrics ─────────
             items: List[Dict[str, Any]] = []

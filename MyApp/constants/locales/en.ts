@@ -406,6 +406,12 @@ export default {
       "Top stocks attracting capital inflows and leading market trends",
     screenDescCommunity:
       "Hot stocks currently gaining strong interest from investors",
+    intervalTitle: "Time",
+    intervalToday: "Today",
+    interval1w: "1 week",
+    interval1mo: "1 month",
+    interval3mo: "3 months",
+    interval6mo: "6 months",
   },
   fundamentalAnalysis: {
     fundamentalAnalysisMetricsSectionTitle: "Key figures",
