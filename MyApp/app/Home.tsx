@@ -2,13 +2,14 @@ import React, { useState, useCallback, useRef } from "react";
 import { useTheme } from "@/hooks/ThemeContext";
 import MarketIndicesSection from "@/components/market/MarketIndicesSection";
 import { ScrollView, View, RefreshControl } from "react-native";
-import HomeAssetSection from "@/components/home/HomeAssetSection";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import HomeNewSection from "@/components/home/HomeNewSection";
 import LinearGradient from "react-native-linear-gradient";
 import SuggestionSection from "@/components/home/SuggestionSection";
 
 const Home = () => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
 
   // Mỗi component con đăng ký hàm refresh của mình vào đây
@@ -91,7 +92,7 @@ const Home = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <HomeAssetSection registerRefresh={registerRefresh} />
+        <View style={{ height: insets.top + 12 }} />
 
         <View
           style={{
@@ -100,7 +101,6 @@ const Home = () => {
             borderTopLeftRadius: 12,
             borderTopRightRadius: 12,
             paddingVertical: 12,
-            marginTop: -12,
           }}
         >
           <MarketIndicesSection registerRefresh={registerRefresh} />

@@ -172,7 +172,7 @@ const ChatHistoryBottomSheet = ({
                 </Text>
                 <Text
                   typography="bodySmall"
-                  color={theme.text.secondary}
+                  color={theme.text.primary + "88"}
                   style={{ marginTop: 4 }}
                 >
                   {item.timeLabel}

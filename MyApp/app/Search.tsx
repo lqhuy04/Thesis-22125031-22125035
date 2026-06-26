@@ -17,7 +17,7 @@ import {
   searchStocks,
 } from "@/helpers/SearchHelper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { Text } from "@/components/ui/Text";
 import { useLocalization } from "@/hooks/LocalizationContext";
 
@@ -237,7 +237,6 @@ const Search = () => {
   const { t } = useLocalization();
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [text, setText] = useState("");
@@ -302,20 +301,12 @@ const Search = () => {
       isNavigatingRef.current = true;
 
       await saveSearchHistory(symbol);
-      if (returnTo === "BuyStock") {
-        // Quay lại trang mua với mã mới thay vì mở trang Detail.
-        router.dismissTo({
-          pathname: "/BuyStock",
-          params: { data: symbol },
-        });
-      } else {
-        router.push({
-          pathname: "/Detail",
-          params: { data: symbol },
-        });
-      }
+      router.push({
+        pathname: "/Detail",
+        params: { data: symbol },
+      });
     },
-    [returnTo],
+    [],
   );
 
   const handleSelectItem = useCallback(

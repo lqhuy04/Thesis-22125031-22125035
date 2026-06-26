@@ -11,7 +11,6 @@ import { getMarketIndices, MarketIndex } from "@/helpers/MarketHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { router } from "expo-router";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width * 0.72;
@@ -208,59 +207,97 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
             snapToAlignment="start"
             decelerationRate="fast"
             contentContainerStyle={{ paddingRight: width - CARD_WIDTH }}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() =>
-                  router.push({
-                    pathname: "/IndexDetail" as any,
-                    params: { data: JSON.stringify(item) },
-                  })
-                }
-                style={{
-                  width: CARD_WIDTH,
-                  marginRight: CARD_GAP,
-                  marginTop: 12,
-                  borderRadius: 12,
-                  backgroundColor: theme.background.bg,
-                  padding: 12,
-                  paddingBottom: 6,
-                }}
-              >
-                <Text typography="bodyMedium" color={theme.text.primary}>
-                  {item.IndexName}
-                </Text>
+            renderItem={({ item }) => {
+              const adv = Number(item.Advances) || 0;
+              const noChg = Number(item.NoChanges) || 0;
+              const dec = Number(item.Declines) || 0;
+              const total = adv + noChg + dec;
+              const allZero = total === 0;
+              const mutedColor = theme.text.primary + "88";
 
-                <View
+              return (
+                <TouchableOpacity
+                  onPress={() =>
+                    router.push({
+                      pathname: "/IndexDetail" as any,
+                      params: { data: JSON.stringify(item) },
+                    })
+                  }
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    marginTop: 4,
+                    width: CARD_WIDTH,
+                    marginRight: CARD_GAP,
+                    marginTop: 12,
+                    borderRadius: 12,
+                    backgroundColor: theme.background.bg,
+                    padding: 12,
+                    paddingBottom: 6,
                   }}
                 >
-                  <Text typography="titleLarge" color={theme.text.primary}>
-                    {item.IndexValue}
+                  <Text typography="bodyMedium" color={theme.text.primary}>
+                    {item.IndexName}
                   </Text>
+
                   <View
                     style={{
-                      borderRadius: 4,
-                      paddingVertical: 2,
-                      paddingHorizontal: 6,
-                      backgroundColor:
-                        Number(item.Change) > 0
-                          ? theme.base.success + "33"
-                          : theme.base.error + "33",
-                      marginLeft: 8,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginTop: 4,
                     }}
                   >
+                    <Text typography="titleLarge" color={theme.text.primary}>
+                      {item.IndexValue}
+                    </Text>
+                    <View
+                      style={{
+                        borderRadius: 4,
+                        paddingVertical: 2,
+                        paddingHorizontal: 6,
+                        backgroundColor:
+                          Number(item.Change) > 0
+                            ? theme.base.success + "33"
+                            : theme.base.error + "33",
+                        marginLeft: 8,
+                      }}
+                    >
+                      <Text
+                        typography="labelLarge"
+                        color={
+                          item.Change < 0
+                            ? theme.base.error
+                            : item.Change > 0
+                              ? theme.base.success
+                              : theme.base.warning
+                        }
+                      >
+                        <Text
+                          typography="labelSmall"
+                          color={
+                            item.Change < 0
+                              ? theme.base.error
+                              : item.Change > 0
+                                ? theme.base.success
+                                : theme.base.warning
+                          }
+                        >
+                          {item.Change > 0
+                            ? "▲"
+                            : item.Change === 0
+                              ? ""
+                              : "▼"}{" "}
+                        </Text>
+                        {item.Change >= 0 ? item.Change : item.Change * -1}
+                      </Text>
+                    </View>
                     <Text
-                      typography="labelLarge"
+                      typography="labelMedium"
                       color={
-                        item.Change < 0
+                        item.RatioChange < 0
                           ? theme.base.error
-                          : item.Change > 0
+                          : item.RatioChange > 0
                             ? theme.base.success
                             : theme.base.warning
                       }
+                      style={{ marginLeft: 8 }}
                     >
                       <Text
                         typography="labelSmall"
@@ -278,130 +315,115 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                             ? ""
                             : "▼"}{" "}
                       </Text>
-                      {item.Change >= 0 ? item.Change : item.Change * -1}
+                      {item.RatioChange >= 0
+                        ? item.RatioChange
+                        : item.RatioChange * -1}
+                      %
                     </Text>
                   </View>
+
                   <Text
-                    typography="labelMedium"
-                    color={
-                      item.RatioChange < 0
-                        ? theme.base.error
-                        : item.RatioChange > 0
-                          ? theme.base.success
-                          : theme.base.warning
-                    }
-                    style={{ marginLeft: 8 }}
+                    typography="bodySmall"
+                    color={theme.text.primary + "80"}
+                    style={{ marginTop: 4 }}
+                  >
+                    {(Number(item.TotalVol) / 1000000).toFixed(0)}{" "}
+                    {t("home.millionShares")}
+                    {"   "}|{"   "}
+                    {(Number(item.TotalVal) / 1000000000).toFixed(2)}{" "}
+                    {t("home.billion")}
+                  </Text>
+
+                  {(() => {
+                    const advPct = allZero ? 33.33 : (adv / total) * 100;
+                    const noChgPct = allZero ? 33.33 : (noChg / total) * 100;
+                    const decPct = allZero ? 33.34 : (dec / total) * 100;
+
+                    return (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          height: 4,
+                          borderRadius: 2,
+                          overflow: "hidden",
+                          marginTop: 8,
+                          marginBottom: 2,
+                        }}
+                      >
+                        <View
+                          style={{
+                            flex: advPct,
+                            backgroundColor: allZero
+                              ? mutedColor
+                              : theme.base.success,
+                          }}
+                        />
+                        <View
+                          style={{
+                            flex: noChgPct,
+                            backgroundColor: allZero
+                              ? mutedColor
+                              : theme.base.warning,
+                          }}
+                        />
+                        <View
+                          style={{
+                            flex: decPct,
+                            backgroundColor: allZero
+                              ? mutedColor
+                              : theme.base.error,
+                          }}
+                        />
+                      </View>
+                    );
+                  })()}
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginVertical: 4,
+                    }}
                   >
                     <Text
-                      typography="labelSmall"
-                      color={
-                        item.Change < 0
-                          ? theme.base.error
-                          : item.Change > 0
-                            ? theme.base.success
-                            : theme.base.warning
-                      }
+                      typography="bodySmall"
+                      color={allZero ? mutedColor : theme.base.success}
                     >
-                      {item.Change > 0
-                        ? "▲"
-                        : item.Change === 0
-                          ? ""
-                          : "▼"}{" "}
+                      {item.Advances} {t("home.ticker")} {"▲"}
                     </Text>
-                    {item.RatioChange >= 0
-                      ? item.RatioChange
-                      : item.RatioChange * -1}
-                    %
-                  </Text>
-                </View>
 
-                <Text
-                  typography="bodySmall"
-                  color={theme.text.primary + "80"}
-                  style={{ marginTop: 4 }}
-                >
-                  {(Number(item.TotalVol) / 1000000).toFixed(0)}{" "}
-                  {t("home.millionShares")}
-                  {"   "}|{"   "}
-                  {(Number(item.TotalVal) / 1000000000).toFixed(2)}{" "}
-                  {t("home.billion")}
-                </Text>
-
-                {(() => {
-                  const adv = Number(item.Advances) || 0;
-                  const noChg = Number(item.NoChanges) || 0;
-                  const dec = Number(item.Declines) || 0;
-                  const total = adv + noChg + dec;
-
-                  const advPct = total === 0 ? 33.33 : (adv / total) * 100;
-                  const noChgPct = total === 0 ? 33.33 : (noChg / total) * 100;
-                  const decPct = total === 0 ? 33.34 : (dec / total) * 100;
-
-                  return (
                     <View
-                      style={{
-                        flexDirection: "row",
-                        height: 4,
-                        borderRadius: 2,
-                        overflow: "hidden",
-                        marginTop: 8,
-                        marginBottom: 2,
-                      }}
+                      style={{ flexDirection: "row", alignItems: "center" }}
                     >
+                      <Text
+                        typography="bodySmall"
+                        color={allZero ? mutedColor : theme.base.warning}
+                      >
+                        {item.NoChanges} {t("home.ticker")}
+                      </Text>
                       <View
                         style={{
-                          flex: advPct,
-                          backgroundColor: theme.base.success,
-                        }}
-                      />
-                      <View
-                        style={{
-                          flex: noChgPct,
-                          backgroundColor: theme.base.warning,
-                        }}
-                      />
-                      <View
-                        style={{
-                          flex: decPct,
-                          backgroundColor: theme.base.error,
+                          width: 6,
+                          height: 2,
+                          backgroundColor: allZero
+                            ? mutedColor
+                            : theme.base.warning,
+                          marginLeft: 8,
                         }}
                       />
                     </View>
-                  );
-                })()}
 
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginVertical: 4,
-                  }}
-                >
-                  <Text typography="bodySmall" color={theme.base.success}>
-                    {item.Advances} {t("home.ticker")} {"▲"}
-                  </Text>
-
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Text typography="bodySmall" color={theme.base.warning}>
-                      {item.NoChanges} {t("home.ticker")}
+                    <Text
+                      typography="bodySmall"
+                      color={allZero ? mutedColor : theme.base.error}
+                    >
+                      {item.Declines} {t("home.ticker")} {"▼"}
                     </Text>
-                    <View
-                      style={{
-                        width: 6,
-                        height: 2,
-                        backgroundColor: theme.base.warning,
-                        marginLeft: 8,
-                      }}
-                    />
                   </View>
-
-                  <Text typography="bodySmall" color={theme.base.error}>
-                    {item.Declines} {t("home.ticker")} {"▼"}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
+                </TouchableOpacity>
+              );
+            }}
           />
         </>
       )}

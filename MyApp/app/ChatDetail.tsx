@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   ScrollView,
@@ -22,6 +22,9 @@ import type { ChatConversation } from "@/components/chatbot/ChatHistoryBottomshe
 import { getChatHistory, sendChatMessage } from "@/helpers/AgenticHelpers";
 import Octicons from "@expo/vector-icons/Octicons";
 import useKeyboardVisible from "@/hooks/KeyboardContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Clipboard from "expo-clipboard";
+import KatexWebView from "@/components/chatbot/KatexWebView";
 
 interface ChatMessage {
   id: string;
@@ -32,6 +35,57 @@ interface ChatMessage {
 }
 
 const genId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+type ContentSegment = { type: "text" | "math"; value: string; display: boolean };
+
+/**
+ * Tách nội dung trả lời thành các đoạn text (render Markdown) và math (render
+ * KaTeX). Hỗ trợ delimiter: $$...$$ và \[...\] (block), $...$ và \(...\) (inline).
+ * Mỗi công thức là một block riêng nên không bị lỗi View-trong-Text của RN.
+ */
+const MATH_RE =
+  /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$(?!\s)[^\n$]*?\$(?!\d))/g;
+
+const splitMathSegments = (src: string): ContentSegment[] => {
+  const segments: ContentSegment[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  MATH_RE.lastIndex = 0;
+
+  while ((match = MATH_RE.exec(src)) !== null) {
+    const raw = match[0];
+    if (match.index > lastIndex) {
+      segments.push({
+        type: "text",
+        value: src.slice(lastIndex, match.index),
+        display: false,
+      });
+    }
+
+    let display = false;
+    let latex = raw;
+    if (raw.startsWith("$$")) {
+      display = true;
+      latex = raw.slice(2, -2);
+    } else if (raw.startsWith("\\[")) {
+      display = true;
+      latex = raw.slice(2, -2);
+    } else if (raw.startsWith("\\(")) {
+      latex = raw.slice(2, -2);
+    } else {
+      latex = raw.slice(1, -1);
+    }
+
+    segments.push({ type: "math", value: latex.trim(), display });
+    lastIndex = match.index + raw.length;
+  }
+
+  if (lastIndex < src.length) {
+    segments.push({ type: "text", value: src.slice(lastIndex), display: false });
+  }
+
+  return segments;
+};
 
 const TypingIndicator = ({ color }: { color: string }) => {
   const dot1 = useRef(new Animated.Value(0.3)).current;
@@ -103,7 +157,12 @@ const ChatDetail = () => {
   const { t } = useLocalization();
   const isKeyboardOpen = useKeyboardVisible(true);
 
-  const { data, initialMessage } = useLocalSearchParams() || {};
+  const {
+    data,
+    initialMessage,
+    fromBts: fromBtsParam,
+  } = useLocalSearchParams() || {};
+  const fromBts = fromBtsParam === "1";
   const conversation = data
     ? (JSON.parse(data as string) as ChatConversation)
     : null;
@@ -119,6 +178,58 @@ const ChatDetail = () => {
 
   const scrollRef = useRef<ScrollView>(null);
   const sentInitial = useRef(false);
+
+  // Toast "Đã sao chép" hiển thị phía trên ô nhập khi long-press để copy.
+  const [copiedVisible, setCopiedVisible] = useState(false);
+  const copiedAnim = useRef(new Animated.Value(0)).current;
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const copyMessage = async (text: string) => {
+    await Clipboard.setStringAsync(text);
+
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    setCopiedVisible(true);
+    Animated.timing(copiedAnim, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+
+    copiedTimer.current = setTimeout(() => {
+      Animated.timing(copiedAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start(() => setCopiedVisible(false));
+    }, 1400);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    };
+  }, []);
+
+  const markdownStyle = {
+    body: { ...typography.bodyLarge, color: theme.text.onPrimary },
+    strong: { fontFamily: typography.titleMedium.fontFamily },
+    bullet_list: { marginVertical: 4 },
+    list_item: { marginVertical: 2 },
+  };
+
+  const insets = useSafeAreaInsets();
+
+  const [firstFromBts, setFirstFromBts] = useState(fromBts);
+
+  const marginBottom = useMemo(() => {
+    if (firstFromBts) {
+      return insets.bottom + 24;
+    } else return isKeyboardOpen ? 24 : 0;
+  }, [firstFromBts, insets.bottom, isKeyboardOpen]);
+
+  useEffect(() => {
+    if (firstFromBts && isKeyboardOpen) setFirstFromBts(false);
+  }, [firstFromBts, isKeyboardOpen]);
 
   const send = async (text: string) => {
     const trimmed = text.trim();
@@ -207,6 +318,7 @@ const ChatDetail = () => {
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             onContentSizeChange={() =>
               scrollRef.current?.scrollToEnd({ animated: true })
             }
@@ -224,8 +336,11 @@ const ChatDetail = () => {
             ) : (
               messages.map((msg) =>
                 msg.role === "user" ? (
-                  <View
+                  <TouchableOpacity
                     key={msg.id}
+                    activeOpacity={0.85}
+                    onLongPress={() => copyMessage(msg.content)}
+                    delayLongPress={300}
                     style={{
                       alignSelf: "flex-end",
                       maxWidth: "82%",
@@ -242,24 +357,29 @@ const ChatDetail = () => {
                     <Text typography="bodyLarge" color={theme.text.onPrimary}>
                       {msg.content}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 ) : (
-                  <View key={msg.id} style={{ marginVertical: 8 }}>
-                    <Markdown
-                      style={{
-                        body: {
-                          ...typography.bodyLarge,
-                          color: theme.text.onPrimary,
-                        },
-                        strong: {
-                          fontFamily: typography.titleMedium.fontFamily,
-                        },
-                        bullet_list: { marginVertical: 4 },
-                        list_item: { marginVertical: 2 },
-                      }}
-                    >
-                      {msg.content}
-                    </Markdown>
+                  <TouchableOpacity
+                    key={msg.id}
+                    activeOpacity={0.85}
+                    onLongPress={() => copyMessage(msg.content)}
+                    delayLongPress={300}
+                    style={{ marginVertical: 8 }}
+                  >
+                    {splitMathSegments(msg.content).map((seg, i) =>
+                      seg.type === "math" ? (
+                        <KatexWebView
+                          key={`${msg.id}-m${i}`}
+                          latex={seg.value}
+                          display={seg.display}
+                          color={theme.text.onPrimary}
+                        />
+                      ) : seg.value.trim() ? (
+                        <Markdown key={`${msg.id}-t${i}`} style={markdownStyle}>
+                          {seg.value}
+                        </Markdown>
+                      ) : null,
+                    )}
 
                     {msg.image ? (
                       <Image
@@ -274,7 +394,7 @@ const ChatDetail = () => {
                         resizeMode="contain"
                       />
                     ) : null}
-                  </View>
+                  </TouchableOpacity>
                 ),
               )
             )}
@@ -310,12 +430,44 @@ const ChatDetail = () => {
           </ScrollView>
         )}
 
+        {/* Toast "Đã sao chép" nằm trên ô nhập */}
+        {copiedVisible && (
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              alignSelf: "center",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 8,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 20,
+              backgroundColor: theme.base.success,
+              opacity: copiedAnim,
+              transform: [
+                {
+                  translateY: copiedAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [8, 0],
+                  }),
+                },
+              ],
+            }}
+          >
+            <Feather name="check" size={16} color={theme.text.onPrimary} />
+            <Text typography="labelLarge" color={theme.text.onPrimary}>
+              {t("chatbot.copied")}
+            </Text>
+          </Animated.View>
+        )}
+
         {/* Composer: nhập + gửi tin nhắn */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            marginBottom: isKeyboardOpen ? 24 : 0,
+            marginBottom: marginBottom,
             paddingHorizontal: 12,
           }}
         >

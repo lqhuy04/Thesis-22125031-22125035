@@ -8,7 +8,6 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import IntroductionSection from "@/components/detail/IntroductionSection";
 import FinancialIndicatorsSection from "@/components/detail/FinancialIndicatorsSection";
 import NewsSection from "@/components/detail/NewsSection";
-import ScreenFooter from "@/components/ScreenFooter";
 import AIFloatingButton from "@/components/AIFloatingButton";
 
 const Detail = () => {
@@ -35,17 +34,8 @@ const Detail = () => {
 
         <IntroductionSection stockSymbol={stockSymbol} />
 
-        <View style={{ height: 140 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
-
-      <ScreenFooter
-        onPressBuy={() =>
-          router.push({
-            pathname: "/BuyStock",
-            params: { data: stockSymbol },
-          })
-        }
-      />
 
       <AIFloatingButton
         onPress={() =>

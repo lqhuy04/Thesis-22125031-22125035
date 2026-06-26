@@ -541,6 +541,7 @@ export default {
     emptyMessage: "Hãy bắt đầu cuộc trò chuyện bằng một câu hỏi.",
     errorMessage: "Xin lỗi, đã có lỗi khi gửi tin nhắn. Vui lòng thử lại.",
     sending: "Đang trả lời...",
+    copied: "Đã sao chép",
     newConversation: "Cuộc trò chuyện mới",
     historyTitle: "Lịch sử hoạt động",
     conversations: "Trò chuyện",

@@ -16,7 +16,6 @@ import Chatbot from "./Chatbot";
 import { Text } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalization } from "@/hooks/LocalizationContext";
-import WatchListStock from "./WatchListStock";
 import Octicons from "@expo/vector-icons/Octicons";
 import { SWITCH_TAB_EVENT, tabEvents } from "@/helpers/api/tabEvents";
 
@@ -56,10 +55,11 @@ const Tabs = () => {
       featured: true,
     },
     {
-      name: "Assets",
-      label: t("tabs.assets"),
-      icon: "wallet-outline" as const,
-      component: <WatchListStock />,
+      name: "Empty",
+      label: "",
+      icon: "ellipse-outline" as const,
+      component: <View style={{ flex: 1 }} />,
+      empty: true,
     },
     {
       name: "Profile",
@@ -156,8 +156,9 @@ const Tabs = () => {
         {TABS.map((tab, index) => {
           const focused = activeIndex === index;
           const isFeatured = !!tab.featured;
+          const isEmpty = !!tab.empty;
 
-          if (isFeatured) {
+          if (isFeatured || isEmpty) {
             return <View key={tab.name} style={{ flex: 1 }} />;
           }
 

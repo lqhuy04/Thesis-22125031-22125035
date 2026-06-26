@@ -12,7 +12,7 @@ import ScreenHeader from "@/components/ui/ScreenHeader";
 import { Text } from "@/components/ui/Text";
 import { getAllStocks, getIndustryMovement } from "@/helpers/MarketHelpers";
 import { CurrentPriceData } from "@/helpers/DetailHelpers";
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
 
 // Sentinel value cho tab "Tất cả" (không phải tên ngành thật)
@@ -362,7 +362,12 @@ const IndustryMovement = () => {
                   />
                 ) : null}
                 <TouchableOpacity
-                  onPress={() => {}}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/Detail",
+                      params: { data: item.symbol },
+                    })
+                  }
                   style={{
                     paddingVertical: 16,
                     backgroundColor: theme.background.bg,

@@ -49,9 +49,15 @@ const ScreenHeader = ({ hiddenBack = false, title, onPressBack }: Props) => {
         </TouchableOpacity>
       )}
 
-      <Text typography="titleMedium" color={theme.text.primary}>
-        {title}
-      </Text>
+      <View style={{ flex: 1 }}>
+        <Text
+          typography="titleMedium"
+          color={theme.text.primary}
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+      </View>
     </View>
   );
 };

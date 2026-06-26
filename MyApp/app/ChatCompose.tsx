@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   TextInput,
@@ -8,7 +8,7 @@ import {
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import LinearGradient from "react-native-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
 import Feather from "@expo/vector-icons/Feather";
 import Octicons from "@expo/vector-icons/Octicons";
@@ -16,12 +16,22 @@ import { Text } from "@/components/ui/Text";
 import type { ChatConversation } from "@/components/chatbot/ChatHistoryBottomsheet";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import useKeyboardVisible from "@/hooks/KeyboardContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ChatCompose = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [input, setInput] = useState("");
   const isKeyboardOpen = useKeyboardVisible(true);
+  const insets = useSafeAreaInsets();
+  const fromBts = useLocalSearchParams<{ fromBts?: string }>().fromBts === "1";
+  const [firstFromBts, setFirstFromBts] = useState(fromBts);
+
+  const marginBottom = useMemo(() => {
+    if (firstFromBts) {
+      return insets.bottom + 24;
+    } else return isKeyboardOpen ? 24 : 0;
+  }, [firstFromBts, insets.bottom, isKeyboardOpen]);
 
   /** Tạo phiên mới (UUID) và điều hướng sang ChatDetail, gửi luôn tin đầu tiên. */
   const startNewConversation = () => {
@@ -44,6 +54,10 @@ const ChatCompose = () => {
       },
     });
   };
+
+  useEffect(() => {
+    if (firstFromBts && isKeyboardOpen) setFirstFromBts(false);
+  }, [firstFromBts, isKeyboardOpen]);
 
   return (
     <LinearGradient
@@ -98,7 +112,7 @@ const ChatCompose = () => {
           style={{
             flexDirection: "row",
             alignItems: "center",
-            marginBottom: isKeyboardOpen ? 24 : 0,
+            marginBottom: marginBottom,
             paddingHorizontal: 12,
           }}
         >

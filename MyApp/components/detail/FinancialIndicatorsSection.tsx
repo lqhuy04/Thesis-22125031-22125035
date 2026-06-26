@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, View, StyleSheet } from "react-native";
+import {
+  Animated,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  UIManager,
+  View,
+  StyleSheet,
+} from "react-native";
 import { Text } from "../ui/Text";
 import {
   CashFlows,
@@ -9,6 +17,14 @@ import {
 } from "@/helpers/FundamentalAnalysisHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import Entypo from "@expo/vector-icons/Entypo";
+
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // ─── Skeleton Primitives ───────────────────────────────────────────────────────
 
@@ -215,6 +231,111 @@ const fmtPct = (value: number | null | undefined) => fmt(value != null ? value *
 const fmtBillion = (value: number | null | undefined, unit: string) =>
   value == null ? "N/A" : `${(value / 1_000_000_000).toFixed(2)} ${unit}`;
 
+// ─── Accordion Card ──────────────────────────────────────────────────────────
+
+const AccordionCard = ({
+  title,
+  rows,
+  defaultOpen = false,
+  cardBg,
+  titleColor,
+  labelColor,
+  valueColor,
+  dividerColor,
+  primaryColor,
+  style,
+}: {
+  title: string;
+  rows: { label: string; value: string }[];
+  defaultOpen?: boolean;
+  cardBg: string;
+  titleColor: string;
+  labelColor: string;
+  valueColor: string;
+  dividerColor: string;
+  primaryColor: string;
+  style?: object;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  const rotateAnim = useRef(new Animated.Value(defaultOpen ? 1 : 0)).current;
+
+  const toggle = () => {
+    LayoutAnimation.configureNext({
+      duration: 260,
+      create: { type: "easeInEaseOut", property: "opacity" },
+      update: { type: "spring", springDamping: 0.78 },
+      delete: { type: "easeInEaseOut", property: "opacity" },
+    });
+    Animated.timing(rotateAnim, {
+      toValue: open ? 0 : 1,
+      duration: 240,
+      useNativeDriver: true,
+    }).start();
+    setOpen((prev) => !prev);
+  };
+
+  const rotate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  return (
+    <View
+      style={[
+        { backgroundColor: cardBg, borderRadius: 12, padding: 12 },
+        style,
+      ]}
+    >
+      <Pressable
+        onPress={toggle}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <Text typography="titleMedium" color={titleColor}>
+          {title}
+        </Text>
+        <Animated.View style={{ transform: [{ rotate }] }}>
+          <View
+            style={{
+              width: 20,
+              height: 20,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Entypo name="chevron-small-down" size={24} color={primaryColor} />
+          </View>
+        </Animated.View>
+      </Pressable>
+
+      {open && (
+        <View style={{ marginTop: 12 }}>
+          {rows.map(({ label, value }, i) => (
+            <React.Fragment key={label}>
+              <View style={styles.row}>
+                <Text typography="bodyLarge" color={labelColor}>
+                  {label}
+                </Text>
+                <Text typography="titleMedium" color={valueColor}>
+                  {value}
+                </Text>
+              </View>
+              {i < rows.length - 1 && (
+                <View
+                  style={[styles.divider, { backgroundColor: dividerColor }]}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 interface FinancialIndicatorsSectionProps {
@@ -263,6 +384,15 @@ const FinancialIndicatorsSection = ({
 
   if (financialIndicators == null || cashFlows == null) return null;
 
+  const cardProps = {
+    cardBg: theme.background.bg,
+    titleColor: theme.text.primary,
+    labelColor: theme.text.primary + "88",
+    valueColor: theme.text.primary,
+    dividerColor: theme.border.default,
+    primaryColor: theme.base.primary,
+  };
+
   return (
     <View style={{ marginHorizontal: 12 }}>
       <Text
@@ -274,25 +404,17 @@ const FinancialIndicatorsSection = ({
       </Text>
 
       {/* ── Định giá ── */}
-      <View
-        style={{
-          backgroundColor: theme.background.bg,
-          borderRadius: 12,
-          padding: 12,
-        }}
-      >
-        <Text
-          typography="titleMedium"
-          color={theme.text.primary}
-          style={{ marginBottom: 12 }}
-        >
-          {t("financialIndicators.valuation")}
-        </Text>
-
-        {[
+      <AccordionCard
+        {...cardProps}
+        defaultOpen
+        title={t("financialIndicators.valuation")}
+        rows={[
           {
             label: t("financialIndicators.marketCap"),
-            value: fmtBillion(financialIndicators.market_cap, t("financialIndicators.billionVND")),
+            value: fmtBillion(
+              financialIndicators.market_cap,
+              t("financialIndicators.billionVND"),
+            ),
           },
           {
             label: t("financialIndicators.pe"),
@@ -314,46 +436,15 @@ const FinancialIndicatorsSection = ({
             label: t("financialIndicators.evEbitda"),
             value: fmt(financialIndicators.ev_ebitda),
           },
-        ].map(({ label, value }, i, arr) => (
-          <React.Fragment key={label}>
-            <View style={styles.row}>
-              <Text typography="bodyLarge" color={theme.text.primary + "88"}>
-                {label}
-              </Text>
-              <Text typography="titleMedium" color={theme.text.primary}>
-                {value}
-              </Text>
-            </View>
-            {i < arr.length - 1 && (
-              <View
-                style={[
-                  styles.divider,
-                  { backgroundColor: theme.border.default },
-                ]}
-              />
-            )}
-          </React.Fragment>
-        ))}
-      </View>
+        ]}
+      />
 
       {/* ── Khả năng sinh lời ── */}
-      <View
-        style={{
-          backgroundColor: theme.background.bg,
-          borderRadius: 12,
-          padding: 12,
-          marginTop: 12,
-        }}
-      >
-        <Text
-          typography="titleMedium"
-          color={theme.text.primary}
-          style={{ marginBottom: 12 }}
-        >
-          {t("financialIndicators.profitability")}
-        </Text>
-
-        {[
+      <AccordionCard
+        {...cardProps}
+        style={{ marginTop: 12 }}
+        title={t("financialIndicators.profitability")}
+        rows={[
           {
             label: t("financialIndicators.roe"),
             value: fmtPct(financialIndicators.roe),
@@ -374,53 +465,26 @@ const FinancialIndicatorsSection = ({
             label: t("financialIndicators.netMargin"),
             value: fmtPct(financialIndicators.net_margin),
           },
-        ].map(({ label, value }, i, arr) => (
-          <React.Fragment key={label}>
-            <View style={styles.row}>
-              <Text typography="bodyLarge" color={theme.text.primary + "88"}>
-                {label}
-              </Text>
-              <Text typography="titleMedium" color={theme.text.primary}>
-                {value}
-              </Text>
-            </View>
-            {i < arr.length - 1 && (
-              <View
-                style={[
-                  styles.divider,
-                  { backgroundColor: theme.border.default },
-                ]}
-              />
-            )}
-          </React.Fragment>
-        ))}
-      </View>
+        ]}
+      />
 
       {/* ── Sức mạnh tài chính ── */}
-      <View
-        style={{
-          backgroundColor: theme.background.bg,
-          borderRadius: 12,
-          padding: 12,
-          marginTop: 12,
-        }}
-      >
-        <Text
-          typography="titleMedium"
-          color={theme.text.primary}
-          style={{ marginBottom: 12 }}
-        >
-          {t("financialIndicators.financialStrength")}
-        </Text>
-
-        {[
+      <AccordionCard
+        {...cardProps}
+        style={{ marginTop: 12 }}
+        title={t("financialIndicators.financialStrength")}
+        rows={[
           {
             label: t("financialIndicators.debtToEquity"),
             value: fmt(financialIndicators.debt_to_equity),
           },
           {
             label: t("financialIndicators.debtToAsset"),
-            value: fmt(financialIndicators.financial_leverage != null ? 1 - 1 / financialIndicators.financial_leverage : null),
+            value: fmt(
+              financialIndicators.financial_leverage != null
+                ? 1 - 1 / financialIndicators.financial_leverage
+                : null,
+            ),
           },
           {
             label: t("financialIndicators.quickRatio"),
@@ -430,27 +494,8 @@ const FinancialIndicatorsSection = ({
             label: t("financialIndicators.currentRatio"),
             value: fmt(financialIndicators.current_ratio),
           },
-        ].map(({ label, value }, i, arr) => (
-          <React.Fragment key={label}>
-            <View style={styles.row}>
-              <Text typography="bodyLarge" color={theme.text.primary + "88"}>
-                {label}
-              </Text>
-              <Text typography="titleMedium" color={theme.text.primary}>
-                {value}
-              </Text>
-            </View>
-            {i < arr.length - 1 && (
-              <View
-                style={[
-                  styles.divider,
-                  { backgroundColor: theme.border.default },
-                ]}
-              />
-            )}
-          </React.Fragment>
-        ))}
-      </View>
+        ]}
+      />
     </View>
   );
 };

@@ -13,6 +13,7 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Text } from "../ui/Text";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const TOTAL_STEPS = 6;
@@ -170,7 +171,7 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
     <View style={styles.bulletRow}>
       <Text
         typography="bodyMedium"
-        color={theme.text.secondary}
+        color={theme.text.primary + "88"}
         style={{ marginRight: 6 }}
       >
         •
@@ -248,7 +249,7 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
       </View>
       <Text
         typography="bodySmall"
-        color={theme.text.secondary}
+        color={theme.text.primary + "88"}
         style={{ marginTop: 8, textAlign: "center" }}
       >
         {caption}
@@ -314,21 +315,23 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
         </Text>
         <Text
           typography="bodySmall"
-          color={theme.text.secondary}
+          color={theme.text.primary + "88"}
           style={{ marginTop: 2, marginBottom: 10 }}
         >
           {subtitle}
         </Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <Candle color={color} topWick={22} body={48} bottomWick={22} />
-          <View style={{ flex: 1, justifyContent: "space-between", height: 92 }}>
-            <Text typography="bodySmall" color={theme.text.secondary}>
+          <View
+            style={{ flex: 1, justifyContent: "space-between", height: 92 }}
+          >
+            <Text typography="bodySmall" color={theme.text.primary + "88"}>
               — {topLabel}
             </Text>
-            <Text typography="bodySmall" color={theme.text.secondary}>
+            <Text typography="bodySmall" color={theme.text.primary + "88"}>
               — {midLabel}
             </Text>
-            <Text typography="bodySmall" color={theme.text.secondary}>
+            <Text typography="bodySmall" color={theme.text.primary + "88"}>
               — {bottomLabel}
             </Text>
           </View>
@@ -525,7 +528,10 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
       ]}
     >
       <View
-        style={[styles.controlIcon, { backgroundColor: theme.base.primary + "1A" }]}
+        style={[
+          styles.controlIcon,
+          { backgroundColor: theme.base.primary + "1A" },
+        ]}
       >
         <MaterialCommunityIcons
           name={icon}
@@ -539,7 +545,7 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
         </Text>
         <Text
           typography="bodyMedium"
-          color={theme.text.secondary}
+          color={theme.text.primary + "88"}
           style={{ marginTop: 3, lineHeight: 20 }}
         >
           {desc}
@@ -813,9 +819,15 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
 
   const isLastStep = step === TOTAL_STEPS - 1;
   const isFirstStep = step === 0;
+  const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} transparent animationType="none" onShow={openSheet}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onShow={openSheet}
+    >
       {/* Backdrop */}
       <Animated.View
         style={[
@@ -831,7 +843,10 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: theme.background.bg },
+          {
+            backgroundColor: theme.background.bg,
+            paddingBottom: insets.bottom,
+          },
           { transform: [{ translateY: slideAnim }] },
         ]}
       >
@@ -900,20 +915,16 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
         </ScrollView>
 
         {/* Footer */}
-        <View
-          style={[styles.footer, { borderTopColor: theme.border.default }]}
-        >
+        <View style={[styles.footer, { borderTopColor: theme.border.default }]}>
           <TouchableOpacity
             onPress={goBack}
             disabled={isFirstStep}
             style={[
               styles.footerBtn,
               {
-                borderWidth: 1.5,
-                borderColor: isFirstStep
-                  ? theme.border.default
+                backgroundColor: isFirstStep
+                  ? theme.text.primary + "88"
                   : theme.base.primary,
-                backgroundColor: theme.background.bg,
                 opacity: isFirstStep ? 0.5 : 1,
               },
             ]}
@@ -921,12 +932,9 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
             <MaterialCommunityIcons
               name="chevron-left"
               size={18}
-              color={isFirstStep ? theme.text.secondary : theme.base.primary}
+              color={theme.text.onPrimary}
             />
-            <Text
-              typography="titleMedium"
-              color={isFirstStep ? theme.text.secondary : theme.base.primary}
-            >
+            <Text typography="titleMedium" color={theme.text.onPrimary}>
               {t("chartGuide.back")}
             </Text>
           </TouchableOpacity>
@@ -936,20 +944,18 @@ const ChartGuideBottomSheet = ({ visible, onClose }: Props) => {
             style={[
               styles.footerBtn,
               {
-                borderWidth: 1.5,
-                borderColor: theme.base.primary,
-                backgroundColor: theme.background.bg,
+                backgroundColor: theme.base.primary,
               },
             ]}
           >
-            <Text typography="titleMedium" color={theme.base.primary}>
+            <Text typography="titleMedium" color={theme.text.onPrimary}>
               {isLastStep ? t("chartGuide.done") : t("chartGuide.next")}
             </Text>
             {!isLastStep && (
               <MaterialCommunityIcons
                 name="chevron-right"
                 size={18}
-                color={theme.base.primary}
+                color={theme.text.onPrimary}
               />
             )}
           </TouchableOpacity>
@@ -1045,8 +1051,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 28,
+    paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   footerBtn: {

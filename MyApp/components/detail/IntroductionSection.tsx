@@ -342,12 +342,6 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
             valueColor={valueColor}
           />
           <InfoRow
-            label={t("companyProfile.icbCode")}
-            value={companyProfileData.icb_code}
-            labelColor={labelColor}
-            valueColor={valueColor}
-          />
-          <InfoRow
             label={t("companyProfile.foundedDate")}
             value={companyProfileData.founded_date}
             labelColor={labelColor}

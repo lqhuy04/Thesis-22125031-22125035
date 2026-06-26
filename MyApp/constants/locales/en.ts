@@ -543,6 +543,7 @@ export default {
     errorMessage:
       "Sorry, an error occurred while sending the message. Please try again.",
     sending: "Replying...",
+    copied: "Copied",
     newConversation: "New Conversation",
     historyTitle: "Chat History",
     conversations: "Conversations",

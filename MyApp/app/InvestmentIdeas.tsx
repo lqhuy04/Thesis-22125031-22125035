@@ -821,7 +821,7 @@ const InvestmentIdeas = () => {
 
         <Text
           typography="bodySmall"
-          color={theme.text.primary}
+          color={theme.text.onPrimary}
           style={{ paddingHorizontal: 12, marginTop: 8 }}
         >
           {activeGroup === "trend"

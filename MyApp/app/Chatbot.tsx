@@ -127,8 +127,12 @@ const Chatbot = () => {
     });
   };
 
-  /** Mở trang soạn câu hỏi đầu tiên. */
-  const openCompose = () => router.push("/ChatCompose");
+  /** Mở trang soạn câu hỏi đầu tiên. `fromBts`: mở từ bottom sheet lịch sử. */
+  const openCompose = (fromBts = false) =>
+    router.push({
+      pathname: "/ChatCompose",
+      params: fromBts ? { fromBts: "1" } : {},
+    });
 
   const exampleMessages = useMemo(
     () => [
@@ -400,7 +404,7 @@ const Chatbot = () => {
 
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={openCompose}
+          onPress={() => openCompose()}
           style={{
             height: 56,
             backgroundColor: theme.background.bg,
@@ -439,13 +443,11 @@ const Chatbot = () => {
           setHistoryVisible(false);
           router.push({
             pathname: "/ChatDetail",
-            params: { data: JSON.stringify(conversation) },
+            params: { data: JSON.stringify(conversation), fromBts: "1" },
           });
         }}
         onDeleteConversation={handleDeleteConversation}
-        onNewConversation={() => {
-          router.push("/ChatCompose");
-        }}
+        onNewConversation={() => openCompose(true)}
       />
 
       <SuggestionsBottomSheet
