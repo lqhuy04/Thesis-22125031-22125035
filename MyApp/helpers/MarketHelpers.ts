@@ -301,49 +301,43 @@ export type SuggestionItem = {
   per_price_change: number;
 };
 
-export type SuggestionData = {
-  trend: {
-    top_gainers: SuggestionItem[];
-    top_decliners: SuggestionItem[];
-    top_volume: SuggestionItem[];
-  };
-  top_choice: {
-    cheap_under_50k: SuggestionItem[];
-  };
-  community: {
-    top_searched: SuggestionItem[];
-    top_watchlist: SuggestionItem[];
-  };
-};
+export type SuggestionMsgType =
+  | "top_gainers"
+  | "top_decliners"
+  | "top_volume"
+  | "cheap_under_50k"
+  | "top_searched"
+  | "top_watchlist";
 
 export const getInvestingIdea = async (
+  msgType: SuggestionMsgType,
   limit?: number,
 ): Promise<{
   status: boolean;
-  data: SuggestionData | null;
+  data: SuggestionItem[];
 }> => {
   try {
     const result = await sendMessage(
-      `api/investing-idea?limit=${limit != null ? limit : 5}`,
+      `api/investing-idea?msgType=${msgType}&limit=${limit != null ? limit : 5}`,
     );
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
       return {
         status: true,
-        data: data as SuggestionData,
+        data: (data as SuggestionItem[]) ?? [],
       };
     }
 
     return {
       status: false,
-      data: null,
+      data: [],
     };
   } catch (error) {
     console.error(error);
     return {
       status: false,
-      data: null,
+      data: [],
     };
   }
 };

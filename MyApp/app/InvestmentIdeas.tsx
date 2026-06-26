@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Dimensions,
@@ -14,8 +20,8 @@ import LinearGradient from "react-native-linear-gradient";
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import {
   getInvestingIdea,
-  SuggestionData,
   SuggestionItem,
+  SuggestionMsgType,
 } from "@/helpers/MarketHelpers";
 import { Text } from "@/components/ui/Text";
 import AntDesign from "@expo/vector-icons/build/AntDesign";
@@ -42,20 +48,23 @@ const SkeletonBox = ({
   borderRadius?: number;
   style?: object;
   animatedOpacity: Animated.Value;
-}) => (
-  <Animated.View
-    style={[
-      {
-        width: width as any,
-        height,
-        borderRadius,
-        backgroundColor: "#FFFFFF20",
-        opacity: animatedOpacity,
-      },
-      style,
-    ]}
-  />
-);
+}) => {
+  const { theme } = useTheme();
+  return (
+    <Animated.View
+      style={[
+        {
+          width: width as any,
+          height,
+          borderRadius,
+          backgroundColor: theme.text.primary + "20",
+          opacity: animatedOpacity,
+        },
+        style,
+      ]}
+    />
+  );
+};
 
 const InvestmentIdeasSkeleton = () => {
   const { theme } = useTheme();
@@ -210,13 +219,149 @@ const InvestmentIdeasSkeleton = () => {
   );
 };
 
+// Skeleton for a single full-screen page body (table only) — used when
+// switching to a tab whose data is still loading.
+const PageTableSkeleton = () => {
+  const { theme } = useTheme();
+  const animatedOpacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const shimmer = Animated.loop(
+      Animated.sequence([
+        Animated.timing(animatedOpacity, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedOpacity, {
+          toValue: 0.3,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    shimmer.start();
+    return () => shimmer.stop();
+  }, [animatedOpacity]);
+
+  return (
+    <View
+      style={{
+        width: SCREEN_WIDTH,
+        flex: 1,
+        backgroundColor: theme.background.bg,
+      }}
+    >
+      {/* Table header */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 10,
+          backgroundColor: theme.background.bg,
+        }}
+      >
+        <SkeletonBox
+          width={50}
+          height={11}
+          animatedOpacity={animatedOpacity}
+          style={{ flex: 6.5, marginRight: 12 }}
+        />
+        <SkeletonBox
+          width={36}
+          height={11}
+          animatedOpacity={animatedOpacity}
+          style={{ flex: 1.5, marginRight: 12 }}
+        />
+        <SkeletonBox
+          width={52}
+          height={11}
+          animatedOpacity={animatedOpacity}
+          style={{ flex: 2 }}
+        />
+      </View>
+
+      {/* Stock rows */}
+      {Array.from({ length: 10 }).map((_, i) => (
+        <View
+          key={i}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderTopWidth: i === 0 ? 0 : 1,
+            borderTopColor: theme.border.default,
+            backgroundColor: theme.background.bg,
+          }}
+        >
+          {/* Index number */}
+          <SkeletonBox
+            width={12}
+            height={13}
+            borderRadius={3}
+            animatedOpacity={animatedOpacity}
+            style={{ marginRight: 8 }}
+          />
+          {/* Logo */}
+          <SkeletonBox
+            width={32}
+            height={32}
+            borderRadius={8}
+            animatedOpacity={animatedOpacity}
+          />
+          {/* Symbol + Company name */}
+          <View style={{ flex: 6.5, marginLeft: 10, gap: 5, marginRight: 12 }}>
+            <SkeletonBox
+              width={44}
+              height={13}
+              animatedOpacity={animatedOpacity}
+            />
+            <SkeletonBox
+              width={130}
+              height={10}
+              animatedOpacity={animatedOpacity}
+            />
+          </View>
+          {/* Price + change */}
+          <View style={{ flex: 1.5, marginRight: 12, gap: 4 }}>
+            <SkeletonBox
+              width={30}
+              height={13}
+              animatedOpacity={animatedOpacity}
+            />
+            <SkeletonBox
+              width={24}
+              height={10}
+              animatedOpacity={animatedOpacity}
+            />
+          </View>
+          {/* % badge */}
+          <SkeletonBox
+            width={"100%"}
+            height={30}
+            style={{ flex: 2 }}
+            borderRadius={6}
+            animatedOpacity={animatedOpacity}
+          />
+        </View>
+      ))}
+    </View>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 const InvestmentIdeas = () => {
   const { t } = useLocalization();
   const { theme } = useTheme();
-  const [data, setData] = useState<SuggestionData | null>(null);
+  const [dataMap, setDataMap] = useState<
+    Partial<Record<SuggestionMsgType, SuggestionItem[]>>
+  >({});
+  const loadingRef = useRef<Set<SuggestionMsgType>>(new Set());
   const [activeGroup, setActiveGroup] = useState<
     "trend" | "community" | "top_choice"
   >("top_choice");
@@ -242,62 +387,64 @@ const InvestmentIdeas = () => {
   // ------------------------------------------------------------------
   // Tabs definition (same logic as SuggestionSection)
   // ------------------------------------------------------------------
-  const tabs = [
-    {
-      icon: (
-        <MaterialCommunityIcons
-          name="tag-heart-outline"
-          size={28}
-          color={theme.base.primary}
-        />
-      ),
-      title: t("suggestion.topUnder50kTitle"),
-      description: t("suggestion.topUnder50kDescription"),
-      group: "top_choice" as const,
-      getData: (d: SuggestionData) => d.top_choice.cheap_under_50k,
-    },
-    {
-      icon: <AntDesign name="rise" size={28} color={theme.base.success} />,
-      title: t("suggestion.topGainersTitle"),
-      description: t("suggestion.topGainersDescription"),
-      group: "trend" as const,
-      getData: (d: SuggestionData) => d.trend.top_gainers,
-    },
-    {
-      icon: <AntDesign name="fall" size={28} color={theme.base.error} />,
-      title: t("suggestion.topDeclinersTitle"),
-      description: t("suggestion.topDeclinersDescription"),
-      group: "trend" as const,
-      getData: (d: SuggestionData) => d.trend.top_decliners,
-    },
-    {
-      icon: <Entypo name="bar-graph" size={28} color={theme.base.primary} />,
-      title: t("suggestion.topVolumeTitle"),
-      description: t("suggestion.topVolumeDescription"),
-      group: "trend" as const,
-      getData: (d: SuggestionData) => d.trend.top_volume,
-    },
-    {
-      icon: <Feather name="search" size={28} color={theme.base.primary} />,
-      title: t("suggestion.topSearchedTitle"),
-      description: t("suggestion.topSearchedDescription"),
-      group: "community" as const,
-      getData: (d: SuggestionData) => d.community.top_searched,
-    },
-    {
-      icon: (
-        <MaterialCommunityIcons
-          name="eye-plus-outline"
-          size={28}
-          color={theme.base.primary}
-        />
-      ),
-      title: t("suggestion.topWatchlistTitle"),
-      description: t("suggestion.topWatchlistDescription"),
-      group: "community" as const,
-      getData: (d: SuggestionData) => d.community.top_watchlist,
-    },
-  ];
+  const tabs = useMemo(() => {
+    return [
+      {
+        icon: (
+          <MaterialCommunityIcons
+            name="tag-heart-outline"
+            size={28}
+            color={theme.base.primary}
+          />
+        ),
+        title: t("suggestion.topUnder50kTitle"),
+        description: t("suggestion.topUnder50kDescription"),
+        group: "top_choice" as const,
+        msgType: "cheap_under_50k" as const,
+      },
+      {
+        icon: <AntDesign name="rise" size={28} color={theme.base.success} />,
+        title: t("suggestion.topGainersTitle"),
+        description: t("suggestion.topGainersDescription"),
+        group: "trend" as const,
+        msgType: "top_gainers" as const,
+      },
+      {
+        icon: <AntDesign name="fall" size={28} color={theme.base.error} />,
+        title: t("suggestion.topDeclinersTitle"),
+        description: t("suggestion.topDeclinersDescription"),
+        group: "trend" as const,
+        msgType: "top_decliners" as const,
+      },
+      {
+        icon: <Entypo name="bar-graph" size={28} color={theme.base.primary} />,
+        title: t("suggestion.topVolumeTitle"),
+        description: t("suggestion.topVolumeDescription"),
+        group: "trend" as const,
+        msgType: "top_volume" as const,
+      },
+      {
+        icon: <Feather name="search" size={28} color={theme.base.primary} />,
+        title: t("suggestion.topSearchedTitle"),
+        description: t("suggestion.topSearchedDescription"),
+        group: "community" as const,
+        msgType: "top_searched" as const,
+      },
+      {
+        icon: (
+          <MaterialCommunityIcons
+            name="eye-plus-outline"
+            size={28}
+            color={theme.base.primary}
+          />
+        ),
+        title: t("suggestion.topWatchlistTitle"),
+        description: t("suggestion.topWatchlistDescription"),
+        group: "community" as const,
+        msgType: "top_watchlist" as const,
+      },
+    ];
+  }, [t, theme.base.error, theme.base.primary, theme.base.success]);
 
   const trendTabs = tabs.filter((t) => t.group === "trend");
   const topChoiceTabs = tabs.filter((t) => t.group === "top_choice");
@@ -325,11 +472,27 @@ const InvestmentIdeas = () => {
         : communityStartIndex;
 
   // ------------------------------------------------------------------
-  useEffect(() => {
-    getInvestingIdea(20).then((res) => {
-      if (res?.status) setData(res?.data);
+  // Lazy-load a single category, cached by msgType. Each tab loads once.
+  const loadTab = useCallback((msgType: SuggestionMsgType) => {
+    setDataMap((prev) => {
+      if (prev[msgType] !== undefined || loadingRef.current.has(msgType)) {
+        return prev;
+      }
+      loadingRef.current.add(msgType);
+      getInvestingIdea(msgType, 20)
+        .then((res) => {
+          setDataMap((curr) => ({ ...curr, [msgType]: res?.data ?? [] }));
+        })
+        .finally(() => loadingRef.current.delete(msgType));
+      return prev;
     });
   }, []);
+
+  // Load whichever page is currently visible (also covers initial mount).
+  useEffect(() => {
+    const tab = tabs[currentPage];
+    if (tab) loadTab(tab.msgType);
+  }, [currentPage, loadTab, tabs]);
 
   // ------------------------------------------------------------------
   // Handlers
@@ -464,7 +627,12 @@ const InvestmentIdeas = () => {
   // Render one full-screen page
   // ------------------------------------------------------------------
   const renderPage = ({ item }: { item: (typeof tabs)[0] }) => {
-    const listData = data ? item.getData(data) : [];
+    const listData = dataMap[item.msgType];
+
+    if (listData === undefined) {
+      return <PageTableSkeleton />;
+    }
+
     const sortedData = [...listData].sort((a, b) => {
       if (!sortKey) return 0;
       let diff = 0;
@@ -592,7 +760,7 @@ const InvestmentIdeas = () => {
                   sortKey === "change" ? theme.base.primary : theme.text.primary
                 }
               >
-                {t("suggestion.columnChangeToday")}
+                %
               </Text>
               <View style={{ marginLeft: 4, alignItems: "center" }}>
                 <Entypo
@@ -629,9 +797,9 @@ const InvestmentIdeas = () => {
   };
 
   // ------------------------------------------------------------------
-  // Loading state
+  // Loading state — show full skeleton until the first tab has loaded.
   // ------------------------------------------------------------------
-  if (!data) {
+  if (dataMap[tabs[0].msgType] === undefined) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
         <LinearGradient

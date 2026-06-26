@@ -329,7 +329,8 @@ export default {
     starName: "Morning Star / Evening Star",
     starFeatureTitle: "Characteristics, a set of 3 candles:",
     star1: "Candle 1: Long body, strongly continuing the current trend.",
-    star2: "Candle 2: Short body or Doji, showing hesitation and loss of momentum.",
+    star2:
+      "Candle 2: Short body or Doji, showing hesitation and loss of momentum.",
     star3: "Candle 3: Long body, decisively reversing against candle 1.",
     starMeaning:
       'Symbolizes the transition between day and night. While the Morning Star signals "light" (buyers) returning after a decline, the Evening Star is a sign of "darkness" (sellers) about to take over after an euphoric rally.',

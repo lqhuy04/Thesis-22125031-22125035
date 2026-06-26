@@ -214,33 +214,9 @@ class InvestingIdeaStockItem(BaseModel):
     per_price_change: float = Field(0.0, description="Percent price change")
 
 
-class InvestingIdeaTrendTab(BaseModel):
-    """Trend tab: gainers, decliners, and volume leaders."""
-    top_gainers: List[InvestingIdeaStockItem] = Field(default=[], description="Top gainers")
-    top_decliners: List[InvestingIdeaStockItem] = Field(default=[], description="Top decliners")
-    top_volume: List[InvestingIdeaStockItem] = Field(default=[], description="Top matched volume")
-
-
-class InvestingIdeaChoiceTab(BaseModel):
-    """Choice tab: cheap stocks under 50k."""
-    cheap_under_50k: List[InvestingIdeaStockItem] = Field(default=[], description="Cheap stocks under 50k")
-
-
-class InvestingIdeaCommunityTab(BaseModel):
-    """Community tab: most searched and most watched stocks."""
-    top_searched: List[InvestingIdeaStockItem] = Field(default=[], description="Top searched stocks")
-    top_watchlist: List[InvestingIdeaStockItem] = Field(default=[], description="Top watchlisted stocks")
-
-class InvestingIdeaData(BaseModel):
-    """Payload for investing idea endpoint."""
-    trend: InvestingIdeaTrendTab = Field(default_factory=InvestingIdeaTrendTab)
-    top_choice: InvestingIdeaChoiceTab = Field(default_factory=InvestingIdeaChoiceTab)
-    community: InvestingIdeaCommunityTab = Field(default_factory=InvestingIdeaCommunityTab)
-
-
 class InvestingIdeaResponse(BaseModel):
-    """Response for investing idea endpoint."""
-    data: InvestingIdeaData = Field(default_factory=InvestingIdeaData)
+    """Response for investing idea endpoint (one category per request)."""
+    data: List[InvestingIdeaStockItem] = Field(default=[], description="Stock list for the requested category")
     errorCode: int = Field(0, description="Error code (0 for success)")
     errorDesc: str = Field("", description="Error description")
     requestId: str = Field(..., description="Unique request identifier")

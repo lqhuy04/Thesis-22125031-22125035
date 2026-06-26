@@ -209,22 +209,21 @@ def get_top_index_impact_stocks(
 
 @router.get("/investing-idea", response_model=InvestingIdeaResponse)
 def get_investing_idea(
-    limit: int = Query(100, ge=1, le=100, description="Number of stocks per list"),
+    msgType: str = Query(
+        ...,
+        description=(
+            "Category to fetch. One of: top_gainers, top_decliners, top_volume, "
+            "cheap_under_50k, top_searched, top_watchlist"
+        ),
+    ),
+    limit: int = Query(100, ge=1, le=100, description="Number of stocks in the list"),
 ):
     request_id = str(uuid.uuid4())
-    payload = MarketService.get_investing_ideas(limit=limit)
+    data = MarketService.get_investing_idea_by_type(msg_type=msgType, limit=limit)
 
-    has_data = (
-        bool(payload.get("trend", {}).get("top_gainers"))
-        or bool(payload.get("trend", {}).get("top_decliners"))
-        or bool(payload.get("trend", {}).get("top_volume"))
-        or bool(payload.get("top_choice", {}).get("cheap_under_50k"))
-        or bool(payload.get("community", {}).get("top_searched"))
-        or bool(payload.get("community", {}).get("top_watchlist"))
-    )
-
+    has_data = len(data) > 0
     return {
-        "data": payload,
+        "data": data,
         "errorCode": 0 if has_data else 500001,
         "errorDesc": "" if has_data else "No investing idea data found",
         "requestId": request_id,

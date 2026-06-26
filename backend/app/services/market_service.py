@@ -1169,26 +1169,37 @@ class MarketService:
 
         return rows
 
+    # Valid investing-idea categories (msgType values).
+    _INVESTING_IDEA_TYPES = {
+        "top_gainers",
+        "top_decliners",
+        "top_volume",
+        "cheap_under_50k",
+        "top_searched",
+        "top_watchlist",
+    }
+
     @staticmethod
-    def get_investing_ideas(limit: int = 100) -> Dict[str, Any]:
+    def get_investing_idea_by_type(msg_type: str, limit: int = 100) -> List[Dict[str, Any]]:
         """
-        Build investing ideas payload for three tabs:
-        - trend: top gainers, decliners, and top volume
-        - choice: stocks priced under 50k
-        - community: top searched and top watchlisted stocks
-        
+        Build a single investing-idea category list and return it as a flat list.
+
+        Supported msg_type values:
+        - top_gainers / top_decliners / top_volume  (trend)
+        - cheap_under_50k                            (top choice)
+        - top_searched / top_watchlist               (community)
+
         Excludes UPCOM exchange; only includes HOSE and HNX.
         """
         try:
+            if msg_type not in MarketService._INVESTING_IDEA_TYPES:
+                return []
+
             limit = max(1, min(limit, 100))
 
             profiles = MarketService._fetch_all_rows(
                 "BI_Profile",
                 "stock_id, symbol, company_name, logo, exchange"
-            )
-            prices = MarketService._fetch_all_rows(
-                "Current_Stock_Price",
-                "symbol, current_price, price_change, per_price_change, total_match_vol"
             )
 
             profile_by_symbol: Dict[str, Dict[str, Any]] = {}
@@ -1205,13 +1216,17 @@ class MarketService:
                 if stock_id:
                     profile_by_stock_id[stock_id] = profile
 
+            prices = MarketService._fetch_all_rows(
+                "Current_Stock_Price",
+                "symbol, current_price, price_change, per_price_change, total_match_vol"
+            )
             price_by_symbol: Dict[str, Dict[str, Any]] = {
                 str(price.get("symbol") or "").upper().strip(): price
                 for price in prices
                 if str(price.get("symbol") or "").strip()
             }
 
-            def build_public_row(profile: Dict[str, Any], price: Dict[str, Any]) -> Dict[str, Any]:
+            def public_row(profile: Dict[str, Any], price: Dict[str, Any]) -> Dict[str, Any]:
                 return {
                     "logo": profile.get("logo") or "",
                     "symbol": str(profile.get("symbol") or "").upper().strip(),
@@ -1221,103 +1236,70 @@ class MarketService:
                     "per_price_change": MarketService._to_float(price.get("per_price_change")),
                 }
 
-            items: List[Dict[str, Any]] = []
-            for symbol, price in price_by_symbol.items():
-                if not symbol or len(symbol) > 3:
-                    continue
+            # ── Community categories: rank by interaction count ──────────────
+            if msg_type in ("top_searched", "top_watchlist"):
+                table = "Search_History" if msg_type == "top_searched" else "Favorite"
+                rows = MarketService._fetch_all_rows(table, "stock_id")
 
-                if symbol not in profile_by_symbol:
-                    continue
+                counts = Counter(
+                    str(row.get("stock_id") or "").strip()
+                    for row in rows
+                    if row.get("stock_id")
+                    and str(row.get("stock_id") or "").strip() in profile_by_stock_id
+                )
 
-                profile = profile_by_symbol[symbol]
-                item = build_public_row(profile, price)
-                item["_total_match_vol"] = MarketService._to_float(price.get("total_match_vol"))
-                items.append(item)
-
-            def build_ranked_items(stock_id_counts: Counter) -> List[Dict[str, Any]]:
                 ranked_items: List[Dict[str, Any]] = []
                 for stock_id, _count in sorted(
-                    stock_id_counts.items(),
-                    key=lambda item: (-item[1], str(profile_by_stock_id.get(item[0], {}).get("symbol") or "")),
+                    counts.items(),
+                    key=lambda item: (
+                        -item[1],
+                        str(profile_by_stock_id.get(item[0], {}).get("symbol") or ""),
+                    ),
                 )[:limit]:
                     profile = profile_by_stock_id.get(stock_id)
                     if not profile:
                         continue
-
                     symbol = str(profile.get("symbol") or "").upper().strip()
                     if not symbol:
                         continue
-
                     price = price_by_symbol.get(symbol, {})
-                    ranked_items.append(build_public_row(profile, price))
+                    ranked_items.append(public_row(profile, price))
 
                 return ranked_items
 
-            search_history_rows = MarketService._fetch_all_rows("Search_History", "stock_id")
-            favorite_rows = MarketService._fetch_all_rows("Favorite", "stock_id")
+            # ── Trend / top-choice categories: rank by price metrics ─────────
+            items: List[Dict[str, Any]] = []
+            for symbol, price in price_by_symbol.items():
+                if not symbol or len(symbol) > 3:
+                    continue
+                if symbol not in profile_by_symbol:
+                    continue
 
-            search_counts = Counter(
-                str(row.get("stock_id") or "").strip()
-                for row in search_history_rows
-                if row.get("stock_id") and str(row.get("stock_id") or "").strip() in profile_by_stock_id
-            )
-            favorite_counts = Counter(
-                str(row.get("stock_id") or "").strip()
-                for row in favorite_rows
-                if row.get("stock_id") and str(row.get("stock_id") or "").strip() in profile_by_stock_id
-            )
+                profile = profile_by_symbol[symbol]
+                row = public_row(profile, price)
+                row["_total_match_vol"] = MarketService._to_float(price.get("total_match_vol"))
+                items.append(row)
 
-            # Keep only fields requested by API contract.
-            def public_row(row: Dict[str, Any]) -> Dict[str, Any]:
-                return {
-                    "logo": row["logo"],
-                    "symbol": row["symbol"],
-                    "company_name": row["company_name"],
-                    "current_price": row["current_price"],
-                    "price_change": row["price_change"],
-                    "per_price_change": row["per_price_change"],
-                }
+            if msg_type == "top_gainers":
+                selected = sorted(items, key=lambda x: x["per_price_change"], reverse=True)[:limit]
+            elif msg_type == "top_decliners":
+                selected = sorted(items, key=lambda x: x["per_price_change"])[:limit]
+            elif msg_type == "top_volume":
+                selected = sorted(items, key=lambda x: x["_total_match_vol"], reverse=True)[:limit]
+            else:  # cheap_under_50k
+                selected = sorted(
+                    [item for item in items if 0 < item["current_price"] < 50],
+                    key=lambda x: (-x["current_price"], -x["_total_match_vol"], x["symbol"]),
+                )[:limit]
 
-            top_gainers = sorted(items, key=lambda x: x["per_price_change"], reverse=True)[:limit]
-            top_decliners = sorted(items, key=lambda x: x["per_price_change"])[:limit]
-            top_volume = sorted(items, key=lambda x: x["_total_match_vol"], reverse=True)[:limit]
-            cheap_under_50k = sorted(
-                [item for item in items if item["current_price"] > 0 and item["current_price"] < 50],
-                key=lambda x: (-x["current_price"], -x["_total_match_vol"], x["symbol"]),
-            )[:limit]
-            top_searched = build_ranked_items(search_counts)
-            top_watchlist = build_ranked_items(favorite_counts)
-
-            return {
-                "trend": {
-                    "top_gainers": [public_row(x) for x in top_gainers],
-                    "top_decliners": [public_row(x) for x in top_decliners],
-                    "top_volume": [public_row(x) for x in top_volume],
-                },
-                "top_choice": {
-                    "cheap_under_50k": [public_row(x) for x in cheap_under_50k],
-                },
-                "community": {
-                    "top_searched": top_searched,
-                    "top_watchlist": top_watchlist,
-                },
-            }
+            # Drop internal-only fields (prefixed with "_") from the response.
+            return [
+                {k: v for k, v in row.items() if not k.startswith("_")}
+                for row in selected
+            ]
         except Exception as e:
-            print(f"Error fetching investing ideas: {e}")
-            return {
-                "trend": {
-                    "top_gainers": [],
-                    "top_decliners": [],
-                    "top_volume": [],
-                },
-                "top_choice": {
-                    "cheap_under_50k": [],
-                },
-                "community": {
-                    "top_searched": [],
-                    "top_watchlist": [],
-                },
-            }
+            print(f"Error fetching investing idea ({msg_type}): {e}")
+            return []
 
     @staticmethod
     def get_top_index_impact_stocks(index_id: str, limit: int = 10) -> List[Dict[str, Any]]:

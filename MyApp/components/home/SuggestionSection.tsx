@@ -1,4 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Dimensions,
@@ -13,8 +19,8 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import {
   getInvestingIdea,
-  SuggestionData,
   SuggestionItem,
+  SuggestionMsgType,
 } from "@/helpers/MarketHelpers";
 import LinearGradient from "react-native-linear-gradient";
 import Entypo from "@expo/vector-icons/Entypo";
@@ -49,6 +55,179 @@ const SkeletonBox = ({
         style,
       ]}
     />
+  );
+};
+
+// Skeleton for just the card body (table) — used when switching to a tab
+// whose data is still loading.
+const SuggestionCardBodySkeleton = () => {
+  const { theme } = useTheme();
+  const rowOpacity = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const shimmer = Animated.loop(
+      Animated.sequence([
+        Animated.timing(rowOpacity, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rowOpacity, {
+          toValue: 0.3,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    shimmer.start();
+    return () => shimmer.stop();
+  }, [rowOpacity]);
+
+  return (
+    <>
+      {/* Table */}
+      <View
+        style={{
+          marginHorizontal: 12,
+          marginBottom: 12,
+          borderRadius: 12,
+          backgroundColor: theme.background.bg,
+          overflow: "hidden",
+        }}
+      >
+        {/* Table Header */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+          }}
+        >
+          <SkeletonBox
+            width={60}
+            height={11}
+            animatedOpacity={rowOpacity}
+            style={{
+              flex: 6.5,
+              marginRight: 16,
+              backgroundColor: theme.text.primary + "20",
+            }}
+          />
+          <SkeletonBox
+            width={40}
+            height={11}
+            animatedOpacity={rowOpacity}
+            style={{
+              flex: 2,
+              marginRight: 16,
+              backgroundColor: theme.text.primary + "20",
+            }}
+          />
+          <SkeletonBox
+            width={60}
+            height={11}
+            animatedOpacity={rowOpacity}
+            style={{
+              flex: 3.5,
+              backgroundColor: theme.text.primary + "20",
+            }}
+          />
+        </View>
+
+        {/* Skeleton Rows */}
+        {Array.from({ length: 5 }).map((_, index) => (
+          <View
+            key={index}
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderTopWidth: 1,
+              borderTopColor: theme.border.default,
+            }}
+          >
+            {/* Logo + Symbol + Name */}
+            <View
+              style={{
+                flex: 6.5,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                marginRight: 16,
+              }}
+            >
+              <SkeletonBox
+                width={24}
+                height={24}
+                borderRadius={8}
+                animatedOpacity={rowOpacity}
+                style={{ backgroundColor: theme.text.primary + "20" }}
+              />
+              <View style={{ flex: 1, gap: 4 }}>
+                <SkeletonBox
+                  width={40}
+                  height={12}
+                  animatedOpacity={rowOpacity}
+                  style={{ backgroundColor: theme.text.primary + "20" }}
+                />
+                <SkeletonBox
+                  width={"80%" as any}
+                  height={10}
+                  animatedOpacity={rowOpacity}
+                  style={{ backgroundColor: theme.text.primary + "20" }}
+                />
+              </View>
+            </View>
+
+            {/* Price */}
+            <View style={{ flex: 2, marginRight: 16, gap: 4 }}>
+              <SkeletonBox
+                width={36}
+                height={12}
+                animatedOpacity={rowOpacity}
+                style={{ backgroundColor: theme.text.primary + "20" }}
+              />
+              <SkeletonBox
+                width={28}
+                height={10}
+                animatedOpacity={rowOpacity}
+                style={{ backgroundColor: theme.text.primary + "20" }}
+              />
+            </View>
+
+            {/* % Badge */}
+            <View style={{ flex: 3.4, alignItems: "flex-end" }}>
+              <SkeletonBox
+                width={"100%" as any}
+                height={28}
+                borderRadius={4}
+                animatedOpacity={rowOpacity}
+                style={{ backgroundColor: theme.text.primary + "20" }}
+              />
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* View more placeholder */}
+      <View
+        style={{
+          alignItems: "center",
+          paddingBottom: 16,
+          flexDirection: "row",
+          justifyContent: "center",
+        }}
+      >
+        <SkeletonBox
+          width={80}
+          height={12}
+          animatedOpacity={rowOpacity}
+          style={{ backgroundColor: theme.text.primary + "20" }}
+        />
+      </View>
+    </>
   );
 };
 
@@ -367,7 +546,10 @@ const SuggestionSectionSkeleton = () => {
 const SuggestionSection = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
-  const [data, setData] = useState<SuggestionData | null>(null);
+  const [dataMap, setDataMap] = useState<
+    Partial<Record<SuggestionMsgType, SuggestionItem[]>>
+  >({});
+  const loadingRef = useRef<Set<SuggestionMsgType>>(new Set());
   const [activeTab, setActiveTab] = useState<
     "trend" | "community" | "top_choice"
   >("top_choice");
@@ -375,62 +557,64 @@ const SuggestionSection = () => {
   const flatListRef = useRef<FlatList>(null);
   const screenWidth = Dimensions.get("window").width;
 
-  const tabs = [
-    {
-      icon: (
-        <MaterialCommunityIcons
-          name="tag-heart-outline"
-          size={36}
-          color={theme.base.primary}
-        />
-      ),
-      title: t("suggestion.topUnder50kTitle"),
-      description: t("suggestion.topUnder50kDescription"),
-      group: "top_choice" as const,
-      getData: (d: SuggestionData) => d.top_choice.cheap_under_50k,
-    },
-    {
-      icon: <AntDesign name="rise" size={36} color={theme.base.success} />,
-      title: t("suggestion.topGainersTitle"),
-      description: t("suggestion.topGainersDescription"),
-      group: "trend" as const,
-      getData: (d: SuggestionData) => d.trend.top_gainers,
-    },
-    {
-      icon: <AntDesign name="fall" size={36} color={theme.base.error} />,
-      title: t("suggestion.topDeclinersTitle"),
-      description: t("suggestion.topDeclinersDescription"),
-      group: "trend" as const,
-      getData: (d: SuggestionData) => d.trend.top_decliners,
-    },
-    {
-      icon: <Entypo name="bar-graph" size={36} color={theme.base.primary} />,
-      title: t("suggestion.topVolumeTitle"),
-      description: t("suggestion.topVolumeDescription"),
-      group: "trend" as const,
-      getData: (d: SuggestionData) => d.trend.top_volume,
-    },
-    {
-      icon: <Feather name="search" size={36} color={theme.base.primary} />,
-      title: t("suggestion.topSearchedTitle"),
-      description: t("suggestion.topSearchedDescription"),
-      group: "community" as const,
-      getData: (d: SuggestionData) => d.community.top_searched,
-    },
-    {
-      icon: (
-        <MaterialCommunityIcons
-          name="eye-plus-outline"
-          size={36}
-          color={theme.base.primary}
-        />
-      ),
-      title: t("suggestion.topWatchlistTitle"),
-      description: t("suggestion.topWatchlistDescription"),
-      group: "community" as const,
-      getData: (d: SuggestionData) => d.community.top_watchlist,
-    },
-  ];
+  const tabs = useMemo(() => {
+    return [
+      {
+        icon: (
+          <MaterialCommunityIcons
+            name="tag-heart-outline"
+            size={36}
+            color={theme.base.primary}
+          />
+        ),
+        title: t("suggestion.topUnder50kTitle"),
+        description: t("suggestion.topUnder50kDescription"),
+        group: "top_choice" as const,
+        msgType: "cheap_under_50k" as const,
+      },
+      {
+        icon: <AntDesign name="rise" size={36} color={theme.base.success} />,
+        title: t("suggestion.topGainersTitle"),
+        description: t("suggestion.topGainersDescription"),
+        group: "trend" as const,
+        msgType: "top_gainers" as const,
+      },
+      {
+        icon: <AntDesign name="fall" size={36} color={theme.base.error} />,
+        title: t("suggestion.topDeclinersTitle"),
+        description: t("suggestion.topDeclinersDescription"),
+        group: "trend" as const,
+        msgType: "top_decliners" as const,
+      },
+      {
+        icon: <Entypo name="bar-graph" size={36} color={theme.base.primary} />,
+        title: t("suggestion.topVolumeTitle"),
+        description: t("suggestion.topVolumeDescription"),
+        group: "trend" as const,
+        msgType: "top_volume" as const,
+      },
+      {
+        icon: <Feather name="search" size={36} color={theme.base.primary} />,
+        title: t("suggestion.topSearchedTitle"),
+        description: t("suggestion.topSearchedDescription"),
+        group: "community" as const,
+        msgType: "top_searched" as const,
+      },
+      {
+        icon: (
+          <MaterialCommunityIcons
+            name="eye-plus-outline"
+            size={36}
+            color={theme.base.primary}
+          />
+        ),
+        title: t("suggestion.topWatchlistTitle"),
+        description: t("suggestion.topWatchlistDescription"),
+        group: "community" as const,
+        msgType: "top_watchlist" as const,
+      },
+    ];
+  }, [t, theme.base.error, theme.base.primary, theme.base.success]);
 
   const trendTabs = tabs.filter((t) => t.group === "trend");
   const topChoiceTabs = tabs.filter((t) => t.group === "top_choice");
@@ -440,11 +624,27 @@ const SuggestionSection = () => {
   const trendStartIndex = topChoiceTabs.length; // = 1
   const communityStartIndex = trendStartIndex + trendTabs.length; // = 4
 
-  useEffect(() => {
-    getInvestingIdea().then((res) => {
-      if (res?.status) setData(res?.data);
+  // Lazy-load a single category, cached by msgType. Each tab loads once.
+  const loadTab = useCallback((msgType: SuggestionMsgType) => {
+    setDataMap((prev) => {
+      if (prev[msgType] !== undefined || loadingRef.current.has(msgType)) {
+        return prev;
+      }
+      loadingRef.current.add(msgType);
+      getInvestingIdea(msgType, 5)
+        .then((res) => {
+          setDataMap((curr) => ({ ...curr, [msgType]: res?.data ?? [] }));
+        })
+        .finally(() => loadingRef.current.delete(msgType));
+      return prev;
     });
   }, []);
+
+  // Load whichever page is currently visible (also covers initial mount).
+  useEffect(() => {
+    const tab = tabs[currentPage];
+    if (tab) loadTab(tab.msgType);
+  }, [currentPage, loadTab, tabs]);
 
   const handleTabPress = (tab: "trend" | "community" | "top_choice") => {
     setActiveTab(tab);
@@ -488,7 +688,10 @@ const SuggestionSection = () => {
         ? currentPage - topChoiceStartIndex
         : currentPage - communityStartIndex;
 
-  return data != null ? (
+  // Show the full skeleton only until the first (default) tab has loaded.
+  const initialLoaded = dataMap[tabs[0].msgType] !== undefined;
+
+  return initialLoaded ? (
     <View style={{ marginTop: 24, marginHorizontal: 12 }}>
       <TouchableOpacity
         onPress={() => {
@@ -585,7 +788,7 @@ const SuggestionSection = () => {
             index,
           })}
           renderItem={({ item }) => {
-            const listData = item.getData(data);
+            const listData = dataMap[item.msgType as SuggestionMsgType];
 
             return (
               <View
@@ -624,169 +827,189 @@ const SuggestionSection = () => {
                   <View style={{ marginRight: 12 }}>{item.icon}</View>
                 </View>
 
-                {/* Table */}
-                <View
-                  style={{
-                    marginHorizontal: 12,
-                    marginBottom: 12,
-                    borderRadius: 12,
-                    backgroundColor: theme.background.bg,
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* Table Header */}
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                    }}
-                  >
-                    <Text
-                      typography="bodySmall"
-                      color={theme.text.primary}
-                      style={{ flex: 6.5, marginRight: 16 }}
+                {listData === undefined ? (
+                  <SuggestionCardBodySkeleton />
+                ) : (
+                  <>
+                    {/* Table */}
+                    <View
+                      style={{
+                        marginHorizontal: 12,
+                        marginBottom: 12,
+                        borderRadius: 12,
+                        backgroundColor: theme.background.bg,
+                        overflow: "hidden",
+                      }}
                     >
-                      {t("suggestion.columnSymbol")}
-                    </Text>
-                    <Text
-                      typography="bodySmall"
-                      color={theme.text.primary}
-                      style={{ flex: 2, textAlign: "left", marginRight: 16 }}
-                    >
-                      {t("suggestion.columnPrice")}
-                    </Text>
-                    <Text
-                      typography="bodySmall"
-                      color={theme.text.primary}
-                      style={{ flex: 3.5, textAlign: "center" }}
-                    >
-                      {t("suggestion.columnChangeToday")}
-                    </Text>
-                  </View>
-
-                  {/* Table Rows */}
-                  {listData.map((stock: SuggestionItem, index: number) => {
-                    const isPositive = stock.per_price_change >= 0;
-                    const changeColor = isPositive ? "#22C55E" : "#EF4444";
-                    const changeBg = isPositive ? "#DCFCE7" : "#FEE2E2";
-                    const arrow = isPositive ? "▲" : "▼";
-
-                    return (
-                      <TouchableOpacity
-                        onPress={() => {
-                          router.push({
-                            pathname: "/Detail",
-                            params: { data: stock.symbol },
-                          });
-                        }}
-                        key={index.toString()}
+                      {/* Table Header */}
+                      <View
                         style={{
                           flexDirection: "row",
                           alignItems: "center",
                           paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          borderTopWidth: 1,
-                          borderTopColor: theme.border.default,
+                          paddingVertical: 8,
                         }}
                       >
-                        {/* Logo + Symbol + Name */}
-                        <View
+                        <Text
+                          typography="bodySmall"
+                          color={theme.text.primary}
+                          style={{ flex: 6.5, marginRight: 16 }}
+                        >
+                          {t("suggestion.columnSymbol")}
+                        </Text>
+                        <Text
+                          typography="bodySmall"
+                          color={theme.text.primary}
                           style={{
-                            flex: 6.5,
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 12,
+                            flex: 2,
+                            textAlign: "left",
                             marginRight: 16,
                           }}
                         >
-                          <Image
-                            source={{
-                              uri:
-                                stock.logo ??
-                                "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
+                          {t("suggestion.columnPrice")}
+                        </Text>
+                        <Text
+                          typography="bodySmall"
+                          color={theme.text.primary}
+                          style={{ flex: 3.5, textAlign: "center" }}
+                        >
+                          {t("suggestion.columnChangeToday")}
+                        </Text>
+                      </View>
+
+                      {/* Table Rows */}
+                      {listData.map((stock: SuggestionItem, index: number) => {
+                        const isPositive = stock.per_price_change >= 0;
+                        const changeColor = isPositive ? "#22C55E" : "#EF4444";
+                        const changeBg = isPositive ? "#DCFCE7" : "#FEE2E2";
+                        const arrow = isPositive ? "▲" : "▼";
+
+                        return (
+                          <TouchableOpacity
+                            onPress={() => {
+                              router.push({
+                                pathname: "/Detail",
+                                params: { data: stock.symbol },
+                              });
                             }}
-                            style={{ width: 32, height: 32, borderRadius: 8 }}
-                          />
-                          <View style={{ flex: 2 }}>
-                            <Text
-                              typography="labelLarge"
-                              color={theme.text.primary}
-                              numberOfLines={1}
-                            >
-                              {stock.symbol}
-                            </Text>
-                            <Text
-                              typography="bodyMedium"
-                              color={theme.text.primary + "88"}
-                              numberOfLines={1}
-                            >
-                              {stock.company_name}
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Price */}
-                        <View style={{ flex: 2, marginRight: 16 }}>
-                          <Text
-                            typography="labelLarge"
-                            color={theme.text.primary}
-                          >
-                            {stock.current_price.toLocaleString("vi-VN")}
-                          </Text>
-                          <Text typography="bodySmall" color={changeColor}>
-                            ({isPositive ? "+" : ""}
-                            {stock.price_change.toLocaleString("vi-VN")})
-                          </Text>
-                        </View>
-
-                        {/* % Change badge */}
-                        <View style={{ flex: 3.5, alignItems: "flex-end" }}>
-                          <View
+                            key={index.toString()}
                             style={{
-                              backgroundColor: changeBg,
-                              borderRadius: 4,
-                              width: "100%",
+                              flexDirection: "row",
                               alignItems: "center",
-                              justifyContent: "center",
-                              paddingVertical: 6,
+                              paddingHorizontal: 12,
+                              paddingVertical: 10,
+                              borderTopWidth: 1,
+                              borderTopColor: theme.border.default,
                             }}
                           >
-                            <Text typography="labelLarge" color={changeColor}>
-                              <Text typography="labelSmall" color={changeColor}>
-                                {arrow}
-                              </Text>
-                              {Math.abs(stock.per_price_change).toLocaleString(
-                                "vi-VN",
-                              )}
-                              %
-                            </Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
+                            {/* Logo + Symbol + Name */}
+                            <View
+                              style={{
+                                flex: 6.5,
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 12,
+                                marginRight: 16,
+                              }}
+                            >
+                              <Image
+                                source={{
+                                  uri:
+                                    stock.logo ??
+                                    "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/office.png",
+                                }}
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  borderRadius: 8,
+                                }}
+                              />
+                              <View style={{ flex: 2 }}>
+                                <Text
+                                  typography="labelLarge"
+                                  color={theme.text.primary}
+                                  numberOfLines={1}
+                                >
+                                  {stock.symbol}
+                                </Text>
+                                <Text
+                                  typography="bodyMedium"
+                                  color={theme.text.primary + "88"}
+                                  numberOfLines={1}
+                                >
+                                  {stock.company_name}
+                                </Text>
+                              </View>
+                            </View>
 
-                {/* Xem thêm */}
-                <TouchableOpacity
-                  style={{
-                    alignItems: "center",
-                    paddingBottom: 16,
-                    flexDirection: "row",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text typography="labelLarge" color={theme.base.primary}>
-                    {t("suggestion.viewMore")}
-                  </Text>
-                  <Entypo
-                    name="chevron-right"
-                    size={16}
-                    color={theme.base.primary}
-                  />
-                </TouchableOpacity>
+                            {/* Price */}
+                            <View style={{ flex: 2, marginRight: 16 }}>
+                              <Text
+                                typography="labelLarge"
+                                color={theme.text.primary}
+                              >
+                                {stock.current_price.toLocaleString("vi-VN")}
+                              </Text>
+                              <Text typography="bodySmall" color={changeColor}>
+                                ({isPositive ? "+" : ""}
+                                {stock.price_change.toLocaleString("vi-VN")})
+                              </Text>
+                            </View>
+
+                            {/* % Change badge */}
+                            <View style={{ flex: 3.5, alignItems: "flex-end" }}>
+                              <View
+                                style={{
+                                  backgroundColor: changeBg,
+                                  borderRadius: 4,
+                                  width: "100%",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  paddingVertical: 6,
+                                }}
+                              >
+                                <Text
+                                  typography="labelLarge"
+                                  color={changeColor}
+                                >
+                                  <Text
+                                    typography="labelSmall"
+                                    color={changeColor}
+                                  >
+                                    {arrow}
+                                  </Text>
+                                  {Math.abs(
+                                    stock.per_price_change,
+                                  ).toLocaleString("vi-VN")}
+                                  %
+                                </Text>
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {/* Xem thêm */}
+                    <TouchableOpacity
+                      style={{
+                        alignItems: "center",
+                        paddingBottom: 16,
+                        flexDirection: "row",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Text typography="labelLarge" color={theme.base.primary}>
+                        {t("suggestion.viewMore")}
+                      </Text>
+                      <Entypo
+                        name="chevron-right"
+                        size={16}
+                        color={theme.base.primary}
+                      />
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             );
           }}

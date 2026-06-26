@@ -61,10 +61,13 @@ const Chatbot = () => {
 
   useEffect(() => {
     let mounted = true;
-    getInvestingIdea(3).then((res) => {
-      if (!mounted || !res.status || !res.data) return;
-      const gainers = (res.data.trend.top_gainers ?? []).slice(0, 3);
-      const decliners = (res.data.trend.top_decliners ?? []).slice(0, 3);
+    Promise.all([
+      getInvestingIdea("top_gainers", 3),
+      getInvestingIdea("top_decliners", 3),
+    ]).then(([gainersRes, declinersRes]) => {
+      if (!mounted) return;
+      const gainers = (gainersRes?.data ?? []).slice(0, 3);
+      const decliners = (declinersRes?.data ?? []).slice(0, 3);
       setQuickChips([
         ...gainers.map((s: SuggestionItem) => ({
           symbol: s.symbol,
