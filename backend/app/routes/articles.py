@@ -33,16 +33,14 @@ def get_all_articles(
 
 @router.get("/macro", response_model=ArticlesListResponse)
 def get_macro_articles(
-    min_symbols: int = Query(2, ge=2, description="Minimum impacted symbols count"),
     limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
 ):
     """
-    Lấy tin tức "Kinh tế vĩ mô" có tác động lên nhiều mã cổ phiếu.
+    Lấy tin tức "Kinh tế vĩ mô" (article_type = "macro").
 
-    - **min_symbols**: Số lượng mã bị ảnh hưởng tối thiểu (mặc định: 3)
     - **limit**: Số lượng bài viết tối đa trả về
     """
-    articles = ArticlesService.get_macro_articles(min_symbols=min_symbols, limit=limit)
+    articles = ArticlesService.get_macro_articles(limit=limit)
     return ArticlesListResponse(
         data=articles,
         errorCode=0,

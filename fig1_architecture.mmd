@@ -1,0 +1,75 @@
+%% Figure 1 — Stockrium System Architecture
+%% Build in draw.io (Arrange > Insert > Advanced > Mermaid) or mermaid.live, then export PNG/PDF
+%% and replace the placeholder box in main.tex with \includegraphics{fig1_architecture}.
+
+flowchart TB
+    subgraph CLIENT["Client layer"]
+        APP["Mobile app<br/>(Expo / React Native)"]
+    end
+
+    subgraph API["Backend — FastAPI"]
+        direction TB
+        ROUTES["Routes (REST)<br/>auth · market · fundamental · technical<br/>articles · company · risk · agentic"]
+        SERVICES["Services<br/>(business logic)"]
+        AUTH["JWT auth middleware"]
+        ROUTES --> SERVICES
+    end
+
+    subgraph AGENTIC["Agentic layer — LangGraph"]
+        direction TB
+        subgraph ANALYZE["Analyze pipeline (StateGraph)"]
+            direction TB
+            ORCH["Orchestrator"]
+            TECH["Technical agent"]
+            FUND["Fundamental agent"]
+            NEWS["News-sentiment agent"]
+            AGG["Aggregator<br/>(fusion + decision)"]
+            ORCH --> TECH
+            ORCH --> FUND
+            ORCH --> NEWS
+            TECH --> AGG
+            FUND --> AGG
+            NEWS --> AGG
+        end
+        subgraph CHAT["Conversational graph"]
+            direction TB
+            INTENT["Intent classifier"]
+            CHATA["Chat / QA"]
+            MARKET["Market agent<br/>(text-to-SQL)"]
+            INTENT --> CHATA
+            INTENT --> MARKET
+        end
+        INTENT -. comprehensive request .-> ORCH
+    end
+
+    subgraph STORES["Data stores"]
+        direction TB
+        SUPA[("Supabase / PostgreSQL<br/>fundamentals · articles · metadata · checkpoints")]
+        REDIS[("Redis<br/>sessions · tokens")]
+    end
+
+    subgraph EXT["External sources"]
+        direction TB
+        SSI["SSI FC Data API<br/>(prices / OHLCV)"]
+        NEWSSRC["VN financial-news sources"]
+    end
+
+    subgraph INGEST["Offline ingestion (scheduled jobs)"]
+        CRAWL["Crawl + fetch"]
+        ENRICH["LLM enrichment<br/>(tickers · sentiment · summary)"]
+        CRAWL --> ENRICH
+    end
+
+    %% Online paths (solid)
+    APP --> AUTH
+    AUTH --> ROUTES
+    SERVICES --> AGENTIC
+    ANALYZE --> SERVICES
+    CHAT --> SERVICES
+    AGENTIC --> STORES
+    SERVICES --> STORES
+
+    %% Offline paths (dashed)
+    SSI -. periodic .-> CRAWL
+    NEWSSRC -. periodic .-> CRAWL
+    ENRICH -. writes .-> SUPA

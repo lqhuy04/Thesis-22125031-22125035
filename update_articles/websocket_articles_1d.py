@@ -271,6 +271,7 @@ def insert_article_with_stocks(article_data: dict) -> bool:
             "content": article_data.get("content", ""),
             "sentiment": article_data.get("sentiment", "neutral"),
             "summary": article_data.get("summary", ""),
+            "article_type": "stock",
         }).execute()
 
         if not article_res.data:
@@ -345,7 +346,7 @@ def main():
         logger.info(f"\n[{idx}/{len(symbols)}] Fetching news for {symbol}...")
         
         # Search for news in last 24 hours
-        query = f"{symbol} cổ phiếu chứng khoán"
+        query = f"Tin tức của cổ phiếu {symbol} trong tuần"
         news_items = search_serper(query)
         
         if not news_items:

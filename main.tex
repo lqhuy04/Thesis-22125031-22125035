@@ -1,0 +1,1190 @@
+% This is samplepaper.tex, a sample chapter demonstrating the
+% LLNCS macro package for Springer Computer Science proceedings;
+% Version 2.21 of 2022/01/12
+%
+\documentclass[runningheads]{llncs}
+%
+\usepackage[T1]{fontenc}
+% T1 fonts will be used to generate the final print and online PDFs,
+% so please use T1 fonts in your manuscript whenever possible.
+% Other font encondings may result in incorrect characters.
+%
+\usepackage{graphicx}
+% Used for displaying a sample figure. If possible, figure files should
+% be included in EPS format.
+%
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+%
+% If you use the hyperref package, please uncomment the following two lines
+% to display URLs in blue roman font according to Springer's eBook style:
+%\usepackage{color}
+%\renewcommand\UrlFont{\color{blue}\rmfamily}
+%\urlstyle{rm}
+%
+\begin{document}
+%
+\title{AI Agentic AI-based Vietnamese Financial News Analysis and Summarization System}
+%
+%\titlerunning{Abbreviated paper title}
+% If the paper title is too long for the running head, you can set
+% an abbreviated paper title here
+%
+\author{Nguyen Vinh Khang\inst{1}\orcidID{0009-0002-4688-0819} \and
+Le Quoc Huy\inst{1}\orcidID{0009-0004-4393-1056}}
+%
+\authorrunning{N. V. Khang et al.}
+% First names are abbreviated in the running head.
+% If there are more than two authors, 'et al.' is used.
+%
+\institute{
+  University of Science, Ho Chi Minh City National University,
+  227 Nguyen Van Cu Street, District 5, Ho Chi Minh City 700000, Vietnam\\
+  \email{22125035@student.hcmus.edu.vn}\\
+  \email{22125031@student.hcmus.edu.vn}\\
+  \url{https://hcmus.edu.vn}
+}
+%
+\maketitle              % typeset the header of the contribution
+%
+\begin{abstract}
+% TODO: Viết sau cùng (sau khi hoàn tất các phần khác).
+The abstract should briefly summarize the contents of the paper in
+150--250 words.
+
+\keywords{First keyword \and Second keyword \and Another keyword.}
+\end{abstract}
+%
+%
+%
+% ============================================================
+% TODO Section 1 — Introduction (viết sau)
+% ============================================================
+\section{Introduction}
+\label{sec:introduction}
+
+Vietnam's equity market has expanded into one of the most retail-driven markets
+in the region. By the end of 2025 domestic investors held roughly $11.9$ million
+securities accounts---about $11.6\%$ of the population---after a record year in
+which some $2.5$ million new accounts were opened~\cite{vsd2025}, and individual
+investors account for the overwhelming majority of participants and for around
+$90\%$ of daily trading value~\cite{vinacapital2024}. The market's growing
+international standing was confirmed when FTSE Russell announced its
+reclassification from Frontier to Secondary Emerging status~\cite{ftse2025}. This
+combination---a large, fast-growing base of non-professional investors and rising
+institutional interest---creates strong demand for tools that help ordinary
+investors make sound decisions amid a flood of fragmented information.
+
+Yet the analytical workflow such investors face remains badly fragmented. The
+three classical lenses on a stock---technical signals from price action,
+fundamentals from financial statements, and sentiment from the news flow---live
+in separate tools with separate interfaces, leaving the investor to reconcile
+them manually. The problem is sharper in Vietnamese: relevant company news is
+scattered across local outlets and is not readily digested by mainstream,
+English-centric tools. Existing retail platforms and robo-advisory services offer
+little integrated, Vietnamese-language support that fuses these signals into a
+single, horizon-aware recommendation.
+
+A natural reaction is to ``ask a large language model'', but doing so naively is
+unsafe in a financial setting. LLMs excel at language understanding and
+synthesis, yet they are prone to hallucination, are difficult to make
+reproducible, and rarely expose \emph{why} they reached a conclusion---properties
+that are unacceptable when the output influences real investment decisions. What
+is needed is a hybrid design in which the model is confined to what it does
+well---reading and summarizing heterogeneous evidence---while every
+decision-critical quantity is produced by explicit, auditable rules.
+
+We present such a system for the Vietnamese market. Its analytical core is a
+multi-agent pipeline built on LangGraph: an orchestrator interprets the request
+and the investor's risk profile and dispatches, in parallel, a technical, a
+fundamental and a news-sentiment agent, whose outputs an aggregator fuses into a
+structured buy/wait recommendation with risk-managed price targets. The design is
+governed throughout by a single principle---\emph{the language model analyzes,
+while deterministic code decides}---which keeps the recommendations explainable
+and reproducible. The same data and reasoning back a conversational assistant
+that answers data questions by generating sanitized SQL over the live database
+and that delegates comprehensive requests to the full analysis pipeline. The
+underlying data is kept current by an offline ingestion subsystem, and the
+recommendations are validated through a statistically grounded backtesting
+framework.
+
+This paper makes the following contributions:
+\begin{itemize}
+\item A multi-agent architecture, built on LangGraph, that unifies technical,
+fundamental and news-sentiment analysis with recommendation generation for
+Vietnamese equities within a single, modular pipeline.
+\item A fusion mechanism that combines the three sources into a confidence score
+by renormalizing weights over only the active sources, paired with a hybrid
+LLM/rule decision procedure that keeps verdicts explainable and reproducible.
+\item A risk-aware position-sizing scheme that enforces horizon-dependent hard
+boundaries on take-profit, stop-loss and holding period, together with a minimum
+reward-to-risk constraint.
+\item A grounded conversational assistant that answers data questions through
+safe text-to-SQL over real market data and escalates holistic requests to the
+analysis pipeline.
+\item An evaluation methodology based on historical backtesting with statistical
+significance testing.
+\end{itemize}
+
+\paragraph{Scope.}
+We delimit the scope of this work explicitly. The system is a
+\emph{decision-support} tool: it produces analysis and recommendations only and
+does \emph{not} place or execute orders, connect to any brokerage, or manage
+portfolios---acting on its output is left entirely to the user, and its
+recommendations do not constitute financial advice. Its coverage is likewise
+restricted to the Vietnamese equity market: all price, fundamental and news data,
+as well as the supported tickers and indices, are drawn from Vietnamese sources,
+and the system is neither designed nor evaluated for other markets.
+
+The remainder of the paper is organized as follows.
+Section~\ref{sec:related} reviews related work;
+Section~\ref{sec:architecture} presents the system architecture;
+Section~\ref{sec:methodology} details the methodology of each agent and the
+fusion logic; Section~\ref{sec:implementation} describes the implementation and
+data ingestion; Section~\ref{sec:evaluation} reports the evaluation; and
+Sections~\ref{sec:discussion} and~\ref{sec:conclusion} discuss limitations and
+conclude.
+
+% ============================================================
+% TODO Section 2 — Related Work (viết sau)
+% ============================================================
+\section{Related Work}
+\label{sec:related}
+
+Our system sits at the intersection of four lines of research: quantitative and
+machine-learning analysis of equities, financial news sentiment analysis, large
+language models and agents for finance, and natural-language grounding over
+structured data.
+
+\subsection{Quantitative and machine-learning stock analysis}
+A large body of work automates the classical lenses of technical and fundamental
+analysis and, more recently, applies machine and deep learning to price
+forecasting. A representative direction couples news sentiment with price history
+in deep architectures, such as FinBERT-LSTM models that feed sentiment-enriched
+features into recurrent networks for next-day price prediction~\cite{finbertlstm2022}.
+While effective at their stated objective, these models typically optimize a
+single target (price or direction), operate as black boxes, and stop short of
+producing an explainable, horizon-aware decision that an investor can act on.
+
+\subsection{Financial news sentiment analysis}
+Domain-specific language models have become standard for extracting sentiment
+from financial text; FinBERT and its successors map news onto sentiment labels
+that improve stock-movement prediction~\cite{finbert2023}. For Vietnamese, this
+line is comparatively thin but growing: PhoBERT-based classifiers label the
+sentiment of stock-article titles with high accuracy~\cite{phobertstock}, and
+empirical studies show that sentiment extracted from Vietnamese news measurably
+affects market returns~\cite{vnnews2023}. These approaches yield a sentiment
+signal in isolation rather than fusing it with technical and fundamental evidence
+into a single recommendation, which is the role of our news-sentiment agent.
+
+\subsection{LLMs and agentic systems in finance}
+Finance-specific LLMs such as the proprietary BloombergGPT~\cite{bloomberggpt}
+and the open-source FinGPT~\cite{fingpt} have demonstrated strong performance on
+financial NLP tasks. Building on these, agentic trading frameworks orchestrate
+multiple LLM-driven roles: TradingAgents assigns specialized analyst, trader and
+risk-manager agents that debate before acting~\cite{tradingagents}, and FinMem
+augments an LLM trading agent with layered memory to improve backtested returns
+while mitigating hallucination~\cite{finmem}. These frameworks are powerful but
+are predominantly built and evaluated on English-language, U.S.-centric data, and
+they generally let the language model make the final trading decision---an
+arrangement that complicates reproducibility and explainability. Our work differs
+by confining the LLM to analysis and delegating every decisive computation to
+deterministic rules.
+
+\subsection{Vietnamese-market prediction and decision support}
+Research targeting the Vietnamese market has concentrated on index and price
+forecasting. Deep architectures including LSTM, bidirectional LSTM and
+Transformer variants have been compared for VN-Index prediction~\cite{vndl2025,vnlstm2021},
+and conventional machine-learning models have been used to classify price
+trends~\cite{vnml2024}. This work is valuable but largely single-source and
+predictive: it forecasts a number rather than fusing technical, fundamental and
+news signals into an actionable, risk-calibrated recommendation, and it is rarely
+LLM-based or explanation-oriented.
+
+\subsection{Grounding LLMs on structured data via text-to-SQL}
+Translating natural-language questions into executable SQL is a mature task with
+established benchmarks and, increasingly, LLM-based solutions~\cite{text2sqlsurvey,spider2}.
+We adopt this idea to ground our conversational assistant: rather than answering
+from parametric memory, it generates a sanitized, read-only query against the
+live database, so its answers are anchored in real, current data.
+
+\subsection{Positioning}
+To the best of our knowledge, no prior system simultaneously (i)~unifies
+technical, fundamental and news-sentiment analysis with recommendation generation
+for the Vietnamese market, (ii)~adopts a hybrid LLM/rule design that keeps the
+decision explainable and reproducible, (iii)~enforces horizon-dependent
+risk constraints, and (iv)~validates its recommendations through statistically
+grounded backtesting. This paper addresses that gap.
+
+% ============================================================
+% TODO Section 3 — System Architecture (viết sau)
+% ============================================================
+\section{System Architecture}
+\label{sec:architecture}
+
+The platform is organized as an end-to-end system that connects a mobile client
+to a backend service, an agentic reasoning layer, and a set of data stores and
+external providers. A mobile application (built with React Native and Expo)
+issues authenticated requests to a FastAPI backend; the backend exposes
+conventional market-data and account endpoints and, for analysis, hands control
+to an agentic layer implemented on top of LangGraph. The agentic layer reads from
+data stores that are kept current by periodic, offline ingestion jobs, so that an
+analysis request is served from pre-collected data rather than blocking on live
+crawling. Figure~\ref{fig:architecture} shows this organization, which the rest
+of this section describes layer by layer.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{fig1_architecture}
+\caption{High-level system architecture. Solid online paths serve analysis
+requests; the dashed offline path periodically ingests and enriches market,
+fundamental and news data into the stores that the agents read from.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Layered backend design}
+\label{sec:layered}
+The backend follows a strict three-tier separation: \emph{routes} expose REST
+endpoints, \emph{services} hold the business logic, and a \emph{data} tier wraps
+the database and external APIs. Requests enter through a set of routers---among
+them authentication, market data, fundamental analysis, technical indicators,
+articles, company profiles, risk appetite, portfolio, and the agentic
+endpoints---each delegating to a matching service so that transport concerns stay
+out of the domain logic. Protected routes are guarded by JWT-based authentication
+enforced in middleware, and every endpoint returns a single standardized response
+envelope (a data payload plus an error code, description, request identifier and
+success flag), which keeps the client's handling uniform across the whole API.
+This conventional outer shell is what hosts the agentic layer described next.
+
+\subsection{The agentic layer}
+\label{sec:agentic-layer}
+Analytical intelligence is concentrated in two LangGraph \texttt{StateGraph}s that
+share the same LLM service (OpenAI's \texttt{GPT-4o}) and data tier. The first is
+the \emph{analysis pipeline}: an orchestrator parses the request and fans out, in
+parallel, to a technical, a fundamental and a news agent, whose outputs are
+merged and synthesized by an aggregator into a structured recommendation. The
+agents communicate through a single typed state object, and the parallel results
+are combined with a merge reducer so that no agent overwrites another's
+contribution. The second graph powers the \emph{conversational assistant}: an
+intent classifier routes each message to a chat, knowledge-QA, or market
+(text-to-SQL) agent, or delegates a comprehensive request to the analysis
+pipeline above; conversation history is persisted so that context survives across
+turns. Both graphs deliberately confine the LLM to language understanding and
+synthesis, while decision-critical computation is performed in deterministic
+code. Section~\ref{sec:methodology} details the individual agents.
+
+\subsection{Data sources and ingestion}
+\label{sec:arch-data}
+The agents never call external providers on the critical path; they read from
+stores that are populated ahead of time. Daily and intraday price data originate
+from the SSI FC Data API. Company fundamentals, news articles, and reference
+metadata are held in Supabase (managed PostgreSQL), which also stores the
+conversational checkpoints; a Redis cache holds short-lived session and token
+state. Keeping the data fresh is the job of an \emph{offline ingestion subsystem}:
+scheduled jobs crawl Vietnamese financial-news sources and pull price and
+fundamental updates, and---for news---an LLM enrichment step extracts the
+mentioned tickers, a sentiment label and a short summary before the records are
+written and linked to the relevant stocks (Section~\ref{sec:news}). Separating
+this offline path from the online analysis path means recommendations are
+computed over consistent, pre-validated data and are not delayed by network
+latency or source outages. The concrete ingestion mechanism---schedules, crawling
+and enrichment---is detailed in Section~\ref{sec:implementation}.
+
+\subsection{Request lifecycle}
+\label{sec:lifecycle}
+A typical ``analyze ticker $X$'' request illustrates how the layers cooperate.
+The client sends an authenticated call carrying the ticker, the user's risk
+profile and any data-source selections. The backend validates the request and
+invokes the analysis graph: the orchestrator derives the analysis window and
+candle interval, the three agents read the relevant slices of the pre-ingested
+data and produce their partial results in parallel, and the aggregator fuses them
+into a confidence-scored buy/wait recommendation with risk-managed price targets.
+The structured result is returned through the standard response envelope and
+rendered by the mobile client. The online request thus touches only the stores,
+while all crawling and enrichment happen earlier on the offline path.: Figure 1 (LangGraph StateGraph), AgentState, data sources.
+
+% ============================================================
+% Section 4 — Methodology
+% ============================================================
+%
+\section{Methodology}
+\label{sec:methodology}
+
+We frame stock decision support as a \emph{multi-source fusion} problem:
+given a target ticker and an investor risk profile, the system produces a
+structured, actionable recommendation that integrates technical, fundamental
+and news-sentiment evidence. The analysis pipeline is implemented as a
+LangGraph \texttt{StateGraph} of five cooperating agents---an
+\emph{orchestrator}, three parallel analysis agents (technical, fundamental,
+news), and an \emph{aggregator}---that share a single typed state object.
+A guiding design principle runs through every stage: \emph{the language model
+analyzes, while deterministic Python code decides}. Large language models
+(LLMs) are used where natural-language understanding and synthesis are
+required (request parsing, news summarization, narrative justification),
+whereas all decision-critical quantities---indicator scores, fusion
+confidence, buy/wait verdicts and risk boundaries---are computed by explicit,
+auditable rules. This separation keeps the system's outputs reproducible and
+explainable, two properties that are essential in a financial advisory
+setting. The remainder of this section details each agent in turn.
+
+\subsection{Orchestrator Agent}
+\label{sec:orchestrator}
+
+The orchestrator is the entry node of the pipeline. Its responsibility is to
+translate a free-form user request together with the investor's risk profile
+into a concrete, machine-readable \emph{plan} that parameterizes the
+downstream analysis agents. Rather than letting the LLM emit unconstrained
+text, we use \emph{structured decoding}: the model is asked to populate a
+Pydantic schema, so its output is guaranteed to be a valid plan object. The
+plan specifies, for each agent, the time window to analyze and---for the
+technical agent---the candle interval. We invoke \texttt{GPT-4o} with
+temperature $0$ to make the planning step as deterministic as possible.
+
+\paragraph{Shared state.}
+All five agents communicate through a single typed state object,
+\texttt{AgentState}, defined as a \texttt{TypedDict}. It carries the execution
+\texttt{mode} (\texttt{auto}, \texttt{manual} or \texttt{chat}), the raw
+\texttt{user\_input}, the \texttt{risk\_appetite}, the target \texttt{symbol},
+a \texttt{data\_selection} object (which lets the user toggle individual data
+sources and indicators), the orchestrator-generated \texttt{plan}, the
+collected \texttt{agent\_results}, and the \texttt{final\_output}. The results
+field is annotated with the \texttt{operator.or\_} reducer so that the three
+analysis agents, which run concurrently, can each write their partial result
+into the shared dictionary without overwriting one another. The orchestrator
+fans out to the technical, fundamental and news agents in parallel; once all
+three complete, their merged results flow into the aggregator
+(see Section~\ref{sec:architecture}, Fig.~\ref{fig:architecture}).
+
+\paragraph{Risk-horizon mapping.}
+The investor's risk profile reaches the system as a \texttt{period} field that
+takes one of three canonical values---\texttt{short\_term}, \texttt{mid\_term}
+or \texttt{long\_term}---which map directly onto the horizon
+$h \in \{\textsf{short}, \textsf{mid}, \textsf{long}\}$. When the period is
+missing or unrecognized, the system falls back to \textsf{short}, the most
+conservative horizon. The horizon then determines two quantities: the
+look-back window $[\,t_{\text{from}}, t_{\text{to}}\,]$ used to gather
+evidence, and the candle interval used for technical analysis. We always set
+$t_{\text{to}}$ to the current date and compute $t_{\text{from}}$ by
+subtracting the horizon-specific look-back length.
+Table~\ref{tab:horizon} summarizes this mapping.
+
+\paragraph{Rationale for the interval and look-back choices.}
+The two parameters are chosen jointly so that the technical analysis operates
+on the same time scale as the investor's intended holding period, and so that
+each indicator receives enough history to be statistically meaningful without
+diluting the signal with stale data. The guiding principle is that the candle
+interval should resolve the price movements relevant to the horizon while
+suppressing higher-frequency fluctuations that act as noise at that horizon. A
+short-term trader cares about day-to-day swings, so daily (\texttt{1d}) candles
+preserve exactly the granularity that drives short-horizon entries and exits; a
+60-day window keeps the analysis focused on the prevailing short-term regime
+and avoids letting older price action distort fast-moving indicators such as
+RSI or the MACD histogram. For a multi-month horizon, daily candles would
+introduce noise that is irrelevant to a swing position, so we aggregate to
+weekly (\texttt{1w}) candles, which expose the medium-term trend; the
+180--365-day window then supplies enough weekly observations to warm up the
+slower moving averages and oscillators reliably. For a long-term, position-style
+horizon we move to monthly (\texttt{1M}) candles, which strip out intra-year
+fluctuations and reveal the primary trend, and we require at least two years
+($\geq 730$ days) of history so that the long-run pattern is established on a
+sufficient number of monthly observations. In every case the look-back length
+is deliberately bounded: a longer window would blend together distinct market
+regimes and weaken the relevance of the resulting signal to current conditions.
+
+\begin{table}[t]
+\centering
+\caption{Mapping from the normalized investment horizon to the technical
+candle interval and the evidence look-back window. The candle interval is
+enforced deterministically in code rather than trusted to the LLM.}
+\label{tab:horizon}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Horizon $h$ & Description & Candle interval & Look-back window \\
+\midrule
+\textsf{short} & days--weeks      & 1d & last 60 days \\
+\textsf{mid}   & several months   & 1w & last 180--365 days \\
+\textsf{long}  & $>1$ year        & 1M & last $\geq 730$ days \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Deterministic interval enforcement.}
+Although the LLM proposes an interval as part of its structured output, we do
+not rely on it for the final value. After decoding the plan, the candle
+interval is overwritten in Python according to the deterministic map
+\[
+\textsf{interval}(h) =
+\begin{cases}
+\texttt{1d} & h = \textsf{short},\\
+\texttt{1w} & h = \textsf{mid},\\
+\texttt{1M} & h = \textsf{long}.
+\end{cases}
+\]
+This guarantees that each horizon is genuinely analyzed on a different candle
+granularity, independently of any drift in the model's behavior. The
+underlying market database stores only daily (\texttt{1d}) candles; the market
+service aggregates these on demand into weekly (\texttt{1w}) and monthly
+(\texttt{1M}) candles. The orchestrator also enforces two further invariants
+that are critical for downstream correctness: it never invents a ticker symbol
+that is not present in the input, and it always emits parameters for all three
+analysis agents so that the fan-out is complete. In \texttt{manual} mode, where
+an advanced user supplies an explicit plan, the orchestrator bypasses the LLM
+entirely and forwards the user-provided plan unchanged.
+
+\subsection{Technical Analysis Agent}
+\label{sec:technical}
+
+The technical agent quantifies the price action of the target ticker over the
+planned window. It computes five widely used indicators on the candle series
+delivered by the market service, converts each indicator into a binary bullish
+signal through a transparent rule set, and aggregates these into an integer
+score. Crucially, the output is not a single opaque number: for every indicator
+the agent emits its raw values together with a short natural-language
+justification, so that the downstream aggregator---and ultimately the user---can
+trace exactly why a signal fired. All indicators are implemented in pure
+NumPy/Pandas rather than through a third-party technical-analysis library, which
+lets us calibrate the smoothing conventions to match the values displayed by the
+domestic data provider and popular charting platforms.
+
+\subsubsection{Indicator computation.}
+Let $c_t$, $h_t$ and $l_t$ denote the close, high and low of candle $t$. The
+five indicators are defined as follows.
+
+\paragraph{Relative Strength Index (RSI, period $n=14$).}
+With $\Delta_t = c_t - c_{t-1}$, the average gain and loss are seeded by the
+simple mean of the first $n$ deltas and then updated with Wilder's smoothing:
+\begin{equation}
+\overline{G}_t = \frac{(n-1)\,\overline{G}_{t-1} + G_t}{n}, \qquad
+\overline{L}_t = \frac{(n-1)\,\overline{L}_{t-1} + L_t}{n},
+\end{equation}
+where $G_t = \max(\Delta_t, 0)$ and $L_t = \max(-\Delta_t, 0)$. The index is
+\begin{equation}
+\mathrm{RSI}_t = 100 - \frac{100}{1 + \overline{G}_t / \overline{L}_t}.
+\end{equation}
+
+\paragraph{Moving averages (SMA and EMA).}
+The $p$-period simple moving average is
+$\mathrm{SMA}^p_t = \frac{1}{p}\sum_{i=0}^{p-1} c_{t-i}$; we use $p\in\{20,50\}$.
+The exponential moving average is seeded with $\mathrm{SMA}^p$ and updated with
+$k = 2/(p+1)$:
+\begin{equation}
+\mathrm{EMA}^p_t = k\,c_t + (1-k)\,\mathrm{EMA}^p_{t-1}.
+\end{equation}
+
+\paragraph{Moving Average Convergence Divergence (MACD, $12/26/9$).}
+\begin{equation}
+\mathrm{MACD}_t = \mathrm{EMA}^{12}_t - \mathrm{EMA}^{26}_t, \quad
+\mathrm{Sig}_t = \mathrm{EMA}^{9}(\mathrm{MACD})_t, \quad
+\mathrm{Hist}_t = \mathrm{MACD}_t - \mathrm{Sig}_t.
+\end{equation}
+
+\paragraph{Bollinger Bands (period $20$, $2\sigma$).}
+The middle band is $\mathrm{SMA}^{20}_t$ and the envelopes use the population
+standard deviation $\sigma_t$ over the same window (matching the convention of
+the data provider and TradingView):
+\begin{equation}
+\mathrm{BB}^{\mathrm{mid}}_t = \mathrm{SMA}^{20}_t, \qquad
+\mathrm{BB}^{\mathrm{up/lo}}_t = \mathrm{SMA}^{20}_t \pm 2\sigma_t.
+\end{equation}
+
+\paragraph{Stochastic KDJ ($9/3/3$).}
+With the raw stochastic value over the last $9$ candles
+\begin{equation}
+\mathrm{RSV}_t = \frac{c_t - \min_{9} l}{\max_{9} h - \min_{9} l}\times 100,
+\end{equation}
+the smoothed lines (Wilder factor $\tfrac{1}{3}$, seeded at $50$) are
+\begin{equation}
+K_t = \tfrac{1}{3}\mathrm{RSV}_t + \tfrac{2}{3}K_{t-1}, \quad
+D_t = \tfrac{1}{3}K_t + \tfrac{2}{3}D_{t-1}, \quad
+J_t = 3K_t - 2D_t.
+\end{equation}
+
+\subsubsection{Rule-based scoring.}
+Each enabled indicator $i$ is mapped to a binary score $s_i\in\{0,1\}$ by a small
+set of bullish conditions; $s_i = 1$ whenever \emph{any} of the indicator's
+conditions hold, evaluated by comparing the most recent candle against the
+previous one. Table~\ref{tab:scoring} lists these conditions. The design favours
+\emph{nascent} upward momentum---fresh crossovers, accelerating gaps, and
+rebounds from oversold zones---rather than already-overextended readings, which
+are explicitly treated as non-bullish (e.g.\ $\mathrm{RSI}\geq 70$ or price above
+the upper Bollinger band).
+
+\begin{table}[t]
+\centering
+\caption{Bullish scoring rules. An indicator earns $s_i=1$ if any listed
+condition holds between the previous candle and the current one.}
+\label{tab:scoring}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+Indicator & Conditions for $s_i = 1$ (logical OR) \\
+\midrule
+RSI  & crosses above $50$; or $50\!\leq\!\mathrm{RSI}\!\leq\!70$ and rising; or $\mathrm{RSI}\!<\!35$ and rising \\
+MA   & golden cross (SMA20 crosses above SMA50); or SMA20$>$SMA50 with widening gap; or price$>$SMA20$>$SMA50 \\
+BOLL & price crosses above middle band; or above middle with increasing distance; or rebound off lower band \\
+MACD & crosses above signal; or MACD$>$signal with rising histogram; or histogram turns positive \\
+KDJ  & $K$ crosses above $D$; or $K>D$ with rising $J$; or $K<20$ and rising \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsubsection{Aggregation and output.}
+The agent reports the total score together with the maximum attainable score,
+\begin{equation}
+S_{\mathrm{tech}} = \sum_{i \in \mathcal{E}} s_i, \qquad
+S_{\max} = |\mathcal{E}|,
+\end{equation}
+where $\mathcal{E}$ is the set of indicators the user has enabled through the
+\texttt{data\_selection} object (all five by default). Reporting $S_{\max}$
+alongside $S_{\mathrm{tech}}$ lets the aggregator normalize the technical signal
+to $[0,1]$ regardless of how many indicators are active
+(Section~\ref{sec:aggregator}). The agent finally packages the symbol, interval,
+analyzed period, the latest price, $S_{\mathrm{tech}}/S_{\max}$, and the
+per-indicator values and reasons into the shared state. In live mode the latest
+price is taken from the most recent one-minute candle to reflect the true
+current quote, while the indicators themselves are computed on the
+horizon-appropriate candles.
+
+\subsection{Fundamental Analysis Agent}
+\label{sec:fundamental}
+
+While the technical agent reads price action, the fundamental agent assesses the
+underlying financial health of the issuer. It queries the company's annual
+financial records and condenses them into a structured report covering five
+groups of metrics. A deliberate design choice distinguishes this agent from the
+technical one: its evidence window is \emph{independent of the investor's
+horizon}. Whereas price-based signals must be re-scaled to the trading horizon,
+fundamentals evolve slowly---they are published only quarterly or annually and
+reflect the firm's structural condition---so the agent always retrieves the most
+recent \emph{five fiscal years} of fundamentals for the short-, mid- and
+long-term profiles alike. Five years is long enough to span a full business
+cycle and to expose multi-year trends in profitability and growth, yet short
+enough to remain representative of the company in its current form.
+
+\paragraph{Data source and metric groups.}
+The agent reads per-ticker financial data from the platform's database, drawing
+on dedicated tables for the analyst summary, valuation/profitability indicators,
+the income statement, the cash-flow statement and the balance sheet. From these
+it assembles five metric groups, each of which the user can enable or disable
+through the same \texttt{data\_selection} mechanism used by the technical agent.
+Table~\ref{tab:fundamental} lists the groups and their constituent metrics. The
+agent presents the most recent fiscal year as the headline snapshot---together
+with year-over-year growth---while the five-year history provides the trend
+context that informs the qualitative summary.
+
+\begin{table}[t]
+\centering
+\caption{The five fundamental metric groups and their constituent indicators.
+Each group can be toggled independently by the user.}
+\label{tab:fundamental}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+Group & Metrics \\
+\midrule
+Valuation         & P/E, P/B, EV/EBITDA, EPS \\
+Profitability     & ROE, ROA, gross margin, net margin \\
+Growth            & revenue YoY, profit YoY, net revenue, net profit \\
+Financial health  & current ratio, debt-to-equity, interest coverage \\
+Cash flow         & operating cash flow (CFO), capital expenditure (CAPEX), dividends paid \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Sector awareness and robustness.}
+Several ratios are ill-defined for particular sectors---gross margin, current
+ratio and debt-to-equity, for instance, do not carry their usual meaning for
+banks---so the agent detects such cases and annotates the report accordingly
+rather than emitting misleading figures. Robustness to missing data is treated
+as a first-class concern: newly listed tickers or companies without filed
+reports may lack some or all fundamentals. A data-layer error for a single
+ticker must never abort the pipeline, which is essential when the system is run
+across an entire index such as VN30 or VN100. When fundamentals are missing or a
+query fails, the agent emits an explicit ``no data'' marker instead of raising
+an exception; the aggregator recognizes this marker and simply drops the
+fundamental source from the confidence computation (Section~\ref{sec:aggregator})
+rather than penalizing the stock.
+
+\paragraph{Output.}
+The agent's output is a structured, human-readable report---the headline year,
+the analyst summary, and the enabled metric groups. This narrative is consumed by
+the aggregator, which interprets it into a discrete health label
+$\textsf{fundamental\_health}\in\{\textsf{strong},\textsf{neutral},\textsf{weak},
+\textsf{N/A}\}$ used in the final fusion. Keeping the classification in the
+aggregator, rather than hard-coding thresholds here, lets the system weigh the
+fundamental picture jointly with the technical and news evidence.
+
+% ============================================================
+\subsection{News Sentiment Agent}
+\label{sec:news}
+
+The third analysis agent captures market-relevant information that is invisible
+to price and accounting data alike: company news. It follows a two-stage design
+that separates expensive, reusable preprocessing from lightweight,
+query-specific synthesis.
+
+\paragraph{Stage 1: offline ingestion and enrichment.}
+Financial news articles concerning Vietnamese listed companies are collected
+into the platform's database, where each record stores the title, link,
+publication time, source, and full text. During ingestion every article is
+passed through an LLM enrichment step that populates a structured schema,
+\texttt{NewsExtraction}, consisting of (i) the list of stock tickers mentioned
+in the article, (ii) a sentiment label
+$\in\{\textsf{positive},\textsf{neutral},\textsf{negative}\}$, and (iii) a
+concise one-to-three-sentence summary. The extracted tickers drive a
+many-to-many association between articles and stocks (an
+\texttt{Article\_Stock} link table), so that one article may be attached to
+several companies. We distinguish \emph{exclusive} articles, which mention a
+single ticker and are therefore used for company-specific analysis, from
+\emph{macro} articles, which reference two or more tickers and feed broader
+market context. Performing extraction once at ingestion time means the
+per-article sentiment and summary are cached and reused across all subsequent
+analyses, rather than being recomputed on every request.
+
+\paragraph{Stage 2: online synthesis.}
+When an analysis is requested for a ticker, the agent retrieves the articles
+linked to that ticker and filters them to the date window
+$[\,t_{\text{from}}, t_{\text{to}}\,]$ supplied by the orchestrator. The
+filtered set---each item carrying its date, title, cached summary and cached
+sentiment---is presented to \texttt{GPT-4o}, which is instructed to first
+discard items that are irrelevant or uninformative and then synthesize the
+remainder into a structured brief comprising (1)~a summary of the principal
+news, (2)~the positive points, and (3)~the negative points or risks. If no
+useful article remains, the agent returns an explicit ``no useful news''
+response. This synthesis step is the one place in the pipeline where we permit a
+small amount of generative freedom (decoding temperature $0.2$) so that the
+brief reads fluently; it nonetheless remains an \emph{analysis} step, since the
+final decision is still taken downstream by deterministic rules.
+
+\paragraph{Output and robustness.}
+As with the other agents, the news source can be toggled off by the user, and
+the absence of articles in the requested window is handled gracefully rather
+than as an error. The textual brief is consumed by the aggregator, which
+condenses it into a single discrete signal
+$\textsf{article\_sentiment}\in\{\textsf{positive},\textsf{neutral},
+\textsf{negative},\textsf{N/A}\}$. When news is disabled or unavailable, the
+\textsf{N/A} value causes the source to be dropped from the confidence
+computation (Section~\ref{sec:aggregator}) without penalizing the stock.
+
+\subsection{Aggregator and Decision Logic}
+\label{sec:aggregator}
+
+The aggregator is the decision node where the three analysis streams are fused
+into a single, actionable recommendation. It is also where the design principle
+stated at the start of this section is enforced most strictly. An LLM
+(\texttt{GPT-4o}) is used to read the heterogeneous agent outputs and emit a
+structured \texttt{InvestmentRecommendation} object, including a Vietnamese
+narrative justification. However, every decision-critical quantity---the fusion
+confidence, the final buy/wait verdict, and the risk-managed price targets---is
+recomputed and, where necessary, overridden by deterministic Python rules that
+do not depend on the model's discretion. The LLM is given the same rules in its
+prompt, but the Python layer is authoritative: this defence-in-depth keeps the
+system reproducible and prevents an over-optimistic model from issuing an unsafe
+recommendation.
+
+\paragraph{Signals and data-presence flags.}
+The aggregator works from three raw signals: the integer technical score
+$S_{\mathrm{tech}}\in[0,S_{\max}]$ read \emph{verbatim} from the technical agent
+(never recomputed), a fundamental health label
+$f\in\{\textsf{strong},\textsf{neutral},\textsf{weak},\textsf{N/A}\}$, and a news
+sentiment label $a\in\{\textsf{positive},\textsf{neutral},\textsf{negative},
+\textsf{N/A}\}$, both inferred by the LLM from the respective agents' reports.
+Crucially, whether a source actually carries data is decided in Python, not by
+the model: boolean flags $\delta_{\mathrm{tech}},\delta_{\mathrm{fund}},
+\delta_{\mathrm{news}}$ are set by inspecting the technical indicators and by
+scanning the fundamental and news texts for explicit ``no data'' markers. This
+prevents the common failure mode in which a model lazily declares data missing
+when it is in fact present.
+
+\subsubsection{Confidence fusion.}
+Each source is first normalized to a component in $[0,1]$:
+\begin{equation}
+c_{\mathrm{tech}} =
+\begin{cases}
+S_{\mathrm{tech}}/S_{\max} & S_{\max} > 0,\\
+0.5 & S_{\max} = 0,
+\end{cases}
+\qquad
+c_{\mathrm{fund}} = \phi_f(f), \qquad
+c_{\mathrm{news}} = \phi_a(a),
+\end{equation}
+where the label-to-score maps assign a bullish reading to $1$, a neutral or
+missing reading to $0.5$, and a bearish reading to $0$:
+\begin{align}
+\phi_f:\ & \textsf{strong}\!\mapsto\!1,\ \textsf{neutral}\!\mapsto\!0.5,\
+\textsf{weak}\!\mapsto\!0,\ \textsf{N/A}\!\mapsto\!0.5,\\
+\phi_a:\ & \textsf{positive}\!\mapsto\!1,\ \textsf{neutral}\!\mapsto\!0.5,\
+\textsf{negative}\!\mapsto\!0,\ \textsf{N/A}\!\mapsto\!0.5.
+\end{align}
+The three sources carry equal base weights
+$w_{\mathrm{tech}}=w_{\mathrm{fund}}=w_{\mathrm{news}}=\tfrac{1}{3}$. The central
+idea is that weights are \emph{renormalized over the active sources only}. Let
+$\mathcal{A}=\{i : \delta_i = \text{true}\}$ be the set of sources that are
+enabled and carry data. The effective weights and the confidence are
+\begin{equation}
+\tilde{w}_i = \frac{w_i}{\sum_{j\in\mathcal{A}} w_j}\ \text{for } i\in\mathcal{A}
+\ (\text{else } 0), \qquad
+\mathrm{conf} = \sum_{i\in\mathcal{A}} \tilde{w}_i\, c_i \in [0,1].
+\label{eq:confidence}
+\end{equation}
+Renormalization is what makes the score robust to missing or disabled sources:
+rather than letting an absent source contribute a neutral $0.5$ that drags the
+result toward the midpoint, its weight is redistributed across the surviving
+sources, so each active source spans the full $[0,1]$ range. With uniform base
+weights this reduces to the mean of the active components,
+$\mathrm{conf} = \frac{1}{|\mathcal{A}|}\sum_{i\in\mathcal{A}} c_i$; when only a
+single source is active the confidence equals that source's own component.
+
+\subsubsection{Buy/wait decision.}
+The verdict combines a mandatory technical \emph{trigger} with two confirmatory
+\emph{filters}. The technical gate requires the score to reach $60\%$ of the
+attainable maximum,
+\begin{equation}
+\tau_{\mathrm{tech}} = \lceil 0.6\, S_{\max} \rceil, \qquad
+g_{\mathrm{tech}} = \big(S_{\max}=0\big)\ \lor\ \big(S_{\mathrm{tech}} \geq
+\tau_{\mathrm{tech}}\big),
+\end{equation}
+where the disjunct $S_{\max}=0$ disables the gate if the user has turned off all
+technical indicators. The fundamental and news streams act purely as vetoes: a
+position is blocked only by an \emph{explicitly} adverse reading, while neutral
+and N/A values never block. The decision is therefore
+\begin{equation}
+\textsf{Buy} \iff
+g_{\mathrm{tech}} \ \land\
+\neg(\delta_{\mathrm{fund}} \land f{=}\textsf{weak}) \ \land\
+\neg(\delta_{\mathrm{news}} \land a{=}\textsf{negative}) \ \land\
+\mathrm{conf} \geq \tau_{\mathrm{conf}},
+\end{equation}
+with the confidence threshold $\tau_{\mathrm{conf}} = 0.55$; any other case
+yields \textsf{Wait}. This asymmetry---a strong technical trigger to enter, but
+only clear negatives to abstain---reflects that missing evidence should make the
+system cautious rather than punitive. All of these conditions are evaluated in
+Python after the LLM responds and override the model's own verdict when they
+disagree.
+
+\subsubsection{Risk-managed price targets.}
+For a \textsf{Buy}, the entry price is anchored to the latest quote, and the
+take-profit (TP), stop-loss (SL) and maximum holding period are constrained to
+hard, horizon-dependent boundaries (Table~\ref{tab:bounds}). The LLM may
+fine-tune levels using support/resistance or volatility cues, but its proposals
+are clamped in Python: each target is converted to a percentage from entry,
+clipped to the allowed band, and the price recomputed,
+\begin{equation}
+\mathrm{TP} = p_e\big(1 + \mathrm{clip}(r_{\mathrm{tp}}, \text{band})\big),
+\qquad
+\mathrm{SL} = p_e\big(1 - \mathrm{clip}(r_{\mathrm{sl}}, \text{band})\big),
+\end{equation}
+where $p_e$ is the entry price. The system additionally requires a
+reward-to-risk ratio of at least $1.5$; a candidate that cannot satisfy this
+within the hard bounds is downgraded to \textsf{Wait}. For a \textsf{Wait}, all
+price fields are left null.
+
+\begin{table}[t]
+\centering
+\caption{Hard risk boundaries by investment horizon, expressed as a percentage
+of the entry price for take-profit (TP) and stop-loss (SL), and as a number of
+candles for the maximum holding period.}
+\label{tab:bounds}
+\begin{tabular}{@{}llll@{}}
+\toprule
+Horizon & TP (\%) & SL (\%) & Max hold (candles) \\
+\midrule
+\textsf{short} & 8--15  & 4--7   & 5--15 \\
+\textsf{mid}   & 15--30 & 7--12  & 15--60 \\
+\textsf{long}  & 40--80 & 15--20 & 120--260 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Output and robustness.}
+The agent returns an \texttt{InvestmentRecommendation} containing the verdict,
+the (possibly null) entry/TP/SL prices and holding period, a four-part narrative
+(technical, fundamental, news, and a qualitative summary), the raw signals, and
+the computed confidence together with its weight breakdown. The exact,
+post-clamping price line is injected into the summary so that the narrative can
+never contradict the displayed numbers. Two robustness mechanisms protect the
+node: if structured decoding is truncated by the output-token cap, the request
+is retried once with an instruction to be terse; and any unhandled error yields
+a safe default of \textsf{Wait} with null targets rather than a malformed
+response.
+
+\subsection{Conversational Assistant}
+\label{sec:chatbot}
+
+Alongside the on-demand analysis pipeline, the platform exposes a conversational
+assistant for free-form questions. It is implemented as a separate LangGraph
+\texttt{StateGraph} whose conversation history is persisted to PostgreSQL through
+a checkpointer keyed by thread, so that multi-turn context survives across
+requests. The graph begins with an \emph{intent classifier}
+(\texttt{GPT-4o}, temperature $0$, structured output) that reads the latest
+message together with the last six turns of history and routes it to one of four
+branches: \textsf{out-of-scope} questions are politely declined; \textsf{greeting}
+and small-talk are handled by a lightweight chat agent; conceptual
+\textsf{knowledge} questions (e.g.\ ``what is RSI?'') are answered by a QA agent
+without touching the database; and \textsf{market} questions, which require real
+data, are sent to the market agent described next.
+
+\paragraph{Grounded question answering via text-to-SQL.}
+The market agent answers data questions by querying the database directly rather
+than relying on the model's parametric memory, in a four-stage pipeline. The
+incoming question is first Unicode-normalized (NFC) so that Vietnamese text typed
+with different diacritic compositions tokenizes consistently.
+
+In the \emph{first} stage the agent generates SQL. It is given the live database
+schema---the table and column definitions, introspected dynamically as DDL---and
+the current date in Vietnam time, and is asked to translate the question into a
+single read-only statement, returned as a structured object comprising the SQL
+string, a flag for whether technical indicators are required, an optionally
+resolved ticker, a reason field used when no query is possible, and the detected
+language of the question. The prompt encodes the schema's conventions so that the
+generated query is correct by construction: only a single \texttt{SELECT} (or
+\texttt{WITH \ldots\ SELECT}) over existing tables and columns, case-sensitive
+identifiers wrapped in double quotes, uppercased tickers, a bounded
+\texttt{LIMIT}, joins from the fundamental tables to the stock table by foreign
+key, and news joined through the \texttt{Article\_Stock} link table. A
+domain-specific correctness rule is also enforced in the query itself: the
+intraday and daily price tables store OHLCV values pre-divided by $1000$, so the
+model is required to multiply these columns by $1000$ inside the SQL (preserving
+the column aliases) so that the returned figures are the true prices. If the
+model resolves a ticker but nevertheless returns an empty query---a known
+failure mode on open-ended ``is this stock worth buying?'' phrasings---a
+deterministic fallback substitutes a default query against the company's
+fundamental-summary table, so a resolvable ticker always yields data rather than
+a refusal.
+
+In the \emph{second} stage the query is executed. It is never run blindly: it
+passes through a sanitizer that permits only read-only \texttt{SELECT}s over an
+allow-list of tables and runs under a timeout, so the model never touches the
+database directly. An unsafe query is refused outright, whereas a syntax or
+column error triggers a single guided retry in which the error message is fed
+back to the model for correction. \emph{Third}, because indicators such as RSI,
+MACD and KDJ are not stored, a question flagged as needing technical computation
+fetches the raw daily candles by SQL (ordered most-recent-first, enough bars to
+satisfy the fifty-bar minimum) and computes the indicators on the fly, reusing
+the service of Section~\ref{sec:technical} and keeping only the latest value of
+each. \emph{Fourth}, the retrieved rows---and any computed indicators---are handed
+to a second \texttt{GPT-4o} call that composes a natural-language answer
+\emph{grounded entirely in the data}, in the user's own language, with explicit
+instructions not to fabricate figures and to state the date of any time-stamped
+data. As elsewhere, the boundary between generation and decision is deliberate:
+classification and SQL generation run deterministically (temperature $0$), while
+only the final answer synthesis is given mild creative latitude.
+
+\paragraph{Delegation to the analysis pipeline.}
+A distinct route is reserved for \emph{comprehensive} requests. When the
+classifier recognizes that the user is asking for a full, multi-factor evaluation
+of a ticker---``should I buy VIC?'', ``give me a complete assessment of HPG''---a
+single SQL lookup is insufficient. In such cases the assistant delegates to the
+end-to-end analysis pipeline of Sections~\ref{sec:orchestrator}--%
+\ref{sec:aggregator}, running the orchestrator, the three analysis agents and the
+aggregator, and returns the resulting structured recommendation through the chat
+interface. This lets a single conversational entry point serve both quick factual
+look-ups and the system's full analytical capability.
+
+% ============================================================
+
+\section{Implementation}
+\label{sec:implementation}
+
+This section records the concrete technology choices and the engineering details
+that make the system operational, with particular attention to the offline
+ingestion subsystem introduced in Section~\ref{sec:arch-data}.
+
+\subsection{Backend stack and deployment}
+The backend is a FastAPI~0.128 application served by Uvicorn on Python~3.12, with
+all request and response models defined as Pydantic~v2 schemas. The agentic layer
+is built on LangGraph~1.0, and conversational state is persisted with the
+companion PostgreSQL checkpointer. Three stores back the service: Supabase
+(managed PostgreSQL) is accessed both through its REST client and, for the
+chatbot checkpoints and text-to-SQL queries, through a pooled \texttt{psycopg}
+connection; a Redis instance holds short-lived session and token state. The
+service is deployed as a single web process.
+
+\subsection{LLM integration and structured output}
+All agents share a thin client over OpenAI's \texttt{GPT-4o}. Wherever an agent
+must return machine-consumable data---the orchestrator plan, the intent label,
+the generated SQL, the aggregator's recommendation---we use the SDK's structured
+decoding, which constrains the model to emit a valid instance of a Pydantic
+schema rather than free text. Sampling temperature is chosen per role to match
+the earlier ``analyze vs.\ decide'' principle: deterministic steps (orchestration,
+intent classification, SQL generation, the aggregator's signal extraction) run at
+temperature $0$, while the genuinely generative steps (news synthesis, the
+aggregator's narrative, chat) are allowed a small temperature of $0.2$--$0.3$.
+The aggregator additionally caps its output tokens and retries once with a
+terse-output instruction if structured decoding is truncated. A Google Gemini
+client is also configured through \texttt{langchain-google-genai} as an
+alternative provider.
+
+\subsection{Market-data integration}
+At request time, price data is served by an SSI FC Data API client embedded in
+the backend. The client manages bearer-token authentication and transparently
+refreshes the token and retries once on an authentication failure. To avoid
+redundant synchronization under bursty traffic, it applies a 120-second
+per-(symbol, interval) cooldown, and it guards the periodic refresh of the most
+active symbols with a lock. Because the database stores only daily candles, the
+client aggregates them on demand into the weekly and monthly series required by
+the mid- and long-term horizons.
+
+\subsection{Data ingestion subsystem}
+\label{sec:ingestion}
+Keeping the stores current is the responsibility of two \emph{independent}
+ingestion services---one for prices and one for news---each packaged as its own
+Docker image and deployed separately. Rather than relying on the operating
+system's cron, each service runs a long-lived \texttt{scheduler.py} that polls
+the wall-clock time (in Vietnam time, UTC$+7$) and triggers work at the
+appropriate moments, which keeps scheduling logic and trading-calendar awareness
+in one place.
+
+\paragraph{Price ingestion.}
+On trading days (Monday--Friday) between the 09:00 open and the 15:00 close, the
+price scheduler supervises three SSI WebSocket streams---one-minute candles,
+daily candles, and the market indices---restarting any stream that crashes.
+Shortly after the close (15:05) it tears the streams down and runs, once per day,
+three \emph{standardization} jobs that reconcile the streamed data into the
+canonical price tables and retain a rolling five-year daily history. Separate
+\emph{initialization} scripts backfill that five-year history on first setup,
+fetching in thirty-day chunks (the SSI per-request limit) with a short delay
+between calls to respect rate limits. The tracked universe is the VN30
+constituents, resolved from the index membership tables, and the documented
+$\times 1000$ price-scaling convention is applied so that stored values match the
+provider's representation.
+
+\paragraph{News ingestion.}
+The news scheduler runs weekly (Monday, 00:00). For each listed symbol it
+discovers candidate articles through a news search API, restricted to a small set
+of trusted Vietnamese financial outlets, extracts the article body with a
+content-extraction library, and passes the title and text to \texttt{GPT-4o}
+under the \texttt{NewsExtraction} schema to obtain the mentioned tickers, a
+sentiment label, and a short Vietnamese summary (Section~\ref{sec:news}). Each
+article is de-duplicated by its title and link and discarded if its body is too
+short, then written to the store and linked to every mentioned stock through the
+\texttt{Article\_Stock} table. As with price ingestion, requests are paced to
+remain within provider rate limits.
+
+\subsection{Safety and robustness}
+Several mechanisms harden the system against both adversarial and accidental
+failure. Every model-generated SQL statement is checked by a sanitizer that
+admits only read-only \texttt{SELECT}s over an allow-list of tables and runs them
+under a timeout, so the conversational assistant can never mutate the database
+(Section~\ref{sec:chatbot}). Throughout the analysis pipeline, missing data is
+signalled by explicit ``no data'' markers that the aggregator detects, so a
+single absent source degrades gracefully instead of aborting the run. Finally,
+the aggregator's decisive computations are performed in Python and override the
+LLM, and any unhandled error resolves to a safe \textsf{Wait} response rather
+than a malformed one.
+
+\subsection{Mobile client}
+The front end is a React Native application built with Expo, using file-based
+routing. Authentication tokens are kept in encrypted device storage, and the
+market screens render bespoke chart components---candlestick, line and bar
+charts, and the RSI, MACD and KDJ panels---so that the indicators discussed in
+Section~\ref{sec:technical} are presented to the user in the same vocabulary the
+analysis pipeline uses.
+
+\section{Evaluation}
+\label{sec:evaluation}
+
+We evaluate the analysis pipeline by backtesting its recommendations on the VN30
+constituents and comparing them against two references: the unfiltered technical
+engine that drives the pipeline, and a passive buy-and-hold strategy.
+
+\subsection{Experimental setup}
+The backtest covers the VN30 universe (29 constituents with sufficient history)
+over a one-year window of daily candles, from January 2024 to January 2025,
+with the VN-Index as the market benchmark. To avoid look-ahead bias, indicators
+at bar $i$ use only data up to $i$ and the entry price is the open of the next
+bar. To bound the (LLM) cost, the full pipeline is invoked only on dates where
+the technical engine emits a signal; on those dates the aggregator produces the
+buy/wait decision and the risk-managed targets of Section~\ref{sec:aggregator}.
+Each realized trade contributes a percentage return, from which we compute
+per-symbol performance, benchmark comparisons, and significance tests using the
+framework in \texttt{backend/app/backtest}. Unless stated otherwise, aggregate
+figures are reported as the mean across symbols, with the median given where the
+distribution is heavily skewed by outliers.
+
+\subsection{Aggregate performance}
+Table~\ref{tab:perf} summarizes performance across the universe. The most
+visible effect of the pipeline is \emph{selectivity}: by requiring a clear
+technical trigger and vetoing on weak fundamentals or negative news, it takes
+$134$ trades in total versus $224$ for the unfiltered technical engine---roughly
+$40\%$ fewer. The surviving trades have a higher average return per trade
+($4.3\%$ vs.\ $2.4\%$) and a markedly smaller average maximum drawdown ($-9.7\%$
+vs.\ $-13.4\%$), consistent with the risk-averse design. The trade-off is that
+the unfiltered engine, by participating more often, attains a higher aggregate
+total return and Sharpe ratio over this particular sample.
+
+\begin{table}[t]
+\centering
+\caption{Aggregate backtest performance over the VN30 universe (per-symbol mean
+unless noted). ``Technical-only'' is the unfiltered signal engine; buy-and-hold
+is passive. Returns are skew-prone, so totals are given as mean (median).}
+\label{tab:perf}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Metric & LLM pipeline & Technical-only & Buy-and-hold \\
+\midrule
+Total trades            & 134           & 224           & --- \\
+Win rate                & 50.1\%        & 54.5\%        & --- \\
+Avg.\ return per trade  & 4.3\%         & 2.4\%         & --- \\
+Total return            & 15.2\% (8.1\%) & 27.6\% (9.9\%) & 56.9\% (18.7\%) \\
+Sharpe ratio            & 0.31          & 0.61          & --- \\
+Profit factor (median)  & 1.34          & 1.73          & --- \\
+Max drawdown            & $-9.7\%$      & $-13.4\%$     & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Benchmark comparison}
+Relative to the unfiltered engine, the pipeline improved total return on $15$ of
+$29$ symbols (median impact $+0.4\%$), i.e.\ the LLM filter helped about as often
+as it hurt while substantially reducing drawdown. Against buy-and-hold the
+picture is less favourable: only $11$ of $29$ symbols beat the passive strategy
+(median return gap $-7.5\%$). This is expected for a selective, partially
+invested, long-only strategy evaluated over a predominantly bullish sample, in
+which simply staying fully invested is hard to beat. Compared with random entry
+strategies of the same trade count, the pipeline sat at the $61\%$ percentile on
+average---better than chance, but not decisively so.
+
+\subsection{Behaviour across market regimes}
+Table~\ref{tab:regime} breaks trades down by market regime. Strikingly, the
+pipeline opened \emph{no} positions during downtrends, concentrating its activity
+in sideways ($83$ trades) and uptrending ($51$ trades) markets; it was most
+effective in sideways regimes ($53.0\%$ win rate, $4.0\%$ average return). This
+behaviour follows directly from the buy/wait logic, in which only clearly
+positive evidence triggers an entry---an implicit, and desirable, avoidance of
+falling markets.
+
+\begin{table}[t]
+\centering
+\caption{Trades by market regime (pooled across symbols, trade-weighted). The
+pipeline took no positions in downtrends.}
+\label{tab:regime}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Regime & Trades & Win rate & Avg.\ return per trade \\
+\midrule
+Uptrend   & 51 & 37.3\% & 1.7\% \\
+Sideways  & 83 & 53.0\% & 4.0\% \\
+Downtrend & 0  & ---    & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Statistical significance}
+We caution against over-interpreting the point estimates above. With an average
+of only $\approx 4.6$ trades per symbol, the per-symbol tests are statistically
+underpowered: a one-sample $t$-test of returns against zero is significant
+($p<0.05$) for none of the $29$ symbols, as is a sign-permutation test. The mean
+information coefficient between the pipeline's confidence and forward returns is
+weakly positive ($0.08$, positive for $13$ of $29$ symbols) but not significant.
+We therefore present these results as evidence that the pipeline behaves as
+designed---selective, drawdown-aware, and regime-avoiding---rather than as a
+claim of a statistically established return edge; establishing the latter would
+require a larger universe and a longer evaluation window
+(Section~\ref{sec:discussion}).
+
+% ============================================================
+% TODO Section 7 — Discussion
+% TODO Section 8 — Conclusion
+% ============================================================
+
+\begin{credits}
+\subsubsection{\ackname} A bold run-in heading in small font size at the end of the paper is
+used for general acknowledgments, for example: This study was funded
+by X (grant number Y).
+
+\subsubsection{\discintname}
+It is now necessary to declare any competing interests or to specifically
+state that the authors have no competing interests. Please place the
+statement with a bold run-in heading in small font size beneath the
+(optional) acknowledgments\footnote{If EquinOCS, our proceedings submission
+system, is used, then the disclaimer can be provided directly in the system.},
+for example: The authors have no competing interests to declare that are
+relevant to the content of this article. Or: Author A has received research
+grants from Company W. Author B has received a speaker honorarium from
+Company X and owns stock in Company Y. Author C is a member of committee Z.
+\end{credits}
+%
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
+% \bibliographystyle{splncs04}
+% \bibliography{mybibliography}
+%
+\begin{thebibliography}{8}
+\bibitem{vsd2025}
+Vietnam Securities Depository and Clearing Corporation (VSDC): Securities account
+statistics. Reported in: Vietnam's stock market has more than 11 million trading
+accounts. \url{https://www.vietnam.vn/en/thi-truong-chung-khoan-viet-nam-co-hon-11-trieu-tai-khoan-giao-dich}, last accessed 2026/06/29
+
+\bibitem{vinacapital2024}
+VinaCapital: Vietnam's Resilient Stock Market. Insights report (2024).
+\url{https://vinacapital.com/wp-content/uploads/2024/07/VinaCapital-Insights-Vietnams-Resilient-Stock-Market.pdf}, last accessed 2026/06/29
+
+\bibitem{ftse2025}
+FTSE Russell (LSEG): FTSE Russell announces results of September 2025 semi-annual
+country classification review --- reclassification of Vietnam from Frontier to
+Secondary Emerging market (announced October 2025).
+\url{https://www.lseg.com/en/media-centre/press-releases/ftse-russell/2025/ftse-russell-country-classification-september-2025}, last accessed 2026/06/29
+
+% NOTE: Author lists for the arXiv/journal entries below should be verified
+% against the original papers before final submission.
+\bibitem{finbertlstm2022}
+Halder, S.: FinBERT-LSTM: Deep learning based stock price prediction using news
+sentiment analysis. arXiv:2211.07392 (2022)
+
+\bibitem{finbert2023}
+Financial sentiment analysis using FinBERT with application in predicting stock
+movement. arXiv:2306.02136 (2023)
+
+\bibitem{phobertstock}
+Stock article title sentiment-based classification using PhoBERT. In: CEUR
+Workshop Proceedings, vol. 3026 (2021).
+\url{https://ceur-ws.org/Vol-3026/paper25.pdf}
+
+\bibitem{vnnews2023}
+Sentiments extracted from news and stock market reactions in Vietnam.
+International Journal of Financial Studies \textbf{11}(3), 101 (2023)
+
+\bibitem{bloomberggpt}
+Wu, S., et al.: BloombergGPT: A large language model for finance.
+arXiv:2303.17564 (2023)
+
+\bibitem{fingpt}
+Yang, H., Liu, X.-Y., Wang, C.D.: FinGPT: Open-source financial large language
+models. arXiv:2306.06031 (2023)
+
+\bibitem{tradingagents}
+Xiao, Y., et al.: TradingAgents: Multi-agents LLM financial trading framework.
+arXiv:2412.20138 (2024)
+
+\bibitem{finmem}
+Yu, Y., et al.: FinMem: A performance-enhanced LLM trading agent with layered
+memory and character design. arXiv:2311.13743 (2023)
+
+\bibitem{vndl2025}
+A comprehensive comparison of deep learning models for forecasting developing
+market indices: Evidence from the Vietnamese stock market. Procedia Computer
+Science (2025)
+
+\bibitem{vnlstm2021}
+Predicting Vietnamese stock market using the variants of LSTM architecture. In:
+Lecture Notes in Networks and Systems. Springer (2021).
+\doi{10.1007/978-3-030-92942-8_11}
+
+\bibitem{vnml2024}
+Applying machine learning algorithms to predict the stock price trend in the
+stock market --- the case of Vietnam. Humanities and Social Sciences
+Communications \textbf{11} (2024)
+
+\bibitem{text2sqlsurvey}
+A survey of large language model-based generative AI for text-to-SQL:
+Benchmarks, applications, use cases, and challenges. arXiv:2412.05208 (2024)
+
+\bibitem{spider2}
+Lei, F., et al.: Spider 2.0: Evaluating language models on real-world enterprise
+text-to-SQL workflows. arXiv:2411.07763 (2024)
+\end{thebibliography}
+\end{document}

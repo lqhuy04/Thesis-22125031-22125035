@@ -116,15 +116,18 @@ class ArticlesService:
             return []
 
     @staticmethod
-    def get_macro_articles(min_symbols: int = 2, limit: int = 50) -> List[ArticlesResponse]:
+    def get_macro_articles(limit: int = 50) -> List[ArticlesResponse]:
         try:
-            min_symbols = max(1, min_symbols)
             limit = max(1, limit)
 
-            result = supabase.rpc(
-                "get_macro_articles",
-                {"min_symbols": min_symbols, "lim": limit}
-            ).execute()
+            result = (
+                supabase.table("Article")
+                .select("*")
+                .eq("article_type", "macro")
+                .order("time", desc=True)
+                .limit(limit)
+                .execute()
+            )
 
             if not result.data:
                 return []

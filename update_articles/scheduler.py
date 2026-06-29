@@ -68,6 +68,28 @@ def run_article_fetch():
         articles_process = None
 
 
+def run_macro_fetch():
+    """Chạy websocket_articles_macro_1d.py để fetch tin kinh tế vĩ mô."""
+    try:
+        logger.info("▶ Running websocket_articles_macro_1d.py")
+        proc = subprocess.Popen(
+            [sys.executable, "websocket_articles_macro_1d.py"],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+        )
+
+        # Wait for completion
+        proc.wait()
+
+        if proc.returncode == 0:
+            logger.info("✅ websocket_articles_macro_1d.py completed successfully")
+        else:
+            logger.error(f"❌ websocket_articles_macro_1d.py exited with code {proc.returncode}")
+
+    except Exception as e:
+        logger.error(f"Error running macro fetch: {e}")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # MAIN LOOP
 # ─────────────────────────────────────────────────────────────────────────────
@@ -89,6 +111,7 @@ def main():
                 logger.info(f"🔄 Triggering weekly article fetch for week {current_week} at {h:02d}:{m:02d}")
                 articles_done_week = current_week
                 run_article_fetch()
+                run_macro_fetch()
 
         time.sleep(60)  # Check every minute
 
