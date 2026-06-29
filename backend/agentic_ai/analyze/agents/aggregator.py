@@ -569,10 +569,14 @@ YÊU CẦU:
             article_sentiment   = parsed.article_sentiment,
             technical_max_score = technical_max_score,
         )
+        # Nguồn KHÔNG có dữ liệu (bị người dùng tắt hoặc DB không có) → 0 điểm,
+        # không để mức trung lập 0.5 gây hiểu lầm là nguồn đó vẫn đóng góp. Quyết
+        # định mua/bán không bị ảnh hưởng: confidence vẫn loại các nguồn này ra
+        # (xem _effective_weights), nên 0 ở đây chỉ mang tính hiển thị.
         score = {
-            "news":        round(news_component, 4),
-            "technical":   round(tech_component, 4),
-            "fundamental": round(fund_component, 4),
+            "news":        round(news_component, 4) if has_news        else 0.0,
+            "technical":   round(tech_component, 4) if has_technical   else 0.0,
+            "fundamental": round(fund_component, 4) if has_fundamental else 0.0,
         }
         confidence, effective_weights = _compute_confidence(
             technical_score     = parsed.technical_score,

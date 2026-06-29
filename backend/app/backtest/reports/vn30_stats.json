@@ -1,0 +1,2964 @@
+{
+  "symbols": {
+    "ACB": {
+      "performance": {
+        "n_trades": 5,
+        "win_rate": 0.2,
+        "total_return": 0.06846866220485359,
+        "avg_return": 0.021322055047983835,
+        "annualized_return": 0.08983215934469269,
+        "max_drawdown": -0.12223631700406538,
+        "sharpe_ratio": 0.31540807602080156,
+        "profit_factor": 1.583057461389525
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.25,
+        "total_return": -0.1565301444043422,
+        "avg_return": -0.01460303027413639,
+        "annualized_return": -0.19837848424388582,
+        "max_drawdown": -0.19564609853834133,
+        "sharpe_ratio": -0.3255548385731291,
+        "profit_factor": 0.7296000656780465
+      },
+      "benchmark": {
+        "pipeline_return": 0.06846866220485359,
+        "buy_hold_return": -0.06251983497302438,
+        "delta_vs_buy_hold": 0.13098849717787797,
+        "impact_on_returns": 0.2249988066091958,
+        "agreement_rate": 0.5,
+        "cases_llm_filtered_out": 4,
+        "random_percentile_rank": 0.74,
+        "random_p_value": 0.26
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.3154080760208015,
+          "p_value": 0.7682219711173902,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 1.0,
+          "percentile_rank": 0.546,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.14408858835929847,
+          "p_value": 0.8171775187799072,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.5,
+          "avg_return": 0.135908431602588,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.0,
+          "avg_return": -0.055068862655085614,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 13:25:46"
+    },
+    "BID": {
+      "performance": {
+        "n_trades": 4,
+        "win_rate": 0.75,
+        "total_return": 0.10245688535409725,
+        "avg_return": 0.027532833680919973,
+        "annualized_return": 0.17829329491987145,
+        "max_drawdown": -0.08053498179030084,
+        "sharpe_ratio": 0.6257744416374187,
+        "profit_factor": 2.3674968600656396
+      },
+      "baseline_engine_performance": {
+        "n_trades": 7,
+        "win_rate": 0.42857142857142855,
+        "total_return": 0.020814509880064502,
+        "avg_return": 0.00410020507446045,
+        "annualized_return": 0.0323744915069637,
+        "max_drawdown": -0.11274985219895009,
+        "sharpe_ratio": 0.2080788997485935,
+        "profit_factor": 1.2242845835528362
+      },
+      "benchmark": {
+        "pipeline_return": 0.10245688535409725,
+        "buy_hold_return": 0.029645314981471715,
+        "delta_vs_buy_hold": 0.07281157037262553,
+        "impact_on_returns": 0.08164237547403275,
+        "agreement_rate": 0.0,
+        "cases_llm_filtered_out": 7,
+        "random_percentile_rank": 0.876,
+        "random_p_value": 0.124
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.6257744416374187,
+          "p_value": 0.5758365545861208,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.609,
+          "percentile_rank": 0.745,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.7862042031855868,
+          "p_value": 0.2137957968144133,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.5,
+          "avg_return": 0.02538606320735961,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 1.0,
+          "avg_return": 0.02967960415448034,
+          "n_trades": 2
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 13:31:06"
+    },
+    "CTG": {
+      "performance": {
+        "n_trades": 7,
+        "win_rate": 0.5714285714285714,
+        "total_return": -0.008047617649587724,
+        "avg_return": 0.0016037476235976117,
+        "annualized_return": -0.01047780595138248,
+        "max_drawdown": -0.10299041786500204,
+        "sharpe_ratio": 0.052649360558423335,
+        "profit_factor": 1.0528893872121596
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.75,
+        "total_return": 0.09900954195071421,
+        "avg_return": 0.013989075598821328,
+        "annualized_return": 0.13096284076237907,
+        "max_drawdown": -0.030639056311348542,
+        "sharpe_ratio": 0.572975462794075,
+        "profit_factor": 1.7538725789290637
+      },
+      "benchmark": {
+        "pipeline_return": -0.008047617649587724,
+        "buy_hold_return": 0.37167632275639795,
+        "delta_vs_buy_hold": -0.37972394040598567,
+        "impact_on_returns": -0.10705715960030193,
+        "agreement_rate": 0.375,
+        "cases_llm_filtered_out": 5,
+        "random_percentile_rank": 0.161,
+        "random_p_value": 0.839
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.05264936055842333,
+          "p_value": 0.959720437040631,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.97,
+          "percentile_rank": 0.499,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.4146068792101197,
+          "p_value": 0.3550442089373345,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": 0.02770987230583102,
+          "n_trades": 3
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.5,
+          "avg_return": -0.017975845888077442,
+          "n_trades": 4
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 13:36:55"
+    },
+    "DGC": {
+      "performance": {
+        "n_trades": 6,
+        "win_rate": 0.3333333333333333,
+        "total_return": -0.1907626030139351,
+        "avg_return": -0.032865002422540396,
+        "annualized_return": -0.3018594200418312,
+        "max_drawdown": -0.26549134456017803,
+        "sharpe_ratio": -1.2262314047031506,
+        "profit_factor": 0.3358930517802442
+      },
+      "baseline_engine_performance": {
+        "n_trades": 7,
+        "win_rate": 0.5714285714285714,
+        "total_return": -0.3056767475062252,
+        "avg_return": -0.04331491718117655,
+        "annualized_return": -0.41929003057464387,
+        "max_drawdown": -0.36307055565488167,
+        "sharpe_ratio": -0.953674362703654,
+        "profit_factor": 0.2505630748620095
+      },
+      "benchmark": {
+        "pipeline_return": -0.1907626030139351,
+        "buy_hold_return": -0.3868270762840825,
+        "delta_vs_buy_hold": 0.19606447327014742,
+        "impact_on_returns": 0.1149141444922901,
+        "agreement_rate": 0.2857142857142857,
+        "cases_llm_filtered_out": 5,
+        "random_percentile_rank": 0.439,
+        "random_p_value": 0.5609999999999999
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": -1.2262314047031508,
+          "p_value": 0.2747064648103309,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.264,
+          "percentile_rank": 0.14,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.6840484919886903,
+          "p_value": 0.13396804733142373,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.07557908998609142,
+          "n_trades": 3
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": 0.009849085141010646,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 13:42:49"
+    },
+    "FPT": {
+      "performance": {
+        "n_trades": 5,
+        "win_rate": 0.4,
+        "total_return": -0.10767289020057169,
+        "avg_return": -0.021472897781685367,
+        "annualized_return": -0.174380109675756,
+        "max_drawdown": -0.14207297113928025,
+        "sharpe_ratio": -0.9472305753924952,
+        "profit_factor": 0.3194690195168927
+      },
+      "baseline_engine_performance": {
+        "n_trades": 7,
+        "win_rate": 0.2857142857142857,
+        "total_return": -0.11879389320799572,
+        "avg_return": -0.01681347134928934,
+        "annualized_return": -0.1598592971358188,
+        "max_drawdown": -0.16732238136969138,
+        "sharpe_ratio": -0.8923808326259625,
+        "profit_factor": 0.385377305362489
+      },
+      "benchmark": {
+        "pipeline_return": -0.10767289020057169,
+        "buy_hold_return": -0.2638299198367131,
+        "delta_vs_buy_hold": 0.15615702963614142,
+        "impact_on_returns": 0.011121003007424024,
+        "agreement_rate": 0.42857142857142855,
+        "cases_llm_filtered_out": 4,
+        "random_percentile_rank": 0.461,
+        "random_p_value": 0.5389999999999999
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": -0.9472305753924951,
+          "p_value": 0.3971579189271221,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.464,
+          "percentile_rank": 0.23,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.4079490894611706,
+          "p_value": 0.49537313387200604,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.07375322195201045,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": 0.01338065166519802,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 13:47:26"
+    },
+    "GAS": {
+      "performance": {
+        "n_trades": 4,
+        "win_rate": 0.75,
+        "total_return": 0.2266010420415805,
+        "avg_return": 0.05458522677924193,
+        "annualized_return": 0.3789699645366773,
+        "max_drawdown": -0.04765019618790614,
+        "sharpe_ratio": 1.405412175871247,
+        "profit_factor": 5.582161766049222
+      },
+      "baseline_engine_performance": {
+        "n_trades": 7,
+        "win_rate": 0.7142857142857143,
+        "total_return": 0.1790423783822277,
+        "avg_return": 0.025989978167900156,
+        "annualized_return": 0.2873554411859507,
+        "max_drawdown": -0.13297437398076653,
+        "sharpe_ratio": 0.9634320270270843,
+        "profit_factor": 2.3240762082321265
+      },
+      "benchmark": {
+        "pipeline_return": 0.2266010420415805,
+        "buy_hold_return": 0.12612962934158767,
+        "delta_vs_buy_hold": 0.10047141269999282,
+        "impact_on_returns": 0.047558663659352796,
+        "agreement_rate": 0.14285714285714285,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.939,
+        "random_p_value": 0.061000000000000054
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 1.4054121758712474,
+          "p_value": 0.254556306787913,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.384,
+          "percentile_rank": 0.87,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.8774224377868821,
+          "p_value": 0.122577562213118,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.75,
+          "avg_return": 0.05458522677924193,
+          "n_trades": 4
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 13:53:43"
+    },
+    "GVR": {
+      "performance": {
+        "n_trades": 6,
+        "win_rate": 0.3333333333333333,
+        "total_return": -0.20492677211143195,
+        "avg_return": -0.03480329904758576,
+        "annualized_return": -0.27435766083686075,
+        "max_drawdown": -0.17306503009619048,
+        "sharpe_ratio": -1.0568680622989095,
+        "profit_factor": 0.37007181098297226
+      },
+      "baseline_engine_performance": {
+        "n_trades": 9,
+        "win_rate": 0.3333333333333333,
+        "total_return": -0.28611758725952996,
+        "avg_return": -0.026078273332895367,
+        "annualized_return": -0.3555459968072424,
+        "max_drawdown": -0.1744606272226679,
+        "sharpe_ratio": -0.529477325693575,
+        "profit_factor": 0.6079967429971807
+      },
+      "benchmark": {
+        "pipeline_return": -0.20492677211143195,
+        "buy_hold_return": -0.12869970069837056,
+        "delta_vs_buy_hold": -0.0762270714130614,
+        "impact_on_returns": 0.081190815148098,
+        "agreement_rate": 0.3333333333333333,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.241,
+        "random_p_value": 0.759
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": -1.0568680622989095,
+          "p_value": 0.33893755936377806,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.326,
+          "percentile_rank": 0.172,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.5055969137020238,
+          "p_value": 0.30622705383036475,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.09035193059364865,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.5,
+          "avg_return": -0.007028983274554316,
+          "n_trades": 4
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:00:24"
+    },
+    "HDB": {
+      "performance": {
+        "n_trades": 6,
+        "win_rate": 0.6666666666666666,
+        "total_return": 0.58892645029474,
+        "avg_return": 0.09011275194387504,
+        "annualized_return": 0.9661268776056169,
+        "max_drawdown": -0.15015564376339596,
+        "sharpe_ratio": 1.3760590289409267,
+        "profit_factor": 4.460159183199499
+      },
+      "baseline_engine_performance": {
+        "n_trades": 7,
+        "win_rate": 0.7142857142857143,
+        "total_return": 0.675494025291334,
+        "avg_return": 0.0830233519461958,
+        "annualized_return": 1.124460251680822,
+        "max_drawdown": -0.09829942667030406,
+        "sharpe_ratio": 1.6774263394887232,
+        "profit_factor": 6.805970492744858
+      },
+      "benchmark": {
+        "pipeline_return": 0.58892645029474,
+        "buy_hold_return": 0.5134529147982063,
+        "delta_vs_buy_hold": 0.07547353549653368,
+        "impact_on_returns": -0.08656757499659395,
+        "agreement_rate": 0.2857142857142857,
+        "cases_llm_filtered_out": 5,
+        "random_percentile_rank": 0.964,
+        "random_p_value": 0.03600000000000003
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 1.376059028940927,
+          "p_value": 0.22724081461609147,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.229,
+          "percentile_rank": 0.906,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.34123058901264514,
+          "p_value": 0.5080202738657479,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.3333333333333333,
+          "avg_return": 0.01909577110112315,
+          "n_trades": 3
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 1.0,
+          "avg_return": 0.16112973278662698,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:06:51"
+    },
+    "HPG": {
+      "performance": {
+        "n_trades": 6,
+        "win_rate": 0.5,
+        "total_return": 0.15368678593437557,
+        "avg_return": 0.029171225653049426,
+        "annualized_return": 0.253442126231205,
+        "max_drawdown": -0.10910670002706384,
+        "sharpe_ratio": 0.6266425864075306,
+        "profit_factor": 1.9650259563266461
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.5,
+        "total_return": 0.09004703687844628,
+        "avg_return": 0.01315666748170563,
+        "annualized_return": 0.1341488284095731,
+        "max_drawdown": -0.15344554525167917,
+        "sharpe_ratio": 0.5114045512754101,
+        "profit_factor": 1.6618310027833603
+      },
+      "benchmark": {
+        "pipeline_return": 0.15368678593437557,
+        "buy_hold_return": 0.18652771484669994,
+        "delta_vs_buy_hold": -0.032840928912324374,
+        "impact_on_returns": 0.06363974905592928,
+        "agreement_rate": 0.125,
+        "cases_llm_filtered_out": 7,
+        "random_percentile_rank": 0.816,
+        "random_p_value": 0.18400000000000005
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.6266425864075307,
+          "p_value": 0.5583888225146207,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.631,
+          "percentile_rank": 0.701,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.42406898955775674,
+          "p_value": 0.40202763469071157,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.3333333333333333,
+          "avg_return": -0.020042422684552638,
+          "n_trades": 3
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": 0.07838487399065149,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:13:05"
+    },
+    "LPB": {
+      "performance": {
+        "n_trades": 6,
+        "win_rate": 0.5,
+        "total_return": 0.3424413786004612,
+        "avg_return": 0.0585308140244609,
+        "annualized_return": 0.7453180817092078,
+        "max_drawdown": -0.07992307692307697,
+        "sharpe_ratio": 0.9852243304063675,
+        "profit_factor": 2.724344983008665
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.625,
+        "total_return": 0.3342289859103382,
+        "avg_return": 0.04327745921913926,
+        "annualized_return": 0.4966856544355738,
+        "max_drawdown": -0.2139245698048819,
+        "sharpe_ratio": 0.987823076913357,
+        "profit_factor": 2.4268604303981567
+      },
+      "benchmark": {
+        "pipeline_return": 0.3424413786004612,
+        "buy_hold_return": 0.4291086874764949,
+        "delta_vs_buy_hold": -0.08666730887603369,
+        "impact_on_returns": 0.008212392690122972,
+        "agreement_rate": 0.375,
+        "cases_llm_filtered_out": 5,
+        "random_percentile_rank": 0.852,
+        "random_p_value": 0.14800000000000002
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.9852243304063675,
+          "p_value": 0.3697573376121077,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.396,
+          "percentile_rank": 0.827,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.0035993424349887674,
+          "p_value": 0.9946010096627361,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": 0.11914126655467443,
+          "n_trades": 3
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.3333333333333333,
+          "avg_return": -0.002079638505752638,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:18:44"
+    },
+    "MBB": {
+      "performance": {
+        "n_trades": 6,
+        "win_rate": 0.5,
+        "total_return": 0.16246273032375425,
+        "avg_return": 0.03174765782082802,
+        "annualized_return": 0.22295797700874198,
+        "max_drawdown": -0.07340429359463196,
+        "sharpe_ratio": 0.5958124011416891,
+        "profit_factor": 2.2195843275800433
+      },
+      "baseline_engine_performance": {
+        "n_trades": 9,
+        "win_rate": 0.6666666666666666,
+        "total_return": 0.22878705509486896,
+        "avg_return": 0.027050442268061987,
+        "annualized_return": 0.31713388677984233,
+        "max_drawdown": -0.14946357426272025,
+        "sharpe_ratio": 0.8617589699108253,
+        "profit_factor": 2.2399364142543905
+      },
+      "benchmark": {
+        "pipeline_return": 0.16246273032375425,
+        "buy_hold_return": 0.5411793372319689,
+        "delta_vs_buy_hold": -0.3787166069082146,
+        "impact_on_returns": -0.06632432477111472,
+        "agreement_rate": 0.2222222222222222,
+        "cases_llm_filtered_out": 7,
+        "random_percentile_rank": 0.605,
+        "random_p_value": 0.395
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.5958124011416892,
+          "p_value": 0.5772446545907699,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.768,
+          "percentile_rank": 0.607,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.363397044903546,
+          "p_value": 0.47889906932833504,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.3333333333333333,
+          "avg_return": 0.06805008580281952,
+          "n_trades": 3
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": -0.004554770161163489,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:25:37"
+    },
+    "MSN": {
+      "performance": {
+        "n_trades": 1,
+        "win_rate": 1.0,
+        "total_return": 0.22800303951367784,
+        "avg_return": 0.22800303951367787,
+        "annualized_return": 1.3440936440339382,
+        "max_drawdown": 0.0,
+        "sharpe_ratio": 0.0,
+        "profit_factor": 0.0
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.375,
+        "total_return": -0.048199619963916196,
+        "avg_return": -0.0034163296648089987,
+        "annualized_return": -0.06280100801920951,
+        "max_drawdown": -0.11734350470938752,
+        "sharpe_ratio": -0.11953095236795318,
+        "profit_factor": 0.8778470405458603
+      },
+      "benchmark": {
+        "pipeline_return": 0.22800303951367784,
+        "buy_hold_return": 0.09843081312410851,
+        "delta_vs_buy_hold": 0.12957222638956933,
+        "impact_on_returns": 0.27620265947759404,
+        "agreement_rate": 0.0,
+        "cases_llm_filtered_out": 8,
+        "random_percentile_rank": 0.99,
+        "random_p_value": 0.010000000000000009
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 1.0,
+          "percentile_rank": 1.0,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.0,
+          "p_value": 1.0,
+          "interpretation": "insufficient_data"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 1.0,
+          "avg_return": 0.22800303951367787,
+          "n_trades": 1
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:31:22"
+    },
+    "MWG": {
+      "performance": {
+        "n_trades": 5,
+        "win_rate": 0.6,
+        "total_return": 0.13878129222683588,
+        "avg_return": 0.02863466594932378,
+        "annualized_return": 0.18532569741992,
+        "max_drawdown": -0.0005247524752476201,
+        "sharpe_ratio": 0.8439348850540687,
+        "profit_factor": 2.6668495211864585
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.625,
+        "total_return": 0.3363224633194206,
+        "avg_return": 0.038002361055781586,
+        "annualized_return": 0.461243619183793,
+        "max_drawdown": -0.03278026520812793,
+        "sharpe_ratio": 2.1089564514701014,
+        "profit_factor": 6.967274097590035
+      },
+      "benchmark": {
+        "pipeline_return": 0.13878129222683588,
+        "buy_hold_return": 0.4724743899392023,
+        "delta_vs_buy_hold": -0.33369309771236644,
+        "impact_on_returns": -0.19754117109258473,
+        "agreement_rate": 0.25,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.519,
+        "random_p_value": 0.481
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.8439348850540686,
+          "p_value": 0.4462211862880039,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.379,
+          "percentile_rank": 0.832,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.4758581981501728,
+          "p_value": 0.417832041361973,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.5,
+          "avg_return": 0.0460878318067591,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": 0.0169992220443669,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:38:55"
+    },
+    "PLX": {
+      "performance": {
+        "n_trades": 3,
+        "win_rate": 0.3333333333333333,
+        "total_return": -0.05098283233089296,
+        "avg_return": -0.013858064775226548,
+        "annualized_return": -0.08576782199263622,
+        "max_drawdown": -0.14093913451716583,
+        "sharpe_ratio": -0.23374398632059332,
+        "profit_factor": 0.7158075870196599
+      },
+      "baseline_engine_performance": {
+        "n_trades": 5,
+        "win_rate": 0.6,
+        "total_return": 0.04815317888037285,
+        "avg_return": 0.01030129000251176,
+        "annualized_return": 0.07578022522823846,
+        "max_drawdown": -0.07013736231577049,
+        "sharpe_ratio": 0.5029394029850938,
+        "profit_factor": 1.7287183892176685
+      },
+      "benchmark": {
+        "pipeline_return": -0.05098283233089296,
+        "buy_hold_return": -0.03867102396514166,
+        "delta_vs_buy_hold": -0.012311808365751298,
+        "impact_on_returns": -0.0991360112112658,
+        "agreement_rate": 0.2,
+        "cases_llm_filtered_out": 4,
+        "random_percentile_rank": 0.368,
+        "random_p_value": 0.632
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": -0.23374398632059334,
+          "p_value": 0.8369304123014882,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 1.0,
+          "percentile_rank": 0.491,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.5049729102774311,
+          "p_value": 0.663004954402061,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.07255380577427818,
+          "n_trades": 1
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.5,
+          "avg_return": 0.015489805724299269,
+          "n_trades": 2
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:44:30"
+    },
+    "SAB": {
+      "performance": {
+        "n_trades": 7,
+        "win_rate": 0.42857142857142855,
+        "total_return": -0.004919670206868232,
+        "avg_return": 0.0015862182126143848,
+        "annualized_return": -0.006873248371742635,
+        "max_drawdown": -0.1008464943654054,
+        "sharpe_ratio": 0.05633700629715039,
+        "profit_factor": 1.0604317936053123
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.375,
+        "total_return": -0.008699872334972936,
+        "avg_return": -9.126188160654019e-05,
+        "annualized_return": -0.012145362945815807,
+        "max_drawdown": -0.07078671087183777,
+        "sharpe_ratio": -0.00533342747673671,
+        "profit_factor": 0.9947462746380424
+      },
+      "benchmark": {
+        "pipeline_return": -0.004919670206868232,
+        "buy_hold_return": -0.06650246305418717,
+        "delta_vs_buy_hold": 0.061582792847318935,
+        "impact_on_returns": 0.003780202128104704,
+        "agreement_rate": 0.25,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.632,
+        "random_p_value": 0.368
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.05633700629715038,
+          "p_value": 0.9569025573303879,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.962,
+          "percentile_rank": 0.551,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.6739812768435066,
+          "p_value": 0.09686523659680106,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.016568462023527263,
+          "n_trades": 1
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.5,
+          "avg_return": 0.004611998251971325,
+          "n_trades": 6
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:50:35"
+    },
+    "SHB": {
+      "performance": {
+        "n_trades": 7,
+        "win_rate": 0.2857142857142857,
+        "total_return": -0.09371210348269865,
+        "avg_return": -0.011680079902799675,
+        "annualized_return": -0.12585977086520728,
+        "max_drawdown": -0.18495818738079453,
+        "sharpe_ratio": -0.41834797320264605,
+        "profit_factor": 0.68950053977328
+      },
+      "baseline_engine_performance": {
+        "n_trades": 9,
+        "win_rate": 0.6666666666666666,
+        "total_return": 0.3384131503365593,
+        "avg_return": 0.03808780930190367,
+        "annualized_return": 0.46026643858163774,
+        "max_drawdown": -0.17723381699691,
+        "sharpe_ratio": 1.0078103808346037,
+        "profit_factor": 2.8344707647846934
+      },
+      "benchmark": {
+        "pipeline_return": -0.09371210348269865,
+        "buy_hold_return": 1.0665555270582199,
+        "delta_vs_buy_hold": -1.1602676305409185,
+        "impact_on_returns": -0.4321252538192579,
+        "agreement_rate": 0.1111111111111111,
+        "cases_llm_filtered_out": 8,
+        "random_percentile_rank": 0.016,
+        "random_p_value": 0.984
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": -0.418347973202646,
+          "p_value": 0.6902533997970629,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.669,
+          "percentile_rank": 0.339,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.05632982250607978,
+          "p_value": 0.9045231679283645,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.0448457410885879,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.4,
+          "avg_return": 0.001586184571515617,
+          "n_trades": 5
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 14:57:15"
+    },
+    "SSB": {
+      "performance": {
+        "n_trades": 4,
+        "win_rate": 0.25,
+        "total_return": -0.004338876902475697,
+        "avg_return": 0.0016488996248158882,
+        "annualized_return": -0.005754780205665666,
+        "max_drawdown": -0.07977919938166912,
+        "sharpe_ratio": 0.03787104848769971,
+        "profit_factor": 1.0555357087561077
+      },
+      "baseline_engine_performance": {
+        "n_trades": 6,
+        "win_rate": 0.3333333333333333,
+        "total_return": -0.08524350994398422,
+        "avg_return": -0.01184979640897349,
+        "annualized_return": -0.11268996242430285,
+        "max_drawdown": -0.11759097594044264,
+        "sharpe_ratio": -0.3439746338331821,
+        "profit_factor": 0.6812581980592936
+      },
+      "benchmark": {
+        "pipeline_return": -0.004338876902475697,
+        "buy_hold_return": 0.03252032520325199,
+        "delta_vs_buy_hold": -0.036859202105727684,
+        "impact_on_returns": 0.08090463304150852,
+        "agreement_rate": 0.0,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.546,
+        "random_p_value": 0.45399999999999996
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.03787104848769971,
+          "p_value": 0.9721696645072171,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 1.0,
+          "percentile_rank": 0.59,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.553715612723169,
+          "p_value": 0.44628438727683095,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.5,
+          "avg_return": 0.025517099513315898,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.0,
+          "avg_return": -0.022219300263684124,
+          "n_trades": 2
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 15:01:46"
+    },
+    "SSI": {
+      "performance": {
+        "n_trades": 3,
+        "win_rate": 0.6666666666666666,
+        "total_return": 0.36141946039038375,
+        "avg_return": 0.1190072714820208,
+        "annualized_return": 1.2353017921420437,
+        "max_drawdown": -0.07242871014727295,
+        "sharpe_ratio": 1.0968158414797466,
+        "profit_factor": 5.9292858276795455
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.625,
+        "total_return": -0.030355990903938035,
+        "avg_return": 0.004698638877190058,
+        "annualized_return": -0.039113763791621126,
+        "max_drawdown": -0.22596158393747748,
+        "sharpe_ratio": 0.0940243234395072,
+        "profit_factor": 1.0916469776886495
+      },
+      "benchmark": {
+        "pipeline_return": 0.36141946039038375,
+        "buy_hold_return": 0.3072601555747623,
+        "delta_vs_buy_hold": 0.05415930481562148,
+        "impact_on_returns": 0.3917754512943218,
+        "agreement_rate": 0.0,
+        "cases_llm_filtered_out": 8,
+        "random_percentile_rank": 0.907,
+        "random_p_value": 0.09299999999999997
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 1.0968158414797466,
+          "p_value": 0.3871489891460545,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.51,
+          "percentile_rank": 0.879,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.0,
+          "p_value": 1.0,
+          "interpretation": "flat"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.5,
+          "avg_return": 0.026897336710515196,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 1.0,
+          "avg_return": 0.303227141025032,
+          "n_trades": 1
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 15:07:34"
+    },
+    "STB": {
+      "performance": {
+        "n_trades": 6,
+        "win_rate": 0.6666666666666666,
+        "total_return": 0.2405084993139408,
+        "avg_return": 0.04036518172318038,
+        "annualized_return": 0.47900514473924605,
+        "max_drawdown": -0.06988963210702338,
+        "sharpe_ratio": 1.02362719630605,
+        "profit_factor": 2.688700708397887
+      },
+      "baseline_engine_performance": {
+        "n_trades": 7,
+        "win_rate": 0.7142857142857143,
+        "total_return": 0.41494020752215444,
+        "avg_return": 0.05262477410712812,
+        "annualized_return": 0.5905095140731402,
+        "max_drawdown": -0.003000000000000048,
+        "sharpe_ratio": 2.0850788338820907,
+        "profit_factor": 15.072652522818624
+      },
+      "benchmark": {
+        "pipeline_return": 0.2405084993139408,
+        "buy_hold_return": 0.5696887686062244,
+        "delta_vs_buy_hold": -0.3291802692922836,
+        "impact_on_returns": -0.17443170820821363,
+        "agreement_rate": 0.2857142857142857,
+        "cases_llm_filtered_out": 5,
+        "random_percentile_rank": 0.655,
+        "random_p_value": 0.345
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 1.02362719630605,
+          "p_value": 0.3529589353165668,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.354,
+          "percentile_rank": 0.849,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.003637542488422644,
+          "p_value": 0.9945437103328293,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": 0.031148531464428777,
+          "n_trades": 3
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": 0.04958183198193197,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 15:16:04"
+    },
+    "TCB": {
+      "performance": {
+        "n_trades": 5,
+        "win_rate": 0.4,
+        "total_return": 0.08084394422814567,
+        "avg_return": 0.018798990811904028,
+        "annualized_return": 0.10625652631017557,
+        "max_drawdown": -0.06438260340360709,
+        "sharpe_ratio": 0.46751554722702116,
+        "profit_factor": 1.7057763111777187
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.625,
+        "total_return": 0.10548774668263983,
+        "avg_return": 0.017490074828900224,
+        "annualized_return": 0.13913085177323858,
+        "max_drawdown": -0.1590102301790281,
+        "sharpe_ratio": 0.47111651636265267,
+        "profit_factor": 1.520387977089272
+      },
+      "benchmark": {
+        "pipeline_return": 0.08084394422814567,
+        "buy_hold_return": 0.4533188973099025,
+        "delta_vs_buy_hold": -0.3724749530817568,
+        "impact_on_returns": -0.024643802454494157,
+        "agreement_rate": 0.125,
+        "cases_llm_filtered_out": 7,
+        "random_percentile_rank": 0.391,
+        "random_p_value": 0.609
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.46751554722702116,
+          "p_value": 0.6644643816655732,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.689,
+          "percentile_rank": 0.716,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.4764393311153738,
+          "p_value": 0.4171813805210421,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.5,
+          "avg_return": 0.02097710187949848,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.3333333333333333,
+          "avg_return": 0.017346916766841067,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 15:23:06"
+    },
+    "TPB": {
+      "performance": {
+        "n_trades": 5,
+        "win_rate": 0.2,
+        "total_return": 0.0314317169092353,
+        "avg_return": 0.01676219966831447,
+        "annualized_return": 0.05446413256282767,
+        "max_drawdown": -0.1921621697169847,
+        "sharpe_ratio": 0.21401623673512815,
+        "profit_factor": 1.3417110624749875
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.375,
+        "total_return": 0.16184180556604133,
+        "avg_return": 0.02567149331001784,
+        "annualized_return": 0.24161450520343175,
+        "max_drawdown": -0.24061627922008236,
+        "sharpe_ratio": 0.5643419863320028,
+        "profit_factor": 1.7535916490096966
+      },
+      "benchmark": {
+        "pipeline_return": 0.0314317169092353,
+        "buy_hold_return": 0.15330140959061178,
+        "delta_vs_buy_hold": -0.12186969268137648,
+        "impact_on_returns": -0.13041008865680603,
+        "agreement_rate": 0.25,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.494,
+        "random_p_value": 0.506
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.21401623673512812,
+          "p_value": 0.8410012825005523,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 1.0,
+          "percentile_rank": 0.514,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.0,
+          "p_value": 1.0,
+          "interpretation": "flat"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.07020943059547104,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.3333333333333333,
+          "avg_return": 0.07474328651083816,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 15:30:21"
+    },
+    "VCB": {
+      "performance": {
+        "n_trades": 1,
+        "win_rate": 1.0,
+        "total_return": 0.04317630076345691,
+        "avg_return": 0.043176300763456806,
+        "annualized_return": 0.4199909151795833,
+        "max_drawdown": 0.0,
+        "sharpe_ratio": 0.0,
+        "profit_factor": 0.0
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.25,
+        "total_return": -0.25008075997568624,
+        "avg_return": -0.033678946146464994,
+        "annualized_return": -0.3118988536633601,
+        "max_drawdown": -0.1525002666091332,
+        "sharpe_ratio": -1.5696292217115184,
+        "profit_factor": 0.2313348270115591
+      },
+      "benchmark": {
+        "pipeline_return": 0.04317630076345691,
+        "buy_hold_return": -0.05474272562880156,
+        "delta_vs_buy_hold": 0.09791902639225847,
+        "impact_on_returns": 0.29325706073914315,
+        "agreement_rate": 0.0,
+        "cases_llm_filtered_out": 8,
+        "random_percentile_rank": 0.853,
+        "random_p_value": 0.14700000000000002
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 1.0,
+          "percentile_rank": 1.0,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.0,
+          "p_value": 1.0,
+          "interpretation": "insufficient_data"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 1.0,
+          "avg_return": 0.043176300763456806,
+          "n_trades": 1
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 15:35:39"
+    },
+    "VJC": {
+      "performance": {
+        "n_trades": 4,
+        "win_rate": 0.5,
+        "total_return": 0.39097572994853613,
+        "avg_return": 0.10050325458549757,
+        "annualized_return": 0.6806651408534747,
+        "max_drawdown": -0.06896053315816844,
+        "sharpe_ratio": 0.9374375512576975,
+        "profit_factor": 5.127418591906709
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.75,
+        "total_return": 0.6766950047795373,
+        "avg_return": 0.07246759326706724,
+        "annualized_return": 1.146263997675991,
+        "max_drawdown": -0.05051191716532808,
+        "sharpe_ratio": 1.6762863005881472,
+        "profit_factor": 9.238614116062859
+      },
+      "benchmark": {
+        "pipeline_return": 0.39097572994853613,
+        "buy_hold_return": 1.0879125160720546,
+        "delta_vs_buy_hold": -0.6969367861235185,
+        "impact_on_returns": -0.2857192748310011,
+        "agreement_rate": 0.25,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.761,
+        "random_p_value": 0.239
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.9374375512576975,
+          "p_value": 0.41768883053638367,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.634,
+          "percentile_rank": 0.782,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.9018768556598756,
+          "p_value": 0.09812314434012448,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.06896053315816847,
+          "n_trades": 1
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.6666666666666666,
+          "avg_return": 0.15699118383338626,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 15:41:46"
+    },
+    "VHM": {
+      "performance": {
+        "n_trades": 8,
+        "win_rate": 0.625,
+        "total_return": 1.5253977330881483,
+        "avg_return": 0.13803011462993878,
+        "annualized_return": 2.4507496335222343,
+        "max_drawdown": -0.14445245026543838,
+        "sharpe_ratio": 1.9474827239591277,
+        "profit_factor": 6.266144087080248
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.875,
+        "total_return": 1.1773924580906643,
+        "avg_return": 0.10541086843063462,
+        "annualized_return": 1.7377914140226935,
+        "max_drawdown": -0.015605042016806745,
+        "sharpe_ratio": 3.266535109457086,
+        "profit_factor": 55.03938973934517
+      },
+      "benchmark": {
+        "pipeline_return": 1.5253977330881483,
+        "buy_hold_return": 2.0922693266832915,
+        "delta_vs_buy_hold": -0.5668715935951432,
+        "impact_on_returns": 0.348005274997484,
+        "agreement_rate": 0.25,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.97,
+        "random_p_value": 0.030000000000000027
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 1.9474827239591275,
+          "p_value": 0.092509918894581,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.097,
+          "percentile_rank": 0.943,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.05948422129239941,
+          "p_value": 0.8887299024686957,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 1.0,
+          "avg_return": 0.1961601012434035,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.5,
+          "avg_return": 0.11865345242545056,
+          "n_trades": 6
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 15:48:23"
+    },
+    "VIC": {
+      "performance": {
+        "n_trades": 0,
+        "win_rate": 0.0,
+        "total_return": 0.0,
+        "avg_return": 0.0,
+        "annualized_return": 0.0,
+        "max_drawdown": 0.0,
+        "sharpe_ratio": 0.0,
+        "profit_factor": 0.0
+      },
+      "baseline_engine_performance": {
+        "n_trades": 9,
+        "win_rate": 0.8888888888888888,
+        "total_return": 3.9559684760737133,
+        "avg_return": 0.2062788061875457,
+        "annualized_return": 6.938219512954065,
+        "max_drawdown": -0.025633744855967207,
+        "sharpe_ratio": 3.443025238816335,
+        "profit_factor": 73.42442593227838
+      },
+      "benchmark": {
+        "pipeline_return": 0.0,
+        "buy_hold_return": 7.375308641975309,
+        "delta_vs_buy_hold": -7.375308641975309,
+        "impact_on_returns": -3.9559684760737133,
+        "agreement_rate": 0.0,
+        "cases_llm_filtered_out": 9,
+        "random_percentile_rank": 0.101,
+        "random_p_value": 0.899
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 1.0,
+          "percentile_rank": 0.0,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.0,
+          "p_value": 1.0,
+          "interpretation": "insufficient_data"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 15:54:44"
+    },
+    "VNM": {
+      "performance": {
+        "n_trades": 5,
+        "win_rate": 0.2,
+        "total_return": -0.032013659822967,
+        "avg_return": -0.005212208979909256,
+        "annualized_return": -0.04990201132169014,
+        "max_drawdown": -0.10112673481860103,
+        "sharpe_ratio": -0.20508565663635672,
+        "profit_factor": 0.7629749241229784
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.5,
+        "total_return": -0.009993353704790375,
+        "avg_return": -0.0005956744478831616,
+        "annualized_return": -0.014732193758687173,
+        "max_drawdown": -0.06240353158530977,
+        "sharpe_ratio": -0.043087029469788575,
+        "profit_factor": 0.9620305438371423
+      },
+      "benchmark": {
+        "pipeline_return": -0.032013659822967,
+        "buy_hold_return": 0.04306921411893039,
+        "delta_vs_buy_hold": -0.07508287394189739,
+        "impact_on_returns": -0.022020306118176625,
+        "agreement_rate": 0.125,
+        "cases_llm_filtered_out": 7,
+        "random_percentile_rank": 0.372,
+        "random_p_value": 0.628
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": -0.2050856566363567,
+          "p_value": 0.8475188438794242,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.791,
+          "percentile_rank": 0.376,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.6734049507321843,
+          "p_value": 0.21273330465568083,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.035960016666888785,
+          "n_trades": 2
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.3333333333333333,
+          "avg_return": 0.015286329478077098,
+          "n_trades": 3
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 16:02:06"
+    },
+    "VPB": {
+      "performance": {
+        "n_trades": 5,
+        "win_rate": 0.2,
+        "total_return": -0.13865687693856132,
+        "avg_return": -0.026936067679015484,
+        "annualized_return": -0.1762446375051293,
+        "max_drawdown": -0.16392792995746455,
+        "sharpe_ratio": -0.75648386568776,
+        "profit_factor": 0.4431831988090439
+      },
+      "baseline_engine_performance": {
+        "n_trades": 8,
+        "win_rate": 0.375,
+        "total_return": 0.23129662049998978,
+        "avg_return": 0.03738725970390022,
+        "annualized_return": 0.3103129134020921,
+        "max_drawdown": -0.15219651245506496,
+        "sharpe_ratio": 0.6232670997852151,
+        "profit_factor": 1.9531989549789013
+      },
+      "benchmark": {
+        "pipeline_return": -0.13865687693856132,
+        "buy_hold_return": 0.540891175826582,
+        "delta_vs_buy_hold": -0.6795480527651433,
+        "impact_on_returns": -0.3699534974385511,
+        "agreement_rate": 0.25,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.13,
+        "random_p_value": 0.87
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": -0.75648386568776,
+          "p_value": 0.4914690040360046,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.578,
+          "percentile_rank": 0.298,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": -0.5248293468401646,
+          "p_value": 0.36385560594443034,
+          "interpretation": "negative"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": -0.08433803843798307,
+          "n_trades": 1
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.25,
+          "avg_return": -0.012585574989273589,
+          "n_trades": 4
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 16:08:33"
+    },
+    "VRE": {
+      "performance": {
+        "n_trades": 3,
+        "win_rate": 0.6666666666666666,
+        "total_return": 0.3491014981951057,
+        "avg_return": 0.11380385292826707,
+        "annualized_return": 0.7565947785256382,
+        "max_drawdown": -0.07516494845360824,
+        "sharpe_ratio": 1.1781043259899844,
+        "profit_factor": 5.542164477043718
+      },
+      "baseline_engine_performance": {
+        "n_trades": 9,
+        "win_rate": 0.6666666666666666,
+        "total_return": 0.36760291317064775,
+        "avg_return": 0.03990428869756912,
+        "annualized_return": 0.49960409623034074,
+        "max_drawdown": -0.1264437511667894,
+        "sharpe_ratio": 1.1645636990057686,
+        "profit_factor": 2.6428194495828774
+      },
+      "benchmark": {
+        "pipeline_return": 0.3491014981951057,
+        "buy_hold_return": 0.9563953488372092,
+        "delta_vs_buy_hold": -0.6072938506421035,
+        "impact_on_returns": -0.01850141497554203,
+        "agreement_rate": 0.0,
+        "cases_llm_filtered_out": 9,
+        "random_percentile_rank": 0.772,
+        "random_p_value": 0.22799999999999998
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 1.1781043259899844,
+          "p_value": 0.3599460986750532,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 0.479,
+          "percentile_rank": 0.877,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.9511150412021716,
+          "p_value": 0.19987939505333735,
+          "interpretation": "positive"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 1.0,
+          "avg_return": 0.2431059190031152,
+          "n_trades": 1
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 0.5,
+          "avg_return": 0.04915281989084301,
+          "n_trades": 2
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 16:14:20"
+    },
+    "VIB": {
+      "performance": {
+        "n_trades": 1,
+        "win_rate": 1.0,
+        "total_return": 0.22177641603179854,
+        "avg_return": 0.2217764160317985,
+        "annualized_return": 4.701637801083849,
+        "max_drawdown": 0.0,
+        "sharpe_ratio": 0.0,
+        "profit_factor": 0.0
+      },
+      "baseline_engine_performance": {
+        "n_trades": 6,
+        "win_rate": 0.3333333333333333,
+        "total_return": -0.12524077013421475,
+        "avg_return": -0.016338156479203843,
+        "annualized_return": -0.19358080259334665,
+        "max_drawdown": -0.2800572860027969,
+        "sharpe_ratio": -0.33900255408125574,
+        "profit_factor": 0.6985325613575534
+      },
+      "benchmark": {
+        "pipeline_return": 0.22177641603179854,
+        "buy_hold_return": 0.06782994923857877,
+        "delta_vs_buy_hold": 0.15394646679321977,
+        "impact_on_returns": 0.3470171861660133,
+        "agreement_rate": 0.0,
+        "cases_llm_filtered_out": 6,
+        "random_percentile_rank": 0.987,
+        "random_p_value": 0.013000000000000012
+      },
+      "statistical_tests": {
+        "ttest": {
+          "t_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false
+        },
+        "permutation": {
+          "p_value": 1.0,
+          "percentile_rank": 1.0,
+          "significant": false
+        },
+        "information_coefficient": {
+          "ic": 0.0,
+          "p_value": 1.0,
+          "interpretation": "insufficient_data"
+        },
+        "confidence_vs_outcome_anova": {
+          "f_stat": 0.0,
+          "p_value": 1.0,
+          "significant": false,
+          "group_means": {
+            "high": 0.0,
+            "medium": 0.0,
+            "low": 0.0
+          }
+        }
+      },
+      "walk_forward": {
+        "n_windows": 0,
+        "avg_sharpe": 0.0,
+        "std_sharpe": 0.0,
+        "consistent_wins": 0.0,
+        "windows": []
+      },
+      "regime": {
+        "uptrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "downtrend": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "sideway": {
+          "win_rate": 1.0,
+          "avg_return": 0.2217764160317985,
+          "n_trades": 1
+        }
+      },
+      "confidence_calibration": {
+        "high": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "medium": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        },
+        "low": {
+          "win_rate": 0.0,
+          "avg_return": 0.0,
+          "n_trades": 0
+        }
+      },
+      "updated_at": "2026-06-29 16:17:50"
+    }
+  },
+  "aggregate": {
+    "pipeline": {
+      "mean_total_return": 0.15242847112769434,
+      "median_total_return": 0.08084394422814567,
+      "compounded_return": 0.1197778684341706,
+      "mean_win_rate": 0.5009441707717569,
+      "mean_sharpe": 0.3083494220529713,
+      "mean_max_drawdown": -0.09676463631377735,
+      "total_trades": 134,
+      "profitable_symbols": 18
+    },
+    "baseline_engine": {
+      "mean_total_return": 0.2764346658265565,
+      "median_total_return": 0.09900954195071421,
+      "compounded_return": 0.16426704602152764,
+      "mean_win_rate": 0.5445675971538041,
+      "mean_sharpe": 0.6092827410889627,
+      "mean_max_drawdown": -0.1335106497414653,
+      "total_trades": 224,
+      "profitable_symbols": 18
+    },
+    "comparison": {
+      "delta_mean_total_return": -0.12400619469886218,
+      "delta_compounded_return": -0.04448917758735704,
+      "delta_mean_win_rate": -0.04362342638204719,
+      "delta_mean_sharpe": -0.30093331903599146,
+      "symbols_pipeline_beats_engine": 15
+    }
+  },
+  "n_symbols": 29,
+  "generated_at": "2026-06-29 16:17:50"
+}

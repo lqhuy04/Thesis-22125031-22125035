@@ -52,6 +52,27 @@ Example payload:
   "use_intraday": true
 }
 
+## VN30 Aggregate Stats (local JSON)
+
+Mỗi lần `run_full_backtest` chạy xong sẽ upsert thống kê của mã đó vào MỘT file
+JSON tổng hợp local: `backtest/reports/vn30_stats.json` (key = symbol). Vì admin
+dashboard chạy cả rổ VN30 bằng cách gọi `/api/agentic/backtest` tuần tự cho từng
+mã, file này sẽ tự gom đủ 30 mã sau khi batch chạy xong.
+
+Nội dung mỗi mã (`vn30_stats.py` → `build_symbol_stats`):
+1. `performance` — n_trades, win_rate, total_return, avg_return, annualized_return,
+   max_drawdown, sharpe_ratio, profit_factor (full pipeline).
+2. `baseline_engine_performance` — cùng các chỉ số trên cho engine-only (không LLM).
+3. `benchmark` — pipeline_return vs buy_hold_return (+delta), impact_on_returns,
+   percentile/p-value so với chiến lược ngẫu nhiên.
+4. `statistical_tests` — ttest, permutation, information_coefficient (ic + p_value),
+   confidence_vs_outcome_anova (f_stat, p_value, group_means).
+5. `walk_forward` — avg_sharpe, std_sharpe, consistent_wins + return từng window.
+6. `regime` / `confidence_calibration` — win_rate / avg_return / n_trades theo nhóm.
+
+Phần `aggregate` tổng hợp profit toàn rổ (mean / median / compounded) và so sánh
+pipeline với baseline engine-only của các mã hiện có trong file.
+
 ## Notes
 
 - LLM calls happen only on technical signal dates (to reduce cost).

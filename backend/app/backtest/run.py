@@ -263,6 +263,30 @@ def run_full_backtest(
         print(f"Failed to generate visualization files: {e}")
         json_supabase_url = None
 
+    # Aggregate VN30 stats vào MỘT file JSON local (upsert theo symbol).
+    vn30_stats_file = None
+    try:
+        import os
+        from .vn30_stats import build_symbol_stats, update_vn30_stats_file
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        vn30_stats_path = os.path.join(current_dir, "reports", "vn30_stats.json")
+        symbol_stats = build_symbol_stats(
+            symbol=symbol,
+            full_metrics=full_metrics,
+            engine_metrics=engine_metrics,
+            benchmarks=benchmark_results,
+            walk_forward=walk_forward_results,
+            regime=regime_results,
+            confidence=confidence_results,
+            stats=stats_results,
+            full_trades=full_trades,
+        )
+        update_vn30_stats_file(symbol, symbol_stats, vn30_stats_path)
+        vn30_stats_file = vn30_stats_path
+        print(f"VN30 aggregate stats updated: {vn30_stats_path}")
+    except Exception as e:
+        print(f"Failed to update VN30 aggregate stats: {e}")
+
     result = {
         "parity_report": parity_report,
         "pipeline_results": pipeline_results,
@@ -278,6 +302,7 @@ def run_full_backtest(
         "visualization_file": visualization_file,
         "visualization_data": visualization_data,
         "visualization_data_url": json_supabase_url,
+        "vn30_stats_file": vn30_stats_file,
     }
 
     return _sanitize_json(result)

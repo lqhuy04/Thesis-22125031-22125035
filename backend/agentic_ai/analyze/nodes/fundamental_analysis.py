@@ -3,78 +3,108 @@ from agentic_ai.analyze.selection import get_selection
 from app.services.fundamental_analysis_service import FundamentalAnalysisService
 
 
-def _fmt(value, spec: str) -> str:
-    if value is None:
-        return ""
-    try:
-        return format(float(value), spec)
-    except (TypeError, ValueError):
-        return ""
+# Luôn phân tích 5 năm gần nhất, KHÔNG phụ thuộc kỳ hạn đầu tư (ngắn/trung/dài
+# hạn). Nhờ đó tóm tắt cơ bản thể hiện được cả xu hướng dài hạn, không chỉ ảnh
+# chụp 1 năm gần nhất (ngắn hạn).
+FUND_YEARS = 5
+
+
+def _last_n_years(rows: list[dict], n: int = FUND_YEARS) -> list[dict]:
+    """Lấy tối đa n năm gần nhất, sắp xếp cũ → mới để đọc theo dòng thời gian."""
+    valid = [r for r in (rows or []) if r.get("year") is not None]
+    valid.sort(key=lambda r: r["year"], reverse=True)
+    return list(reversed(valid[:n]))
+
+
+def _series(rows: list[dict], key: str, spec: str, scale: float = 1.0, suffix: str = "") -> str:
+    """Chuỗi giá trị 1 chỉ số qua các năm: '2020: 12.30 | 2021: 15.00 | ...'.
+
+    Giá trị thiếu (None/không parse được) → '—' để không gãy dòng thời gian.
+    """
+    cells = []
+    for r in rows:
+        year = r.get("year", "?")
+        value = r.get(key)
+        if value is None:
+            cells.append(f"{year}: —")
+            continue
+        try:
+            cells.append(f"{year}: {format(float(value) * scale, spec)}{suffix}")
+        except (TypeError, ValueError):
+            cells.append(f"{year}: —")
+    return " | ".join(cells) if cells else "Không có dữ liệu"
 
 
 def _format_fundamental_output(summary, indicators, income_statements, cash_flows, selection: dict) -> str:
-    latest_ind = next((i for i in indicators if i["year"] == max(i["year"] for i in indicators)), {})
-    latest_inc = next((i for i in income_statements if i["year"] == max(i["year"] for i in income_statements)), {})
-    latest_cf  = next((i for i in cash_flows if i["year"] == max(i["year"] for i in cash_flows)), {})
+    inds = _last_n_years(indicators)
+    incs = _last_n_years(income_statements)
+    cfs  = _last_n_years(cash_flows)
 
-    year = latest_ind.get("year", "N/A")
+    latest_ind = inds[-1] if inds else {}
 
-    # Thêm vào đây
+    # Khoảng năm hiển thị trên tiêu đề (ví dụ "2020–2024").
+    years_all = [r["year"] for r in (inds + incs + cfs) if r.get("year") is not None]
+    if years_all:
+        y_min, y_max = min(years_all), max(years_all)
+        year_label = f"{y_min}–{y_max}" if y_min != y_max else f"{y_max}"
+    else:
+        year_label = "N/A"
+
     if not latest_ind.get("gross_margin"):
         sector_note = "\n> ⚠️ Một số chỉ số không áp dụng cho ngành ngân hàng (gross margin, current ratio, D/E)."
     else:
         sector_note = ""
 
-    parts = [f"## Phân tích cơ bản ({year}){sector_note}", ""]
+    parts = [f"## Phân tích cơ bản ({year_label}){sector_note}", ""]
     parts.append("### Tóm tắt tổng quan")
     parts.append((summary or {}).get("summary", "Không có dữ liệu"))
 
     if selection.get("valuation", True):
         parts += [
             "",
-            "### Chỉ số định giá",
-            f'- P/E: {_fmt(latest_ind.get("pe_ratio"), ".2f")}',
-            f'- P/B: {_fmt(latest_ind.get("pb_ratio"), ".2f")}',
-            f'- EV/EBITDA: {_fmt(latest_ind.get("ev_ebitda"), ".2f")}',
-            f'- EPS: {_fmt(latest_ind.get("eps"), ",.0f")} đồng',
+            "### Chỉ số định giá (theo năm)",
+            f"- P/E: {_series(inds, 'pe_ratio', '.2f')}",
+            f"- P/B: {_series(inds, 'pb_ratio', '.2f')}",
+            f"- EV/EBITDA: {_series(inds, 'ev_ebitda', '.2f')}",
+            f"- EPS (đồng): {_series(inds, 'eps', ',.0f')}",
         ]
 
     if selection.get("profitability", True):
         parts += [
             "",
-            "### Khả năng sinh lời",
-            f'- ROE: {_fmt(latest_ind.get("roe", 0) and latest_ind.get("roe") * 100, ".2f")}%',
-            f'- ROA: {_fmt(latest_ind.get("roa", 0) and latest_ind.get("roa") * 100, ".2f")}%',
-            f'- Biên lợi nhuận gộp: {_fmt(latest_ind.get("gross_margin", 0) and latest_ind.get("gross_margin") * 100, ".2f")}%',
-            f'- Biên lợi nhuận ròng: {_fmt(latest_ind.get("net_margin", 0) and latest_ind.get("net_margin") * 100, ".2f")}%',
+            "### Khả năng sinh lời (theo năm)",
+            f"- ROE: {_series(inds, 'roe', '.2f', scale=100, suffix='%')}",
+            f"- ROA: {_series(inds, 'roa', '.2f', scale=100, suffix='%')}",
+            f"- Biên lợi nhuận gộp: {_series(inds, 'gross_margin', '.2f', scale=100, suffix='%')}",
+            f"- Biên lợi nhuận ròng: {_series(inds, 'net_margin', '.2f', scale=100, suffix='%')}",
         ]
 
     if selection.get("growth", True):
         parts += [
             "",
-            "### Tăng trưởng",
-            f'- Tăng trưởng doanh thu YoY: {_fmt(latest_ind.get("revenue_yoy", 0) and latest_ind.get("revenue_yoy") * 100, ".2f")}%',
-            f'- Tăng trưởng lợi nhuận YoY: {_fmt(latest_ind.get("profit_yoy", 0) and latest_ind.get("profit_yoy") * 100, ".2f")}%',
-            f'- Doanh thu thuần: {_fmt(latest_inc.get("net_revenue", 0) and latest_inc.get("net_revenue") / 1e9, ",.1f")} tỷ đồng',
-            f'- Lợi nhuận ròng: {_fmt(latest_inc.get("net_profit_after_tax", 0) and latest_inc.get("net_profit_after_tax") / 1e9, ",.1f")} tỷ đồng',
+            "### Tăng trưởng (theo năm)",
+            f"- Tăng trưởng doanh thu YoY: {_series(inds, 'revenue_yoy', '.2f', scale=100, suffix='%')}",
+            f"- Tăng trưởng lợi nhuận YoY: {_series(inds, 'profit_yoy', '.2f', scale=100, suffix='%')}",
+            f"- Doanh thu thuần (tỷ đồng): {_series(incs, 'net_revenue', ',.1f', scale=1 / 1e9)}",
+            f"- Lợi nhuận ròng (tỷ đồng): {_series(incs, 'net_profit_after_tax', ',.1f', scale=1 / 1e9)}",
         ]
 
     if selection.get("financial_health", True):
         parts += [
             "",
-            "### Sức khỏe tài chính",
-            f'- Tỷ lệ thanh khoản hiện tại: {_fmt(latest_ind.get("current_ratio"), ".2f")}',
-            f'- Nợ/Vốn chủ sở hữu: {_fmt(latest_ind.get("debt_to_equity"), ".2f")}',
-            f'- Khả năng trả lãi: {_fmt(latest_ind.get("interest_coverage"), ".2f")}x',
+            "### Sức khỏe tài chính (theo năm)",
+            f"- Tỷ lệ thanh khoản hiện tại: {_series(inds, 'current_ratio', '.2f')}",
+            f"- Nợ/Vốn chủ sở hữu: {_series(inds, 'debt_to_equity', '.2f')}",
+            f"- Khả năng trả lãi: {_series(inds, 'interest_coverage', '.2f', suffix='x')}",
         ]
 
     if selection.get("cash_flow", True):
         parts += [
             "",
-            "### Dòng tiền",
-            f'- CFO: {_fmt(latest_cf.get("cfo", 0) and latest_cf.get("cfo") / 1e9, ",.1f")} tỷ đồng',
-            f'- CAPEX: {_fmt(latest_cf.get("capex", 0) and latest_cf.get("capex") / 1e9, ",.1f")} tỷ đồng',
-            f'- Cổ tức đã trả: {_fmt(latest_cf.get("dividends_paid", 0) and latest_cf.get("dividends_paid") / 1e9, ",.1f")} tỷ đồng',
+            "### Dòng tiền (theo năm)",
+            f"- CFO (tỷ đồng): {_series(cfs, 'cfo', ',.1f', scale=1 / 1e9)}",
+            f"- CAPEX (tỷ đồng): {_series(cfs, 'capex', ',.1f', scale=1 / 1e9)}",
+            f"- Cổ tức đã trả (tỷ đồng): {_series(cfs, 'dividends_paid', ',.1f', scale=1 / 1e9)}",
         ]
 
     return "\n".join(parts).strip()
