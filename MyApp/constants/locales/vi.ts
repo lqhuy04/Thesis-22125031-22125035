@@ -55,6 +55,7 @@ export default {
     newsSectionHotTitle: "{symbol} có tin gì hot?",
     AIAnalyze: "Phân tích AI",
     buy: "Mua",
+    relatedSectionTitle: "Cổ phiếu liên quan",
   },
   buyStock: {
     screenTitle: "Đặt lệnh mua",

@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Dimensions,
-  ActivityIndicator,
+  Animated,
   ScrollView,
   TouchableOpacity,
 } from "react-native";
+import Svg, { Rect } from "react-native-svg";
 import { TreeMap } from "../ui/TreeMap";
 import { CurrentPriceData } from "@/helpers/DetailHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
@@ -14,6 +15,71 @@ import { Text } from "../ui/Text";
 import { router } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import Entypo from "@expo/vector-icons/Entypo";
+
+const SKELETON_RECTS = [
+  { x: 0, y: 0, w: 0.47, h: 0.6 },
+  { x: 0, y: 0.6, w: 0.47, h: 0.4 },
+  { x: 0.47, y: 0, w: 0.3, h: 0.35 },
+  { x: 0.77, y: 0, w: 0.23, h: 0.35 },
+  { x: 0.47, y: 0.35, w: 0.18, h: 0.35 },
+  { x: 0.65, y: 0.35, w: 0.19, h: 0.35 },
+  { x: 0.84, y: 0.35, w: 0.16, h: 0.35 },
+  { x: 0.47, y: 0.7, w: 0.28, h: 0.3 },
+  { x: 0.75, y: 0.7, w: 0.14, h: 0.16 },
+  { x: 0.75, y: 0.86, w: 0.14, h: 0.14 },
+  { x: 0.89, y: 0.7, w: 0.11, h: 0.3 },
+];
+
+const TreeMapSkeleton: React.FC<{ width: number; height: number }> = ({
+  width,
+  height,
+}) => {
+  const { theme } = useTheme();
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(anim, {
+          toValue: 0,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]),
+    ).start();
+  }, [anim]);
+
+  const opacity = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.25, 0.55],
+  });
+
+  const chartH = height - 24;
+  const pad = 2;
+
+  return (
+    <Animated.View style={{ opacity, marginTop: 8 }}>
+      <Svg width={width} height={chartH}>
+        {SKELETON_RECTS.map((r, i) => (
+          <Rect
+            key={i}
+            x={r.x * width + pad}
+            y={r.y * chartH + pad}
+            width={Math.max(0, r.w * width - pad * 2)}
+            height={Math.max(0, r.h * chartH - pad * 2)}
+            fill={theme.border.default}
+            rx={4}
+          />
+        ))}
+      </Svg>
+    </Animated.View>
+  );
+};
 
 const IndustryMovementSection = () => {
   const { theme } = useTheme();
@@ -167,15 +233,7 @@ const IndustryMovementSection = () => {
       </ScrollView>
 
       {loading ? (
-        <View
-          style={{
-            height: 360,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <ActivityIndicator size="small" color={theme.base.primary} />
-        </View>
+        <TreeMapSkeleton width={screenWidth - 48} height={360} />
       ) : (
         <TreeMap
           data={data}

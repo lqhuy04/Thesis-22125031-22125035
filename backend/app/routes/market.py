@@ -141,6 +141,27 @@ def get_stock_price(symbol: str):
     }
 
 
+@router.get("/related-stocks/{symbol}", response_model=Any)
+def get_related_stocks(symbol: str):
+    """
+    🔗 Get up to 6 stocks related to the given symbol
+
+    "Related" = sharing at least one category (industry) with the input symbol,
+    picked randomly. Each item has: symbol, current_price, per_price_change.
+
+    **Example:** `/api/related-stocks/VNM`
+    """
+    request_id = str(uuid.uuid4())
+    result = MarketService.get_related_stocks(symbol)
+    has_data = len(result) > 0
+    return {
+        "data": result,
+        "errorCode": 0 if has_data else 500001,
+        "errorDesc": "" if has_data else "No related stocks found for the specified symbol",
+        "requestId": request_id,
+        "result": has_data,
+    }
+
 @router.get("/industry-movement", response_model=SectorStockMovementResponse)
 def get_industry_movement(
     industry_id: str = Query(..., description="Industry (category) id, e.g. 0001"),

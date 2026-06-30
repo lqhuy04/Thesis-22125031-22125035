@@ -8,6 +8,7 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import IntroductionSection from "@/components/detail/IntroductionSection";
 import FinancialIndicatorsSection from "@/components/detail/FinancialIndicatorsSection";
 import NewsSection from "@/components/detail/NewsSection";
+import RelatedStocksSection from "@/components/detail/RelatedStocksSection";
 import AIFloatingButton from "@/components/AIFloatingButton";
 
 const Detail = () => {
@@ -33,6 +34,8 @@ const Detail = () => {
         <FinancialIndicatorsSection stockSymbol={stockSymbol} />
 
         <IntroductionSection stockSymbol={stockSymbol} />
+
+        <RelatedStocksSection stockSymbol={stockSymbol} />
 
         <View style={{ height: 100 }} />
       </ScrollView>

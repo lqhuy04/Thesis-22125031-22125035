@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from app.services.ssi_service import get_ssi_service
 from datetime import date, datetime
 import time
+import random
 import pandas as pd
 from datetime import time as dtime
 from typing import List, Dict, Any
@@ -841,6 +842,111 @@ class MarketService:
         except Exception as e:
             print(f"Error fetching current stock price for {symbol}: {e}")
             return {}
+
+    @staticmethod
+    def get_related_stocks(symbol: str, limit: int = 6) -> List[Dict[str, Any]]:
+        """
+        Get up to `limit` stocks that share at least one category (industry) with
+        the input symbol, picked randomly.
+
+        Flow:
+          1. Stock: stock_symbol -> id
+          2. Category_Stock: id -> category_id(s)
+          3. Category_Stock: category_id(s) -> sibling stock_ids (exclude input)
+          4. Stock: sibling stock_ids -> stock_symbol
+          5. Current_Stock_Price: symbol -> current_price, per_price_change
+
+        Returns: [{symbol, current_price, per_price_change}, ...]
+        """
+        try:
+            symbol = symbol.strip().upper() if symbol else ""
+            if not symbol:
+                return []
+
+            # 1. Resolve input symbol -> stock id.
+            stock_result = (
+                supabase.table("Stock")
+                .select("id, stock_symbol")
+                .eq("stock_symbol", symbol)
+                .execute()
+            )
+            stock_rows = stock_result.data or []
+            if not stock_rows:
+                return []
+            stock_id = stock_rows[0].get("id")
+            if stock_id is None:
+                return []
+
+            # 2. Categories that the input stock belongs to.
+            cat_result = (
+                supabase.table("Category_Stock")
+                .select("category_id")
+                .eq("stock_id", stock_id)
+                .execute()
+            )
+            category_ids = [
+                row.get("category_id")
+                for row in (cat_result.data or [])
+                if row.get("category_id") is not None
+            ]
+            if not category_ids:
+                return []
+
+            # 3. Sibling stock_ids sharing those categories (exclude input).
+            sibling_result = (
+                supabase.table("Category_Stock")
+                .select("stock_id")
+                .in_("category_id", category_ids)
+                .execute()
+            )
+            sibling_ids = {
+                row.get("stock_id")
+                for row in (sibling_result.data or [])
+                if row.get("stock_id") is not None
+            }
+            sibling_ids.discard(stock_id)
+            if not sibling_ids:
+                return []
+
+            # Random max `limit` siblings.
+            sibling_ids = list(sibling_ids)
+            random.shuffle(sibling_ids)
+            sibling_ids = sibling_ids[:limit]
+
+            # 4. Map sibling stock_ids -> stock_symbol.
+            symbol_result = (
+                supabase.table("Stock")
+                .select("id, stock_symbol")
+                .in_("id", sibling_ids)
+                .execute()
+            )
+            symbols = [
+                str(row.get("stock_symbol")).upper()
+                for row in (symbol_result.data or [])
+                if row.get("stock_symbol")
+            ]
+            if not symbols:
+                return []
+
+            # 5. Current price + per_price_change for those symbols.
+            price_result = (
+                supabase.table("Current_Stock_Price")
+                .select("symbol, current_price, per_price_change")
+                .in_("symbol", symbols)
+                .execute()
+            )
+
+            return [
+                {
+                    "symbol": row.get("symbol"),
+                    "current_price": row.get("current_price"),
+                    "per_price_change": row.get("per_price_change"),
+                }
+                for row in (price_result.data or [])
+            ]
+        except Exception as e:
+            print(f"Error fetching related stocks for {symbol}: {e}")
+            return []
 
     @staticmethod
     def _to_float(value: Any) -> float:

@@ -416,9 +416,9 @@ const Search = () => {
                           }
                           typography="bodySmall"
                         >
-                          {subItem?.current_price}{" "}
+                          {subItem?.current_price?.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
                           {subItem?.per_price_change >= 0 ? "+" : ""}
-                          {subItem?.per_price_change}%
+                          {subItem?.per_price_change?.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
                         </Text>
                       </TouchableOpacity>
                     ) : (

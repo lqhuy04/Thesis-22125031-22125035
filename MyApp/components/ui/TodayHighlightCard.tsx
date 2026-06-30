@@ -61,7 +61,7 @@ const TodayHighlightCard = ({ item }: Props) => {
         </View>
         <View style={{ marginRight: 16 }}>
           <Text typography="titleSmall" color={theme.text.primary}>
-            {item.CurrentPrice}
+            {item.CurrentPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
           <Text
             color={
@@ -75,7 +75,7 @@ const TodayHighlightCard = ({ item }: Props) => {
           >
             {"("}
             {item.PriceChange >= 0 ? "+" : ""}
-            {item.PriceChange}
+            {item.PriceChange.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             {")"}
           </Text>
         </View>
@@ -109,7 +109,7 @@ const TodayHighlightCard = ({ item }: Props) => {
               : item.PerPriceChange === 0
                 ? ""
                 : "▼"}{" "}
-            {Math.abs(item.PerPriceChange).toFixed(2)}%
+            {Math.abs(item.PerPriceChange).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
           </Text>
         </View>
       </TouchableOpacity>

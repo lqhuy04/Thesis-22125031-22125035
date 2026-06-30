@@ -81,18 +81,18 @@ function getFontSize(
 
 function formatVal(val: number, t: (k: string) => string): string {
   if (val >= 1_000_000_000_000)
-    return (val / 1_000_000_000_000).toFixed(2) + " " + t("treeMap.trillion");
+    return (val / 1_000_000_000_000).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + t("treeMap.trillion");
   if (val >= 1_000_000_000)
-    return (val / 1_000_000_000).toFixed(2) + " " + t("treeMap.billion");
-  return val.toLocaleString();
+    return (val / 1_000_000_000).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + t("treeMap.billion");
+  return val.toLocaleString("vi-VN", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function formatVol(vol: number, t: (k: string) => string): string {
   if (vol >= 1_000_000)
-    return (vol / 1_000_000).toFixed(2) + " " + t("treeMap.millionShares");
+    return (vol / 1_000_000).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + t("treeMap.millionShares");
   if (vol >= 1_000)
-    return (vol / 1_000).toFixed(2) + " " + t("treeMap.thousandShares");
-  return vol.toLocaleString() + " " + t("treeMap.shares");
+    return (vol / 1_000).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + t("treeMap.thousandShares");
+  return vol.toLocaleString("vi-VN", { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + " " + t("treeMap.shares");
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -310,7 +310,7 @@ export const TreeMap: React.FC<Props> = ({
                 style={{ flexDirection: "row", gap: 8, alignItems: "center" }}
               >
                 <Text style={[styles.rowValue, { color: theme.text?.primary }]}>
-                  {selectedItem?.CurrentPrice.toLocaleString()}
+                  {selectedItem?.CurrentPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
                 {selectedItem && (
                   <>
@@ -321,7 +321,7 @@ export const TreeMap: React.FC<Props> = ({
                       ]}
                     >
                       ({selectedItem.PriceChange > 0 ? "+" : ""}
-                      {selectedItem.PriceChange})
+                      {selectedItem.PriceChange.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
                     </Text>
                     <Text
                       style={[

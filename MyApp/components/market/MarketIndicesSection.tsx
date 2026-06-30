@@ -245,7 +245,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                     }}
                   >
                     <Text typography="titleLarge" color={theme.text.primary}>
-                      {item.IndexValue}
+                      {item.IndexValue.toLocaleString("vi-VN")}
                     </Text>
                     <View
                       style={{
@@ -285,7 +285,10 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                               ? ""
                               : "▼"}{" "}
                         </Text>
-                        {item.Change >= 0 ? item.Change : item.Change * -1}
+                        {(item.Change >= 0
+                          ? item.Change
+                          : item.Change * -1
+                        ).toLocaleString("vi-VN")}
                       </Text>
                     </View>
                     <Text
@@ -315,9 +318,10 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                             ? ""
                             : "▼"}{" "}
                       </Text>
-                      {item.RatioChange >= 0
+                      {(item.RatioChange >= 0
                         ? item.RatioChange
-                        : item.RatioChange * -1}
+                        : item.RatioChange * -1
+                      ).toLocaleString("vi-VN")}
                       %
                     </Text>
                   </View>
@@ -327,10 +331,18 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                     color={theme.text.primary + "80"}
                     style={{ marginTop: 4 }}
                   >
-                    {(Number(item.TotalVol) / 1000000).toFixed(0)}{" "}
+                    {(Number(item.TotalVol) / 1000000).toLocaleString("vi-VN", {
+                      maximumFractionDigits: 0,
+                    })}{" "}
                     {t("home.millionShares")}
                     {"   "}|{"   "}
-                    {(Number(item.TotalVal) / 1000000000).toFixed(2)}{" "}
+                    {(Number(item.TotalVal) / 1000000000).toLocaleString(
+                      "vi-VN",
+                      {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      },
+                    )}{" "}
                     {t("home.billion")}
                   </Text>
 

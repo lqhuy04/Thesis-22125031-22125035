@@ -217,7 +217,7 @@ const WatchlistSection = () => {
           ? theme.base.error
           : theme.base.warning;
 
-    const absPerPriceChange = Math.abs(item.PerPriceChange).toFixed(2);
+    const absPerPriceChange = Math.abs(item.PerPriceChange).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const arrow =
       item.PerPriceChange > 0 ? "▲" : item.PerPriceChange < 0 ? "▼" : "";
 
@@ -286,10 +286,10 @@ const WatchlistSection = () => {
 
           <View style={{ alignItems: "flex-start" }}>
             <Text typography="labelLarge" color={theme.text.primary}>
-              {item.CurrentPrice}
+              {item.CurrentPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
             <Text typography="bodySmall" color={priceColor}>
-              {`(${item.PriceChange > 0 ? "+" : ""}${item.PriceChange})`}
+              {`(${item.PriceChange > 0 ? "+" : ""}${item.PriceChange.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
             </Text>
           </View>
 

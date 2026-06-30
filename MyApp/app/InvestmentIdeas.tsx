@@ -630,11 +630,11 @@ const InvestmentIdeas = () => {
         </View>
         <View style={{ flex: 1, marginRight: 12 }}>
           <Text typography="labelLarge" color={theme.text.primary}>
-            {stock.current_price.toLocaleString("vi-VN")}
+            {stock.current_price.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
           <Text typography="bodySmall" color={changeColor}>
             {isPositive ? "+" : ""}
-            {stock.price_change.toLocaleString("vi-VN")}
+            {stock.price_change.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
         </View>
         <View
@@ -648,7 +648,7 @@ const InvestmentIdeas = () => {
           }}
         >
           <Text typography="labelMedium" color={changeColor}>
-            {arrow} {Math.abs(stock.per_price_change).toLocaleString("vi-VN")}%
+            {arrow} {Math.abs(stock.per_price_change).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
           </Text>
         </View>
       </TouchableOpacity>

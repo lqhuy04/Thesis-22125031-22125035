@@ -349,7 +349,7 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
           />
           <InfoRow
             label={t("companyProfile.charterCapital")}
-            value={`${companyProfileData.listed_volume} ${t("companyProfile.billion")}`}
+            value={`${(companyProfileData.listed_volume as number)?.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t("companyProfile.billion")}`}
             labelColor={labelColor}
             valueColor={valueColor}
           />
@@ -386,7 +386,7 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
           />
           <InfoRow
             label={t("companyProfile.listedVolume")}
-            value={`${companyProfileData.market_cap_billion} ${t("companyProfile.billion")}`}
+            value={`${(companyProfileData.market_cap_billion as number)?.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${t("companyProfile.billion")}`}
             labelColor={labelColor}
             valueColor={valueColor}
           />

@@ -230,6 +230,31 @@ export const fetchCurrentPriceData = async (
 };
 
 //------------------------------------------------------------
+export type RelatedStockItem = {
+  symbol: string;
+  current_price: number;
+  per_price_change: number;
+};
+
+export const fetchRelatedStocks = async (
+  symbol: string,
+): Promise<RelatedStockItem[]> => {
+  try {
+    const result = await sendMessage(`api/related-stocks/${symbol}`);
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return data as RelatedStockItem[];
+    }
+
+    return [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+};
+
+//------------------------------------------------------------
 
 export const fetchCurrentIndexData = async (
   symbol: string,

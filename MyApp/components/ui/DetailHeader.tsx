@@ -151,8 +151,8 @@ const DetailHeader = ({
             >
               <Text typography="headlineSmall" color={theme.text.primary}>
                 {displayData?.CurrentPrice?.toLocaleString("vi-VN", {
-                  minimumFractionDigits: 1,
-                  maximumFractionDigits: 1,
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
                 })}
               </Text>
 
@@ -185,10 +185,14 @@ const DetailHeader = ({
                     ? "▲"
                     : displayData?.PriceChange === 0
                       ? ""
-                      : "▼"}
-                  {displayData?.PriceChange >= 0
-                    ? displayData?.PriceChange?.toFixed(1)
-                    : (displayData?.PriceChange * -1).toFixed(1)}
+                      : "▼"}{" "}
+                  {(displayData?.PriceChange >= 0
+                    ? displayData?.PriceChange
+                    : displayData?.PriceChange * -1
+                  ).toLocaleString("vi-VN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Text>
               </View>
 
@@ -206,10 +210,14 @@ const DetailHeader = ({
                   ? "▲"
                   : displayData?.PerPriceChange === 0
                     ? ""
-                    : "▼"}
-                {displayData?.PerPriceChange >= 0
-                  ? displayData?.PerPriceChange?.toFixed(1)
-                  : (displayData?.PerPriceChange * -1).toFixed(1)}
+                    : "▼"}{" "}
+                {(displayData?.PerPriceChange >= 0
+                  ? displayData?.PerPriceChange
+                  : displayData?.PerPriceChange * -1
+                ).toLocaleString("vi-VN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
                 %
               </Text>
             </View>
@@ -355,9 +363,13 @@ const DetailHeader = ({
                     : displayData?.PriceChange === 0
                       ? ""
                       : "▼"}
-                  {displayData?.PriceChange >= 0
-                    ? displayData?.PriceChange?.toFixed(1)
-                    : (displayData?.PriceChange * -1).toFixed(1)}
+                  {(displayData?.PriceChange >= 0
+                    ? displayData?.PriceChange
+                    : displayData?.PriceChange * -1
+                  ).toLocaleString("vi-VN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Text>
               </View>
 
@@ -376,9 +388,13 @@ const DetailHeader = ({
                   : displayData?.PerPriceChange === 0
                     ? ""
                     : "▼"}
-                {displayData?.PerPriceChange >= 0
-                  ? displayData?.PerPriceChange?.toFixed(1)
-                  : (displayData?.PerPriceChange * -1).toFixed(1)}
+                {(displayData?.PerPriceChange >= 0
+                  ? displayData?.PerPriceChange
+                  : displayData?.PerPriceChange * -1
+                ).toLocaleString("vi-VN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
                 %
               </Text>
             </View>
@@ -430,7 +446,8 @@ const DetailHeader = ({
                 {t("detailHeader.tradingVolume")}
               </Text>
               <Text typography="titleMedium" color={theme.text.primary}>
-                {displayData?.TotalMatchVol} {t("detailHeader.shares")}
+                {displayData?.TotalMatchVol.toLocaleString("vi-VN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}{" "}
+                {t("detailHeader.shares")}
               </Text>
             </View>
             <View
@@ -455,7 +472,12 @@ const DetailHeader = ({
                 {t("detailHeader.tradingValue")}
               </Text>
               <Text typography="titleMedium" color={theme.text.primary}>
-                {(Number(displayData?.TotalMatchVal) / 1000000000).toFixed(2)}{" "}
+                {(
+                  Number(displayData?.TotalMatchVal) / 1000000000
+                ).toLocaleString("vi-VN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
                 {t("detailHeader.billionVND")}
               </Text>
             </View>
@@ -474,7 +496,7 @@ const DetailHeader = ({
                   {t("detailHeader.floor")}
                 </Text>
                 <Text typography="titleMedium" color={theme.base.error}>
-                  {displayData?.FloorPrice}
+                  {displayData?.FloorPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
               <View
@@ -488,7 +510,7 @@ const DetailHeader = ({
                   {t("detailHeader.reference")}
                 </Text>
                 <Text typography="titleMedium" color={theme.base.warning}>
-                  {displayData?.RefPrice}
+                  {displayData?.RefPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
               <View
@@ -502,7 +524,7 @@ const DetailHeader = ({
                   {t("detailHeader.ceiling")}
                 </Text>
                 <Text typography="titleMedium" color={theme.base.success}>
-                  {displayData?.CeilingPrice}
+                  {displayData?.CeilingPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </Text>
               </View>
             </View>
@@ -524,7 +546,8 @@ const DetailHeader = ({
                   {t("detailHeader.tradingVolume")}
                 </Text>
                 <Text typography="titleMedium" color={theme.text.primary}>
-                  {displayData?.TotalMatchVol} {t("detailHeader.shares")}
+                  {displayData?.TotalMatchVol.toLocaleString("vi-VN", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}{" "}
+                  {t("detailHeader.shares")}
                 </Text>
               </View>
 
@@ -546,7 +569,12 @@ const DetailHeader = ({
                   {t("detailHeader.tradingValue")}
                 </Text>
                 <Text typography="titleMedium" color={theme.text.primary}>
-                  {(Number(displayData?.TotalMatchVal) / 1000000000).toFixed(2)}{" "}
+                  {(
+                    Number(displayData?.TotalMatchVal) / 1000000000
+                  ).toLocaleString("vi-VN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}{" "}
                   {t("detailHeader.billionVND")}
                 </Text>
               </View>

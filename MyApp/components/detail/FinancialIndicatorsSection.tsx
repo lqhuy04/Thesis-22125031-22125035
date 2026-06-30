@@ -224,12 +224,12 @@ const FinancialIndicatorsSkeleton = ({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const fmt = (value: number | null | undefined, decimals = 2, suffix = "") =>
-  value == null || !isFinite(value) ? "N/A" : `${value.toFixed(decimals)}${suffix}`;
+  value == null || !isFinite(value) ? "N/A" : `${value.toLocaleString("vi-VN", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}${suffix}`;
 
 const fmtPct = (value: number | null | undefined) => fmt(value != null ? value * 100 : null, 2, "%");
 
 const fmtBillion = (value: number | null | undefined, unit: string) =>
-  value == null ? "N/A" : `${(value / 1_000_000_000).toFixed(2)} ${unit}`;
+  value == null ? "N/A" : `${(value / 1_000_000_000).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${unit}`;
 
 // ─── Accordion Card ──────────────────────────────────────────────────────────
 

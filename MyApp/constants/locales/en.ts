@@ -54,6 +54,7 @@ export default {
     newsSectionHotTitle: "What's hot for {symbol}?",
     AIAnalyze: "AI Analysis",
     buy: "Buy",
+    relatedSectionTitle: "Related Stocks",
   },
   buyStock: {
     screenTitle: "Place Buy Order",
