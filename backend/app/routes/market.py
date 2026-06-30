@@ -143,12 +143,12 @@ def get_stock_price(symbol: str):
 
 @router.get("/industry-movement", response_model=SectorStockMovementResponse)
 def get_industry_movement(
-    industry: str = Query(..., description="Industry name, e.g. Bất động sản"),
+    industry_id: str = Query(..., description="Industry (category) id, e.g. 0001"),
     limit: int | None = Query(None, ge=1, description="Max number of stocks to return"),
 ):
     request_id = str(uuid.uuid4())
     payload = MarketService.get_industry_stocks_movement(
-        industry=industry,
+        industry_id=industry_id,
         limit=limit,
     )
 

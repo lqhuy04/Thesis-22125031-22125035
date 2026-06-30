@@ -15,7 +15,7 @@ import { CurrentPriceData } from "@/helpers/DetailHelpers";
 import { router, useLocalSearchParams } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
 
-// Sentinel value cho tab "Tất cả" (không phải tên ngành thật)
+// Sentinel value cho tab "Tất cả" (không phải industry id thật)
 export const ALL_VALUE = "__all__";
 const PAGE_SIZE = 20;
 
@@ -112,29 +112,31 @@ const SkeletonItem = ({ theme }: { theme: any }) => {
 const IndustryMovement = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
-  const { industry } = useLocalSearchParams<{ industry?: string }>();
+  const { industryId } = useLocalSearchParams<{ industryId?: string }>();
 
   const categories = useMemo(
     () => [
       { label: t("home.industryAll"), value: ALL_VALUE },
-      { label: t("home.industryRealEstate"), value: "Bất động sản" },
-      { label: t("home.industryBanking"), value: "Ngân hàng" },
-      { label: t("home.industryOilGas"), value: "Dầu khí" },
-      { label: t("home.industryFood"), value: "Thực phẩm" },
-      { label: t("home.industryEntertainment"), value: "Dịch vụ giải trí" },
-      { label: t("home.industryIT"), value: "Công nghệ thông tin" },
-      { label: t("home.industryConstruction"), value: "Xây dựng và Vật liệu" },
-      { label: t("home.industryRetail"), value: "Bán lẻ" },
+      { label: t("home.industryFinancials"), value: "8000" },
+      { label: t("home.industryIndustrials"), value: "2000" },
+      { label: t("home.industryConsumerGoods"), value: "3000" },
+      { label: t("home.industryTechnology"), value: "9000" },
+      { label: t("home.industryConsumerServices"), value: "5000" },
+      { label: t("home.industryOilGas"), value: "0001" },
+      { label: t("home.industryBasicMaterials"), value: "1000" },
+      { label: t("home.industryTelecom"), value: "6000" },
+      { label: t("home.industryUtilities"), value: "7000" },
+      { label: t("home.industryHealthcare"), value: "4000" },
     ],
     [t],
   );
 
-  // So sánh theo value (chuỗi tiếng Việt cố định), không phụ thuộc ngôn ngữ
+  // So sánh theo industry id (cố định), không phụ thuộc ngôn ngữ
   const initialIndex = useMemo(() => {
-    if (!industry) return 0;
-    const idx = categories.findIndex((c) => c.value === industry);
+    if (!industryId) return 0;
+    const idx = categories.findIndex((c) => c.value === industryId);
     return idx >= 0 ? idx : 0;
-  }, [industry, categories]);
+  }, [industryId, categories]);
 
   const cache = useRef<Record<string, CurrentPriceData[]>>({});
   const categoryListRef = useRef<FlatList>(null);

@@ -853,52 +853,83 @@ class MarketService:
 
     @staticmethod
     def get_industry_stocks_movement(
-        industry: str,
+        industry_id: str,
         limit: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Get stock movement list for one industry, sorted by TotalMatchVal DESC.
-        Data source is Current_Stock_Price table.
+        Get stock movement list for one industry, sorted by symbol.
+        Resolves the industry's stocks via Category_Stock -> Stock, then enriches
+        with BI_Profile and Current_Stock_Price.
         Returns all stocks by default, or first `limit` stocks if provided.
         """
         try:
-            keyword = (industry or "").strip()
-            if not keyword:
+            industry_id = str(industry_id).strip() if industry_id is not None else ""
+            if not industry_id:
                 return {"items": []}
 
-            profile_result = (
-                supabase.table("BI_Profile")
-                .select("stock_id, symbol, company_name, exchange, industry_name, logo")
-                .ilike("industry_name", f"%{keyword}%")
+            # 1. Category_Stock: find stock_ids belonging to this industry.
+            category_result = (
+                supabase.table("Category_Stock")
+                .select("stock_id")
+                .eq("category_id", industry_id)
                 .execute()
             )
-
-            profiles = profile_result.data if profile_result.data else []
-            profiles = [
-                p for p in profiles
-                if p.get("symbol") and len(str(p.get("symbol"))) <= 3
+            category_rows = category_result.data if category_result.data else []
+            stock_ids = [
+                row.get("stock_id") for row in category_rows if row.get("stock_id")
             ]
-
-            if not profiles:
+            if not stock_ids:
                 return {"items": []}
+
+            # 2. Stock: map stock_id -> stock_symbol.
+            symbols: List[str] = []
+            for id_chunk in MarketService._chunked([str(s) for s in stock_ids], chunk_size=100):
+                stock_result = (
+                    supabase.table("Stock")
+                    .select("id, stock_symbol")
+                    .in_("id", id_chunk)
+                    .execute()
+                )
+                for row in (stock_result.data or []):
+                    sym = row.get("stock_symbol")
+                    if sym:
+                        symbols.append(str(sym).upper())
+
+            symbols = [s for s in symbols if len(s) <= 3]
+            if not symbols:
+                return {"items": []}
+
+            # 3. BI_Profile: enrich profile info for the resolved symbols.
+            profiles: List[Dict[str, Any]] = []
+            for symbol_chunk in MarketService._chunked(symbols, chunk_size=100):
+                profile_result = (
+                    supabase.table("BI_Profile")
+                    .select("stock_id, symbol, company_name, exchange, logo")
+                    .in_("symbol", symbol_chunk)
+                    .execute()
+                )
+                if profile_result.data:
+                    profiles.extend(profile_result.data)
 
             profile_by_symbol: Dict[str, Dict[str, Any]] = {
                 str(p.get("symbol", "")).upper(): p for p in profiles
                 if p.get("symbol")
             }
-            symbols = list(profile_by_symbol.keys())
 
-            price_result = (
-                supabase.table("Current_Stock_Price")
-                .select(
-                    "symbol, price_change, per_price_change, ceiling_price, floor_price, "
-                    "ref_price, current_price, total_match_vol, total_match_val"
+            # 4. Current_Stock_Price: fetch price data for the resolved symbols.
+            prices: List[Dict[str, Any]] = []
+            for symbol_chunk in MarketService._chunked(symbols, chunk_size=100):
+                price_result = (
+                    supabase.table("Current_Stock_Price")
+                    .select(
+                        "symbol, price_change, per_price_change, ceiling_price, floor_price, "
+                        "ref_price, current_price, total_match_vol, total_match_val"
+                    )
+                    .in_("symbol", symbol_chunk)
+                    .execute()
                 )
-                .in_("symbol", symbols)
-                .execute()
-            )
-
-            prices = price_result.data if price_result.data else []
+                if price_result.data:
+                    prices.extend(price_result.data)
 
             items: List[Dict[str, Any]] = []
             for price in prices:
@@ -923,7 +954,7 @@ class MarketService:
                     "TotalMatchVal": MarketService._to_float(price.get("total_match_val")),
                 })
 
-            items.sort(key=lambda x: x.get("symbol", ""))
+            items.sort(key=lambda x: x.get("TotalMatchVal", 0.0), reverse=True)
 
             if limit is not None:
                 limit = max(limit, 1)
@@ -931,7 +962,7 @@ class MarketService:
 
             return {"items": items}
         except Exception as e:
-            print(f"Error fetching industry stocks movement for {industry}: {e}")
+            print(f"Error fetching industry stocks movement for {industry_id}: {e}")
             return {"items": []}
         
     @staticmethod

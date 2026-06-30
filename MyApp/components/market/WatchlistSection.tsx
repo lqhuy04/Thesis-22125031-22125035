@@ -177,7 +177,7 @@ const WatchlistSection = () => {
   const goToAllStocks = useCallback(() => {
     router.push({
       pathname: "/IndustryMovement",
-      params: { industry: ALL_VALUE },
+      params: { industryId: ALL_VALUE },
     });
   }, []);
 

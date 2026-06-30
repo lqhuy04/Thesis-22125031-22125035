@@ -28,14 +28,16 @@ const IndustryMovementSection = () => {
 
   const categories = useMemo(
     () => [
-      { label: t("home.industryRealEstate"), value: "Bất động sản" },
-      { label: t("home.industryBanking"), value: "Ngân hàng" },
-      { label: t("home.industryOilGas"), value: "Dầu khí" },
-      { label: t("home.industryFood"), value: "Thực phẩm" },
-      { label: t("home.industryEntertainment"), value: "Dịch vụ giải trí" },
-      { label: t("home.industryIT"), value: "Công nghệ thông tin" },
-      { label: t("home.industryConstruction"), value: "Xây dựng và Vật liệu" },
-      { label: t("home.industryRetail"), value: "Bán lẻ" },
+      { label: t("home.industryFinancials"), value: "8000" },
+      { label: t("home.industryIndustrials"), value: "2000" },
+      { label: t("home.industryConsumerGoods"), value: "3000" },
+      { label: t("home.industryTechnology"), value: "9000" },
+      { label: t("home.industryConsumerServices"), value: "5000" },
+      { label: t("home.industryOilGas"), value: "0001" },
+      { label: t("home.industryBasicMaterials"), value: "1000" },
+      { label: t("home.industryTelecom"), value: "6000" },
+      { label: t("home.industryUtilities"), value: "7000" },
+      { label: t("home.industryHealthcare"), value: "4000" },
     ],
     [t],
   );
@@ -101,7 +103,7 @@ const IndustryMovementSection = () => {
             router.push({
               pathname: "/IndustryMovement",
               params: {
-                industry: categories[chosenIndex].value,
+                industryId: categories[chosenIndex].value,
               },
             });
           }}

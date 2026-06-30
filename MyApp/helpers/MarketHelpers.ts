@@ -185,7 +185,7 @@ export const getBusinessNews = async (
 };
 
 export const getIndustryMovement = async (
-  industry: string,
+  industryId: string,
   limit?: number,
 ): Promise<{
   status: boolean;
@@ -194,8 +194,8 @@ export const getIndustryMovement = async (
   try {
     const result = await sendMessage(
       limit
-        ? `api/industry-movement?industry=${industry}&limit=${limit}`
-        : `api/industry-movement?industry=${industry}`,
+        ? `api/industry-movement?industry_id=${industryId}&limit=${limit}`
+        : `api/industry-movement?industry_id=${industryId}`,
     );
 
     const { errorCode, data } = result || {};
