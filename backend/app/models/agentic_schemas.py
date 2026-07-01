@@ -93,3 +93,19 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     session_id: str
     reply: str                          # plain text trả về cho user
+
+
+# ─── /chat/seed (nạp sẵn 1 lượt hội thoại từ kết quả phân tích) ────────────────
+
+class ChatSeedRequest(BaseModel):
+    """Tạo phiên chat mới với 1 lượt Q&A đã có sẵn (từ màn phân tích AI).
+
+    Client tự dựng nội dung câu trả lời từ dữ liệu đã hiển thị rồi gửi lên để
+    nạp thẳng vào memory (checkpoint) của session — nhờ đó các câu hỏi tiếp theo
+    có đầy đủ ngữ cảnh phân tích mà không phải chạy lại pipeline.
+    """
+    session_id: str = Field(
+        description="ID phiên hội thoại. Client tự tạo (UUID) và giữ nguyên suốt cuộc trò chuyện."
+    )
+    user_message: str = Field(description="Câu hỏi của user cho lượt đầu tiên")
+    assistant_message: str = Field(description="Nội dung phân tích dựng sẵn làm câu trả lời của trợ lý")

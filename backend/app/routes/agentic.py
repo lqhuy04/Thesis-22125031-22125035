@@ -7,11 +7,12 @@ from fastapi.responses import JSONResponse
 
 from app.middleware.auth_middleware import get_current_user, get_current_admin
 from app.models.base_schemas import success_response, error_response
-from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest, AdminAnalysisRequest
+from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest, ChatSeedRequest, AdminAnalysisRequest
 from app.models.backtest_pipeline_schemas import BacktestPipelineRequest
 from app.services.backtest_pipeline_service import run_backtest_pipeline
 from app.services.agentic_service import (
     run_chat,
+    seed_chat_session,
     run_stock_analysis,
     run_admin_analysis,
     list_chat_sessions,
@@ -143,6 +144,37 @@ def chat(body: ChatRequest, current_user: dict = Depends(get_current_user)):
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=error_response(error_code=500, error_desc=str(e)),
+        )
+    except Exception as e:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=error_response(error_code=500, error_desc=f"Lỗi hệ thống: {e}"),
+        )
+
+
+@router.post(
+    "/chat/seed",
+    summary="Tạo phiên chat với 1 lượt phân tích có sẵn",
+    description=(
+        "Nạp sẵn cặp Q&A (câu hỏi + kết quả phân tích đã hiển thị ở màn AI) vào "
+        "memory của một session mới. Không chạy pipeline, không gọi LLM. "
+        "Sau đó client điều hướng sang màn chat và hỏi tiếp bình thường."
+    ),
+)
+def seed_chat(body: ChatSeedRequest, current_user: dict = Depends(get_current_user)):
+    try:
+        seed_chat_session(
+            session_id=body.session_id,
+            user_message=body.user_message,
+            assistant_message=body.assistant_message,
+            user_id=current_user["user_id"],
+        )
+        return success_response(data={"session_id": body.session_id})
+
+    except PermissionError as e:
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content=error_response(error_code=403001, error_desc=str(e)),
         )
     except Exception as e:
         return JSONResponse(

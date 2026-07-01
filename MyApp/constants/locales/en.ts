@@ -142,6 +142,10 @@ export default {
     financialHealth: "Financial health",
     cashFlow: "Cash flow",
     selectAtLeastOne: "Please select at least one data source",
+    askMore: "Ask more about this analysis",
+    chatQuestion:
+      "Summarize the situation and suggest an investment timing for {symbol} based on the investor's risk appetite.",
+    seedError: "Couldn't open the conversation. Please try again.",
   },
   priceChart: {
     chart: "Chart:",

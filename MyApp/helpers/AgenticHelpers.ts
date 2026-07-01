@@ -140,6 +140,32 @@ export const sendChatMessage = async (
   }
 };
 
+/**
+ * Nạp sẵn 1 lượt Q&A (câu hỏi + kết quả phân tích đã hiển thị) vào memory của
+ * một session chat mới, để người dùng hỏi tiếp mà vẫn giữ ngữ cảnh phân tích.
+ * Không chạy lại pipeline — backend chỉ ghi cặp message vào checkpoint.
+ */
+export const seedChatSession = async (
+  sessionId: string,
+  userMessage: string,
+  assistantMessage: string,
+): Promise<{ status: boolean }> => {
+  try {
+    const result = await sendMessage("api/agentic/chat/seed", {
+      method: "POST",
+      body: JSON.stringify({
+        session_id: sessionId,
+        user_message: userMessage,
+        assistant_message: assistantMessage,
+      }),
+    });
+    return { status: (result?.errorCode ?? -1) === 0 };
+  } catch (error) {
+    console.error(error);
+    return { status: false };
+  }
+};
+
 //------------------------------------------------------------
 export type ChatSession = {
   session_id: string;

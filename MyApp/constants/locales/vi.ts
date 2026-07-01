@@ -142,6 +142,10 @@ export default {
     financialHealth: "Sức khỏe tài chính",
     cashFlow: "Dòng tiền",
     selectAtLeastOne: "Vui lòng chọn ít nhất một nguồn dữ liệu",
+    askMore: "Hỏi thêm về phân tích",
+    chatQuestion:
+      "Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu {symbol} dựa vào khẩu vị rủi ro của nhà đầu tư.",
+    seedError: "Không thể mở cuộc trò chuyện. Vui lòng thử lại.",
   },
   priceChart: {
     chart: "Biểu đồ:",

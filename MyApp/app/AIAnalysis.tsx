@@ -1,9 +1,20 @@
 import ScreenHeader from "@/components/ui/ScreenHeader";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
-import React, { useEffect, useMemo, useState } from "react";
-import { Dimensions, Image, ScrollView, StyleSheet, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Image,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Feather from "@expo/vector-icons/Feather";
+import { router, useLocalSearchParams } from "expo-router";
+import * as Crypto from "expo-crypto";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/ui/Text";
 import Octicons from "@expo/vector-icons/Octicons";
@@ -13,7 +24,9 @@ import {
   AnalysisMode,
   DataSelection,
   getAnalysis,
+  seedChatSession,
 } from "@/helpers/AgenticHelpers";
+import type { ChatConversation } from "@/components/chatbot/ChatHistoryBottomsheet";
 import { RadarChart, RadarAxis } from "@/components/ui/RadarChart";
 
 const screenWidth = Dimensions.get("window").width;
@@ -90,6 +103,36 @@ const AIAnalysis = () => {
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAxis, setSelectedAxis] = useState<number | null>(null);
+  const [seeding, setSeeding] = useState(false);
+
+  // Toast lỗi hiển thị phía trên nút CTA khi seed phiên chat thất bại.
+  const [errorVisible, setErrorVisible] = useState(false);
+  const errorAnim = useRef(new Animated.Value(0)).current;
+  const errorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showError = () => {
+    if (errorTimer.current) clearTimeout(errorTimer.current);
+    setErrorVisible(true);
+    Animated.timing(errorAnim, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+
+    errorTimer.current = setTimeout(() => {
+      Animated.timing(errorAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start(() => setErrorVisible(false));
+    }, 2200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (errorTimer.current) clearTimeout(errorTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -141,6 +184,59 @@ const AIAnalysis = () => {
     setSelectedAxis((prev) => (prev === index ? null : index));
   };
 
+  // Dựng nội dung câu trả lời của trợ lý từ chính dữ liệu đang hiển thị, để nạp
+  // sẵn vào phiên chat (Markdown — khớp cách ChatDetail render tin nhắn bot).
+  const buildAssistantMessage = (a: AnalysisData): string => {
+    const conf = `${(a.confidence * 100).toFixed(0)}%`;
+    return [
+      `**${t("aiAnalysis.recommendation")}:** ${a.recommendation} · ${t("aiAnalysis.confidence")} ${conf}`,
+      "",
+      `**${t("aiAnalysis.tradingPlan")}**`,
+      `- ${t("aiAnalysis.entryPrice")}: ${formatPrice(a.entry_price)}`,
+      `- ${t("aiAnalysis.takeProfit")}: ${formatPrice(a.take_profit_price)}`,
+      `- ${t("aiAnalysis.stopLoss")}: ${formatPrice(a.stop_loss_price)}`,
+      `- ${t("aiAnalysis.maxHoldCandles")}: ${formatPrice(a.max_hold_candles)}`,
+      "",
+      `**${t("aiAnalysis.fundamental")}**`,
+      a.analysis.fundamental,
+      "",
+      `**${t("aiAnalysis.technical")}**`,
+      a.analysis.technical,
+      "",
+      `**${t("aiAnalysis.news")}**`,
+      a.analysis.news,
+      "",
+      `**${t("aiAnalysis.analysis")}**`,
+      a.analysis.summary,
+    ].join("\n");
+  };
+
+  const handleAskMore = async () => {
+    if (!analysis || seeding) return;
+    setSeeding(true);
+
+    const question = t("aiAnalysis.chatQuestion").replace("{symbol}", stockSymbol);
+    const answer = buildAssistantMessage(analysis);
+    const sessionId = Crypto.randomUUID();
+
+    const { status } = await seedChatSession(sessionId, question, answer);
+    setSeeding(false);
+    if (!status) {
+      showError();
+      return;
+    }
+
+    const conversation: ChatConversation = {
+      id: sessionId,
+      title: question.slice(0, 60),
+      timeLabel: t("chatbot.today"),
+    };
+    router.push({
+      pathname: "/ChatDetail",
+      params: { data: JSON.stringify(conversation) },
+    });
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
       <ScreenHeader title={t("aiAnalysis.screenTitle")} />
@@ -163,7 +259,7 @@ const AIAnalysis = () => {
           style={{ flex: 1 }}
           contentContainerStyle={{
             padding: 12,
-            paddingBottom: insets.bottom + 24,
+            paddingBottom: insets.bottom + 96,
           }}
         >
           {/* ── Symbol + Recommendation (hero) ── */}
@@ -354,6 +450,80 @@ const AIAnalysis = () => {
           </View>
         </ScrollView>
       )}
+
+      {/* CTA cố định: mở phiên chat với lượt phân tích đã nạp sẵn */}
+      {!isLoading && analysis != null && (
+        <View
+          style={[
+            styles.ctaBar,
+            {
+              paddingBottom: insets.bottom + 12,
+              backgroundColor: theme.background.surface,
+              borderTopColor: theme.border.default,
+            },
+          ]}
+        >
+          {errorVisible && (
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                alignSelf: "center",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: 10,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderRadius: 20,
+                backgroundColor: theme.base.error,
+                opacity: errorAnim,
+                transform: [
+                  {
+                    translateY: errorAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [8, 0],
+                    }),
+                  },
+                ],
+              }}
+            >
+              <Feather name="alert-triangle" size={16} color="#FFFFFF" />
+              <Text typography="labelLarge" color="#FFFFFF">
+                {t("aiAnalysis.seedError")}
+              </Text>
+            </Animated.View>
+          )}
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleAskMore}
+            disabled={seeding}
+          >
+            <LinearGradient
+              colors={PURPLE_GRADIENT as unknown as string[]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.ctaButton}
+            >
+              {seeding ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Octicons
+                    name="dependabot"
+                    size={20}
+                    color="#FFFFFF"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text typography="titleMedium" color="#FFFFFF">
+                    {t("aiAnalysis.askMore")}
+                  </Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
@@ -433,6 +603,22 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 1,
     marginVertical: 12,
+  },
+  ctaBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  ctaButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 52,
+    borderRadius: 26,
   },
 });
 

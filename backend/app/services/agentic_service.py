@@ -6,7 +6,7 @@ import unicodedata
 from typing import Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 
 from agentic_ai.chatbot.graph import build_chatbot_graph
 from agentic_ai.analyze.graph import build_graph
@@ -175,6 +175,47 @@ def run_chat(session_id: str, message: str, user_id: str) -> str:
 
     ChatSessionService.touch(session_id)
     return result["final_output"]
+
+
+def seed_chat_session(
+    session_id: str,
+    user_message: str,
+    assistant_message: str,
+    user_id: str,
+) -> None:
+    """Nạp sẵn 1 lượt Q&A vào một session chat mới (từ màn phân tích AI).
+
+    Ghi thẳng cặp (HumanMessage, AIMessage) vào checkpoint của thread qua
+    `update_state` — không chạy graph, không gọi LLM. Nhờ đó session có memory
+    thật ngay từ đầu để các câu hỏi tiếp theo giữ đúng ngữ cảnh phân tích.
+    """
+    user_message = (
+        unicodedata.normalize("NFC", user_message).strip() if user_message else user_message
+    )
+    assistant_message = (
+        unicodedata.normalize("NFC", assistant_message).strip()
+        if assistant_message
+        else assistant_message
+    )
+
+    owner = ChatSessionService.get_owner(session_id)
+    if owner is None:
+        ChatSessionService.register_session(session_id, user_id, user_message)
+    elif owner != user_id:
+        raise PermissionError("Session không thuộc về người dùng này.")
+
+    # Ghi cặp message vào lịch sử (add_messages reducer sẽ nối vào state)
+    _chatbot_graph.update_state(
+        config={"configurable": {"thread_id": session_id}},
+        values={
+            "messages": [
+                HumanMessage(content=user_message),
+                AIMessage(content=assistant_message),
+            ]
+        },
+    )
+
+    ChatSessionService.touch(session_id)
 
 
 def list_chat_sessions(user_id: str) -> list[dict]:
