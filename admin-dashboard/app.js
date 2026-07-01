@@ -431,7 +431,7 @@ function initTabs() {
 // BACKTEST EXECUTION CONTROLLER
 // ─────────────────────────────────────────────────────────────────────────────
 const DS_TECH_KEYS = ["ma", "boll", "rsi", "macd", "kdj"];
-const DS_FUND_KEYS = ["valuation", "profitability", "growth", "financial_health", "cash_flow"];
+const DS_FUND_KEYS = ["liquidity", "leverage", "efficiency", "profitability", "valuation"];
 
 function getBacktestMode() {
   const activeBtn = els.backtestModeControl?.querySelector(".seg-btn.active");
@@ -1389,7 +1389,7 @@ window.addEventListener("resize", () => {
 // AI ANALYZE TAB (Admin) — single symbol or VN30/VN100 basket
 // ─────────────────────────────────────────────────────────────────────────────
 const AN_TECH_KEYS = ["ma", "boll", "rsi", "macd", "kdj"];
-const AN_FUND_KEYS = ["valuation", "profitability", "growth", "financial_health", "cash_flow"];
+const AN_FUND_KEYS = ["liquidity", "leverage", "efficiency", "profitability", "valuation"];
 
 function getAnalyzeSource() {
   const btn = els.analyzeSourceControl?.querySelector(".seg-btn.active");

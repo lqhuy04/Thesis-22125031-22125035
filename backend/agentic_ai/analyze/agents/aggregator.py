@@ -208,10 +208,14 @@ class AnalysisBreakdown(BaseModel):
     )
     fundamental: str = Field(
         description=(
-            "Phân tích cơ bản CHI TIẾT bằng tiếng Việt. Nếu has_fundamental_data = true: BẮT BUỘC phân tích "
-            "TỪNG nhóm chỉ số CÓ trong dữ liệu (định giá, sinh lời, tăng trưởng, sức khỏe tài chính, dòng tiền), "
-            "mỗi nhóm 2–3 câu: con số cụ thể, so với ngưỡng/ngành/lịch sử, và VÌ SAO tốt hay đáng lo. "
-            "Nếu thiếu chỉ số quan trọng thì nêu rõ ảnh hưởng tới độ tin cậy. "
+            "Phân tích cơ bản CHI TIẾT bằng tiếng Việt. Nếu has_fundamental_data = true: BẮT BUỘC đi lần lượt "
+            "qua TỪNG nhóm chỉ số CÓ trong dữ liệu, MỖI NHÓM MỘT ĐOẠN RIÊNG mở đầu bằng ĐÚNG tên nhóm in đậm "
+            "(**Khả năng thanh toán**, **Đòn bẩy tài chính**, **Hiệu quả hoạt động**, **Khả năng sinh lời**, **Định giá**). "
+            "Với 4 nhóm đầu (trừ Định giá): BẮT BUỘC trích dẫn con số CAGR (dạng 'X%/năm') của ít nhất 1 chỉ số chính "
+            "trong nhóm và nêu ý nghĩa; nếu CAGR = '—' phải nói rõ 'không tính được CAGR' thay vì bịa. "
+            "Đọc đúng CHIỀU xu hướng: CAGR dương = tăng, CAGR âm = giảm — không mô tả ngược. "
+            "CHỈ nhắc các chỉ số THỰC SỰ có trong dữ liệu; TUYỆT ĐỐI KHÔNG nhắc tổng tài sản, doanh thu, dòng tiền "
+            "hay bất kỳ chỉ số nào không xuất hiện. Nếu thiếu chỉ số quan trọng thì nêu rõ ảnh hưởng tới độ tin cậy. "
             "Chỉ khi has_fundamental_data = false mới ghi: 'Không có dữ liệu phân tích cơ bản.'"
         )
     )
@@ -427,14 +431,19 @@ Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ng
         • MACD: MACD so với Signal (vừa cắt lên = tín hiệu mua, cắt xuống = bán); histogram tăng (đà mạnh dần) hay giảm (đà yếu dần).
         • KDJ: K so với D (cắt lên/xuống), J tăng tốc hay suy yếu, vùng quá mua (>80) / quá bán (<20).
       Cuối phần, nêu RÕ chỉ số nào đang ỦNG HỘ và chỉ số nào đang CẢN TRỞ, và vì sao tổng điểm kỹ thuật ra như vậy.
-    - analysis.fundamental: Phân tích TỪNG nhóm chỉ số CÓ dữ liệu (định giá, sinh lời, tăng trưởng, sức khỏe tài chính, dòng tiền).
-      Với mỗi nhóm: nêu con số cụ thể, so sánh với ngưỡng/ngành/lịch sử, và VÌ SAO tốt hay đáng lo. Định hướng:
-        • Định giá: P/E, P/B cao hay thấp so với ngành & lịch sử → cổ phiếu đắt hay rẻ.
-        • Sinh lời: ROE > 15% là tốt; biên lợi nhuận gộp/ròng; xu hướng cải thiện hay suy giảm.
-        • Tăng trưởng: doanh thu & lợi nhuận YoY dương/âm, tốc độ nhanh/chậm, có bền vững không.
-        • Sức khỏe tài chính: Nợ/VCSH thấp = an toàn, cao = rủi ro; thanh khoản hiện tại; khả năng trả lãi.
-        • Dòng tiền: CFO dương/ổn định là dấu hiệu tốt; CAPEX; cổ tức đã trả.
-      Nếu thiếu chỉ số quan trọng (vd nợ/VCSH), nêu rõ điều đó HẠN CHẾ độ tin cậy của đánh giá ra sao.
+    - analysis.fundamental: BẮT BUỘC viết theo CẤU TRÚC 5 ĐOẠN, mỗi nhóm chỉ số CÓ dữ liệu là 1 đoạn RIÊNG mở đầu bằng
+      ĐÚNG tên nhóm in đậm, theo thứ tự: **Khả năng thanh toán** → **Đòn bẩy tài chính** → **Hiệu quả hoạt động** →
+      **Khả năng sinh lời** → **Định giá**. KHÔNG gộp tất cả thành một đoạn văn chung chung.
+      Trong mỗi đoạn (2–3 câu): nêu giá trị năm gần nhất (và năm đầu kỳ để thấy xu hướng), so sánh với ngưỡng/ngành/lịch sử, và VÌ SAO tốt hay đáng lo.
+      Với 4 nhóm ĐẦU (trừ Định giá): BẮT BUỘC trích dẫn CAGR (dạng "X%/năm") của ít nhất 1 chỉ số chính trong nhóm và giải thích ý nghĩa.
+      Đọc ĐÚNG chiều xu hướng theo chuỗi năm và dấu CAGR: CAGR dương = tăng, CAGR âm = giảm — TUYỆT ĐỐI không mô tả ngược (vd không viết "giảm từ 1.26 xuống 1.40"). Định hướng:
+        • Khả năng thanh toán: thanh toán hiện hành/nhanh/tiền mặt > 1 = an toàn, < 1 = rủi ro ngắn hạn; CAGR cho biết thanh khoản đang cải thiện hay suy giảm.
+        • Đòn bẩy tài chính: Nợ/VCSH thấp = an toàn, cao = rủi ro; khả năng trả lãi (càng cao càng dễ trả lãi vay); CAGR của Nợ/VCSH cho biết nợ đang tăng hay giảm.
+        • Hiệu quả hoạt động: vòng quay tài sản/TSCĐ càng cao càng khai thác tốt tài sản; số ngày tồn kho & phải thu càng thấp càng tốt (CAGR âm của số ngày = cải thiện).
+        • Khả năng sinh lời: ROE > 15% là tốt; ROA; biên lợi nhuận gộp/ròng; CAGR cho biết sinh lời cải thiện hay suy giảm.
+        • Định giá: P/E, P/B, EV/EBITDA cao hay thấp so với ngành & lịch sử → cổ phiếu đắt hay rẻ (KHÔNG cần CAGR). LƯU Ý: với ngành tài chính (ngân hàng/bảo hiểm/dịch vụ tài chính) dữ liệu chỉ có P/B — định giá theo P/B, TUYỆT ĐỐI không nhắc P/E hay EV/EBITDA cho nhóm này.
+      Lưu ý CAGR "—" nghĩa là không tính được (dữ liệu thiếu hoặc có giá trị âm) — nói rõ "không tính được CAGR", đừng suy diễn.
+      CHỈ nhắc chỉ số THỰC SỰ có trong dữ liệu; TUYỆT ĐỐI KHÔNG nhắc tổng tài sản, doanh thu, dòng tiền hay chỉ số không xuất hiện. Nếu thiếu chỉ số quan trọng (vd Nợ/VCSH), nêu rõ điều đó HẠN CHẾ độ tin cậy của đánh giá ra sao.
     - analysis.news: Tóm tắt các tin tức/sự kiện nổi bật và GIẢI THÍCH tác động (tích cực/tiêu cực) tới triển vọng cổ phiếu.
     - analysis.summary: Kết luận tổng hợp ĐỊNH TÍNH. TUYỆT ĐỐI KHÔNG nêu con số giá mua / chốt lời / cắt lỗ / số nến giữ / tỷ lệ R/R cụ thể — hệ thống sẽ tự tính và chèn các con số chính xác này vào cuối summary. Nếu recommendation = Mua: giải thích vì sao đáng mua và mức độ phù hợp với kỳ hạn (không kèm số liệu giá). Nếu recommendation = Chờ: giải thích các yếu tố kỹ thuật/cơ bản nào chưa đạt điều kiện.
 

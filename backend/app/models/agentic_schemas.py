@@ -26,11 +26,11 @@ class TechnicalSelection(BaseModel):
 
 class FundamentalSelection(BaseModel):
     """Bật/tắt từng nhóm chỉ số cơ bản mà AI được phép phân tích."""
-    valuation: bool = Field(default=True, description="Chỉ số định giá: P/E, P/B, EV/EBITDA, EPS")
+    liquidity: bool = Field(default=True, description="Khả năng thanh toán: tỷ lệ thanh toán hiện hành, thanh toán nhanh, tiền mặt")
+    leverage: bool = Field(default=True, description="Đòn bẩy tài chính: Nợ/VCSH, đòn bẩy tài chính, khả năng trả lãi")
+    efficiency: bool = Field(default=True, description="Hiệu quả hoạt động: vòng quay tài sản, vòng quay TSCĐ, số ngày tồn kho, số ngày phải thu")
     profitability: bool = Field(default=True, description="Khả năng sinh lời: ROE, ROA, biên LN gộp, biên LN ròng")
-    growth: bool = Field(default=True, description="Tăng trưởng: doanh thu YoY, lợi nhuận YoY, doanh thu thuần, lợi nhuận ròng")
-    financial_health: bool = Field(default=True, description="Sức khỏe tài chính: thanh khoản hiện tại, Nợ/VCSH, khả năng trả lãi")
-    cash_flow: bool = Field(default=True, description="Dòng tiền: CFO, CAPEX, cổ tức đã trả")
+    valuation: bool = Field(default=True, description="Nhóm định giá: P/E, P/B, EV/EBITDA, EPS")
 
 
 class DataSelection(BaseModel):

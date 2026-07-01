@@ -13,7 +13,7 @@ Mặc định: tất cả đều BẬT. Nhờ vậy các luồng không truyền
 TECH_KEYS = ["ma", "boll", "rsi", "macd", "kdj"]
 
 # Các nhóm chỉ số cơ bản có thể bật/tắt
-FUND_KEYS = ["valuation", "profitability", "growth", "financial_health", "cash_flow"]
+FUND_KEYS = ["liquidity", "leverage", "efficiency", "profitability", "valuation"]
 
 
 def get_selection(state: dict) -> dict:
@@ -23,8 +23,8 @@ def get_selection(state: dict) -> dict:
     {
         "news": bool,
         "technical":   {"ma","boll","rsi","macd","kdj"} -> bool,
-        "fundamental": {"valuation","profitability","growth",
-                        "financial_health","cash_flow"} -> bool,
+        "fundamental": {"liquidity","leverage","efficiency",
+                        "profitability","valuation"} -> bool,
     }
 
     Key thiếu → mặc định True (bật).
