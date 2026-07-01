@@ -126,6 +126,7 @@ def run_full_backtest(
     walk_forward_results = walk_forward(
         scored_1d,
         pipeline,
+        interval="1d",
         min_score=min_signal_score,
         **trade_config,
     )

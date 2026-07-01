@@ -6,17 +6,63 @@ import pandas as pd
 
 from .engine import ScoringEngine, SignalGenerator, TradeSimulator, MetricsCalculator
 from .pipeline import BacktestPipeline
+from .stats import confidence_tier
+
+
+def _resolve_walk_forward_params(
+    n: int,
+    interval: str,
+    train_window: int | None,
+    test_window: int | None,
+    step: int | None,
+) -> tuple[int, int, int]:
+    """Pick walk-forward window sizes, shrinking to fit limited data.
+
+    Explicit values are respected. Otherwise interval-aware defaults are used
+    when there's enough history; when the series is shorter than one full
+    (train + test) span — common for the limited per-symbol backtest windows —
+    the auto-chosen sizes scale down (~50% train / 15% test / step = test of the
+    series) so a few windows still fit instead of producing zero.
+    """
+    defaults = {
+        "1d": (252, 63, 21),
+        "1h": (180, 45, 15),
+        "1m": (240, 60, 20),
+    }
+    base_train, base_test, base_step = defaults.get(interval, (252, 63, 21))
+
+    train = base_train if train_window is None else train_window
+    test = base_test if test_window is None else test_window
+    stp = base_step if step is None else step
+
+    # Only shrink the windows we were left to choose (don't override explicit args).
+    if train + test > n and (train_window is None or test_window is None):
+        if train_window is None:
+            train = max(int(n * 0.5), 20)
+        if test_window is None:
+            test = max(int(n * 0.15), 5)
+        if step is None:
+            stp = max(test, 1)
+        # Guarantee at least one window if the scaled train is still too long.
+        if train + test > n and train_window is None:
+            train = max(n - test - 1, 10)
+    return train, test, stp
 
 
 def walk_forward(
     df: pd.DataFrame,
     pipeline: BacktestPipeline,
-    train_window: int = 252,
-    test_window: int = 63,
-    step: int = 21,
+    interval: str = "1d",
+    train_window: int | None = None,
+    test_window: int | None = None,
+    step: int | None = None,
     min_score: int = 3,
     **trade_config: Any,
 ) -> dict[str, Any]:
+    train_window, test_window, step = _resolve_walk_forward_params(
+        len(df), interval, train_window, test_window, step
+    )
+
     windows: list[dict[str, Any]] = []
     scorer = ScoringEngine()
     signal_gen = SignalGenerator()
@@ -30,7 +76,7 @@ def walk_forward(
         signaled = signal_gen.generate_signals(scored, min_score=min_score)
 
         signal_dates = pipeline.filter_signal_dates(signaled, min_score=min_score)
-        pipeline_results = pipeline.run_pipeline_batch(signal_dates, interval="1d", lookback_days=train_window)
+        pipeline_results = pipeline.run_pipeline_batch(signal_dates, interval=interval, lookback_days=train_window)
         approved_dates = {
             result.get("date")
             for result in pipeline_results
@@ -186,9 +232,13 @@ def confidence_calibration(
 
     for trade in trade_results:
         entry_date = str(pd.to_datetime(trade["entry_date"]).date())
-        label = trade.get("confidence") or confidence_map.get(entry_date)
-        if label in grouped:
-            grouped[label].append(trade["return_pct"])
+        # confidence is a numeric score in [0, 1]; bin it into a tier label.
+        raw = trade.get("confidence")
+        if raw is None:
+            raw = confidence_map.get(entry_date)
+        tier = confidence_tier(raw)
+        if tier in grouped:
+            grouped[tier].append(trade["return_pct"])
 
     summary: dict[str, Any] = {}
     for label, returns in grouped.items():
