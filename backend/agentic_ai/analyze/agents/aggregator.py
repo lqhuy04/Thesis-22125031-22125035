@@ -208,27 +208,71 @@ class AnalysisBreakdown(BaseModel):
     )
     fundamental: str = Field(
         description=(
-            "Phân tích cơ bản CHI TIẾT bằng tiếng Việt. Nếu has_fundamental_data = true: BẮT BUỘC đi lần lượt "
-            "qua TỪNG nhóm chỉ số CÓ trong dữ liệu, MỖI NHÓM MỘT ĐOẠN RIÊNG mở đầu bằng ĐÚNG tên nhóm in đậm "
-            "(**Khả năng thanh toán**, **Đòn bẩy tài chính**, **Hiệu quả hoạt động**, **Khả năng sinh lời**, **Định giá**). "
-            "NGÀNH TÀI CHÍNH (ngân hàng/bảo hiểm/DVTC): dữ liệu trình bày theo khung CAMELS — khi đó BẮT BUỘC phân tích "
-            "theo TỪNG cấu phần CÓ trong dữ liệu (**C — An toàn vốn**, **A — Chất lượng tài sản**, **M — Năng lực quản trị**, "
-            "**E — Khả năng sinh lời**, **L — Thanh khoản**, **S — Độ nhạy rủi ro thị trường**) thay vì 5 nhóm doanh nghiệp; "
-            "tôn trọng các ghi chú 'chưa có CAR/NPL/NIM/LDR' và KHÔNG bịa các chỉ số chuyên ngành không có. "
-            "Với các nhóm/cấu phần định lượng (trừ Định giá và S): BẮT BUỘC trích dẫn con số CAGR (dạng 'X%/năm') của ít nhất 1 chỉ số chính "
-            "trong nhóm và nêu ý nghĩa; nếu CAGR = '—' phải nói rõ 'không tính được CAGR' thay vì bịa. "
-            "SO SÁNH NGÀNH (BẮT BUỘC, áp dụng cho MỌI mã khi có bảng 'So sánh với ngành'): trong MỖI đoạn nhóm/cấu phần, "
-            "phải nêu rõ chỉ số chính của mã đang CAO HƠN / THẤP HƠN / TƯƠNG ĐƯƠNG trung vị ngành (kèm con số ngành, vd "
-            "'ROE 18.7% so với trung vị ngành 12.4% → cao hơn'), và so CAGR mã với CAGR ngành để biết mã tăng nhanh/chậm hơn ngành. "
-            "Đọc đúng CHIỀU xu hướng: CAGR dương = tăng, CAGR âm = giảm — không mô tả ngược. "
-            "CHỈ nhắc các chỉ số THỰC SỰ có trong dữ liệu; TUYỆT ĐỐI KHÔNG nhắc tổng tài sản, doanh thu, dòng tiền "
-            "hay bất kỳ chỉ số nào không xuất hiện. Nếu thiếu chỉ số quan trọng thì nêu rõ ảnh hưởng tới độ tin cậy. "
+            "Phân tích cơ bản CHI TIẾT bằng tiếng Việt theo PROMPT PTCB. Nếu has_fundamental_data = true: "
+            "BẮT BUỘC đi lần lượt qua TỪNG nhóm chỉ số CÓ trong dữ liệu, MỖI NHÓM MỘT ĐOẠN RIÊNG biệt, mở đầu bằng ĐÚNG tên nhóm in đậm. "
+            "\n"
+            "DOANH NGHIỆP PHI TÀI CHÍNH: 5 nhóm theo thứ tự: **Khả năng thanh toán** → **Đòn bẩy tài chính** → **Hiệu quả hoạt động** "
+            "→ **Khả năng sinh lời** → **Định giá**. "
+            "NGÀNH TÀI CHÍNH (ngân hàng, bảo hiểm, dịch vụ tài chính - CAMELS): theo thứ tự: **C — An toàn vốn** → **A — Chất lượng tài sản** "
+            "→ **M — Năng lực quản trị** → **E — Khả năng sinh lời** → **L — Thanh khoản** → **S — Độ nhạy rủi ro thị trường** → **Định giá**. "
+            "\n"
+            "BẮT BUỘC VỀ DỮ LIỆU: "
+            "- CHỈ nhắc chỉ số THỰC SỰ có trong dữ liệu; TUYỆT ĐỐI KHÔNG bịa (không nhắc tổng tài sản, doanh thu, dòng tiền nếu không có). "
+            "- Nếu CAGR = '—' hoặc không có, phải nói rõ 'không tính được CAGR do thiếu dữ liệu', không suy diễn. "
+            "- Tôn trọng ghi chú 'chưa có CAR/NPL/NIM/LDR/CIR' trong dữ liệu ngành tài chính — nêu rõ hạn chế thay vì bịa. "
+            "\n"
+            "BẮT BUỘC VỀ CAGR: "
+            "- Với 4 nhóm/cấu phần ĐẦU (trừ Định giá và S): PHẢI trích dẫn CAGR (dạng 'X%/năm') của ít nhất 1 chỉ số chính trong nhóm. "
+            "- Giải thích ý nghĩa: CAGR dương = tăng/cải thiện, CAGR âm = giảm/suy giảm (đặc biệt: CAGR âm của số ngày tồn kho/phải thu = cải thiện). "
+            "- TUYỆT ĐỐI không mô tả ngược (không viết 'giảm từ 1.26 xuống 1.40' khi CAGR dương). "
+            "\n"
+            "BẮT BUỘC VỀ SO SÁNH NGÀNH: "
+            "- Áp dụng cho MỌI mã khi input có bảng 'So sánh với ngành'. "
+            "- Trong TỪNG đoạn nhóm/cấu phần, PHẢI đối chiếu chỉ số chính của mã với trung vị ngành tương ứng: "
+            "  CAO HƠN / THẤP HƠN / TƯƠNG ĐƯƠNG kèm con số cụ thể (vd 'ROE 18.7% so với trung vị ngành 12.4% → cao hơn'). "
+            "- So CAGR mã với CAGR ngành để kết luận mã tăng nhanh/chậm hơn ngành. "
+            "\n"
+            "PHÂN TÍCH DUPONT (bắt buộc nếu có đủ dữ liệu): "
+            "- Giải thích ROE = Biên LN ròng (%) × Vòng quay TS (lần) × Đòn bẩy TC (lần). "
+            "- NÊU RÕ: (1) Thành phần nào đang đỡ ROE; (2) Công ty dùng chiến lược nào "
+            "  (a) Vốn cao + lợi nhuận cao; (b) Nợ + hiệu quả khai thác tốt; (c) Nợ để bù lợi nhuận/hiệu quả thấp). "
+            "- CAGR từng thành phần 3-5 năm để thấy xu hướng. "
+            "\n"
+            "CHỈ TÍCH LŨY tiêu chuẩn: "
+            "- Khả năng thanh toán: > 1 = an toàn, < 1 = rủi ro ngắn hạn. "
+            "- Đòn bẩy tài chính: Nợ/VCSH thấp = an toàn, cao = rủi ro; khả năng trả lãi cao = dễ trả nợ. "
+            "- Hiệu quả hoạt động: vòng quay cao = khai thác tốt; số ngày tồn kho/phải thu thấp = tốt. "
+            "- Khả năng sinh lời: ROE > 15% = tốt, ROE < 8% = yếu. "
+            "- Định giá ngành tài chính (CHỈ dùng P/B): TUYỆT ĐỐI không nhắc P/E hay EV/EBITDA. "
+            "\n"
             "Chỉ khi has_fundamental_data = false mới ghi: 'Không có dữ liệu phân tích cơ bản.'"
         )
     )
     news: str = Field(
         description=(
-            "Phân tích tin tức bằng tiếng Việt: tóm tắt và nhắc tới thông tin nổi bật. "
+            "Phân tích tin tức bằng tiếng Việt theo PROMPT PTCB, gồm 3 phần riêng biệt:\n"
+            "\n"
+            "1. **Tác động về mô đến Ngành**:\n"
+            "   Phân tích cách các thay đổi về thuế TNCN, quản lý tài sản, chính sách mới "
+            "(hoặc dự thảo khả thi năm 2026) tác động TÍCH CỰC hay TIÊU CỰC tới tổng cầu, "
+            "hành vi tiêu dùng/đầu tư, và hoạt động của toàn ngành. "
+            "Ví dụ: thuế TNCN giảm → thu nhập khả dụng tăng → sức mua chung tăng (tích cực cho bán lẻ, tiêu dùng); "
+            "siết quản lý tài sản riêng → hạn chế đầu tư (tiêu cực cho bất động sản, chứng khoán). "
+            "   VÍ DỤ GỢI Ý theo ngành: "
+            "   - Bất động sản/Chứng khoán: quản lý tài sản → dòng tiền nhà đầu tư; xác thực BĐS → chi phí tuân thủ. "
+            "   - Bán lẻ/Tiêu dùng/TMĐT: thuế TNCN → sức mua; siết thuế TMĐT → lợi nhuận. "
+            "   - Ngân hàng/Bảo hiểm: quản lý tài sản → huy động vốn; tiền gửi chính chủ → kênh bancassurance. "
+            "\n"
+            "2. **Tác động vi mô đến Mã cổ phiếu [NHẬ p TÊN MÃ CỤ THỂ]**:\n"
+            "   Đi sâu vào nội tại cụ thể: chính sách nào ĐÁ NH TRỰC TIẾP vào cấu phần nào của hoạt động công ty "
+            "(doanh thu → suy giảm?; chi phí tuân thủ → tăng?; tốc độ tăng trưởng CAGR → kìm hãm hay kích thích?). "
+            "   Đánh giá xem công ty có lợi thế cạnh tranh nào để 'phòng thủ' hoặc 'tận dụng' chính sách mới so với đối thủ cùng ngành. "
+            "\n"
+            "3. **Kết luận triển vọng và định giá lại**:\n"
+            "   Với mỗi tin tức/chính sách, BẮT BUỘC GIẢI THÍCH rõ ràng tác động của nó là TÍCH CỰC (tăng triển vọng kinh doanh, cổ phiếu tăng giá) "
+            "   hay TIÊU CỰC (giảm triển vọng, cổ phiếu có rủi ro giảm giá). "
+            "   KHÔNG được để mơ hồ hoặc không kết luận. "
+            "\n"
             "Chỉ khi has_news_data = false mới ghi: 'Không có dữ liệu tin tức.'"
         )
     )
@@ -304,17 +348,22 @@ class InvestmentRecommendation(BaseModel):
 
     fundamental_health: Literal["strong", "neutral", "weak", "N/A"] = Field(
         description=(
-            "Đánh giá sức khỏe tài chính dựa trên DuPont & chiến lược tài chính:\n"
-            "  strong  = ROE > 15% với chiến lược lành mạnh (lợi nhuận cao & nợ thấp HOẶC lợi nhuận cao & nợ vừa phải;\n"
-            "            hoặc hiệu quả khai thác tốt với nợ thấp); CAGR ROE dương; P/E hợp lý\n"
-            "  neutral = ROE 8-15% hoặc có yếu tố rủi ro vừa phải (nợ cao nhưng ROE/lợi nhuận chưa xấu);\n"
-            "            không có dấu hiệu cực đoan, CAGR ROE gần 0 hoặc lên xuống\n"
-            "  weak    = ROE < 8% HOẶC chiến lược cao rủi ro (nợ cao + ROE thấp + CAGR ROE âm);\n"
-            "            tăng trưởng âm, P/E quá cao so với tăng trưởng\n"
-            "  N/A     = không có dữ liệu fundamental\n"
+            "Đánh giá sức khỏe tài chính theo PROMPT PTCB, dựa trên DuPont & chiến lược tài chính:\n"
+            "  strong  = ROE > 15% với chiến lược lành mạnh theo DuPont:\n"
+            "            (a) Vốn chủ yếu + biên LN cao (margin-driven), HOẶC\n"
+            "            (b) Nợ vừa phải (Đòn bẩy TC ~ 1.5-2.5) + hiệu quả khai thác tốt (vòng quay cao),\n"
+            "            (c) Nợ thấp (Đòn bẩy TC < 1.5) + lợi nhuận cao.\n"
+            "            Thêm: CAGR ROE dương, P/E hợp lý, thanh khoản ≥ 1.\n"
+            "  neutral = ROE 8-15% hoặc có yếu tố rủi ro vừa phải (nợ cao nhưng ROE/lợi nhuận chưa xấu).\n"
+            "            CAGR ROE gần 0 (dao động) hoặc chưa rõ xu hướng dài hạn.\n"
+            "            Không có dấu hiệu cực đoan; thanh khoản vừa phải (0.8-1.2).\n"
+            "  weak    = ROE < 8% HOẶC chiến lược cao rủi ro (Đòn bẩy TC > 3.0 + ROE thấp + CAGR ROE âm).\n"
+            "            Tăng trưởng âm (CAGR ROE < 0 kéo dài), P/E quá cao so với tăng trưởng.\n"
+            "            Thanh khoản < 1 (rủi ro ngắn hạn), hoặc nợ tăng mà lợi nhuận suy giảm.\n"
+            "  N/A     = không có dữ liệu fundamental đủ để đánh giá (thiếu ROE hoặc DuPont components).\n"
             "\n"
-            "  ⚠️ CẢNH BÁO RỦI RO: Nếu mã có Đòn bẩy TC > 3.0 + ROE đã suy giảm (CAGR ROE < 0),\n"
-            "  coi như WEAK (dù ROE hiện tại chưa xấu — công ty đang trong quá trình thoái)."
+            "  ⚠️ CẢNH BÁO RỦI RO DUPONT: Nếu mã có Đòn bẩy TC > 3.0 + CAGR ROE < 0 (suy giảm),\n"
+            "  coi như WEAK dù ROE hiện tại chưa xấu — công ty đang trong quá trình thoái, nợ cao + lợi nhuận yếu."
         )
     )
 
@@ -359,17 +408,25 @@ PHẦN I — ĐÁNH GIÁ TỪNG NGUỒN
      max_score = số chỉ số kỹ thuật được bật (có thể nhỏ hơn 5 nếu người dùng tắt bớt).
 
 2. Fundamental (tùy chọn):
-     Nếu có dữ liệu: đánh giá sức khỏe tài chính là
-         strong  = ROE > 15%, P/E hợp lý, nợ thấp, tăng trưởng dương
-         neutral = chỉ số trung bình, không có dấu hiệu cực đoan
-         weak    = ROE thấp, nợ cao, tăng trưởng âm, P/E quá cao
+     Nếu có dữ liệu: đánh giá sức khỏe tài chính theo PROMPT PTCB (xem Phần III):
+         strong  = ROE > 15% + chiến lược DuPont lành mạnh + CAGR ROE dương + P/E hợp lý + thanh khoản ≥ 1.
+                   Chiến lược lành mạnh: (a) margin-driven (vốn chủ yếu), HOẶC
+                                        (b) efficiency-driven (nợ 1.5-2.5x, vòng quay cao), HOẶC
+                                        (c) nợ thấp (<1.5x) + margin cao.
+         neutral = ROE 8-15% hoặc rủi ro vừa phải (nợ cao nhưng ROE chưa xấu);
+                   CAGR ROE gần 0 (dao động); không dấu hiệu cực đoan; thanh khoản 0.8-1.2.
+         weak    = ROE < 8% HOẶC chiến lược cao rủi ro (nợ > 3.0x + ROE thấp + CAGR ROE < 0);
+                   tăng trưởng âm; P/E quá cao; thanh khoản < 1 hoặc nợ tăng + lợi nhuận suy giảm.
      Nếu thiếu dữ liệu: trả về "N/A".
 
-3. Article (tùy chọn):
-     Nếu có dữ liệu: đánh giá sentiment tổng hợp từ tin tức là
-         positive = tin tức tích cực, hỗ trợ xu hướng tăng
-         neutral  = tin tức trung tính hoặc lẫn lộn
-         negative = tin tức tiêu cực, rủi ro giảm giá
+3. Article (tùy chọn) — Theo PROMPT PTCB:
+     Nếu có dữ liệu: đánh giá sentiment tổng hợp từ 3 phần:
+         1. Tác động về mô đến Ngành (chính sách/tin tức tác động TÍCH CỰC / TIÊU CỰC tới ngành).
+         2. Tác động vi mô đến Mã cổ phiếu (tác động trực tiếp, lợi thế cạnh tranh).
+         3. Kết luận triển vọng (giải thích rõ TÍCH CỰC / TIÊU CỰC).
+         positive = tin tức/chính sách tác động tích cực, hỗ trợ xu hướng tăng, không có rủi ro lớn.
+         neutral  = tin tức lẫn lộn (có cả tích cực, tiêu cực), hoặc tác động trung tính.
+         negative = tin tức/chính sách tác động tiêu cực, rủi ro giảm giá, không có hỗ trợ tích cực.
      Nếu thiếu dữ liệu hoặc đang tạm ngưng: trả về "N/A".
 
 PHẦN II — LOGIC TỔNG HỢP (CỨNG, KHÔNG OVERRIDE)
@@ -416,7 +473,7 @@ Ví dụ (chỉ bật 3 chỉ số, max_score = 3 → ngưỡng kỹ thuật = 2
 PHẦN III — VIẾT analysis (4 TRƯỜNG RIÊNG BIỆT)
 
 Trường `analysis` là một object gồm 4 trường text riêng biệt (technical, fundamental, news, summary).
-Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ngặt:
+Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ngặt theo PROMPT PTCB:
 
     ĐỘ CHI TIẾT (BẮT BUỘC):
     - Phân tích PHẢI cụ thể, giải thích rõ VÌ SAO mạnh / VÌ SAO yếu — KHÔNG nói chung chung.
@@ -435,6 +492,7 @@ Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ng
     Điểm số 0 hoặc tín hiệu tiêu cực KHÔNG đồng nghĩa với "không có dữ liệu" — vẫn phải phân tích đầy đủ.
 
     - TUYỆT ĐỐI KHÔNG nhắc lại quyết định cuối cùng (Mua/Chờ) và điểm số confidence ở bất kỳ trường nào.
+
     - analysis.technical: Đi qua TỪNG chỉ số CÓ trong dữ liệu (RSI, MA, Bollinger Bands, MACD, KDJ).
       Với mỗi chỉ số: nêu giá trị hiện tại (và kỳ trước nếu có), trạng thái Tích cực/Tiêu cực, VÌ SAO
       (dựa trên ngưỡng và cơ chế của chỉ số đó), và hàm ý. Định hướng cách lý giải:
@@ -444,46 +502,82 @@ Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ng
         • MACD: MACD so với Signal (vừa cắt lên = tín hiệu mua, cắt xuống = bán); histogram tăng (đà mạnh dần) hay giảm (đà yếu dần).
         • KDJ: K so với D (cắt lên/xuống), J tăng tốc hay suy yếu, vùng quá mua (>80) / quá bán (<20).
       Cuối phần, nêu RÕ chỉ số nào đang ỦNG HỘ và chỉ số nào đang CẢN TRỞ, và vì sao tổng điểm kỹ thuật ra như vậy.
-    - analysis.fundamental: BẮT BUỘC viết theo CẤU TRÚC NHIỀU ĐOẠN, mỗi nhóm/cấu phần chỉ số CÓ dữ liệu là 1 đoạn RIÊNG mở đầu bằng
-      ĐÚNG tên in đậm. Doanh nghiệp phi tài chính theo thứ tự: **Khả năng thanh toán** → **Đòn bẩy tài chính** → **Hiệu quả hoạt động** →
-      **Khả năng sinh lời** → **Định giá**. NGÀNH TÀI CHÍNH (dữ liệu theo khung CAMELS) theo thứ tự: **C — An toàn vốn** → **A — Chất lượng tài sản** →
-      **M — Năng lực quản trị** → **E — Khả năng sinh lời** → **L — Thanh khoản** → **S — Độ nhạy rủi ro thị trường** → **Định giá**.
-      KHÔNG gộp tất cả thành một đoạn văn chung chung. Với ngành tài chính, tôn trọng các ghi chú "chưa có CAR/NPL/NIM/LDR/CIR" — nêu rõ hạn chế đó thay vì bịa số.
-      SO SÁNH TRUNG VỊ NGÀNH (BẮT BUỘC CHO MỌI MÃ khi input có bảng "So sánh với ngành"): trong TỪNG đoạn nhóm/cấu phần, PHẢI đối chiếu chỉ số chính của mã với trung vị ngành TƯƠNG ỨNG và nêu rõ CAO HƠN / THẤP HƠN / TƯƠNG ĐƯƠNG kèm con số ngành (vd "Nợ/VCSH 2.17 so với trung vị ngành 0.85 → cao hơn nhiều, rủi ro đòn bẩy trên mặt bằng ngành"), đồng thời so CAGR mã với CAGR ngành (mã tăng nhanh/chậm hơn ngành). Đây là căn cứ chính để kết luận cổ phiếu tốt/xấu, đắt/rẻ TƯƠNG ĐỐI so với ngành — không được bỏ qua ở bất kỳ đoạn nào có số liệu ngành.
-      Trong mỗi đoạn (2–4 câu): nêu giá trị năm gần nhất (và năm đầu kỳ để thấy xu hướng), ĐỐI CHIẾU TRUNG VỊ NGÀNH như trên, và VÌ SAO tốt hay đáng lo.
-      Với 4 nhóm ĐẦU (trừ Định giá): BẮT BUỘC trích dẫn CAGR (dạng "X%/năm") của ít nhất 1 chỉ số chính trong nhóm và giải thích ý nghĩa.
-      Đọc ĐÚNG chiều xu hướng theo chuỗi năm và dấu CAGR: CAGR dương = tăng, CAGR âm = giảm — TUYỆT ĐỐI không mô tả ngược (vd không viết "giảm từ 1.26 xuống 1.40"). Định hướng:
-        • Khả năng thanh toán: thanh toán hiện hành/nhanh/tiền mặt > 1 = an toàn, < 1 = rủi ro ngắn hạn; CAGR cho biết thanh khoản đang cải thiện hay suy giảm.
-        • Đòn bẩy tài chính: Nợ/VCSH thấp = an toàn, cao = rủi ro; khả năng trả lãi (càng cao càng dễ trả lãi vay); CAGR của Nợ/VCSH cho biết nợ đang tăng hay giảm.
-          🔍 PHÂN TÍCH DUPONT (bắt buộc nếu có đủ dữ liệu): Phải giải thích cách ROE được tạo ra từ ba thành phần:
-             ROE = Biên LN ròng (%) × Vòng quay TS (lần) × Đòn bẩy TC (lần)
-             Sau đó NÊU RÕ:
-             1️⃣ Thành phần nào đang đỡ ROE (profitability, efficiency, hay leverage)?
-             2️⃣ Công ty đang dùng chiến lược nào: (a) Dùng vốn chủ yếu, lợi nhuận cao (margin); (b) Dùng nợ, hiệu quả khai thác tốt; hay (c) Dùng nợ để bù lợi nhuận/hiệu quả thấp (rủi ro)?
-             3️⃣ CAGR từng thành phần để thấy xu hướng 3-5 năm.
-        • Hiệu quả hoạt động: vòng quay tài sản/TSCĐ càng cao càng khai thác tốt tài sản; số ngày tồn kho & phải thu càng thấp càng tốt (CAGR âm của số ngày = cải thiện).
-        • Khả năng sinh lời: ROE > 15% là tốt; ROA; biên lợi nhuận gộp/ròng; CAGR cho biết sinh lời cải thiện hay suy giảm.
-        • Định giá: P/E, P/B, EV/EBITDA cao hay thấp so với ngành & lịch sử → cổ phiếu đắt hay rẻ (KHÔNG cần CAGR). LƯU Ý: với ngành tài chính (ngân hàng/bảo hiểm/dịch vụ tài chính) dữ liệu chỉ có P/B — định giá theo P/B, TUYỆT ĐỐI không nhắc P/E hay EV/EBITDA cho nhóm này.
-      Lưu ý CAGR "—" nghĩa là không tính được (dữ liệu thiếu hoặc có giá trị âm) — nói rõ "không tính được CAGR", đừng suy diễn.
-      CHỈ nhắc chỉ số THỰC SỰ có trong dữ liệu; TUYỆT ĐỐI KHÔNG nhắc tổng tài sản, doanh thu, dòng tiền hay chỉ số không xuất hiện. Nếu thiếu chỉ số quan trọng (vd Nợ/VCSH), nêu rõ điều đó HẠN CHẾ độ tin cậy của đánh giá ra sao.
-    - analysis.news: Tóm tắt các tin tức/sự kiện nổi bật và GIẢI THÍCH tác động (tích cực/tiêu cực) tới triển vọng cổ phiếu.
-    - analysis.summary: Kết luận tổng hợp ĐỊNH TÍNH. TUYỆT ĐỐI KHÔNG nêu con số giá mua / chốt lời / cắt lỗ / số nến giữ / tỷ lệ R/R cụ thể — hệ thống sẽ tự tính và chèn các con số chính xác này vào cuối summary. Nếu recommendation = Mua: giải thích vì sao đáng mua và mức độ phù hợp với kỳ hạn (không kèm số liệu giá). Nếu recommendation = Chờ: giải thích các yếu tố kỹ thuật/cơ bản nào chưa đạt điều kiện.
 
-PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ VÀ QUẢN TRỊ RỦI RO
+    - analysis.fundamental: BẮT BUỘC viết theo CẤU TRÚC NHIỀU ĐOẠN theo PROMPT PTCB (từng nhóm/cấu phần = 1 đoạn riêng in đậm), KHÔNG GỘP.
 
-Hệ thống chỉ sử dụng khung nến ngày (`interval` = "1d"). Dựa vào kỳ hạn đầu tư (`investment_horizon` từ context), hãy áp dụng các giới hạn cứng (hard boundaries) sau đây để xác định mức chốt lời (TP), cắt lỗ (SL) và số nến giữ tối đa (max_hold_candles):
-- Kỳ hạn Ngắn hạn (nến 1d): TP từ 8% đến 15% từ giá mua; SL từ 4% đến 7% từ giá mua; max_hold_candles từ 5 đến 15 nến.
-- Kỳ hạn Trung hạn (nến 1d): TP từ 15% đến 30% từ giá mua; SL từ 7% đến 12% từ giá mua; max_hold_candles từ 15 đến 60 nến.
-- Kỳ hạn Dài hạn (nến 1d): TP từ 40% đến 80% từ giá mua; SL từ 15% đến 20% từ giá mua; max_hold_candles từ 120 đến 260 nến.
+      DOANH NGHIỆP PHI TÀI CHÍNH — 5 nhóm, BẮT BUỘC theo thứ tự:
+      1. **Khả năng thanh toán**: Giá trị năm gần nhất (và năm đầu kỳ), so ngưỡng > 1 = an toàn, < 1 = rủi ro.
+         BẮTBUỘC trích dẫn CAGR của ít nhất 1 chỉ số chính (thanh toán hiện hành / nhanh / tiền mặt).
+         Đối chiếu trung vị ngành (CAGR ngành). Giải thích xu hướng cải thiện / suy giảm.
+      2. **Đòn bẩy tài chính**: Nợ/VCSH, khả năng trả lãi, giá trị năm gần nhất + năm đầu.
+         BẮTBUỘC trích dẫn CAGR Nợ/VCSH (tăng/giảm nợ?). Đối chiếu trung vị ngành.
+         🔍 PHÂN TÍCH DUPONT (bắt buộc nếu có đủ dữ liệu ROE, biên LN, vòng quay TS, đòn bẩy TC):
+            - Giải thích ROE = Biên LN ròng (%) × Vòng quay TS × Đòn bẩy TC.
+            - NÊU RÕ 3 điểm: (1) Thành phần nào đỡ ROE (margin, efficiency, leverage)?
+                           (2) Chiến lược nào: (a) vốn cao + margin cao, (b) nợ + efficiency tốt, (c) nợ bù margin/efficiency thấp?
+                           (3) CAGR 3 thành phần 3-5 năm → xu hướng.
+      3. **Hiệu quả hoạt động**: Vòng quay TS/TSCĐ, số ngày tồn kho, số ngày phải thu.
+         BẮTBUỘC trích dẫn CAGR của ≥1 chỉ số. Lưu ý: CAGR âm của số ngày = cải thiện, không phải suy giảm.
+         Đối chiếu trung vị ngành. Khai thác tốt hay đáng lo?
+      4. **Khả năng sinh lời**: ROE, ROA, biên lợi nhuận gộp/ròng. Giá trị năm gần nhất + năm đầu.
+         BẮTBUỘC trích dẫn CAGR (ROE > 15% = tốt, < 8% = yếu). Đối chiếu trung vị ngành.
+         Sinh lời cải thiện / suy giảm?
+      5. **Định giá**: P/E, P/B, EV/EBITDA (nếu có). So với ngành & lịch sử.
+         KHÔNG cần CAGR cho mục này. Cổ phiếu đắt / rẻ tương đối?
 
-Quy tắc tinh chỉnh (refining rules):
-1. Các khoảng TP, SL và max_hold_candles nêu trên là GIỚI HẠN CỨNG. Mọi mức giá đề xuất MUA, CHỐT LỜI, CẮT LỖ phải tuân thủ tuyệt đối các khoảng này. Bạn chỉ được phép tinh chỉnh mức giá TRONG PHẠM VI các giới hạn đó dựa vào:
-   - Biên độ ATR gần nhất (nếu có): dùng 2*ATR làm SL tham chiếu.
-   - Vùng kháng cự gần nhất để xác định TP tham chiếu.
-   - Vùng hỗ trợ gần nhất để xác định SL tham chiếu.
-   - Dải Bollinger Bands (nếu có): SL không được thấp hơn đường biên dưới (lower band).
-   Tuyệt đối KHÔNG được tinh chỉnh vượt ra ngoài giới hạn cứng (ví dụ: đối với Trung hạn, SL tinh chỉnh bắt buộc phải nằm trong khoảng 7% đến 12%, tuyệt đối không được nhỏ hơn 7% hay lớn hơn 12%).
-2. Tỷ lệ Risk/Reward (TP/SL) tối thiểu phải đạt từ 1.5 trở lên. Nếu sau khi tinh chỉnh trong phạm vi giới hạn cứng mà không đạt tỷ lệ R/R >= 1.5, bạn phải chuyển recommendation sang "Chờ" (dù điểm số kỹ thuật >= 3).
+      NGÀNH TÀI CHÍNH (ngân hàng, bảo hiểm, DVTC — theo khung CAMELS) — 7 mục, BẮT BUỘC theo thứ tự:
+      1. **C — An toàn vốn**: CAR (nếu có), giá trị năm gần nhất + năm đầu. BẮTBUỘC CAGR.
+         Đối chiếu trung vị ngành. Vốn dày / mỏng?
+      2. **A — Chất lượng tài sản**: NPL, LLR (nếu có). BẮTBUỘC CAGR.
+         Đối chiếu trung vị ngành. Tài sản xấu?
+      3. **M — Năng lực quản trị**: CIR (nếu có), kiểm soát chi phí. BẮTBUỘC CAGR.
+         Đối chiếu trung vị ngành.
+      4. **E — Khả năng sinh lời**: NIM, ROE, ROA (nếu có). BẮTBUỘC CAGR.
+         Đối chiếu trung vị ngành. Sinh lời tốt?
+      5. **L — Thanh khoản**: LDR hoặc chỉ số thanh khoản tương ứng (nếu có). BẮTBUỘC CAGR + xu hướng.
+         Đối chiếu trung vị ngành.
+      6. **S — Độ nhạy rủi ro thị trường**: Rủi ro ngoại tệ, lãi suất (nếu có). Đối chiếu ngành.
+      7. **Định giá**: CHỈ dùng P/B (TUYỆT ĐỐI không nhắc P/E / EV/EBITDA cho ngành tài chính).
+         So với ngành. Đắt / rẻ?
+
+      ⚠️ CẢNH BÁO: Tôn trọng ghi chú "chưa có CAR/NPL/NIM/LDR/CIR" — KHÔNG bịa, NÊU RÕ hạn chế.
+      ✅ BẮT BUỘC SO SÁNH TRUNG VỊ NGÀNH (nếu input có "So sánh với ngành"):
+         - Mỗi đoạn phải nêu: "Chỉ số X: Y so với trung vị ngành Z → cao hơn / thấp hơn / tương đương".
+         - So CAGR mã vs CAGR ngành (mã tăng nhanh / chậm hơn?).
+         - Đây là căn cứ chính kết luận cổ phiếu tốt/xấu, đắt/rẻ TƯƠNG ĐỐI — không bỏ qua.
+      ✅ ĐỌC ĐÚNG chiều CAGR: CAGR dương = tăng, CAGR âm = giảm (không mô tả ngược).
+      ✅ Lưu ý CAGR "—" = không tính được → nói "không tính được CAGR", không suy diễn.
+      ✅ CHỈ nhắc chỉ số CÓ trong dữ liệu; KHÔNG nhắc tổng tài sản, doanh thu, dòng tiền nếu không có.
+
+    - analysis.news: Theo PROMPT PTCB, PHẢI gồm 3 phần riêng biệt (dấu ## hoặc **):
+      1. **Tác động về mô đến Ngành**: Cách chính sách/tin tức tác động TÍCH CỰC / TIÊU CỰC tới tổng cầu, hành vi tiêu dùng/đầu tư, hoạt động ngành.
+      2. **Tác động vi mô đến Mã [TÊN MÃ]**: Chính sách nào tác động trực tiếp tới yếu tố nào của công ty? Công ty có lợi thế cạnh tranh gì để phòng thủ/tận dụng?
+      3. **Kết luận triển vọng và định giá lại**: BẮT BUỘC GIẢI THÍCH rõ tác động là TÍCH CỰC (tăng triển vọng, giá tăng) hay TIÊU CỰC (giảm triển vọng, giá có rủi ro).
+      KHÔNG được để mơ hồ hoặc không kết luận.
+
+    - analysis.summary: Kết luận tổng hợp ĐỊNH TÍNH. TUYỆT ĐỐI KHÔNG nêu con số giá mua / chốt lời / cắt lỗ / số nến giữ / tỷ lệ R/R cụ thể — hệ thống sẽ tự tính và chèn vào cuối. Nếu recommendation = Mua: giải thích vì sao đáng mua và mức độ phù hợp với kỳ hạn (không kèm số liệu giá). Nếu recommendation = Chờ: giải thích các yếu tố kỹ thuật/cơ bản nào chưa đạt điều kiện.
+
+PHẦN IV — GIÁ MUA/CHỐT LỜI/CẮT LỖ VÀ QUẢN TRỊ RỦI RO (HARD BOUNDARIES)
+
+Hệ thống chỉ sử dụng khung nến ngày (`interval` = "1d"). Dựa vào kỳ hạn đầu tư (`investment_horizon` từ risk_appetite),
+áp dụng các giới hạn cứng (HARD BOUNDARIES) sau đây để xác định mức chốt lời (TP), cắt lỗ (SL) và số nến giữ tối đa (max_hold_candles):
+
+- Kỳ hạn NGẮN HẠN (1d candle): TP [8%, 15%] từ giá mua; SL [4%, 7%]; max_hold_candles [5, 15].
+- Kỳ hạn TRUNG HẠN (1d candle): TP [15%, 30%] từ giá mua; SL [7%, 12%]; max_hold_candles [15, 60].
+- Kỳ hạn DÀI HẠN (1d candle): TP [40%, 80%] từ giá mua; SL [15%, 20%]; max_hold_candles [120, 260].
+
+QUY TẮC TINH CHỈNH (CÓ GIỚI HẠN):
+1. Các khoảng TP, SL, max_hold_candles nêu trên là HARD BOUNDARIES — tuyệt đối bắt buộc.
+   Bạn CHỈ được phép tinh chỉnh MỨC GIÁ TRONG PHẠM VI các giới hạn đó, dựa vào:
+   - ATR (2×ATR) làm SL tham chiếu.
+   - Vùng kháng cự gần nhất → TP tham chiếu.
+   - Vùng hỗ trợ gần nhất → SL tham chiếu.
+   - Bollinger Bands: SL >= lower band.
+   TUYỆT ĐỐI KHÔNG vượt ra ngoài hard boundaries (vd Trung hạn: SL phải [7%, 12%], không được < 7% hoặc > 12%).
+
+2. Tỷ lệ Risk/Reward (TP/SL, tính bằng %) tối thiểu >= 1.5.
+   Nếu sau khi tinh chỉnh mà R/R < 1.5, PHẢI chuyển recommendation thành "Chờ" (dù technical_score >= ngưỡng).
+   Ưu tiên quy tắc này để tránh lệnh mua có rủi ro cao không xứng đáng.
 
 - Nếu recommendation = Mua:
     * entry_price gần current_price (trong khoảng ±0.5%)
@@ -492,11 +586,20 @@ Quy tắc tinh chỉnh (refining rules):
 - Nếu recommendation = Chờ:
     * entry_price, take_profit_price, stop_loss_price, max_hold_candles đặt là null
 
-QUY TẮC BẮT BUỘC:
-    ✓ Không bịa số liệu
-    ✓ Không override logic tổng hợp ở Phần II
-    ✓ Nếu nguồn nào thiếu dữ liệu, ghi rõ "Không có dữ liệu [nguồn]"
-    ✓ KHÔNG tự sinh confidence — hệ thống sẽ tính từ technical_score, fundamental_health, article_sentiment
+QUY TẮC BẮT BUỘC (PROMPT PTCB):
+    ✓ Không bịa số liệu — chỉ nhắc chỉ số THỰC SỰ có trong dữ liệu.
+    ✓ Không override logic tổng hợp ở Phần II (hard rules: technical ≥ ngưỡng, fundamental ≠ weak, article ≠ negative).
+    ✓ Nếu nguồn thiếu dữ liệu, ghi rõ "Không có dữ liệu [nguồn]" — CHỈ dùng fallback này khi cờ = false.
+    ✓ KHÔNG tự sinh confidence — hệ thống sẽ tính từ technical_score, fundamental_health, article_sentiment.
+    ✓ Fundamental: viết NHIỀU ĐOẠN riêng biệt (mỗi nhóm/cấu phần = 1 đoạn in đậm), KHÔNG GỘP.
+    ✓ Fundamental: BẮT BUỘC trích dẫn CAGR (ít nhất 1 chỉ số/nhóm, dạng "X%/năm") + đối chiếu trung vị ngành.
+    ✓ Fundamental: CAGR "—" = không tính được → nói "không tính được CAGR", không suy diễn.
+    ✓ Fundamental: DUPONT ANALYSIS bắt buộc nếu có ROE + biên LN + vòng quay + đòn bẩy → giải thích 3 điểm chiến lược.
+    ✓ Fundamental (ngành tài chính): dùng P/B để định giá, TUYỆT ĐỐI KHÔNG nhắc P/E hay EV/EBITDA.
+    ✓ News: viết 3 phần (tác động về mô → vi mô → kết luận), BẮT BUỘC giải thích TÍCH CỰC / TIÊU CỰC rõ ràng.
+    ✓ Đọc ĐÚNG chiều CAGR: CAGR dương = tăng, CAGR âm = giảm (KHÔNG mô tả ngược).
+    ✓ Hard Boundaries: TP/SL/hold PHẢI nằm trong khoảng theo kỳ hạn, R/R >= 1.5 (nếu không → "Chờ").
+    ✓ KHÔNG nhắc lại quyết định Mua/Chờ hay confidence score ở bất kỳ trường nào trong analysis.
 """
 
 

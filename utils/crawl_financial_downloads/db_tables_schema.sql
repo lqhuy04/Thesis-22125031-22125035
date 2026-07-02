@@ -88,6 +88,26 @@ CREATE TABLE IF NOT EXISTS financial_indicators (
     roic FLOAT,
     interest_coverage FLOAT,
     fixed_asset_turnover FLOAT,
+    -- Bank-only (credit institution) indicators; NULL for non-bank symbols.
+    casa_ratio FLOAT,
+    car FLOAT,
+    net_interest_income FLOAT,
+    nii_growth FLOAT,
+    credit_growth FLOAT,
+    deposit_growth FLOAT,
+    nim FLOAT,
+    yield_on_earning_assets FLOAT,
+    cost_of_funds FLOAT,
+    non_interest_to_interest_income FLOAT,
+    cir FLOAT,
+    equity_to_liabilities FLOAT,
+    equity_to_loans FLOAT,
+    equity_to_assets FLOAT,
+    ldr FLOAT,
+    npl_ratio FLOAT,
+    npl_coverage_ratio FLOAT,
+    loan_loss_reserve_ratio FLOAT,
+    provision_expense_to_loans FLOAT,
     PRIMARY KEY (symbol, year)
 );
 

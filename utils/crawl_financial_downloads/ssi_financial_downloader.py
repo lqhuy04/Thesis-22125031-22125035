@@ -258,40 +258,70 @@ def _xlsx_to_csv(src: str, dest: str) -> None:
         print(f"  Also saved sibling sheet: {os.path.basename(sibling)}")
 
 
-# Mapping from Vietnamese indicator names in the CSV → DB column names
-_INDICATOR_MAP: dict[str, str] = {
-    "Chu kỳ tiền":                                    "cash_cycle_days",
-    "Lợi nhuận sau thuế của Cổ đông công ty mẹ":     "net_income",
-    "Tăng trưởng lợi nhuận (%)":                     "profit_yoy",
-    "Doanh thu":                                      "revenue",
-    "Tăng trưởng doanh thu (%)":                     "revenue_yoy",
-    "Vốn hóa":                                        "market_cap",
-    "EPS (VND)":                                      "eps",
-    "P/E":                                            "pe_ratio",
-    "P/B":                                            "pb_ratio",
-    "P/S":                                            "ps_ratio",
-    "P/Cash Flow":                                    "p_cash_flow",
-    "Số CP lưu hành":                                 "shares_outstanding",
-    "EV/EBITDA":                                      "ev_ebitda",
-    "BVPS (VND)":                                     "bvps",
-    "Chỉ số thanh toán tiền mặt":                    "cash_ratio",
-    "Nợ/VCSH":                                        "debt_to_equity",
-    "ROE (%)":                                        "roe",
-    "ROA (%)":                                        "roa",
-    "Số ngày thu tiền bình quân":                     "days_receivable",
-    "Số ngày tồn kho bình quân":                     "days_inventory",
-    "Chỉ số thanh toán nhanh":                        "quick_ratio",
-    "Số ngày thanh toán bình quân":                  "days_payable",
-    "Biên lợi nhuận gộp (%)":                        "gross_margin",
-    "Biên EBIT (%)":                                  "ebit_margin",
-    "Biên lợi nhuận ròng (%)":                       "net_margin",
-    "Chỉ số thanh toán hiện thời":                   "current_ratio",
-    "Quay vòng tài sản":                              "asset_turnover",
-    "(Vay NH + DH)/VCSH":                             "loans_to_equity",
-    "Đòn bẩy tài chính":                             "financial_leverage",
-    "ROIC (%)":                                       "roic",
-    "Khả năng chi trả lãi vay":                      "interest_coverage",
-    "Vòng quay TSCĐ":                                "fixed_asset_turnover",
+# Mapping from DB column name → possible Vietnamese indicator labels in the CSV.
+#
+# Different SSI iBoard indicator templates use different wording for the same
+# concept (e.g. banks say "Số cổ phiếu lưu hành", everyone else says "Số CP lưu
+# hành"), and banks get a handful of credit-institution-only metrics (CAR, NIM,
+# LDR, NPL, CASA, CIR...) that never appear for other symbols. Rather than
+# maintaining a separate map per industry template, each column lists every
+# label variant we've observed; lookup tries them in order and NULLs out when
+# none match (e.g. bank-only columns stay NULL for non-bank symbols).
+_INDICATOR_COLUMNS: dict[str, list[str]] = {
+    "cash_cycle_days":       ["Chu kỳ tiền"],
+    "net_income":            ["Lợi nhuận sau thuế của Cổ đông công ty mẹ"],
+    "profit_yoy":            ["Tăng trưởng lợi nhuận (%)", "Tăng trưởng lợi nhuận sau thuế (%)"],
+    "revenue":               ["Doanh thu"],
+    "revenue_yoy":           ["Tăng trưởng doanh thu (%)"],
+    "market_cap":            ["Vốn hóa"],
+    "eps":                   ["EPS (VND)"],
+    "pe_ratio":              ["P/E"],
+    "pb_ratio":              ["P/B"],
+    "ps_ratio":              ["P/S"],
+    "p_cash_flow":           ["P/Cash Flow"],
+    "shares_outstanding":    ["Số CP lưu hành", "Số cổ phiếu lưu hành"],
+    "ev_ebitda":             ["EV/EBITDA"],
+    "bvps":                  ["BVPS (VND)"],
+    "cash_ratio":            ["Chỉ số thanh toán tiền mặt"],
+    "debt_to_equity":        ["Nợ/VCSH"],
+    "roe":                   ["ROE (%)"],
+    "roa":                   ["ROA (%)"],
+    "days_receivable":       ["Số ngày thu tiền bình quân"],
+    "days_inventory":        ["Số ngày tồn kho bình quân"],
+    "quick_ratio":           ["Chỉ số thanh toán nhanh"],
+    "days_payable":          ["Số ngày thanh toán bình quân"],
+    "gross_margin":          ["Biên lợi nhuận gộp (%)"],
+    "ebit_margin":           ["Biên EBIT (%)"],
+    "net_margin":            ["Biên lợi nhuận ròng (%)"],
+    "current_ratio":         ["Chỉ số thanh toán hiện thời"],
+    "asset_turnover":        ["Quay vòng tài sản"],
+    "loans_to_equity":       ["(Vay NH + DH)/VCSH"],
+    "financial_leverage":    ["Đòn bẩy tài chính"],
+    "roic":                  ["ROIC (%)"],
+    "interest_coverage":     ["Khả năng chi trả lãi vay"],
+    "fixed_asset_turnover":  ["Vòng quay TSCĐ"],
+
+    # ── Bank-only (credit institution) indicators — SSI iBoard only emits
+    # these for banks; the column stays NULL for every other symbol.
+    "casa_ratio":                     ["Tỉ lệ CASA"],
+    "car":                            ["CAR (%)"],
+    "net_interest_income":            ["Thu nhập lãi thuần"],
+    "nii_growth":                     ["Tăng trưởng thu nhập lãi thuần (%)"],
+    "credit_growth":                  ["Tăng trưởng tín dụng (%)"],
+    "deposit_growth":                 ["Tăng trưởng tiền gửi (%)"],
+    "nim":                            ["NIM (%)"],
+    "yield_on_earning_assets":        ["Tỉ suất sinh lời của Tài sản có sinh lãi (YOEA) (%)"],
+    "cost_of_funds":                  ["Chi phí tài chính trung bình (COF) (%)"],
+    "non_interest_to_interest_income": ["Thu nhập ngoài lãi/ Thu nhập từ lãi (%)"],
+    "cir":                            ["Chi phí/ Thu nhập (%)"],
+    "equity_to_liabilities":          ["Vốn CSH/ Tổng nợ"],
+    "equity_to_loans":                ["Vốn CSH/ Tổng cho vay"],
+    "equity_to_assets":               ["Vốn CSH/ Tài sản"],
+    "ldr":                            ["LDR (%)"],
+    "npl_ratio":                      ["Tỉ lệ nợ xấu (%)"],
+    "npl_coverage_ratio":             ["Dự phòng tín RR dụng/ Nợ xấu (%)"],
+    "loan_loss_reserve_ratio":        ["Dự phòng RR tín dụng/ Cho vay (%)"],
+    "provision_expense_to_loans":     ["Trích lập dự phòng/ Cho vay (%)"],
 }
 
 
@@ -325,7 +355,7 @@ def process_financial_indicators_csv(
     Returns
     ───────
     pd.DataFrame
-        Columns: symbol, year, <one column per indicator in _INDICATOR_MAP>
+        Columns: symbol, year, <one column per indicator in _INDICATOR_COLUMNS>
         Rows:    one per year (NaN where data was absent).
     """
     raw = pd.read_csv(csv_path, header=0, dtype=str)
@@ -387,15 +417,19 @@ def process_financial_indicators_csv(
     records: list[dict] = []
     for year in year_cols:
         record: dict = {"symbol": resolved_symbol, "year": year}
-        for vi_name, db_col in _INDICATOR_MAP.items():
-            value = indicator_data.get(vi_name, {}).get(year)
+        for db_col, vi_names in _INDICATOR_COLUMNS.items():
+            value = None
+            for vi_name in vi_names:
+                value = indicator_data.get(vi_name, {}).get(year)
+                if value is not None:
+                    break
             record[db_col] = value
         records.append(record)
 
     df = pd.DataFrame(records)
 
     # Drop years where every indicator is NaN (sparse trailing years)
-    indicator_cols = list(_INDICATOR_MAP.values())
+    indicator_cols = list(_INDICATOR_COLUMNS.keys())
     df = df.dropna(subset=indicator_cols, how="all").reset_index(drop=True)
 
     return df
