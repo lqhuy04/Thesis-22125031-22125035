@@ -217,6 +217,9 @@ class AnalysisBreakdown(BaseModel):
             "tôn trọng các ghi chú 'chưa có CAR/NPL/NIM/LDR' và KHÔNG bịa các chỉ số chuyên ngành không có. "
             "Với các nhóm/cấu phần định lượng (trừ Định giá và S): BẮT BUỘC trích dẫn con số CAGR (dạng 'X%/năm') của ít nhất 1 chỉ số chính "
             "trong nhóm và nêu ý nghĩa; nếu CAGR = '—' phải nói rõ 'không tính được CAGR' thay vì bịa. "
+            "SO SÁNH NGÀNH (BẮT BUỘC, áp dụng cho MỌI mã khi có bảng 'So sánh với ngành'): trong MỖI đoạn nhóm/cấu phần, "
+            "phải nêu rõ chỉ số chính của mã đang CAO HƠN / THẤP HƠN / TƯƠNG ĐƯƠNG trung vị ngành (kèm con số ngành, vd "
+            "'ROE 18.7% so với trung vị ngành 12.4% → cao hơn'), và so CAGR mã với CAGR ngành để biết mã tăng nhanh/chậm hơn ngành. "
             "Đọc đúng CHIỀU xu hướng: CAGR dương = tăng, CAGR âm = giảm — không mô tả ngược. "
             "CHỈ nhắc các chỉ số THỰC SỰ có trong dữ liệu; TUYỆT ĐỐI KHÔNG nhắc tổng tài sản, doanh thu, dòng tiền "
             "hay bất kỳ chỉ số nào không xuất hiện. Nếu thiếu chỉ số quan trọng thì nêu rõ ảnh hưởng tới độ tin cậy. "
@@ -301,11 +304,17 @@ class InvestmentRecommendation(BaseModel):
 
     fundamental_health: Literal["strong", "neutral", "weak", "N/A"] = Field(
         description=(
-            "Đánh giá sức khỏe tài chính:\n"
-            "  strong  = ROE > 15%, P/E hợp lý, nợ thấp, tăng trưởng dương\n"
-            "  neutral = chỉ số trung bình, không có dấu hiệu cực đoan\n"
-            "  weak    = ROE thấp, nợ cao, tăng trưởng âm, P/E quá cao\n"
-            "  N/A     = không có dữ liệu fundamental"
+            "Đánh giá sức khỏe tài chính dựa trên DuPont & chiến lược tài chính:\n"
+            "  strong  = ROE > 15% với chiến lược lành mạnh (lợi nhuận cao & nợ thấp HOẶC lợi nhuận cao & nợ vừa phải;\n"
+            "            hoặc hiệu quả khai thác tốt với nợ thấp); CAGR ROE dương; P/E hợp lý\n"
+            "  neutral = ROE 8-15% hoặc có yếu tố rủi ro vừa phải (nợ cao nhưng ROE/lợi nhuận chưa xấu);\n"
+            "            không có dấu hiệu cực đoan, CAGR ROE gần 0 hoặc lên xuống\n"
+            "  weak    = ROE < 8% HOẶC chiến lược cao rủi ro (nợ cao + ROE thấp + CAGR ROE âm);\n"
+            "            tăng trưởng âm, P/E quá cao so với tăng trưởng\n"
+            "  N/A     = không có dữ liệu fundamental\n"
+            "\n"
+            "  ⚠️ CẢNH BÁO RỦI RO: Nếu mã có Đòn bẩy TC > 3.0 + ROE đã suy giảm (CAGR ROE < 0),\n"
+            "  coi như WEAK (dù ROE hiện tại chưa xấu — công ty đang trong quá trình thoái)."
         )
     )
 
@@ -440,12 +449,18 @@ Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ng
       **Khả năng sinh lời** → **Định giá**. NGÀNH TÀI CHÍNH (dữ liệu theo khung CAMELS) theo thứ tự: **C — An toàn vốn** → **A — Chất lượng tài sản** →
       **M — Năng lực quản trị** → **E — Khả năng sinh lời** → **L — Thanh khoản** → **S — Độ nhạy rủi ro thị trường** → **Định giá**.
       KHÔNG gộp tất cả thành một đoạn văn chung chung. Với ngành tài chính, tôn trọng các ghi chú "chưa có CAR/NPL/NIM/LDR/CIR" — nêu rõ hạn chế đó thay vì bịa số.
-      Nếu có bảng "So sánh với ngành" (trung vị ngành): BẮT BUỘC dùng nó để nhận định mã ĐANG CAO HƠN hay THẤP HƠN mặt bằng ngành ở các chỉ tiêu chính (ROE, biên LN, đòn bẩy, định giá...), và so sánh CAGR mã với CAGR ngành để biết mã tăng trưởng nhanh/chậm hơn ngành. Đây là căn cứ quan trọng để kết luận cổ phiếu tốt/đắt tương đối so với ngành.
-      Trong mỗi đoạn (2–3 câu): nêu giá trị năm gần nhất (và năm đầu kỳ để thấy xu hướng), so sánh với ngưỡng/ngành/lịch sử, và VÌ SAO tốt hay đáng lo.
+      SO SÁNH TRUNG VỊ NGÀNH (BẮT BUỘC CHO MỌI MÃ khi input có bảng "So sánh với ngành"): trong TỪNG đoạn nhóm/cấu phần, PHẢI đối chiếu chỉ số chính của mã với trung vị ngành TƯƠNG ỨNG và nêu rõ CAO HƠN / THẤP HƠN / TƯƠNG ĐƯƠNG kèm con số ngành (vd "Nợ/VCSH 2.17 so với trung vị ngành 0.85 → cao hơn nhiều, rủi ro đòn bẩy trên mặt bằng ngành"), đồng thời so CAGR mã với CAGR ngành (mã tăng nhanh/chậm hơn ngành). Đây là căn cứ chính để kết luận cổ phiếu tốt/xấu, đắt/rẻ TƯƠNG ĐỐI so với ngành — không được bỏ qua ở bất kỳ đoạn nào có số liệu ngành.
+      Trong mỗi đoạn (2–4 câu): nêu giá trị năm gần nhất (và năm đầu kỳ để thấy xu hướng), ĐỐI CHIẾU TRUNG VỊ NGÀNH như trên, và VÌ SAO tốt hay đáng lo.
       Với 4 nhóm ĐẦU (trừ Định giá): BẮT BUỘC trích dẫn CAGR (dạng "X%/năm") của ít nhất 1 chỉ số chính trong nhóm và giải thích ý nghĩa.
       Đọc ĐÚNG chiều xu hướng theo chuỗi năm và dấu CAGR: CAGR dương = tăng, CAGR âm = giảm — TUYỆT ĐỐI không mô tả ngược (vd không viết "giảm từ 1.26 xuống 1.40"). Định hướng:
         • Khả năng thanh toán: thanh toán hiện hành/nhanh/tiền mặt > 1 = an toàn, < 1 = rủi ro ngắn hạn; CAGR cho biết thanh khoản đang cải thiện hay suy giảm.
         • Đòn bẩy tài chính: Nợ/VCSH thấp = an toàn, cao = rủi ro; khả năng trả lãi (càng cao càng dễ trả lãi vay); CAGR của Nợ/VCSH cho biết nợ đang tăng hay giảm.
+          🔍 PHÂN TÍCH DUPONT (bắt buộc nếu có đủ dữ liệu): Phải giải thích cách ROE được tạo ra từ ba thành phần:
+             ROE = Biên LN ròng (%) × Vòng quay TS (lần) × Đòn bẩy TC (lần)
+             Sau đó NÊU RÕ:
+             1️⃣ Thành phần nào đang đỡ ROE (profitability, efficiency, hay leverage)?
+             2️⃣ Công ty đang dùng chiến lược nào: (a) Dùng vốn chủ yếu, lợi nhuận cao (margin); (b) Dùng nợ, hiệu quả khai thác tốt; hay (c) Dùng nợ để bù lợi nhuận/hiệu quả thấp (rủi ro)?
+             3️⃣ CAGR từng thành phần để thấy xu hướng 3-5 năm.
         • Hiệu quả hoạt động: vòng quay tài sản/TSCĐ càng cao càng khai thác tốt tài sản; số ngày tồn kho & phải thu càng thấp càng tốt (CAGR âm của số ngày = cải thiện).
         • Khả năng sinh lời: ROE > 15% là tốt; ROA; biên lợi nhuận gộp/ròng; CAGR cho biết sinh lời cải thiện hay suy giảm.
         • Định giá: P/E, P/B, EV/EBITDA cao hay thấp so với ngành & lịch sử → cổ phiếu đắt hay rẻ (KHÔNG cần CAGR). LƯU Ý: với ngành tài chính (ngân hàng/bảo hiểm/dịch vụ tài chính) dữ liệu chỉ có P/B — định giá theo P/B, TUYỆT ĐỐI không nhắc P/E hay EV/EBITDA cho nhóm này.

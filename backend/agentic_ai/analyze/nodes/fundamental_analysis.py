@@ -129,6 +129,132 @@ def _fmt_val(value, spec: str, scale: float = 1.0, suffix: str = "") -> str:
         return "—"
 
 
+def _dupont_analysis(rows: list[dict]) -> str:
+    """Phân tích DuPont: ROE = Biên LN ròng × Vòng quay TS × Đòn bẩy TC
+
+    Công thức: ROE = (Net Income / Revenue) × (Revenue / Total Assets) × (Total Assets / Equity)
+                   = Net Margin × Asset Turnover × Financial Leverage
+
+    Trả về markdown text với phân tích từng thành phần, chiến lược tài chính, và xu hướng.
+    """
+    if not rows:
+        return ""
+
+    inds = _last_n_years(rows, FUND_YEARS)
+    if not inds:
+        return ""
+
+    latest = inds[-1] if inds else {}
+
+    lines = ["", "### Phân tích DuPont (Tác động từng thành phần lên ROE)"]
+    lines.append(
+        "> ROE = Biên LN ròng (%) × Vòng quay TS (lần) × Đòn bẩy TC (lần)\n"
+        "> Công thức này giúp hiểu doanh nghiệp tạo lợi nhuận từ: (1) khả năng tính lãi trên doanh thu; "
+        "(2) hiệu quả khai thác tài sản; (3) mức sử dụng nợ."
+    )
+
+    # Thành phần 1: Biên lợi nhuận ròng (Net Margin)
+    net_margin = _latest(inds, "net_margin")
+    if net_margin is not None:
+        net_margin_pct = net_margin * 100
+        lines.append("")
+        lines.append(f"**1. Biên lợi nhuận ròng**: {net_margin_pct:.2f}%")
+        lines.append(
+            f"   Năm gần nhất: {_series(inds, 'net_margin', '.2f', scale=100, suffix='%')}"
+        )
+        cagr_nm = _cagr(inds, "net_margin")
+        cagr_nm_txt = f"{cagr_nm * 100:.2f}%/năm" if cagr_nm is not None else "—"
+        lines.append(
+            f"   • CAGR: {cagr_nm_txt}  →  Lợi nhuận ròng trên doanh thu đang "
+            f"{'cải thiện' if cagr_nm and cagr_nm > 0 else 'suy giảm' if cagr_nm else 'không tính được'}."
+        )
+
+    # Thành phần 2: Vòng quay tài sản (Asset Turnover)
+    asset_turnover = _latest(inds, "asset_turnover")
+    if asset_turnover is not None:
+        lines.append("")
+        lines.append(f"**2. Vòng quay tài sản (lần)**: {asset_turnover:.2f}x")
+        lines.append(
+            f"   Năm gần nhất: {_series(inds, 'asset_turnover', '.2f', suffix='x')}"
+        )
+        cagr_at = _cagr(inds, "asset_turnover")
+        cagr_at_txt = f"{cagr_at * 100:.2f}%/năm" if cagr_at is not None else "—"
+        lines.append(
+            f"   • CAGR: {cagr_at_txt}  →  Khả năng khai thác tài sản đang "
+            f"{'tốt lên' if cagr_at and cagr_at > 0 else 'yếu đi' if cagr_at else 'không tính được'}."
+        )
+
+    # Thành phần 3: Đòn bẩy tài chính (Financial Leverage)
+    fin_leverage = _latest(inds, "financial_leverage")
+    debt_to_equity = _latest(inds, "debt_to_equity")
+    if fin_leverage is not None:
+        lines.append("")
+        lines.append(f"**3. Đòn bẩy tài chính (TS/VCSH)**: {fin_leverage:.2f}x")
+        lines.append(
+            f"   Năm gần nhất: {_series(inds, 'financial_leverage', '.2f', suffix='x')}"
+        )
+        if debt_to_equity is not None:
+            lines.append(
+                f"   Nợ/VCSH: {_series(inds, 'debt_to_equity', '.2f')}"
+            )
+        cagr_fl = _cagr(inds, "financial_leverage")
+        cagr_fl_txt = f"{cagr_fl * 100:.2f}%/năm" if cagr_fl is not None else "—"
+
+        # Phân tích chiến lược tài chính
+        leverage_interpretation = ""
+        if fin_leverage is not None:
+            if fin_leverage < 1.5:
+                leverage_interpretation = "→ **An toàn, ít dùng nợ** (vốn chủ sở hữu nhiều hơn nợ)"
+            elif fin_leverage < 2.5:
+                leverage_interpretation = "→ **Cân bằng**, sử dụng nợ vừa phải"
+            else:
+                leverage_interpretation = "→ **Rủi ro cao**, phụ thuộc nhiều vào nợ"
+
+        lines.append(
+            f"   • CAGR: {cagr_fl_txt}  →  Mức nợ đang {'tăng' if cagr_fl and cagr_fl > 0 else 'giảm' if cagr_fl else 'không xác định'}. "
+            f"{leverage_interpretation}"
+        )
+
+    # Tổng hợp ROE từ 3 thành phần
+    roe_latest = _latest(inds, "roe")
+    if roe_latest is not None and net_margin is not None and asset_turnover is not None and fin_leverage is not None:
+        lines.append("")
+        lines.append("**Tổng hợp DuPont:**")
+        calculated_roe = (net_margin / 100) * asset_turnover * fin_leverage * 100
+        roe_pct = roe_latest * 100
+        lines.append(
+            f"   ROE năm gần nhất: {roe_pct:.2f}% "
+            f"(từ công thức: {net_margin_pct:.2f}% × {asset_turnover:.2f}x × {fin_leverage:.2f}x ≈ {calculated_roe:.2f}%)"
+        )
+
+        cagr_roe = _cagr(inds, "roe")
+        cagr_roe_txt = f"{cagr_roe * 100:.2f}%/năm" if cagr_roe is not None else "—"
+
+        lines.append(
+            f"   • Xu hướng ROE: {cagr_roe_txt}  →  Khả năng sinh lợi đang "
+            f"{'tăng trưởng' if cagr_roe and cagr_roe > 0 else 'suy giảm' if cagr_roe else 'không tính được'}."
+        )
+
+        # Kết luận chiến lược
+        lines.append("")
+        lines.append("**Nhận xét chiến lược tài chính:**")
+
+        if asset_turnover > 1.5 and fin_leverage >= 2:
+            strategy = "Công ty phụ thuộc nợ để khai thác tài sản. ROE cao chủ yếu do đòn bẩy, rủi ro nếu tài chính suy thoái."
+        elif asset_turnover > 1.5 and fin_leverage < 1.5:
+            strategy = "Công ty khai thác tài sản tốt với vốn chủ yếu từ VCSH. Chiến lược bảo thủ, an toàn."
+        elif asset_turnover <= 1.5 and fin_leverage >= 2:
+            strategy = "Công ty dùng nợ để bù lại hiệu quả khai thác tài sản thấp. Rủi ro cao nếu doanh thu giảm."
+        elif net_margin > 0.1:
+            strategy = "Công ty lợi nhuận từ biên cao (margin tốt). Ít phụ thuộc vào đòn bẩy."
+        else:
+            strategy = "Công ty có ROE thấp. Cần cải thiện lợi nhuận hoặc hiệu quả khai thác tài sản."
+
+        lines.append(f"   {strategy}")
+
+    return "\n".join(lines).strip()
+
+
 def _latest(rows: list[dict], key: str) -> float | None:
     """Giá trị của năm gần nhất có dữ liệu cho `key`."""
     best: tuple[int, float] | None = None
@@ -256,6 +382,10 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
                 _line("Biên lợi nhuận ròng", inds, "net_margin", ".2f", scale=100, suffix="%", cagr=True),
                 _line("EPS (đồng)", inds, "eps", ",.0f", cagr=True),
             ]
+            # Thêm phân tích DuPont cho ngành tài chính
+            dupont_text = _dupont_analysis(inds)
+            if dupont_text:
+                parts.append(dupont_text)
 
         if selection.get("liquidity", True):
             parts += [
@@ -294,6 +424,10 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
                 _line("Đòn bẩy tài chính (Tổng TS/VCSH)", inds, "financial_leverage", ".2f", cagr=True),
                 _line("Khả năng trả lãi", inds, "interest_coverage", ".2f", suffix="x", cagr=True),
             ]
+            # Thêm phân tích DuPont
+            dupont_text = _dupont_analysis(inds)
+            if dupont_text:
+                parts.append(dupont_text)
 
         if selection.get("efficiency", True):
             parts += [
@@ -314,6 +448,11 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
                 _line("Biên lợi nhuận gộp", inds, "gross_margin", ".2f", scale=100, suffix="%", cagr=True),
                 _line("Biên lợi nhuận ròng", inds, "net_margin", ".2f", scale=100, suffix="%", cagr=True),
             ]
+            # Thêm phân tích DuPont nếu chưa có trong leverage section
+            if not selection.get("leverage", True):
+                dupont_text = _dupont_analysis(inds)
+                if dupont_text:
+                    parts.append(dupont_text)
 
     if selection.get("valuation", True):
         if is_financial:
