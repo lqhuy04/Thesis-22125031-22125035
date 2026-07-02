@@ -211,7 +211,11 @@ class AnalysisBreakdown(BaseModel):
             "Phân tích cơ bản CHI TIẾT bằng tiếng Việt. Nếu has_fundamental_data = true: BẮT BUỘC đi lần lượt "
             "qua TỪNG nhóm chỉ số CÓ trong dữ liệu, MỖI NHÓM MỘT ĐOẠN RIÊNG mở đầu bằng ĐÚNG tên nhóm in đậm "
             "(**Khả năng thanh toán**, **Đòn bẩy tài chính**, **Hiệu quả hoạt động**, **Khả năng sinh lời**, **Định giá**). "
-            "Với 4 nhóm đầu (trừ Định giá): BẮT BUỘC trích dẫn con số CAGR (dạng 'X%/năm') của ít nhất 1 chỉ số chính "
+            "NGÀNH TÀI CHÍNH (ngân hàng/bảo hiểm/DVTC): dữ liệu trình bày theo khung CAMELS — khi đó BẮT BUỘC phân tích "
+            "theo TỪNG cấu phần CÓ trong dữ liệu (**C — An toàn vốn**, **A — Chất lượng tài sản**, **M — Năng lực quản trị**, "
+            "**E — Khả năng sinh lời**, **L — Thanh khoản**, **S — Độ nhạy rủi ro thị trường**) thay vì 5 nhóm doanh nghiệp; "
+            "tôn trọng các ghi chú 'chưa có CAR/NPL/NIM/LDR' và KHÔNG bịa các chỉ số chuyên ngành không có. "
+            "Với các nhóm/cấu phần định lượng (trừ Định giá và S): BẮT BUỘC trích dẫn con số CAGR (dạng 'X%/năm') của ít nhất 1 chỉ số chính "
             "trong nhóm và nêu ý nghĩa; nếu CAGR = '—' phải nói rõ 'không tính được CAGR' thay vì bịa. "
             "Đọc đúng CHIỀU xu hướng: CAGR dương = tăng, CAGR âm = giảm — không mô tả ngược. "
             "CHỈ nhắc các chỉ số THỰC SỰ có trong dữ liệu; TUYỆT ĐỐI KHÔNG nhắc tổng tài sản, doanh thu, dòng tiền "
@@ -431,9 +435,12 @@ Viết bằng tiếng Việt, chi tiết và khách quan, tuân thủ nghiêm ng
         • MACD: MACD so với Signal (vừa cắt lên = tín hiệu mua, cắt xuống = bán); histogram tăng (đà mạnh dần) hay giảm (đà yếu dần).
         • KDJ: K so với D (cắt lên/xuống), J tăng tốc hay suy yếu, vùng quá mua (>80) / quá bán (<20).
       Cuối phần, nêu RÕ chỉ số nào đang ỦNG HỘ và chỉ số nào đang CẢN TRỞ, và vì sao tổng điểm kỹ thuật ra như vậy.
-    - analysis.fundamental: BẮT BUỘC viết theo CẤU TRÚC 5 ĐOẠN, mỗi nhóm chỉ số CÓ dữ liệu là 1 đoạn RIÊNG mở đầu bằng
-      ĐÚNG tên nhóm in đậm, theo thứ tự: **Khả năng thanh toán** → **Đòn bẩy tài chính** → **Hiệu quả hoạt động** →
-      **Khả năng sinh lời** → **Định giá**. KHÔNG gộp tất cả thành một đoạn văn chung chung.
+    - analysis.fundamental: BẮT BUỘC viết theo CẤU TRÚC NHIỀU ĐOẠN, mỗi nhóm/cấu phần chỉ số CÓ dữ liệu là 1 đoạn RIÊNG mở đầu bằng
+      ĐÚNG tên in đậm. Doanh nghiệp phi tài chính theo thứ tự: **Khả năng thanh toán** → **Đòn bẩy tài chính** → **Hiệu quả hoạt động** →
+      **Khả năng sinh lời** → **Định giá**. NGÀNH TÀI CHÍNH (dữ liệu theo khung CAMELS) theo thứ tự: **C — An toàn vốn** → **A — Chất lượng tài sản** →
+      **M — Năng lực quản trị** → **E — Khả năng sinh lời** → **L — Thanh khoản** → **S — Độ nhạy rủi ro thị trường** → **Định giá**.
+      KHÔNG gộp tất cả thành một đoạn văn chung chung. Với ngành tài chính, tôn trọng các ghi chú "chưa có CAR/NPL/NIM/LDR/CIR" — nêu rõ hạn chế đó thay vì bịa số.
+      Nếu có bảng "So sánh với ngành" (trung vị ngành): BẮT BUỘC dùng nó để nhận định mã ĐANG CAO HƠN hay THẤP HƠN mặt bằng ngành ở các chỉ tiêu chính (ROE, biên LN, đòn bẩy, định giá...), và so sánh CAGR mã với CAGR ngành để biết mã tăng trưởng nhanh/chậm hơn ngành. Đây là căn cứ quan trọng để kết luận cổ phiếu tốt/đắt tương đối so với ngành.
       Trong mỗi đoạn (2–3 câu): nêu giá trị năm gần nhất (và năm đầu kỳ để thấy xu hướng), so sánh với ngưỡng/ngành/lịch sử, và VÌ SAO tốt hay đáng lo.
       Với 4 nhóm ĐẦU (trừ Định giá): BẮT BUỘC trích dẫn CAGR (dạng "X%/năm") của ít nhất 1 chỉ số chính trong nhóm và giải thích ý nghĩa.
       Đọc ĐÚNG chiều xu hướng theo chuỗi năm và dấu CAGR: CAGR dương = tăng, CAGR âm = giảm — TUYỆT ĐỐI không mô tả ngược (vd không viết "giảm từ 1.26 xuống 1.40"). Định hướng:

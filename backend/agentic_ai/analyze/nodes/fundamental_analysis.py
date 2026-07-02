@@ -3,6 +3,42 @@ from agentic_ai.analyze.selection import get_selection
 from app.services.fundamental_analysis_service import FundamentalAnalysisService
 from app.services.company_service import CompanyService
 
+# Tên ngành theo chữ số đầu mã ICB (cấp Industry). Dùng để gắn nhãn bảng so sánh ngành.
+_ICB_INDUSTRY_NAMES = {
+    "0": "Dầu khí",
+    "1": "Vật liệu cơ bản",
+    "2": "Công nghiệp",
+    "3": "Hàng tiêu dùng",
+    "4": "Y tế",
+    "5": "Dịch vụ tiêu dùng",
+    "6": "Viễn thông",
+    "7": "Tiện ích",
+    "8": "Tài chính",
+    "9": "Công nghệ",
+}
+
+# Chỉ tiêu đưa vào bảng so sánh với ngành (chọn lọc theo góc nhìn chuyên viên tài
+# chính — không dùng hết bộ chỉ số). Mỗi mục: (nhãn, key, format, scale, hậu tố).
+_COMPARE_METRICS_FINANCIAL = [
+    ("ROE", "roe", ".2f", 100, "%"),
+    ("ROA", "roa", ".2f", 100, "%"),
+    ("Biên LN ròng", "net_margin", ".2f", 100, "%"),
+    ("Đòn bẩy TC (TS/VCSH)", "financial_leverage", ".2f", 1, ""),
+    ("Dư nợ/VCSH", "loans_to_equity", ".2f", 1, ""),
+    ("Thanh toán tiền mặt", "cash_ratio", ".2f", 1, ""),
+    ("P/B", "pb_ratio", ".2f", 1, ""),
+]
+_COMPARE_METRICS_NONFINANCIAL = [
+    ("ROE", "roe", ".2f", 100, "%"),
+    ("ROA", "roa", ".2f", 100, "%"),
+    ("Biên LN gộp", "gross_margin", ".2f", 100, "%"),
+    ("Biên LN ròng", "net_margin", ".2f", 100, "%"),
+    ("Vòng quay tài sản", "asset_turnover", ".2f", 1, "x"),
+    ("Nợ/VCSH", "debt_to_equity", ".2f", 1, ""),
+    ("P/E", "pe_ratio", ".2f", 1, ""),
+    ("P/B", "pb_ratio", ".2f", 1, ""),
+]
+
 
 def _is_financial_sector(icb_code) -> bool:
     """True nếu mã ngành ICB thuộc nhóm Tài chính (ICB Industry 8000: ngân hàng,
@@ -83,8 +119,71 @@ def _line(label: str, rows: list[dict], key: str, spec: str,
     return f"- {label}: {body}  ·  Tốc độ tăng trưởng TB (CAGR): {cagr_txt}"
 
 
+def _fmt_val(value, spec: str, scale: float = 1.0, suffix: str = "") -> str:
+    """Định dạng 1 giá trị đơn (dùng cho ô bảng); None/không parse được → '—'."""
+    if value is None:
+        return "—"
+    try:
+        return f"{format(float(value) * scale, spec)}{suffix}"
+    except (TypeError, ValueError):
+        return "—"
+
+
+def _latest(rows: list[dict], key: str) -> float | None:
+    """Giá trị của năm gần nhất có dữ liệu cho `key`."""
+    best: tuple[int, float] | None = None
+    for r in rows:
+        year, value = r.get("year"), r.get(key)
+        if year is None or value is None:
+            continue
+        try:
+            y, v = int(year), float(value)
+        except (TypeError, ValueError):
+            continue
+        if best is None or y > best[0]:
+            best = (y, v)
+    return best[1] if best else None
+
+
+def _format_industry_comparison(inds: list[dict], industry_rows: list[dict],
+                                is_financial: bool) -> list[str]:
+    """Bảng so sánh mã CP với TRUNG VỊ ngành (cùng Industry ICB): giá trị năm gần
+    nhất + CAGR của cả hai phía.
+
+    `industry_rows` là chuỗi trung vị ngành theo năm đã precompute (bảng
+    FA_Industry_Aggregate) — mỗi bản ghi có `year`, `peer_count` và các chỉ số.
+    Trả về [] nếu ngành < 3 mã (trung vị không đủ tin cậy để so sánh)."""
+    peer_count = max(
+        (r.get("peer_count") or 0 for r in industry_rows),
+        default=0,
+    )
+    if peer_count < 3:
+        return []
+
+    metrics = _COMPARE_METRICS_FINANCIAL if is_financial else _COMPARE_METRICS_NONFINANCIAL
+
+    lines = [
+        "",
+        f"### So sánh với ngành (trung vị ~{peer_count} mã cùng ngành ICB)",
+        "| Chỉ tiêu | Mã (gần nhất) | Ngành (trung vị) | CAGR mã | CAGR ngành |",
+        "|---|---|---|---|---|",
+    ]
+    for label, key, spec, scale, suffix in metrics:
+        stock_val = _fmt_val(_latest(inds, key), spec, scale, suffix)
+        ind_val = _fmt_val(_latest(industry_rows, key), spec, scale, suffix)
+
+        sc = _cagr(inds, key)
+        ic = _cagr(industry_rows, key)
+        stock_cagr = f"{sc * 100:.2f}%/năm" if sc is not None else "—"
+        ind_cagr = f"{ic * 100:.2f}%/năm" if ic is not None else "—"
+
+        lines.append(f"| {label} | {stock_val} | {ind_val} | {stock_cagr} | {ind_cagr} |")
+    return lines
+
+
 def _format_fundamental_output(summary, indicators, income_statements, cash_flows,
-                               selection: dict, is_financial: bool = False) -> str:
+                               selection: dict, is_financial: bool = False,
+                               industry_rows: list[dict] | None = None) -> str:
     # Cả 5 nhóm chỉ số cơ bản đều lấy từ FA_Indicator, nên chỉ cần chuỗi năm của
     # indicators (income_statements / cash_flows chỉ dùng cho cờ "có dữ liệu" ở agent).
     inds = _last_n_years(indicators)
@@ -99,7 +198,13 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
     else:
         year_label = "N/A"
 
-    if not latest_ind.get("gross_margin"):
+    if is_financial:
+        sector_note = (
+            "\n> 🏦 Ngành tài chính — phân tích theo khung CAMELS (C-A-M-E-L-S). "
+            "Một số chỉ số chuyên ngành (CAR, NPL, NIM, LDR, CIR) chưa có trong dữ liệu; "
+            "các cấu phần dùng chỉ số tổng quát làm proxy."
+        )
+    elif not latest_ind.get("gross_margin"):
         sector_note = "\n> ⚠️ Một số chỉ số không áp dụng cho ngành ngân hàng (gross margin, current ratio, D/E)."
     else:
         sector_note = ""
@@ -108,46 +213,107 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
     parts.append("### Tóm tắt tổng quan")
     parts.append((summary or {}).get("summary", "Không có dữ liệu"))
 
-    # 4 nhóm dưới đây kèm CAGR (tốc độ tăng trưởng kép trung bình năm) bên cạnh
+    # Các nhóm dưới đây kèm CAGR (tốc độ tăng trưởng kép trung bình năm) bên cạnh
     # chuỗi giá trị theo năm; riêng nhóm định giá không tính CAGR (chỉ số định
     # giá dao động theo giá thị trường nên tăng trưởng kép không mang nhiều ý nghĩa).
-    if selection.get("liquidity", True):
-        parts += [
-            "",
-            "### Khả năng thanh toán (theo năm)",
-            _line("Thanh toán hiện hành", inds, "current_ratio", ".2f", cagr=True),
-            _line("Thanh toán nhanh", inds, "quick_ratio", ".2f", cagr=True),
-            _line("Thanh toán tiền mặt", inds, "cash_ratio", ".2f", cagr=True),
-        ]
+    if is_financial:
+        # Ngành tài chính → khung CAMELS. Các toggle nhóm doanh nghiệp được ánh xạ
+        # sang cấu phần CAMELS gần nhất: leverage→C, efficiency→A+M, profitability→E,
+        # liquidity→L. S (độ nhạy) chỉ là caveat định tính (không có dữ liệu định lượng).
+        if selection.get("leverage", True):
+            parts += [
+                "",
+                "### C — An toàn vốn (Capital adequacy)",
+                "> ℹ️ Chưa có CAR (hệ số an toàn vốn); dùng đòn bẩy & Nợ/VCSH & BVPS làm proxy.",
+                _line("Đòn bẩy tài chính (Tổng TS/VCSH)", inds, "financial_leverage", ".2f", cagr=True),
+                _line("Nợ/Vốn chủ sở hữu", inds, "debt_to_equity", ".2f", cagr=True),
+                _line("Giá trị sổ sách/CP (BVPS, đồng)", inds, "bvps", ",.0f", cagr=True),
+            ]
 
-    if selection.get("leverage", True):
-        parts += [
-            "",
-            "### Đòn bẩy tài chính (theo năm)",
-            _line("Nợ/Vốn chủ sở hữu", inds, "debt_to_equity", ".2f", cagr=True),
-            _line("Đòn bẩy tài chính (Tổng TS/VCSH)", inds, "financial_leverage", ".2f", cagr=True),
-            _line("Khả năng trả lãi", inds, "interest_coverage", ".2f", suffix="x", cagr=True),
-        ]
+        if selection.get("efficiency", True):
+            parts += [
+                "",
+                "### A — Chất lượng tài sản (Asset quality)",
+                "> ℹ️ Chưa có tỷ lệ nợ xấu (NPL) / bao phủ nợ xấu; đánh giá qua proxy.",
+                _line("Dư nợ/Vốn chủ sở hữu", inds, "loans_to_equity", ".2f", cagr=True),
+                _line("ROA", inds, "roa", ".2f", scale=100, suffix="%", cagr=True),
+            ]
+            parts += [
+                "",
+                "### M — Năng lực quản trị (Management)",
+                "> ℹ️ Chưa có CIR (chi phí/thu nhập); dùng hiệu suất khai thác tài sản làm proxy.",
+                _line("Vòng quay tài sản", inds, "asset_turnover", ".2f", suffix="x", cagr=True),
+                _line("ROIC", inds, "roic", ".2f", scale=100, suffix="%", cagr=True),
+            ]
 
-    if selection.get("efficiency", True):
-        parts += [
-            "",
-            "### Hiệu quả hoạt động (theo năm)",
-            _line("Vòng quay tài sản", inds, "asset_turnover", ".2f", suffix="x", cagr=True),
-            _line("Vòng quay tài sản cố định", inds, "fixed_asset_turnover", ".2f", suffix="x", cagr=True),
-            _line("Số ngày tồn kho", inds, "days_inventory", ",.0f", suffix=" ngày", cagr=True),
-            _line("Số ngày phải thu", inds, "days_receivable", ",.0f", suffix=" ngày", cagr=True),
-        ]
+        if selection.get("profitability", True):
+            parts += [
+                "",
+                "### E — Khả năng sinh lời (Earnings)",
+                "> ℹ️ Chưa có NIM (biên lãi thuần).",
+                _line("ROE", inds, "roe", ".2f", scale=100, suffix="%", cagr=True),
+                _line("ROA", inds, "roa", ".2f", scale=100, suffix="%", cagr=True),
+                _line("Biên lợi nhuận ròng", inds, "net_margin", ".2f", scale=100, suffix="%", cagr=True),
+                _line("EPS (đồng)", inds, "eps", ",.0f", cagr=True),
+            ]
 
-    if selection.get("profitability", True):
-        parts += [
-            "",
-            "### Khả năng sinh lời (theo năm)",
-            _line("ROE", inds, "roe", ".2f", scale=100, suffix="%", cagr=True),
-            _line("ROA", inds, "roa", ".2f", scale=100, suffix="%", cagr=True),
-            _line("Biên lợi nhuận gộp", inds, "gross_margin", ".2f", scale=100, suffix="%", cagr=True),
-            _line("Biên lợi nhuận ròng", inds, "net_margin", ".2f", scale=100, suffix="%", cagr=True),
-        ]
+        if selection.get("liquidity", True):
+            parts += [
+                "",
+                "### L — Thanh khoản (Liquidity)",
+                "> ℹ️ Chưa có LDR (dư nợ/huy động).",
+                _line("Thanh toán tiền mặt", inds, "cash_ratio", ".2f", cagr=True),
+                _line("Thanh toán nhanh", inds, "quick_ratio", ".2f", cagr=True),
+                _line("Thanh toán hiện hành", inds, "current_ratio", ".2f", cagr=True),
+            ]
+
+        # S — Sensitivity: không có dữ liệu định lượng → chỉ nêu caveat, hiển thị khi
+        # có ít nhất 1 cấu phần CAMELS khác được bật.
+        if any(selection.get(k, True) for k in ("leverage", "efficiency", "profitability", "liquidity")):
+            parts += [
+                "",
+                "### S — Độ nhạy rủi ro thị trường (Sensitivity)",
+                "> ℹ️ Chưa có dữ liệu định lượng về độ nhạy lãi suất/tỷ giá; cần đánh giá "
+                "định tính từ cơ cấu tài sản–nguồn vốn và tỷ trọng thu nhập lãi.",
+            ]
+    else:
+        if selection.get("liquidity", True):
+            parts += [
+                "",
+                "### Khả năng thanh toán (theo năm)",
+                _line("Thanh toán hiện hành", inds, "current_ratio", ".2f", cagr=True),
+                _line("Thanh toán nhanh", inds, "quick_ratio", ".2f", cagr=True),
+                _line("Thanh toán tiền mặt", inds, "cash_ratio", ".2f", cagr=True),
+            ]
+
+        if selection.get("leverage", True):
+            parts += [
+                "",
+                "### Đòn bẩy tài chính (theo năm)",
+                _line("Nợ/Vốn chủ sở hữu", inds, "debt_to_equity", ".2f", cagr=True),
+                _line("Đòn bẩy tài chính (Tổng TS/VCSH)", inds, "financial_leverage", ".2f", cagr=True),
+                _line("Khả năng trả lãi", inds, "interest_coverage", ".2f", suffix="x", cagr=True),
+            ]
+
+        if selection.get("efficiency", True):
+            parts += [
+                "",
+                "### Hiệu quả hoạt động (theo năm)",
+                _line("Vòng quay tài sản", inds, "asset_turnover", ".2f", suffix="x", cagr=True),
+                _line("Vòng quay tài sản cố định", inds, "fixed_asset_turnover", ".2f", suffix="x", cagr=True),
+                _line("Số ngày tồn kho", inds, "days_inventory", ",.0f", suffix=" ngày", cagr=True),
+                _line("Số ngày phải thu", inds, "days_receivable", ",.0f", suffix=" ngày", cagr=True),
+            ]
+
+        if selection.get("profitability", True):
+            parts += [
+                "",
+                "### Khả năng sinh lời (theo năm)",
+                _line("ROE", inds, "roe", ".2f", scale=100, suffix="%", cagr=True),
+                _line("ROA", inds, "roa", ".2f", scale=100, suffix="%", cagr=True),
+                _line("Biên lợi nhuận gộp", inds, "gross_margin", ".2f", scale=100, suffix="%", cagr=True),
+                _line("Biên lợi nhuận ròng", inds, "net_margin", ".2f", scale=100, suffix="%", cagr=True),
+            ]
 
     if selection.get("valuation", True):
         if is_financial:
@@ -169,6 +335,10 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
                 _line("EV/EBITDA", inds, "ev_ebitda", ".2f"),
                 _line("EPS (đồng)", inds, "eps", ",.0f"),
             ]
+
+    # Bảng so sánh với trung vị ngành (cùng Industry ICB) — bổ trợ cho các nhóm trên.
+    if industry_rows:
+        parts += _format_industry_comparison(inds, industry_rows, is_financial)
 
     return "\n".join(parts).strip()
 
@@ -195,20 +365,32 @@ def fundamental_analysis_agent(state: AgentState) -> AgentState:
         indicators = FundamentalAnalysisService.get_indicators(symbol)
         summary = FundamentalAnalysisService.get_summary(symbol)
 
-        # Nhận diện ngành tài chính (ICB 8xxx) để bỏ P/E khỏi định giá. Lỗi/thiếu
-        # profile KHÔNG được chặn phân tích cơ bản → mặc định coi như không phải tài chính.
+        # Nhận diện ngành ICB để (1) bỏ P/E khỏi định giá nếu là tài chính và (2)
+        # so sánh với trung vị ngành. Lỗi/thiếu profile KHÔNG được chặn phân tích
+        # cơ bản → mặc định coi như không phải tài chính, không có so sánh ngành.
+        icb_code = None
         try:
             profile = CompanyService.get_profile(symbol)
-            is_financial = _is_financial_sector((profile or {}).get("icb_code"))
+            icb_code = (profile or {}).get("icb_code")
         except Exception as e:
             print(f"[Fundamental Analysis Agent] Không lấy được mã ngành ICB cho {symbol}: {e}")
-            is_financial = False
+        is_financial = _is_financial_sector(icb_code)
+
+        # Trung vị ngành đã precompute (bảng FA_Industry_Aggregate) để so sánh. Lỗi/
+        # thiếu/chưa precompute → coi như không có so sánh ngành, không làm hỏng phân tích.
+        industry_rows: list[dict] = []
+        if icb_code:
+            try:
+                industry_rows = FundamentalAnalysisService.get_industry_aggregate(icb_code)
+            except Exception as e:
+                print(f"[Fundamental Analysis Agent] Không lấy được trung vị ngành cho {symbol}: {e}")
 
         if not indicators and not income_statements and not cash_flows and not summary:
             output = "Không có dữ liệu phân tích cơ bản."
         else:
             output = _format_fundamental_output(
-                summary, indicators, income_statements, cash_flows, selection, is_financial
+                summary, indicators, income_statements, cash_flows, selection,
+                is_financial, industry_rows,
             )
     except Exception as e:
         print(f"[Fundamental Analysis Agent] Lỗi lấy dữ liệu cơ bản cho {symbol}: {e}")
