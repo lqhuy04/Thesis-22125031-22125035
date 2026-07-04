@@ -1,12 +1,13 @@
 """
 precompute_industry_aggregate.py
 ================================
-Tính chỉ tiêu TRUNG VỊ theo ngành ICB cấp Industry (theo từng năm) rồi ghi vào
+Tính chỉ tiêu TRUNG VỊ theo ngành ICB cấp 2 (theo từng năm) rồi ghi vào
 bảng Supabase `FA_Industry_Aggregate` (schema: fa_industry_aggregate_schema.sql).
 
-Gộp ngành theo nguyên lý chữ số đầu của mã ICB chi tiết (BI_Profile.icb_code):
-    '0' → '0001' (Dầu khí), 'd' → 'd000' (1000, 2000, ..., 9000)
-— khớp cách bảng `category` lưu mã ngành cấp Industry.
+Gộp ngành theo 2 chữ số đầu của mã ICB chi tiết (BI_Profile.icb_code), vd
+'83xx' → '8300' (Ngân hàng) — khớp cách bảng `Category` lưu mã ngành cấp 2
+(đã xác minh: mọi icb_code hợp lệ trong BI_Profile đều khớp đúng 1 category
+theo 2 số đầu).
 
 Luồng:
   1. BI_Profile: stock_id → icb_code → industry_code.
@@ -42,15 +43,17 @@ INDICATOR_KEYS = [
     "ev_ebitda", "eps", "bvps",
 ]
 
-_ICB_INDUSTRY_CODE = {
-    "0": "0001", "1": "1000", "2": "2000", "3": "3000", "4": "4000",
-    "5": "5000", "6": "6000", "7": "7000", "8": "8000", "9": "9000",
+_ICB_CATEGORY_CODE = {
+    "05": "0500", "13": "1300", "17": "1700", "23": "2300", "27": "2700",
+    "33": "3300", "35": "3500", "37": "3700", "45": "4500", "53": "5300",
+    "55": "5500", "57": "5700", "65": "6500", "75": "7500", "83": "8300",
+    "85": "8500", "86": "8600", "87": "8700", "89": "8900", "95": "9500",
 }
 
 
 def icb_to_industry_code(icb_code) -> Optional[str]:
-    """Mã ICB chi tiết (vd '8355') → mã ngành ICB cấp Industry ('8000')."""
-    return _ICB_INDUSTRY_CODE.get(str(icb_code or "").strip()[:1])
+    """Mã ICB chi tiết (vd '8355') → mã ngành ICB cấp 2 ('8300')."""
+    return _ICB_CATEGORY_CODE.get(str(icb_code or "").strip()[:2])
 
 
 def get_supabase_client() -> Client:
@@ -167,6 +170,13 @@ def main() -> None:
     client.table("FA_Industry_Aggregate").delete().lt("year", MIN_YEAR).execute()
     client.table("FA_Industry_Aggregate").delete().gt("year", MAX_YEAR).execute()
     print(f"Đã xóa các năm ngoài {MIN_YEAR}–{MAX_YEAR}.")
+
+    # Dọn category_id không còn hợp lệ (vd đổi bảng phân ngành → mã cũ còn sót lại).
+    existing_ids = {r["category_id"] for r in fetch_all(client, "FA_Industry_Aggregate", "category_id")}
+    stale_ids = sorted(existing_ids - set(_ICB_CATEGORY_CODE.values()))
+    if stale_ids:
+        client.table("FA_Industry_Aggregate").delete().in_("category_id", stale_ids).execute()
+        print(f"Đã xóa category_id không còn hợp lệ: {', '.join(stale_ids)}.")
 
     industries = sorted({r["category_id"] for r in rows})
     print(f"Ngành đã tổng hợp ({len(industries)}): {', '.join(industries)}")
