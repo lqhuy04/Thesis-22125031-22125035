@@ -1,6 +1,12 @@
 import { New } from "@/helpers/DetailHelpers";
 import { getMacroEcomNews } from "@/helpers/MarketHelpers";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Dimensions,
@@ -215,7 +221,11 @@ const MacroEcomNewsSkeleton = () => {
   );
 };
 
-const MacroEcomNewsSection = () => {
+type Props = {
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+};
+
+const MacroEcomNewsSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
 
@@ -224,14 +234,27 @@ const MacroEcomNewsSection = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    getMacroEcomNews(9).then((result) => {
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await getMacroEcomNews(9);
       if (result.status) {
         setArticles(result.data);
       }
+    } finally {
       setIsLoading(false);
-    });
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Pull-to-refresh
+  useEffect(() => {
+    const unregister = registerRefresh?.(fetchData);
+    return () => unregister?.();
+  }, [registerRefresh, fetchData]);
 
   const chunks = useMemo(() => chunkArray(articles.slice(1)), [articles]);
 

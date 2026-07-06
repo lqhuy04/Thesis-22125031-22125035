@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
@@ -134,20 +134,37 @@ const AllNewsSkeleton = () => {
   );
 };
 
-const AllNewsSection = () => {
+type Props = {
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+};
+
+const AllNewsSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [articles, setArticles] = useState<New[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    getAllNews(10).then((result) => {
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await getAllNews(10);
       if (result.status) {
         setArticles(result.data);
       }
+    } finally {
       setIsLoading(false);
-    });
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Pull-to-refresh
+  useEffect(() => {
+    const unregister = registerRefresh?.(fetchData);
+    return () => unregister?.();
+  }, [registerRefresh, fetchData]);
 
   if (isLoading) return <AllNewsSkeleton />;
   if (articles.length === 0) return null;

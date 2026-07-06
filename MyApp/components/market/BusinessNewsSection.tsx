@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { New } from "@/helpers/DetailHelpers";
@@ -224,7 +230,11 @@ const BusinessNewsSkeleton = () => {
   );
 };
 
-const BusinessNewsSection = () => {
+type Props = {
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+};
+
+const BusinessNewsSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
 
@@ -233,14 +243,27 @@ const BusinessNewsSection = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    getBusinessNews(9).then((result) => {
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await getBusinessNews(9);
       if (result.status) {
         setArticles(result.data);
       }
+    } finally {
       setIsLoading(false);
-    });
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Pull-to-refresh
+  useEffect(() => {
+    const unregister = registerRefresh?.(fetchData);
+    return () => unregister?.();
+  }, [registerRefresh, fetchData]);
 
   const chunks = useMemo(() => chunkArray(articles.slice(1)), [articles]);
 

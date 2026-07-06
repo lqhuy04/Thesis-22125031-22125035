@@ -543,7 +543,11 @@ const SuggestionSectionSkeleton = () => {
   );
 };
 
-const SuggestionSection = () => {
+type Props = {
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+};
+
+const SuggestionSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [dataMap, setDataMap] = useState<
@@ -646,6 +650,26 @@ const SuggestionSection = () => {
     if (tab) loadTab(tab.msgType);
   }, [currentPage, loadTab, tabs]);
 
+  // Pull-to-refresh — luôn fetch mới tab đang hiển thị và invalidate cache
+  useEffect(() => {
+    const refreshFn = async () => {
+      const tab = tabs[currentPage];
+      if (!tab) return;
+      const msgType = tab.msgType;
+      loadingRef.current.delete(msgType);
+      // Xóa data cũ để hiện lại skeleton trong lúc fetch
+      setDataMap((curr) => {
+        const next = { ...curr };
+        delete next[msgType];
+        return next;
+      });
+      const res = await getInvestingIdea(msgType, 5);
+      setDataMap((curr) => ({ ...curr, [msgType]: res?.data ?? [] }));
+    };
+    const unregister = registerRefresh?.(refreshFn);
+    return () => unregister?.();
+  }, [registerRefresh, currentPage, tabs]);
+
   const handleTabPress = (tab: "trend" | "community" | "top_choice") => {
     setActiveTab(tab);
     const targetIndex =
@@ -689,7 +713,14 @@ const SuggestionSection = () => {
         : currentPage - communityStartIndex;
 
   // Show the full skeleton only until the first (default) tab has loaded.
-  const initialLoaded = dataMap[tabs[0].msgType] !== undefined;
+  // Latch to true once so a pull-to-refresh (which momentarily clears the
+  // tab data) shows the per-card body skeleton, not the whole-section skeleton.
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  useEffect(() => {
+    if (!initialLoaded && dataMap[tabs[0].msgType] !== undefined) {
+      setInitialLoaded(true);
+    }
+  }, [dataMap, tabs, initialLoaded]);
 
   return initialLoaded ? (
     <View style={{ marginHorizontal: 12 }}>

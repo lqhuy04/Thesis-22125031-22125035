@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import {
   fetchStockDataByTimeFrame,
   parseDateTime,
@@ -201,9 +207,14 @@ const skStyles = StyleSheet.create({
 interface Props {
   symbol: string;
   isMarketIndex?: boolean;
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
 }
 
-const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
+const PriceChartComponent = ({
+  symbol,
+  isMarketIndex = false,
+  registerRefresh,
+}: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
 
@@ -228,17 +239,16 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
   // ── Current price/index header data ──────────────────────────────────
   const [data, setData] = useState<any>(null);
 
-  useEffect(() => {
-    if (isMarketIndex) {
-      fetchCurrentIndexData(symbol).then((res) => {
-        if (res?.status) setData(res?.data);
-      });
-    } else {
-      fetchCurrentPriceData(symbol).then((res) => {
-        if (res?.status) setData(res?.data);
-      });
-    }
+  const fetchHeaderData = useCallback(async () => {
+    const res = isMarketIndex
+      ? await fetchCurrentIndexData(symbol)
+      : await fetchCurrentPriceData(symbol);
+    if (res?.status) setData(res?.data);
   }, [isMarketIndex, symbol]);
+
+  useEffect(() => {
+    fetchHeaderData();
+  }, [fetchHeaderData]);
 
   // ── OHLCV + technical indicator data ─────────────────────────────────
   const [priceData, setPriceData] = useState<StockPriceData[]>([]);
@@ -246,60 +256,69 @@ const PriceChartComponent = ({ symbol, isMarketIndex = false }: Props) => {
     TechnicalIndicatorData[]
   >([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      // Show full skeleton only on the very first fetch; subsequent
-      // timeframe changes show a lighter loading indicator on the chart.
+  const fetchChartData = useCallback(async () => {
+    // Show full skeleton only on the very first fetch; subsequent
+    // timeframe changes / refreshes show a lighter loading indicator.
+    if (isFirstLoad.current) {
+      setInitialLoading(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const interval =
+        timeFrame === TIMEFRAME.ONE_MINUTE
+          ? "1m"
+          : timeFrame === TIMEFRAME.FIVE_MINUTES
+            ? "5m"
+            : timeFrame === TIMEFRAME.FIFTEEN_MINUTES
+              ? "15m"
+              : timeFrame === TIMEFRAME.THIRTY_MINUTES
+                ? "30m"
+                : timeFrame === TIMEFRAME.ONE_HOUR
+                  ? "1h"
+                  : timeFrame === TIMEFRAME.ONE_DAY
+                    ? "1d"
+                    : timeFrame === TIMEFRAME.ONE_WEEK
+                      ? "1w"
+                      : timeFrame === TIMEFRAME.ONE_MONTH
+                        ? "1M"
+                        : "15m";
+
+      const [indicatorRes, priceRes] = await Promise.all([
+        getTechnicalIndicators(symbol, interval),
+        fetchStockDataByTimeFrame(symbol, interval),
+      ]);
+
+      setTechnicalIndicatorsData(
+        indicatorRes?.status ? (indicatorRes.data ?? []) : [],
+      );
+      setPriceData(priceRes?.status ? (priceRes.data ?? []) : []);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setTechnicalIndicatorsData([]);
+      setPriceData([]);
+    } finally {
+      setLoading(false);
       if (isFirstLoad.current) {
-        setInitialLoading(true);
-      } else {
-        setLoading(true);
+        setInitialLoading(false);
+        isFirstLoad.current = false;
       }
-
-      try {
-        const interval =
-          timeFrame === TIMEFRAME.ONE_MINUTE
-            ? "1m"
-            : timeFrame === TIMEFRAME.FIVE_MINUTES
-              ? "5m"
-              : timeFrame === TIMEFRAME.FIFTEEN_MINUTES
-                ? "15m"
-                : timeFrame === TIMEFRAME.THIRTY_MINUTES
-                  ? "30m"
-                  : timeFrame === TIMEFRAME.ONE_HOUR
-                    ? "1h"
-                    : timeFrame === TIMEFRAME.ONE_DAY
-                      ? "1d"
-                      : timeFrame === TIMEFRAME.ONE_WEEK
-                        ? "1w"
-                        : timeFrame === TIMEFRAME.ONE_MONTH
-                          ? "1M"
-                          : "15m";
-
-        const [indicatorRes, priceRes] = await Promise.all([
-          getTechnicalIndicators(symbol, interval),
-          fetchStockDataByTimeFrame(symbol, interval),
-        ]);
-
-        setTechnicalIndicatorsData(
-          indicatorRes?.status ? (indicatorRes.data ?? []) : [],
-        );
-        setPriceData(priceRes?.status ? (priceRes.data ?? []) : []);
-      } catch (error) {
-        console.error("Fetch error:", error);
-        setTechnicalIndicatorsData([]);
-        setPriceData([]);
-      } finally {
-        setLoading(false);
-        if (isFirstLoad.current) {
-          setInitialLoading(false);
-          isFirstLoad.current = false;
-        }
-      }
-    };
-
-    fetchData();
+    }
   }, [symbol, timeFrame]);
+
+  useEffect(() => {
+    fetchChartData();
+  }, [fetchChartData]);
+
+  // Pull-to-refresh — fetch lại header + dữ liệu chart theo timeframe hiện tại
+  useEffect(() => {
+    const refreshFn = async () => {
+      await Promise.all([fetchHeaderData(), fetchChartData()]);
+    };
+    const unregister = registerRefresh?.(refreshFn);
+    return () => unregister?.();
+  }, [registerRefresh, fetchHeaderData, fetchChartData]);
 
   // ── Derived chart data (memoised) ─────────────────────────────────────
   const chartPriceData: PriceData[] = useMemo(() => {

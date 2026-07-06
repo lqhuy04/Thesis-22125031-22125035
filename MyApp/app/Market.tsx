@@ -1,20 +1,16 @@
-import React, { useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useTheme } from "@/hooks/ThemeContext";
 import MarketIndicesSection from "@/components/market/MarketIndicesSection";
-import MacroEcomNewsSection from "@/components/market/MacroEcomNewsSection";
 import {
   Animated,
   Dimensions,
+  RefreshControl,
   ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
-import CategoriesNewsSection from "@/components/market/CategoriesNewsSection";
 import { SearchBar } from "@/components/ui/SearchBar";
-import AllNewsSection from "@/components/market/AllNewsSection";
-import BusinessNewsSection from "@/components/market/BusinessNewsSection";
 import IndustryMovementSection from "@/components/market/IndustryMovementSection";
-import TodayHighlightSection from "@/components/market/TodayHighlightSection";
 import { router } from "expo-router";
 import { Text } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,7 +18,7 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import LinearGradient from "react-native-linear-gradient";
 import WatchlistSection from "@/components/market/WatchlistSection";
 
-const TABS = ["market", "favorites", "news"] as const;
+const TABS = ["market", "favorites"] as const;
 type Tab = (typeof TABS)[number];
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -37,10 +33,49 @@ const Market = () => {
   const translateX = useRef(new Animated.Value(0)).current;
   const insets = useSafeAreaInsets();
 
+  // Mỗi tab có registry refresh riêng — pull-to-refresh chỉ refresh tab đang xem
+  const refreshFns = useRef<Record<Tab, (() => Promise<void>)[]>>({
+    market: [],
+    favorites: [],
+  });
+  const [refreshing, setRefreshing] = useState<Record<Tab, boolean>>({
+    market: false,
+    favorites: false,
+  });
+
+  const makeRegisterRefresh = useCallback(
+    (tab: Tab) => (fn: () => Promise<void>) => {
+      refreshFns.current[tab].push(fn);
+      return () => {
+        refreshFns.current[tab] = refreshFns.current[tab].filter(
+          (f) => f !== fn,
+        );
+      };
+    },
+    [],
+  );
+
+  const registerMarketRefresh = useMemo(
+    () => makeRegisterRefresh("market"),
+    [makeRegisterRefresh],
+  );
+  const registerFavoritesRefresh = useMemo(
+    () => makeRegisterRefresh("favorites"),
+    [makeRegisterRefresh],
+  );
+
+  const onRefresh = useCallback(async (tab: Tab) => {
+    setRefreshing((prev) => ({ ...prev, [tab]: true }));
+    try {
+      await Promise.all(refreshFns.current[tab].map((fn) => fn()));
+    } finally {
+      setRefreshing((prev) => ({ ...prev, [tab]: false }));
+    }
+  }, []);
+
   const TAB_LABELS: Record<Tab, string> = {
     market: t("market.tabMarket"),
     favorites: t("market.tabFavorites"),
-    news: t("market.tabNews"),
   };
 
   const switchTab = (tab: Tab) => {
@@ -122,35 +157,41 @@ const Market = () => {
           }}
         >
           {/* Tab 0 — Market */}
-          <ScrollView style={{ width: SCREEN_WIDTH }}>
+          <ScrollView
+            style={{ width: SCREEN_WIDTH }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing.market}
+                onRefresh={() => onRefresh("market")}
+              />
+            }
+          >
             {visitedTabs.has("market") && (
               <>
-                <MarketIndicesSection />
-                <IndustryMovementSection />
+                <MarketIndicesSection registerRefresh={registerMarketRefresh} />
+                <IndustryMovementSection
+                  registerRefresh={registerMarketRefresh}
+                />
                 <View style={{ height: 24 }} />
               </>
             )}
           </ScrollView>
 
           {/* Tab 1 — Favorites */}
-          <ScrollView style={{ width: SCREEN_WIDTH }}>
+          <ScrollView
+            style={{ width: SCREEN_WIDTH }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing.favorites}
+                onRefresh={() => onRefresh("favorites")}
+              />
+            }
+          >
             {visitedTabs.has("favorites") && (
               <>
-                <WatchlistSection />
-                <View style={{ height: 24 }} />
-              </>
-            )}
-          </ScrollView>
-
-          {/* Tab 2 — News */}
-          <ScrollView style={{ width: SCREEN_WIDTH }}>
-            {visitedTabs.has("news") && (
-              <>
-                <TodayHighlightSection />
-                <BusinessNewsSection />
-                <CategoriesNewsSection />
-                <MacroEcomNewsSection />
-                <AllNewsSection />
+                <WatchlistSection
+                  registerRefresh={registerFavoritesRefresh}
+                />
                 <View style={{ height: 24 }} />
               </>
             )}

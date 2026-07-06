@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Animated,
   Dimensions,
@@ -362,7 +368,11 @@ const CategoryContent = ({
   );
 };
 
-const CategoriesNewsSection = () => {
+type Props = {
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+};
+
+const CategoriesNewsSection = ({ registerRefresh }: Props) => {
   const realEstateId = "8600";
   const bankId = "8300";
   const consumerGoodsId = "3700";
@@ -436,6 +446,26 @@ const CategoriesNewsSection = () => {
     );
     setLoadingCategoryId(null);
   };
+
+  // Pull-to-refresh — fetch lại category đang xem và invalidate cache
+  useEffect(() => {
+    const refreshFn = async () => {
+      const categoryId = categories[chosenIndex].id;
+      delete cacheRef.current[categoryId];
+      setLoadingCategoryId(categoryId);
+      const result = await getNewsByCategoryId(categoryId, 9);
+      const news = result.status ? result.data : [];
+      cacheRef.current[categoryId] = news;
+      setCategoryArticles((prev) =>
+        prev.map((cat) =>
+          cat.category_id === categoryId ? { ...cat, news } : cat,
+        ),
+      );
+      setLoadingCategoryId(null);
+    };
+    const unregister = registerRefresh?.(refreshFn);
+    return () => unregister?.();
+  }, [registerRefresh, categories, chosenIndex]);
 
   if (isLoading) return <CategorySkeleton />;
   if (categoryArticles.length === 0) return null;

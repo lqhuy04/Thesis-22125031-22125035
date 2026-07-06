@@ -433,6 +433,7 @@ export default {
     profile: "Profile",
     chatbot: "AI Hub",
     assets: "Assets",
+    news: "News",
   },
   home: {
     asset: "Net Assets",

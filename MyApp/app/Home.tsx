@@ -106,7 +106,7 @@ const Home = () => {
             marginTop: 12,
           }}
         >
-          <SuggestionSection />
+          <SuggestionSection registerRefresh={registerRefresh} />
           <HomeNewSection registerRefresh={registerRefresh} />
           <View style={{ height: 24 }} />
         </View>

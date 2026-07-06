@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   LayoutAnimation,
@@ -340,10 +340,12 @@ const AccordionCard = ({
 
 interface FinancialIndicatorsSectionProps {
   stockSymbol: string;
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
 }
 
 const FinancialIndicatorsSection = ({
   stockSymbol,
+  registerRefresh,
 }: FinancialIndicatorsSectionProps) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
@@ -352,12 +354,12 @@ const FinancialIndicatorsSection = ({
   const [cashFlows, setCashFlows] = useState<CashFlows | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setFinancialIndicators(null);
     setCashFlows(null);
 
-    Promise.all([
+    await Promise.all([
       getFinancialIndicators(stockSymbol).then((res) => {
         if (res.status) setFinancialIndicators(res.data);
       }),
@@ -366,6 +368,16 @@ const FinancialIndicatorsSection = ({
       }),
     ]).finally(() => setIsLoading(false));
   }, [stockSymbol]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Pull-to-refresh
+  useEffect(() => {
+    const unregister = registerRefresh?.(fetchData);
+    return () => unregister?.();
+  }, [registerRefresh, fetchData]);
 
   // Derive skeleton colors from theme
   const baseColor = theme.border.default;

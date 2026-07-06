@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import { fetchNews, New } from "@/helpers/DetailHelpers";
@@ -104,21 +104,38 @@ const NewsSkeleton = ({
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-const NewsSection = ({ stockSymbol }: { stockSymbol: string }) => {
+const NewsSection = ({
+  stockSymbol,
+  registerRefresh,
+}: {
+  stockSymbol: string;
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+}) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [newsItems, setNewsItems] = useState<New[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     setNewsItems([]);
-    fetchNews(stockSymbol, 3)
-      .then((data) => {
-        if (data.status) setNewsItems(data.data);
-      })
-      .finally(() => setIsLoading(false));
+    try {
+      const data = await fetchNews(stockSymbol, 3);
+      if (data.status) setNewsItems(data.data);
+    } finally {
+      setIsLoading(false);
+    }
   }, [stockSymbol]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Pull-to-refresh
+  useEffect(() => {
+    const unregister = registerRefresh?.(fetchData);
+    return () => unregister?.();
+  }, [registerRefresh, fetchData]);
 
   if (isLoading) {
     return (

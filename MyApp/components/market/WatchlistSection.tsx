@@ -136,7 +136,11 @@ const FavoriteSkeletonRow = ({
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
-const WatchlistSection = () => {
+type Props = {
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+};
+
+const WatchlistSection = ({ registerRefresh }: Props) => {
   const { t } = useLocalization();
   const { theme } = useTheme();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
@@ -195,6 +199,16 @@ const WatchlistSection = () => {
       fetchFavorites().finally(() => setLoading(false));
     }, [fetchFavorites]),
   );
+
+  // Pull-to-refresh — fetch lại danh sách yêu thích
+  useEffect(() => {
+    const refreshFn = async () => {
+      setLoading(true);
+      await fetchFavorites().finally(() => setLoading(false));
+    };
+    const unregister = registerRefresh?.(refreshFn);
+    return () => unregister?.();
+  }, [registerRefresh, fetchFavorites]);
 
   const renderItem = ({
     item,

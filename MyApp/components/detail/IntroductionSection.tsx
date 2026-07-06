@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   LayoutAnimation,
@@ -27,6 +27,7 @@ if (
 
 interface IntroductionSectionProps {
   stockSymbol: string;
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
 }
 
 // ── Skeleton ────────────────────────────────────────────────────────────────
@@ -249,7 +250,10 @@ const InfoRow = ({
 );
 
 // ── Main component ────────────────────────────────────────────────────────────
-const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
+const IntroductionSection = ({
+  stockSymbol,
+  registerRefresh,
+}: IntroductionSectionProps) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [companyProfileData, setCompanyProfileData] =
@@ -257,9 +261,9 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
   const [leaders, setLeaders] = useState<CompanyLeader[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
-    Promise.all([
+    await Promise.all([
       getCompanyProfile(stockSymbol).then((res) => {
         if (res.status) setCompanyProfileData(res.data);
       }),
@@ -268,6 +272,16 @@ const IntroductionSection = ({ stockSymbol }: IntroductionSectionProps) => {
       }),
     ]).finally(() => setLoading(false));
   }, [stockSymbol]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Pull-to-refresh
+  useEffect(() => {
+    const unregister = registerRefresh?.(fetchData);
+    return () => unregister?.();
+  }, [registerRefresh, fetchData]);
 
   if (loading) return <IntroductionSkeleton />;
   if (!companyProfileData) return null;

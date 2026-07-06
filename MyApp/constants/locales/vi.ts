@@ -430,6 +430,7 @@ export default {
     profile: "Hồ sơ",
     chatbot: "AI Hub",
     assets: "Tài sản",
+    news: "Tin tức",
   },
   home: {
     asset: "Tài sản ròng",

@@ -13,6 +13,7 @@ import Home from "./Home";
 import Profile from "./Profile";
 import Market from "./Market";
 import Chatbot from "./Chatbot";
+import News from "./News";
 import { Text } from "@/components/ui/Text";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalization } from "@/hooks/LocalizationContext";
@@ -55,11 +56,10 @@ const Tabs = () => {
       featured: true,
     },
     {
-      name: "Empty",
-      label: "",
-      icon: "ellipse-outline" as const,
-      component: <View style={{ flex: 1 }} />,
-      empty: true,
+      name: "News",
+      label: t("tabs.news"),
+      icon: "newspaper-outline" as const,
+      component: <News />,
     },
     {
       name: "Profile",
@@ -156,9 +156,8 @@ const Tabs = () => {
         {TABS.map((tab, index) => {
           const focused = activeIndex === index;
           const isFeatured = !!tab.featured;
-          const isEmpty = !!tab.empty;
 
-          if (isFeatured || isEmpty) {
+          if (isFeatured) {
             return <View key={tab.name} style={{ flex: 1 }} />;
           }
 

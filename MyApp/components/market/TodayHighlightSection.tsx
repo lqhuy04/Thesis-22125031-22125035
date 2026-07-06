@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -162,7 +162,7 @@ const TodayHighlightSkeleton = ({
   opacity: Animated.AnimatedInterpolation<number>;
 }) => {
   return (
-    <View style={{ flexDirection: "row", marginTop: 12 }}>
+    <View style={{ flexDirection: "row", marginTop: 12, overflow: "hidden" }}>
       {Array.from({ length: 2 }).map((_, i) => (
         <TodayHighlightCardSkeleton key={i} opacity={opacity} />
       ))}
@@ -170,7 +170,11 @@ const TodayHighlightSkeleton = ({
   );
 };
 
-const TodayHighlightSection = () => {
+type Props = {
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+};
+
+const TodayHighlightSection = ({ registerRefresh }: Props) => {
   const [data, setData] = useState<TodayHighlight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -179,14 +183,27 @@ const TodayHighlightSection = () => {
   const { t } = useLocalization();
   const shimmerOpacity = useShimmer();
 
-  useEffect(() => {
-    getTodayHighlights().then((result) => {
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await getTodayHighlights();
       if (result.status) {
         setData(result.data);
       }
+    } finally {
       setIsLoading(false);
-    });
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Pull-to-refresh
+  useEffect(() => {
+    const unregister = registerRefresh?.(fetchData);
+    return () => unregister?.();
+  }, [registerRefresh, fetchData]);
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offsetX = event.nativeEvent.contentOffset.x;

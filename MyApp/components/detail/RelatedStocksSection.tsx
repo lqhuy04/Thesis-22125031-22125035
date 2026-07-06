@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import {
@@ -11,6 +11,7 @@ import { router } from "expo-router";
 
 interface RelatedStocksSectionProps {
   stockSymbol: string;
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
 }
 
 // Chia mảng thành các hàng `size` phần tử, phần thiếu được fill object rỗng
@@ -91,7 +92,10 @@ const RelatedStocksSkeleton = () => {
 };
 
 // ── Main component ────────────────────────────────────────────────────────────
-const RelatedStocksSection = ({ stockSymbol }: RelatedStocksSectionProps) => {
+const RelatedStocksSection = ({
+  stockSymbol,
+  registerRefresh,
+}: RelatedStocksSectionProps) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [related, setRelated] = useState<RelatedStockItem[]>([]);
@@ -100,21 +104,26 @@ const RelatedStocksSection = ({ stockSymbol }: RelatedStocksSectionProps) => {
   // Khoá điều hướng để tránh push nhiều trang Detail khi bấm nhanh nhiều lần
   const isNavigatingRef = useRef(false);
 
-  useEffect(() => {
-    let active = true;
+  const fetchData = useCallback(async () => {
     setLoading(true);
     isNavigatingRef.current = false;
-    fetchRelatedStocks(stockSymbol)
-      .then((data) => {
-        if (active) setRelated(data);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
+    try {
+      const data = await fetchRelatedStocks(stockSymbol);
+      setRelated(data);
+    } finally {
+      setLoading(false);
+    }
   }, [stockSymbol]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Pull-to-refresh
+  useEffect(() => {
+    const unregister = registerRefresh?.(fetchData);
+    return () => unregister?.();
+  }, [registerRefresh, fetchData]);
 
   const goToStock = (symbol: string) => {
     if (!symbol || isNavigatingRef.current) return;

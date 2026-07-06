@@ -81,7 +81,11 @@ const TreeMapSkeleton: React.FC<{ width: number; height: number }> = ({
   );
 };
 
-const IndustryMovementSection = () => {
+type Props = {
+  registerRefresh?: (fn: () => Promise<void>) => () => void;
+};
+
+const IndustryMovementSection = ({ registerRefresh }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const screenWidth = Dimensions.get("window").width;
@@ -94,26 +98,26 @@ const IndustryMovementSection = () => {
 
   const categories = useMemo(
     () => [
-      { label: t("home.industryOilGas"), value: "0500" },
-      { label: t("home.industryChemicals"), value: "1300" },
-      { label: t("home.industryBasicResources"), value: "1700" },
-      { label: t("home.industryConstruction"), value: "2300" },
-      { label: t("home.industryIndustrialGoods"), value: "2700" },
-      { label: t("home.industryAutomobiles"), value: "3300" },
+      { label: t("home.industryBanks"), value: "8300" },
+      { label: t("home.industryRealEstate"), value: "8600" },
       { label: t("home.industryFoodBeverage"), value: "3500" },
+      { label: t("home.industryIndustrialGoods"), value: "2700" },
+      { label: t("home.industryUtilities"), value: "7500" },
+      { label: t("home.industryFinancialServices"), value: "8700" },
+      { label: t("home.industryBasicResources"), value: "1700" },
+      { label: t("home.industryTravelLeisure"), value: "5700" },
+      { label: t("home.industryMedia"), value: "5500" },
+      { label: t("home.industryConstruction"), value: "2300" },
+      { label: t("home.industryChemicals"), value: "1300" },
+      { label: t("home.industryTechnology"), value: "9500" },
+      { label: t("home.industryRetail"), value: "5300" },
+      { label: t("home.industryOilGas"), value: "0500" },
+      { label: t("home.industryInsurance"), value: "8500" },
       { label: t("home.industryPersonalHousehold"), value: "3700" },
       { label: t("home.industryHealthcare"), value: "4500" },
-      { label: t("home.industryRetail"), value: "5300" },
-      { label: t("home.industryMedia"), value: "5500" },
-      { label: t("home.industryTravelLeisure"), value: "5700" },
+      { label: t("home.industryAutomobiles"), value: "3300" },
       { label: t("home.industryTelecom"), value: "6500" },
-      { label: t("home.industryUtilities"), value: "7500" },
-      { label: t("home.industryBanks"), value: "8300" },
-      { label: t("home.industryInsurance"), value: "8500" },
-      { label: t("home.industryRealEstate"), value: "8600" },
-      { label: t("home.industryFinancialServices"), value: "8700" },
       { label: t("home.industryInvestment"), value: "8900" },
-      { label: t("home.industryTechnology"), value: "9500" },
     ],
     [t],
   );
@@ -148,14 +152,41 @@ const IndustryMovementSection = () => {
     };
   }, [categories, chosenIndex]);
 
+  // Pull-to-refresh — fetch lại ngành đang chọn và invalidate cache
+  useEffect(() => {
+    const refreshFn = async () => {
+      const key = categories[chosenIndex].value;
+      delete cache.current[key];
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setLoading(true);
+      setData([]);
+
+      const result = await getIndustryMovement(key, 10);
+      if (controller.signal.aborted) return;
+
+      if (result?.status) {
+        cache.current[key] = result.data;
+        setData(result.data);
+      }
+      setLoading(false);
+    };
+    const unregister = registerRefresh?.(refreshFn);
+    return () => unregister?.();
+  }, [registerRefresh, categories, chosenIndex]);
+
   return (
     <View
       style={{
         marginTop: 24,
         marginHorizontal: 12,
         backgroundColor: theme.background.bg,
-        paddingVertical: 12,
-        paddingLeft: 12,
+        paddingTop: 12,
+        paddingBottom: 16,
+        paddingHorizontal: 12,
         borderRadius: 12,
       }}
     >
