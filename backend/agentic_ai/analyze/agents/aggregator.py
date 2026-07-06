@@ -5,7 +5,8 @@ aggregator.py — Aggregator Agent (simplified)
 Rule: total_score >= 3/5 → Mua, ngược lại → Chờ.
 
 Confidence được tính deterministic trong Python (không để LLM tự sinh),
-dựa trên các nguồn THỰC SỰ có dữ liệu, với trọng số bằng nhau:
+dựa trên các nguồn THỰC SỰ có dữ liệu, với trọng số theo kỳ hạn đầu tư
+(xem CONFIDENCE_WEIGHTS_BY_HORIZON: Ngắn hạn ưu tiên PTKT, Dài hạn ưu tiên PTCB):
 
   confidence = Σ (wᵢ * componentᵢ)   chỉ tính trên nguồn đang hoạt động
              ─────────────────────
@@ -30,7 +31,7 @@ from pydantic import BaseModel, Field
 
 from agentic_ai.service.openai_service import _get_openai_client
 from agentic_ai.analyze.state import AgentState
-from agentic_ai.analyze.horizon import enforce_price_boundaries
+from agentic_ai.analyze.horizon import enforce_price_boundaries, normalize_horizon
 
 # Raised by the OpenAI SDK when structured parsing fails because the model hit
 # the output token cap (finish_reason = "length"). Tuple fallback for older SDKs
@@ -55,11 +56,12 @@ CONFIDENCE_THRESHOLD = 0.55
 # Tỷ lệ điểm kỹ thuật tối thiểu để cân nhắc Mua (3/5 = 0.6 — giữ tương thích khi bật đủ 5 chỉ số)
 BUY_SCORE_RATIO = 0.6
 
-# Trọng số từng nguồn (bằng nhau, tổng = 1.0)
-CONFIDENCE_WEIGHTS = {
-    "technical":   1 / 3,
-    "fundamental": 1 / 3,
-    "article":     1 / 3,
+# Trọng số từng nguồn theo kỳ hạn đầu tư (mỗi hàng tổng = 1.0).
+# Ngắn hạn ưu tiên PTKT (tín hiệu giá nhanh), dài hạn ưu tiên PTCB (nền tảng DN).
+CONFIDENCE_WEIGHTS_BY_HORIZON = {
+    "short": {"technical": 0.60, "fundamental": 0.10, "article": 0.30},
+    "mid":   {"technical": 0.40, "fundamental": 0.40, "article": 0.20},
+    "long":  {"technical": 0.15, "fundamental": 0.70, "article": 0.15},
 }
 
 # Điểm trung lập khi nguồn thiếu dữ liệu (N/A)
@@ -132,28 +134,31 @@ def _effective_weights(
     has_technical: bool,
     has_fundamental: bool,
     has_article: bool,
+    horizon: str = "mid",
 ) -> dict[str, float]:
     """
     Trọng số HIỆU DỤNG sau khi loại các nguồn người dùng tắt / không có dữ liệu.
 
-    Trọng số gốc của các nguồn bị loại được chia đều lại (renormalize) cho các
-    nguồn còn hoạt động, nên tổng trọng số hiệu dụng luôn = 1.0 khi có ≥ 1 nguồn.
-    Nguồn bị loại có trọng số 0.0 → không đóng góp vào confidence.
+    Trọng số gốc lấy theo kỳ hạn đầu tư (CONFIDENCE_WEIGHTS_BY_HORIZON). Trọng số
+    của các nguồn bị loại được chia đều lại (renormalize) cho các nguồn còn hoạt
+    động, nên tổng trọng số hiệu dụng luôn = 1.0 khi có ≥ 1 nguồn. Nguồn bị loại
+    có trọng số 0.0 → không đóng góp vào confidence.
 
     Nếu không nguồn nào hoạt động (về lý thuyết không xảy ra vì technical bắt
     buộc) → trả về toàn 0.0 (caller sẽ coi confidence là trung lập).
     """
+    weights = CONFIDENCE_WEIGHTS_BY_HORIZON.get(horizon, CONFIDENCE_WEIGHTS_BY_HORIZON["mid"])
     active = {
         "technical":   has_technical,
         "fundamental": has_fundamental,
         "article":     has_article,
     }
-    raw_total = sum(CONFIDENCE_WEIGHTS[k] for k, on in active.items() if on)
+    raw_total = sum(weights[k] for k, on in active.items() if on)
     if raw_total <= 0:
-        return {k: 0.0 for k in CONFIDENCE_WEIGHTS}
+        return {k: 0.0 for k in weights}
     return {
-        k: (CONFIDENCE_WEIGHTS[k] / raw_total if active[k] else 0.0)
-        for k in CONFIDENCE_WEIGHTS
+        k: (weights[k] / raw_total if active[k] else 0.0)
+        for k in weights
     }
 
 
@@ -165,11 +170,13 @@ def _compute_confidence(
     has_fundamental: bool,
     has_article: bool,
     technical_max_score: int = 5,
+    horizon: str = "mid",
 ) -> tuple[float, dict[str, float]]:
     """
     Tính confidence score [0.0, 1.0] hoàn toàn bằng rule cứng, chỉ trên các nguồn
-    THỰC SỰ có dữ liệu (has_* = true). Trọng số được renormalize trên nguồn hoạt
-    động. Xem _confidence_components và _effective_weights.
+    THỰC SỰ có dữ liệu (has_* = true). Trọng số gốc phụ thuộc kỳ hạn đầu tư
+    (horizon) và được renormalize trên nguồn hoạt động. Xem _confidence_components
+    và _effective_weights.
 
     Trả về (confidence, effective_weights) để caller báo cáo lại trong breakdown.
     """
@@ -177,7 +184,7 @@ def _compute_confidence(
         technical_score, fundamental_health, article_sentiment, technical_max_score
     )
 
-    w = _effective_weights(has_technical, has_fundamental, has_article)
+    w = _effective_weights(has_technical, has_fundamental, has_article, horizon)
     if sum(w.values()) <= 0:
         # Không nguồn nào hoạt động → trung lập hoàn toàn.
         return _NA_SCORE, w
@@ -635,6 +642,7 @@ def aggregator_agent(state: AgentState) -> AgentState:
     plan = state.get("plan", {})
     interval = plan.get("technical_analysis_agent", {}).get("interval", "1d")
     investment_horizon = state.get("risk_appetite", {}).get("period", "Trung hạn")
+    horizon = normalize_horizon(investment_horizon)
 
     # Số chỉ số kỹ thuật được bật (điểm tối đa). Mặc định 5 nếu không có.
     technical_max_score = technical.get("max_score", 5) if isinstance(technical, dict) else 5
@@ -720,6 +728,7 @@ YÊU CẦU:
             has_fundamental     = has_fundamental,
             has_article         = has_news,
             technical_max_score = technical_max_score,
+            horizon             = horizon,
         )
 
         recommendation = parsed.recommendation

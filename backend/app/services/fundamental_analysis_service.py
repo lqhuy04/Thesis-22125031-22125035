@@ -9,18 +9,22 @@ from typing import Optional, List, Dict
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 
-# Mã ngành ICB cấp Industry theo chữ số đầu của mã ICB chi tiết (như bảng `category`
-# lưu: 0001, 1000, ..., 9000). Dầu khí là '0001' (không phải '0000').
-_ICB_INDUSTRY_CODE = {
-    "0": "0001", "1": "1000", "2": "2000", "3": "3000", "4": "4000",
-    "5": "5000", "6": "6000", "7": "7000", "8": "8000", "9": "9000",
+# Mã ngành ICB cấp 2 theo 2 chữ số đầu của mã ICB chi tiết (khớp bảng `Category`:
+# 0500, 1300, 1700, 2300, 2700, 3300, 3500, 3700, 4500, 5300, 5500, 5700, 6500,
+# 7500, 8300, 8500, 8600, 8700, 8900, 9500). Đã xác minh bằng dữ liệu thực tế
+# trong BI_Profile: mọi icb_code hợp lệ đều khớp đúng 1 category theo 2 số đầu.
+_ICB_CATEGORY_CODE = {
+    "05": "0500", "13": "1300", "17": "1700", "23": "2300", "27": "2700",
+    "33": "3300", "35": "3500", "37": "3700", "45": "4500", "53": "5300",
+    "55": "5500", "57": "5700", "65": "6500", "75": "7500", "83": "8300",
+    "85": "8500", "86": "8600", "87": "8700", "89": "8900", "95": "9500",
 }
 
 
 def icb_to_industry_code(icb_code) -> Optional[str]:
-    """Ánh xạ mã ICB chi tiết (vd '8355') → mã ngành ICB cấp Industry ('8000').
+    """Ánh xạ mã ICB chi tiết (vd '8355') → mã ngành ICB cấp 2 ('8300').
     Trả về None nếu mã rỗng/không hợp lệ."""
-    return _ICB_INDUSTRY_CODE.get(str(icb_code or "").strip()[:1])
+    return _ICB_CATEGORY_CODE.get(str(icb_code or "").strip()[:2])
 
 class FundamentalAnalysisService:
     """Service for financial metrics database operations"""
@@ -124,7 +128,7 @@ class FundamentalAnalysisService:
     def get_industry_aggregate(icb_code: str) -> List[Dict]:
         """
         Đọc chỉ tiêu TRUNG VỊ ngành đã precompute (bảng FA_Industry_Aggregate) cho
-        ngành ICB cấp Industry tương ứng `icb_code`. Mỗi bản ghi là 1 năm (year,
+        ngành ICB cấp 2 tương ứng `icb_code`. Mỗi bản ghi là 1 năm (year,
         peer_count và các chỉ số trung vị) → dùng để so sánh mã CP với mặt bằng
         ngành và tính CAGR ngành trong phân tích cơ bản.
 
