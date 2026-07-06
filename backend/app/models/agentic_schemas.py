@@ -3,8 +3,8 @@ app/models/agentic_schemas.py
 Request / Response schemas cho agentic AI endpoints.
 """
 
-from typing import Literal, Any
-from pydantic import BaseModel, Field
+from typing import Literal
+from pydantic import BaseModel, Field, model_validator
 
 
 # ─── Shared ───────────────────────────────────────────────────────────────────
@@ -33,11 +33,39 @@ class FundamentalSelection(BaseModel):
     valuation: bool = Field(default=True, description="Nhóm định giá: P/E, P/B, EV/EBITDA, EPS")
 
 
+class WeightSelection(BaseModel):
+    """Trọng số thủ công người dùng gán cho từng nguồn khi tính confidence.
+
+    Mỗi giá trị trong [0, 1], tối đa 2 chữ số thập phân, và tổng 3 giá trị phải = 1.0.
+    Bỏ trống toàn bộ (None) → hệ thống dùng trọng số mặc định theo kỳ hạn đầu tư
+    (xem CONFIDENCE_WEIGHTS_BY_HORIZON trong aggregator.py).
+    """
+    news: float = Field(ge=0, le=1, description="Trọng số cho tin tức")
+    technical: float = Field(ge=0, le=1, description="Trọng số cho phân tích kỹ thuật")
+    fundamental: float = Field(ge=0, le=1, description="Trọng số cho phân tích cơ bản")
+
+    @model_validator(mode="after")
+    def _validate_weights(self):
+        for name, value in (("news", self.news), ("technical", self.technical), ("fundamental", self.fundamental)):
+            if round(value, 2) != value:
+                raise ValueError(f"weight.{name} chỉ được tối đa 2 chữ số thập phân")
+
+        total = round(self.news + self.technical + self.fundamental, 2)
+        if total != 1.0:
+            raise ValueError(f"Tổng weight (news + technical + fundamental) phải bằng 1.0, hiện tại: {total}")
+
+        return self
+
+
 class DataSelection(BaseModel):
     """Cấu hình người dùng chọn dữ liệu nào để AI phân tích. Mặc định bật tất cả."""
     news: bool = Field(default=True, description="Tin tức / sentiment bài viết")
     technical: TechnicalSelection = Field(default_factory=TechnicalSelection)
     fundamental: FundamentalSelection = Field(default_factory=FundamentalSelection)
+    weight: WeightSelection | None = Field(
+        default=None,
+        description="Trọng số thủ công cho news/technical/fundamental. Bỏ trống = dùng mặc định theo kỳ hạn.",
+    )
 
 
 # ─── /analyze (API mode) ──────────────────────────────────────────────────────
@@ -46,7 +74,6 @@ class StockAnalysisRequest(BaseModel):
     mode: str = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
     symbol: str = Field(description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
     risk_appetite: RiskAppetite
-    plan: Any | None = Field(default=None, description="Kế hoạch phân tích thủ công, bỏ trống nếu dùng auto")
     data_selection: DataSelection = Field(
         default_factory=DataSelection,
         description="Chọn nguồn/chỉ số dữ liệu cho AI phân tích. Bỏ trống = bật tất cả.",
@@ -67,7 +94,6 @@ class AdminAnalysisRequest(BaseModel):
         description="Mã cổ phiếu khi không dùng rổ, ví dụ: VNM, FPT, VIC",
     )
     risk_appetite: RiskAppetite
-    plan: Any | None = Field(default=None, description="Kế hoạch phân tích thủ công, bỏ trống nếu dùng auto")
     data_selection: DataSelection = Field(
         default_factory=DataSelection,
         description="Chọn nguồn/chỉ số dữ liệu cho AI phân tích. Bỏ trống = bật tất cả.",

@@ -3,7 +3,6 @@ app/services/agentic_service.py
 """
 
 import unicodedata
-from typing import Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -27,7 +26,6 @@ def run_stock_analysis(
     symbol: str,
     risk_appetite: dict,
     mode: str,
-    plan: Any | None,
     data_selection: dict | None = None,
 ) -> dict:
     # Chỉ chế độ manual mới tôn trọng lựa chọn dữ liệu của người dùng.
@@ -47,7 +45,7 @@ def run_stock_analysis(
 
         "data_selection": effective_selection or {},
 
-        "plan": plan or {},
+        "plan": {},
         "agent_results": {},
 
         "final_output": "",
@@ -74,7 +72,6 @@ _ADMIN_BATCH_WORKERS = 4
 def run_admin_analysis(
     mode: str,
     risk_appetite: dict,
-    plan: Any | None,
     data_selection: dict | None = None,
     symbol: str | None = None,
     universe: str | None = None,
@@ -104,7 +101,6 @@ def run_admin_analysis(
                     symbol=sym,
                     risk_appetite=risk_appetite,
                     mode=mode,
-                    plan=plan,
                     data_selection=data_selection,
                 )
                 return {"symbol": sym, "status": "ok", "recommendation": rec}
@@ -127,7 +123,6 @@ def run_admin_analysis(
         symbol=symbol.strip().upper(),
         risk_appetite=risk_appetite,
         mode=mode,
-        plan=plan,
         data_selection=data_selection,
     )
     return {

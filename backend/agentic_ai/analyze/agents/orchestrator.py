@@ -4,22 +4,21 @@ orchestrator.py — Orchestrator Agent với Structured Output (Pydantic)
  
 import json
 from datetime import datetime
-from typing import Literal
- 
+
 from pydantic import BaseModel, Field
 from agentic_ai.service.openai_service import _get_openai_client
 from agentic_ai.analyze.state import AgentState
 from agentic_ai.analyze.horizon import interval_for
- 
- 
+
+
 # ─── Schema định nghĩa output của LLM ────────────────────────────────────────
 class ArticleAgentParams(BaseModel):
     from_date: str = Field(description="Ngày bắt đầu lấy tin tức, định dạng YYYY-MM-DD")
     to_date: str = Field(description="Ngày kết thúc lấy tin tức, định dạng YYYY-MM-DD")
 class TechnicalAgentParams(BaseModel):
-    interval: Literal["1m", "5m", "15m", "30m", "1h", "1d", "1w", "1M"] = Field(
-        description="Khung thời gian nến, chọn theo khẩu vị rủi ro"
-    )
+    # `interval` KHÔNG có ở đây: hệ thống luôn tự tính bằng interval_for(period)
+    # trong orchestrator_agent (short→1d, mid→1w, long→1M), giá trị LLM chọn sẽ
+    # luôn bị ghi đè nên không đáng để LLM tốn suy luận/token cho field này.
     from_date: str = Field(description="Ngày bắt đầu, định dạng YYYY-MM-DD")
     to_date: str = Field(description="Ngày kết thúc, định dạng YYYY-MM-DD")
  
@@ -39,24 +38,21 @@ ORCHESTRATOR_SYSTEM_PROMPT = """Bạn là orchestrator cho hệ thống phân t�
 Nhiệm vụ:
 - Đọc yêu cầu của người dùng và khẩu vị rủi ro
 - Xác định khoảng thời gian cần phân tích (from_date, to_date)
-- Xác định interval phù hợp cho technical analysis (luôn luôn là nến ngày '1d')
 - Sinh ra kế hoạch (plan) với tham số phù hợp cho từng agent
 
 ────────────────────────────
-QUY TẮC CHỌN INTERVAL & KHOẢNG THỜI GIAN
+QUY TẮC CHỌN KHOẢNG THỜI GIAN (from_date, to_date)
 ────────────────────────────
 
-Hệ thống chỉ sử dụng khung nến ngày (interval luôn luôn là '1d').
-Dựa vào trường `period` trong khẩu vị rủi ro để xác định khoảng thời gian nhìn lại (from_date đến to_date):
-- Ngắn hạn (vài ngày - vài tuần): interval = '1d', khoảng thời gian nhìn lại là 60 ngày gần nhất.
-- Trung hạn (vài tháng): interval = '1d', khoảng thời gian nhìn lại từ 6 tháng đến 1 năm gần nhất (tương đương 180 đến 365 ngày).
-- Dài hạn (> 1 năm): interval = '1d', khoảng thời gian nhìn lại từ 2 năm trở đi gần nhất (tối thiểu 730 ngày).
+Dựa vào trường `period` trong khẩu vị rủi ro để xác định khoảng thời gian nhìn lại:
+- Ngắn hạn (vài ngày - vài tuần): khoảng thời gian nhìn lại là 60 ngày gần nhất.
+- Trung hạn (vài tháng): khoảng thời gian nhìn lại từ 6 tháng đến 1 năm gần nhất (tương đương 180 đến 365 ngày).
+- Dài hạn (> 1 năm): khoảng thời gian nhìn lại từ 2 năm trở đi gần nhất (tối thiểu 730 ngày).
 
 Quy tắc:
-- `interval` luôn luôn truyền là '1d' vào technical_analysis_agent.
 - `to_date` luôn = ngày hôm nay.
 - `from_date` tính lùi từ `to_date` dựa vào số ngày nhìn lại tương ứng ở trên.
-- Nếu không xác định được kỳ hạn hoặc không có thông tin → mặc định sử dụng kỳ hạn Trung hạn (interval = '1d', khoảng thời gian nhìn lại từ 180 đến 365 ngày).
+- Nếu không xác định được kỳ hạn hoặc không có thông tin → mặc định sử dụng kỳ hạn Trung hạn (khoảng thời gian nhìn lại từ 180 đến 365 ngày).
 
 ────────────────────────────
 NGUYÊN TẮC QUAN TRỌNG
@@ -83,11 +79,6 @@ def orchestrator_agent(state: AgentState) -> dict:
     print(f"[Orchestrator] Nhận input: {state['user_input']}")
     print(f"[Orchestrator] Nhận risk_appetite: {state['risk_appetite']}")
 
-    if (state['mode'] == "manual" and state["plan"] != None):
-        print(f"[Orchestrator] Chế độ thủ công")
-        print(f"[Orchestrator] Sử dụng plan của user: {state['plan']}")
-        return {}
- 
     client = _get_openai_client()
  
     risk_appetite = state.get("risk_appetite", {})
@@ -113,12 +104,11 @@ def orchestrator_agent(state: AgentState) -> dict:
     # Chuyển về dict để lưu vào AgentState
     plan_dict = plan.model_dump()
  
-    # Khung nến là hàm xác định của kỳ hạn (short→1d, mid→1w, long→1M). Ép cứng
-    # bằng Python thay vì tin vào LLM, để mỗi kỳ hạn thực sự phân tích trên khung
-    # nến khác nhau. DB chỉ có 1d; MarketService tự aggregate sang 1w/1M.
+    # Khung nến là hàm xác định của kỳ hạn (short→1d, mid→1w, long→1M), luôn tính
+    # bằng Python (không do LLM chọn). DB chỉ có 1d; MarketService tự aggregate
+    # sang 1w/1M. Thiếu period → interval_for mặc định về 'mid' (1w).
     period = (risk_appetite or {}).get("period")
-    if period:
-        plan_dict.setdefault("technical_analysis_agent", {})["interval"] = interval_for(period)
+    plan_dict.setdefault("technical_analysis_agent", {})["interval"] = interval_for(period)
 
     print(f"[Orchestrator] Kế hoạch:\n{json.dumps(plan_dict, ensure_ascii=False, indent=2)}")
     return {"plan": plan_dict}

@@ -32,6 +32,7 @@ from pydantic import BaseModel, Field
 from agentic_ai.service.openai_service import _get_openai_client
 from agentic_ai.analyze.state import AgentState
 from agentic_ai.analyze.horizon import enforce_price_boundaries, normalize_horizon
+from agentic_ai.analyze.selection import get_selection
 
 # Raised by the OpenAI SDK when structured parsing fails because the model hit
 # the output token cap (finish_reason = "length"). Tuple fallback for older SDKs
@@ -135,19 +136,22 @@ def _effective_weights(
     has_fundamental: bool,
     has_article: bool,
     horizon: str = "mid",
+    base_weights: dict[str, float] | None = None,
 ) -> dict[str, float]:
     """
     Trọng số HIỆU DỤNG sau khi loại các nguồn người dùng tắt / không có dữ liệu.
 
-    Trọng số gốc lấy theo kỳ hạn đầu tư (CONFIDENCE_WEIGHTS_BY_HORIZON). Trọng số
-    của các nguồn bị loại được chia đều lại (renormalize) cho các nguồn còn hoạt
-    động, nên tổng trọng số hiệu dụng luôn = 1.0 khi có ≥ 1 nguồn. Nguồn bị loại
-    có trọng số 0.0 → không đóng góp vào confidence.
+    Trọng số gốc lấy từ `base_weights` (do người dùng nhập thủ công qua
+    data_selection.weight) nếu có, ngược lại mặc định theo kỳ hạn đầu tư
+    (CONFIDENCE_WEIGHTS_BY_HORIZON). Trọng số của các nguồn bị loại được chia đều
+    lại (renormalize) cho các nguồn còn hoạt động, nên tổng trọng số hiệu dụng
+    luôn = 1.0 khi có ≥ 1 nguồn. Nguồn bị loại có trọng số 0.0 → không đóng góp
+    vào confidence.
 
     Nếu không nguồn nào hoạt động (về lý thuyết không xảy ra vì technical bắt
     buộc) → trả về toàn 0.0 (caller sẽ coi confidence là trung lập).
     """
-    weights = CONFIDENCE_WEIGHTS_BY_HORIZON.get(horizon, CONFIDENCE_WEIGHTS_BY_HORIZON["mid"])
+    weights = base_weights or CONFIDENCE_WEIGHTS_BY_HORIZON.get(horizon, CONFIDENCE_WEIGHTS_BY_HORIZON["mid"])
     active = {
         "technical":   has_technical,
         "fundamental": has_fundamental,
@@ -171,12 +175,13 @@ def _compute_confidence(
     has_article: bool,
     technical_max_score: int = 5,
     horizon: str = "mid",
+    base_weights: dict[str, float] | None = None,
 ) -> tuple[float, dict[str, float]]:
     """
     Tính confidence score [0.0, 1.0] hoàn toàn bằng rule cứng, chỉ trên các nguồn
-    THỰC SỰ có dữ liệu (has_* = true). Trọng số gốc phụ thuộc kỳ hạn đầu tư
-    (horizon) và được renormalize trên nguồn hoạt động. Xem _confidence_components
-    và _effective_weights.
+    THỰC SỰ có dữ liệu (has_* = true). Trọng số gốc lấy từ `base_weights` (thủ
+    công) nếu có, ngược lại theo kỳ hạn đầu tư (horizon), và được renormalize
+    trên nguồn hoạt động. Xem _confidence_components và _effective_weights.
 
     Trả về (confidence, effective_weights) để caller báo cáo lại trong breakdown.
     """
@@ -184,7 +189,7 @@ def _compute_confidence(
         technical_score, fundamental_health, article_sentiment, technical_max_score
     )
 
-    w = _effective_weights(has_technical, has_fundamental, has_article, horizon)
+    w = _effective_weights(has_technical, has_fundamental, has_article, horizon, base_weights)
     if sum(w.values()) <= 0:
         # Không nguồn nào hoạt động → trung lập hoàn toàn.
         return _NA_SCORE, w
@@ -644,6 +649,19 @@ def aggregator_agent(state: AgentState) -> AgentState:
     investment_horizon = state.get("risk_appetite", {}).get("period", "Trung hạn")
     horizon = normalize_horizon(investment_horizon)
 
+    # Trọng số thủ công người dùng nhập qua data_selection.weight (news/technical/
+    # fundamental, đã validate tổng = 1.0). Map "news" → khóa nội bộ "article".
+    # None nếu người dùng không truyền → dùng mặc định theo kỳ hạn.
+    user_weight = get_selection(state).get("weight")
+    base_weights = (
+        {
+            "technical":   user_weight.get("technical", 0.0),
+            "fundamental": user_weight.get("fundamental", 0.0),
+            "article":     user_weight.get("news", 0.0),
+        }
+        if user_weight else None
+    )
+
     # Số chỉ số kỹ thuật được bật (điểm tối đa). Mặc định 5 nếu không có.
     technical_max_score = technical.get("max_score", 5) if isinstance(technical, dict) else 5
     buy_threshold = math.ceil(BUY_SCORE_RATIO * technical_max_score) if technical_max_score else 0
@@ -729,6 +747,7 @@ YÊU CẦU:
             has_article         = has_news,
             technical_max_score = technical_max_score,
             horizon             = horizon,
+            base_weights        = base_weights,
         )
 
         recommendation = parsed.recommendation

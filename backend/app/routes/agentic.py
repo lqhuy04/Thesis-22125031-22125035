@@ -36,7 +36,6 @@ def analyze_stock(body: StockAnalysisRequest, current_user: dict = Depends(get_c
             mode=body.mode,
             symbol=body.symbol,
             risk_appetite=body.risk_appetite.model_dump(),
-            plan=body.plan,
             data_selection=body.data_selection.model_dump(),
         )
         return success_response(data=recommendation)
@@ -70,7 +69,6 @@ def admin_analyze(body: AdminAnalysisRequest, current_user: dict = Depends(get_c
             universe=body.universe,
             symbol=body.symbol,
             risk_appetite=body.risk_appetite.model_dump(),
-            plan=body.plan,
             data_selection=body.data_selection.model_dump(),
         )
         return success_response(data=result)

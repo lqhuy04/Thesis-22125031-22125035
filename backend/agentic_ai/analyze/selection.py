@@ -37,4 +37,8 @@ def get_selection(state: dict) -> dict:
         "news": bool(sel.get("news", True)),
         "technical":   {k: bool(tech.get(k, True)) for k in TECH_KEYS},
         "fundamental": {k: bool(fund.get(k, True)) for k in FUND_KEYS},
+        # Trọng số thủ công {news, technical, fundamental} do người dùng nhập, đã
+        # được validate (0-1, 2 chữ số thập phân, tổng = 1.0) ở agentic_schemas.py.
+        # None nếu người dùng không truyền → caller tự dùng trọng số mặc định.
+        "weight": sel.get("weight"),
     }
