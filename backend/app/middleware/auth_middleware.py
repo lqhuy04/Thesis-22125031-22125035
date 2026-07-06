@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import Request, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.utils.token import verify_token
@@ -55,12 +57,10 @@ async def get_current_admin(current_user: dict = Depends(get_current_user)) -> d
 
     user_id = current_user["user_id"]
     try:
-        res = (
-            supabase.table("User")
-            .select("role")
-            .eq("id", user_id)
-            .limit(1)
-            .execute()
+        # Supabase's client performs a blocking HTTP call; run it off the
+        # event loop so a slow DB response doesn't stall every other request.
+        res = await asyncio.to_thread(
+            supabase.table("User").select("role").eq("id", user_id).limit(1).execute
         )
     except Exception:
         raise HTTPException(

@@ -1,16 +1,16 @@
 import logging
 import os
 from typing import Any, List, Dict
-from supabase import create_client, Client
-from app.config import settings
+from supabase import Client
+from app.utils.supabase_client import supabase
 
 logger = logging.getLogger(__name__)
 
 BUCKET_NAME = "backtests"
 
 def get_supabase_client() -> Client:
-    """Initialize and return a Supabase Client using settings configurations."""
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+    """Return the shared Supabase client (reuses one pooled connection pool)."""
+    return supabase
 
 def upload_backtest_file(file_path: str, filename: str, content_type: str) -> str:
     """

@@ -37,6 +37,7 @@ class SSIService:
     
     def __init__(self):
         from datetime import datetime
+        from requests.adapters import HTTPAdapter
 
         self._config = get_ssi_config()
         self._access_token: Optional[str] = None
@@ -44,6 +45,13 @@ class SSIService:
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
+        # Reuse a single Session so repeated calls reuse pooled TCP/TLS
+        # connections instead of opening a fresh socket per request - avoids
+        # exhausting ephemeral ports/file descriptors under bursty traffic.
+        self._session = requests.Session()
+        adapter = HTTPAdapter(pool_connections=10, pool_maxsize=20)
+        self._session.mount("http://", adapter)
+        self._session.mount("https://", adapter)
         # Per (symbol, interval) in-memory cooldown to avoid redundant sync on repeated calls.
         self._last_sync_at: Dict[tuple, datetime] = {}
         self._sync_cooldown_seconds = 120
@@ -80,7 +88,7 @@ class SSIService:
         """Make a POST request to SSI API"""
         url = f"{self._config.url}{endpoint}"
         payload = json.dumps(data)
-        response = requests.post(url, headers=self._headers, data=payload)
+        response = self._session.post(url, headers=self._headers, data=payload, timeout=10)
         return response.json()
     
     def _make_get_request(self, endpoint: str, params: dict = None) -> Dict[str, Any]:
@@ -89,7 +97,7 @@ class SSIService:
         headers = self._headers.copy()
         if self._access_token:
             headers["Authorization"] = f"{self._config.auth_type} {self._access_token}"
-        response = requests.get(url, headers=headers, params=params)
+        response = self._session.get(url, headers=headers, params=params, timeout=10)
         payload = response.json()
 
         # Retry once on auth failure by refreshing token.
@@ -98,7 +106,7 @@ class SSIService:
             if token_result.get("success") and self._access_token:
                 retry_headers = self._headers.copy()
                 retry_headers["Authorization"] = f"{self._config.auth_type} {self._access_token}"
-                retry_response = requests.get(url, headers=retry_headers, params=params)
+                retry_response = self._session.get(url, headers=retry_headers, params=params, timeout=10)
                 return retry_response.json()
 
         return payload

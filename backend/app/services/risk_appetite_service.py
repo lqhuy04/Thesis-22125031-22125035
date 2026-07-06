@@ -2,11 +2,9 @@
 Risk Appetite Service
 Handles database operations for user risk appetite
 """
-from supabase import create_client, Client
+from app.utils.supabase_client import supabase
 from app.config import settings
 from typing import Optional, Dict
-
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 
 class RiskAppetiteService:

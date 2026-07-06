@@ -13,13 +13,11 @@ Table relationships:
 
 import logging
 
-from supabase import create_client, Client
+from app.utils.supabase_client import supabase
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 
 def get_index_symbols(index_name: str) -> list[str]:

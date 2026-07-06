@@ -3,7 +3,7 @@ News Database Service
 Handles database operations for financial news
 """
 import requests
-from supabase import create_client, Client
+from app.utils.supabase_client import supabase
 from app.config import settings
 from app.models.article_schema import ArticlesResponse
 from typing import Optional, List
@@ -27,7 +27,7 @@ class NewsExtraction(BaseModel):
     )
 
 
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+
 class ArticlesService:
     """Service for news database operations"""
 

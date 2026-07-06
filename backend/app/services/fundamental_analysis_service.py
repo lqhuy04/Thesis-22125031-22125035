@@ -2,11 +2,9 @@
 Financial Database Service
 Handles database operations for financial metrics
 """
-from supabase import create_client, Client
+from app.utils.supabase_client import supabase
 from app.config import settings
 from typing import Optional, List, Dict
-
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 
 # Mã ngành ICB cấp 2 theo 2 chữ số đầu của mã ICB chi tiết (khớp bảng `Category`:

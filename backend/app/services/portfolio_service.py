@@ -7,11 +7,9 @@ GET groups transactions by `stock_id` and returns market/profile enrichment plus
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from supabase import Client, create_client
+from app.utils.supabase_client import supabase
 
 from app.config import settings
-
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 
 class PortfolioService:

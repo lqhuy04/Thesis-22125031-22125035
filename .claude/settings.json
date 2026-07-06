@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python3 -m py_compile app/services/ssi_service.py)",
       "Bash(python3 -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\), f\\) for f in ['app/services/auth_service.py','app/middleware/auth_middleware.py','app/services/ssi_service.py']]; print\\('AST OK'\\)\")",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(python3 /private/tmp/claude-502/-Users-khang-nguyen9-Projects-Thesis-22125031-22125035/75f511ba-95d2-422a-9751-6e8da7952816/scratchpad/patch_supabase.py)",
+      "Bash(python3 -m py_compile app/utils/supabase_client.py app/utils/supabase_storage.py app/utils/market_index.py app/services/*.py agentic_ai/service/database_service.py agentic_ai/service/openai_service.py)"
     ]
   }
 }

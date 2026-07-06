@@ -1,5 +1,5 @@
-from supabase import create_client, Client
 from app.config import settings
+from app.utils.supabase_client import supabase
 from app.utils.password import hash_password, verify_password
 from app.utils.token import create_access_token, create_refresh_token, verify_token
 from app.utils.email import send_reset_email, send_verification_email
@@ -12,22 +12,25 @@ import google.oauth2.id_token
 import uuid
 from typing import Optional
 
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 class AuthService:
     @staticmethod
     async def signup(email: str, password: str):
         # Check if user exists
-        existing = supabase.table("User").select("*").eq("email", email).execute()
+        existing = await asyncio.to_thread(
+            supabase.table("User").select("*").eq("email", email).execute
+        )
         if existing.data:
             raise ValueError("User already exists")
         
         # Create user
         hashed_pwd = await asyncio.to_thread(hash_password, password)
-        new_user = supabase.table("User").insert({
-            "email": email,
-            "hash_password": hashed_pwd,
-            "status": "unverified"
-        }).execute()
+        new_user = await asyncio.to_thread(
+            supabase.table("User").insert({
+                "email": email,
+                "hash_password": hashed_pwd,
+                "status": "unverified"
+            }).execute
+        )
         
         if not new_user.data:
             raise ValueError("Failed to create user")
@@ -55,7 +58,9 @@ class AuthService:
     @staticmethod
     async def login(email: str, password: str):
         # Find user
-        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        user_result = await asyncio.to_thread(
+            supabase.table("User").select("*").eq("email", email).execute
+        )
         if not user_result.data:
             raise ValueError("Invalid credentials")
         
@@ -98,7 +103,9 @@ class AuthService:
 
         result = await AuthService.login(email, password)
 
-        role_result = supabase.table("User").select("role").eq("email", email).execute()
+        role_result = await asyncio.to_thread(
+            supabase.table("User").select("role").eq("email", email).execute
+        )
         role = role_result.data[0].get("role") if role_result.data else None
         if role != "admin":
             raise ValueError("Configured account does not have admin privileges")
@@ -108,7 +115,9 @@ class AuthService:
 
     @staticmethod
     async def verify_email(email: str, otp: str):
-        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        user_result = await asyncio.to_thread(
+            supabase.table("User").select("*").eq("email", email).execute
+        )
 
         if not user_result.data:
             raise ValueError("Invalid verification code")
@@ -121,9 +130,11 @@ class AuthService:
         if not is_valid:
             raise ValueError("Invalid verification code")
 
-        result = supabase.table("User").update({
-            "status": "verified"
-        }).eq("id", user["id"]).execute()
+        result = await asyncio.to_thread(
+            supabase.table("User").update({
+                "status": "verified"
+            }).eq("id", user["id"]).execute
+        )
 
         if not result.data:
             raise ValueError("Failed to verify email")
@@ -132,7 +143,9 @@ class AuthService:
 
     @staticmethod
     async def resend_verification_otp(email: str):
-        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        user_result = await asyncio.to_thread(
+            supabase.table("User").select("*").eq("email", email).execute
+        )
         if not user_result.data:
             return {"message": "If the email exists, a new verification OTP has been sent"}
 
@@ -152,7 +165,9 @@ class AuthService:
             raise ValueError("Confirm password does not match new password")
 
         # Find user
-        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        user_result = await asyncio.to_thread(
+            supabase.table("User").select("*").eq("email", email).execute
+        )
         if not user_result.data:
             raise ValueError("Invalid email or password")
 
@@ -169,9 +184,11 @@ class AuthService:
 
         # Update password
         hashed_pwd = await asyncio.to_thread(hash_password, new_password)
-        result = supabase.table("User").update({
-            "hash_password": hashed_pwd
-        }).eq("id", user["id"]).execute()
+        result = await asyncio.to_thread(
+            supabase.table("User").update({
+                "hash_password": hashed_pwd
+            }).eq("id", user["id"]).execute
+        )
         
         if not result.data:
             raise ValueError("Failed to reset password")
@@ -184,7 +201,9 @@ class AuthService:
     @staticmethod
     async def forgot_password(email: str):
         # Find user
-        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        user_result = await asyncio.to_thread(
+            supabase.table("User").select("*").eq("email", email).execute
+        )
         if not user_result.data:
             # Don't reveal if user exists or not
             return {"message": "If the email exists, an OTP has been sent"}
@@ -253,7 +272,9 @@ class AuthService:
         if not email:
             raise ValueError("Reset session expired or invalid")
 
-        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        user_result = await asyncio.to_thread(
+            supabase.table("User").select("*").eq("email", email).execute
+        )
         if not user_result.data:
             raise ValueError("User not found")
 
@@ -261,9 +282,11 @@ class AuthService:
 
         # Update password
         hashed_pwd = await asyncio.to_thread(hash_password, new_password)
-        result = supabase.table("User").update({
-            "hash_password": hashed_pwd
-        }).eq("id", user["id"]).execute()
+        result = await asyncio.to_thread(
+            supabase.table("User").update({
+                "hash_password": hashed_pwd
+            }).eq("id", user["id"]).execute
+        )
         
         if not result.data:
             raise ValueError("Failed to reset password")
@@ -291,7 +314,9 @@ class AuthService:
             ValueError: If user not found
         """
         # Check if user exists
-        user_result = supabase.table("User").select("*").eq("email", email).execute()
+        user_result = await asyncio.to_thread(
+            supabase.table("User").select("*").eq("email", email).execute
+        )
         if not user_result.data:
             # Don't reveal if user exists or not
             return {"message": "If the email exists, a new OTP has been sent"}
@@ -333,20 +358,26 @@ class AuthService:
                 raise ValueError("Email not provided by Google")
             
             # Check if user exists
-            user_result = supabase.table("User").select("*").eq("email", email).execute()
-            
+            user_result = await asyncio.to_thread(
+                supabase.table("User").select("*").eq("email", email).execute
+            )
+
             if user_result.data:
                 # User exists, update their info
                 user = user_result.data[0]
                 update_data = {}
-                supabase.table("User").update(update_data).eq("id", user["id"]).execute()
+                await asyncio.to_thread(
+                    supabase.table("User").update(update_data).eq("id", user["id"]).execute
+                )
             else:
                 # Create new user
-                new_user = supabase.table("User").insert({
-                    "email": email,
-                    "status": "verified",
-                    "hash_password": ""  # No password for OAuth users
-                }).execute()
+                new_user = await asyncio.to_thread(
+                    supabase.table("User").insert({
+                        "email": email,
+                        "status": "verified",
+                        "hash_password": ""  # No password for OAuth users
+                    }).execute
+                )
                 
                 if not new_user.data:
                     raise ValueError("Failed to create user")

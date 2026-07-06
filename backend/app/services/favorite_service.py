@@ -6,11 +6,9 @@ GET groups favorites for user and returns enriched profile data.
 """
 from typing import Any, Dict, List
 
-from supabase import Client, create_client
+from app.utils.supabase_client import supabase
 
 from app.config import settings
-
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 
 class FavoriteService:

@@ -2,7 +2,7 @@
 Price Database Service
 Handles database operations for historical stock prices (15m, 1h, 1d intervals)
 """
-from supabase import create_client, Client
+from app.utils.supabase_client import supabase
 from app.config import settings
 from collections import Counter
 from typing import Optional, List, Dict, Any
@@ -16,7 +16,6 @@ from datetime import time as dtime
 from typing import List, Dict, Any
 
 
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 class MarketService:
     """Service for stock price database operations with different intervals"""

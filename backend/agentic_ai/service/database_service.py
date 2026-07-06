@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
 import pandas as pd
-from supabase import Client, create_client
+from supabase import Client
+from app.utils.supabase_client import supabase
 import talib
 import numpy as np
 from typing import Dict, Any, List
@@ -12,11 +13,8 @@ from datetime import time as dtime
 load_dotenv()
 
 def _get_supabase_client() -> Client:
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
-    if not supabase_url or not supabase_key:
-        raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY in environment.")
-    return create_client(supabase_url, supabase_key)
+    """Return the shared Supabase client (reuses one pooled connection pool)."""
+    return supabase
 
 def get_articles(symbol: str, from_date: str, to_date: str):
     """
