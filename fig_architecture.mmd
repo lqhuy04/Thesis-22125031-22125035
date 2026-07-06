@@ -1,0 +1,29 @@
+%% Figure — Client-Server (three-tier) Architecture
+%% Build in draw.io (Arrange > Insert > Advanced > Mermaid) or mermaid.live,
+%% then export PNG/PDF named "fig_architecture" and place next to main.tex.
+
+flowchart LR
+    subgraph PRES["Clients"]
+        direction TB
+        MOB["Mobile app"]
+        WEB["Web app"]
+    end
+
+    subgraph LOGIC["Server"]
+        direction TB
+        API["Core service / API"]
+        AGENTS["Multi-agent layer<br/>(orchestrator, analysis<br/>agents, aggregator)"]
+        API <--> AGENTS
+    end
+
+    subgraph DATA["Database"]
+        DB[("Market Data, User Data,<br/>Backtest Results")]
+    end
+
+    LLM["External LLM provider"]
+
+    MOB <--> API
+    WEB <--> API
+    API <--> DB
+    AGENTS <--> DB
+    AGENTS <--> LLM

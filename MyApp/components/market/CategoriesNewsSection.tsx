@@ -363,9 +363,9 @@ const CategoryContent = ({
 };
 
 const CategoriesNewsSection = () => {
-  const realEstateId = "afb4b18d-dc88-4ed0-b17b-28792868b460";
-  const bankId = "1fbbad10-a283-47e8-b126-8360ffa225ae";
-  const consumerGoodsId = "00341b34-8a12-4642-afd7-ae4664253b96";
+  const realEstateId = "8600";
+  const bankId = "8300";
+  const consumerGoodsId = "3700";
 
   const { theme } = useTheme();
   const { t } = useLocalization();

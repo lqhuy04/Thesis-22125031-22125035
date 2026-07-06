@@ -692,7 +692,7 @@ const SuggestionSection = () => {
   const initialLoaded = dataMap[tabs[0].msgType] !== undefined;
 
   return initialLoaded ? (
-    <View style={{ marginTop: 24, marginHorizontal: 12 }}>
+    <View style={{ marginHorizontal: 12 }}>
       <TouchableOpacity
         onPress={() => {
           router.push({

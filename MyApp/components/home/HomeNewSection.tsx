@@ -98,8 +98,8 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
   const cache = useRef<Record<string, New[]>>({});
   const abortRef = useRef<AbortController | null>(null);
 
-  const realEstateId = "afb4b18d-dc88-4ed0-b17b-28792868b460";
-  const bankId = "1fbbad10-a283-47e8-b126-8360ffa225ae";
+  const realEstateId = "8600";
+  const bankId = "8300";
 
   const categories = useMemo(
     () => [
