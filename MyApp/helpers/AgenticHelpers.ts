@@ -35,17 +35,24 @@ export type TechnicalSelection = {
 };
 
 export type FundamentalSelection = {
-  valuation?: boolean;
+  liquidity?: boolean;
+  leverage?: boolean;
+  efficiency?: boolean;
   profitability?: boolean;
-  growth?: boolean;
-  financial_health?: boolean;
-  cash_flow?: boolean;
+  valuation?: boolean;
+};
+
+export type WeightSelection = {
+  news: number;
+  technical: number;
+  fundamental: number;
 };
 
 export type DataSelection = {
   news?: boolean;
   technical?: TechnicalSelection | boolean;
   fundamental?: FundamentalSelection | boolean;
+  weight?: WeightSelection;
 };
 
 export type AnalysisMode = "auto" | "manual";

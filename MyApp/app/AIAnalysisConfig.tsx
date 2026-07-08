@@ -6,16 +6,32 @@ import {
   DataSelection,
   FundamentalSelection,
   TechnicalSelection,
+  WeightSelection,
 } from "@/helpers/AgenticHelpers";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Switch, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  PanResponder,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import Octicons from "@expo/vector-icons/Octicons";
 
 const PURPLE_GRADIENT = ["#9D8CFF", "#7B5CFF", "#613DE4"] as const;
+
+const WEIGHT_COLORS = {
+  technical: "#5B8DEF",
+  fundamental: "#F5A623",
+  news: "#2ECC71",
+} as const;
+
+const MIN_WEIGHT_PCT = 0;
 
 type Mode = "auto" | "manual";
 
@@ -28,12 +44,21 @@ const DEFAULT_TECHNICAL: TechnicalSelection = {
 };
 
 const DEFAULT_FUNDAMENTAL: FundamentalSelection = {
-  valuation: true,
+  liquidity: true,
+  leverage: true,
+  efficiency: true,
   profitability: true,
-  growth: true,
-  financial_health: true,
-  cash_flow: true,
+  valuation: true,
 };
+
+const DEFAULT_WEIGHT: WeightSelection = {
+  technical: 0.34,
+  fundamental: 0.33,
+  news: 0.33,
+};
+
+const clampPct = (value: number, min: number, max: number) =>
+  Math.min(Math.max(value, min), max);
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -171,6 +196,181 @@ const SubCheckbox = ({
   </Pressable>
 );
 
+const WeightLegendItem = ({
+  color,
+  label,
+  pct,
+}: {
+  color: string;
+  label: string;
+  pct: number;
+}) => (
+  <View style={styles.weightLegendItem}>
+    <View style={[styles.weightLegendDot, { backgroundColor: color }]} />
+    <Text typography="labelSmall" color={color}>
+      {label} {pct}%
+    </Text>
+  </View>
+);
+
+const WeightSlider = ({
+  weight,
+  onChange,
+  theme,
+  labels,
+}: {
+  weight: WeightSelection;
+  onChange: (w: WeightSelection) => void;
+  theme: ReturnType<typeof useTheme>["theme"];
+  labels: { technical: string; fundamental: string; news: string };
+}) => {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const grantRef = useRef({ d1: 0, d2: 0 });
+
+  const techPct = Math.round(weight.technical * 100);
+  const fundPct = Math.round(weight.fundamental * 100);
+  const newsPct = 100 - techPct - fundPct;
+
+  // PanResponder tracks touch/gesture state internally, so it must be created
+  // ONCE (not on every render) or an in-flight drag loses its starting point
+  // the moment `onChange` triggers a re-render. Fresh values it needs mid-drag
+  // are read from this ref instead of being captured in a stale closure.
+  const liveRef = useRef({ techPct, fundPct, trackWidth, onChange });
+  liveRef.current = { techPct, fundPct, trackWidth, onChange };
+
+  const commit = (d1: number, d2: number) => {
+    const t1 = Math.round(d1);
+    const t2 = Math.round(d2);
+    liveRef.current.onChange({
+      technical: t1 / 100,
+      fundamental: (t2 - t1) / 100,
+      news: (100 - t2) / 100,
+    });
+  };
+
+  const createResponder = (handle: 1 | 2) =>
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: () => {
+        const { techPct, fundPct } = liveRef.current;
+        grantRef.current = { d1: techPct, d2: techPct + fundPct };
+      },
+      onPanResponderMove: (_evt, gestureState) => {
+        const { trackWidth } = liveRef.current;
+        if (trackWidth <= 0) return;
+        const deltaPct = (gestureState.dx / trackWidth) * 100;
+        const { d1, d2 } = grantRef.current;
+        if (handle === 1) {
+          const next = clampPct(
+            d1 + deltaPct,
+            MIN_WEIGHT_PCT,
+            d2 - MIN_WEIGHT_PCT,
+          );
+          commit(next, d2);
+        } else {
+          const next = clampPct(
+            d2 + deltaPct,
+            d1 + MIN_WEIGHT_PCT,
+            100 - MIN_WEIGHT_PCT,
+          );
+          commit(d1, next);
+        }
+      },
+    });
+
+  const handle1Ref = useRef<ReturnType<typeof createResponder> | null>(null);
+  const handle2Ref = useRef<ReturnType<typeof createResponder> | null>(null);
+  if (!handle1Ref.current) handle1Ref.current = createResponder(1);
+  if (!handle2Ref.current) handle2Ref.current = createResponder(2);
+  const handle1 = handle1Ref.current;
+  const handle2 = handle2Ref.current;
+
+  return (
+    <View>
+      <View style={styles.weightLegendRow}>
+        <WeightLegendItem
+          color={WEIGHT_COLORS.technical}
+          label={labels.technical}
+          pct={techPct}
+        />
+        <WeightLegendItem
+          color={WEIGHT_COLORS.fundamental}
+          label={labels.fundamental}
+          pct={fundPct}
+        />
+        <WeightLegendItem
+          color={WEIGHT_COLORS.news}
+          label={labels.news}
+          pct={newsPct}
+        />
+      </View>
+
+      <View
+        style={styles.weightTrack}
+        onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
+      >
+        <View style={styles.weightFillRow}>
+          <View
+            style={{
+              width: `${techPct}%`,
+              backgroundColor: WEIGHT_COLORS.technical,
+            }}
+          />
+          <View
+            style={{
+              width: `${fundPct}%`,
+              backgroundColor: WEIGHT_COLORS.fundamental,
+            }}
+          />
+          <View
+            style={{
+              width: `${newsPct}%`,
+              backgroundColor: WEIGHT_COLORS.news,
+            }}
+          />
+        </View>
+
+        {trackWidth > 0 && (
+          <>
+            <View
+              {...handle1.panHandlers}
+              style={[
+                styles.weightHandle,
+                { left: (techPct / 100) * trackWidth - 14 },
+              ]}
+            >
+              <View
+                style={[
+                  styles.weightHandleKnob,
+                  { borderColor: theme.background.bg },
+                ]}
+              />
+            </View>
+            <View
+              {...handle2.panHandlers}
+              style={[
+                styles.weightHandle,
+                { left: ((techPct + fundPct) / 100) * trackWidth - 14 },
+              ]}
+            >
+              <View
+                style={[
+                  styles.weightHandleKnob,
+                  { borderColor: theme.background.bg },
+                ]}
+              />
+            </View>
+          </>
+        )}
+      </View>
+    </View>
+  );
+};
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 const AIAnalysisConfig = () => {
@@ -192,6 +392,9 @@ const AIAnalysisConfig = () => {
   const [fundamental, setFundamental] = useState<FundamentalSelection>({
     ...DEFAULT_FUNDAMENTAL,
   });
+  const [weight, setWeight] = useState<WeightSelection>({
+    ...DEFAULT_WEIGHT,
+  });
 
   const PRESET_KEY = "ai_analysis_preset";
   const [hydrated, setHydrated] = useState(false);
@@ -211,6 +414,7 @@ const AIAnalysisConfig = () => {
             setFundamentalEnabled(preset.fundamentalEnabled);
           if (preset.technical) setTechnical(preset.technical);
           if (preset.fundamental) setFundamental(preset.fundamental);
+          if (preset.weight) setWeight(preset.weight);
         } catch {}
       }
       setHydrated(true);
@@ -229,6 +433,7 @@ const AIAnalysisConfig = () => {
         fundamentalEnabled,
         technical,
         fundamental,
+        weight,
       }),
     );
   }, [
@@ -239,6 +444,7 @@ const AIAnalysisConfig = () => {
     fundamentalEnabled,
     technical,
     fundamental,
+    weight,
   ]);
 
   const technicalKeys = Object.keys(
@@ -270,11 +476,11 @@ const AIAnalysisConfig = () => {
   };
 
   const fundamentalLabels: Record<keyof FundamentalSelection, string> = {
-    valuation: t("aiAnalysis.valuation"),
+    liquidity: t("aiAnalysis.liquidity"),
+    leverage: t("aiAnalysis.leverage"),
+    efficiency: t("aiAnalysis.efficiency"),
     profitability: t("aiAnalysis.profitability"),
-    growth: t("aiAnalysis.growth"),
-    financial_health: t("aiAnalysis.financialHealth"),
-    cash_flow: t("aiAnalysis.cashFlow"),
+    valuation: t("aiAnalysis.valuation"),
   };
 
   const handleAnalyze = () => {
@@ -292,6 +498,7 @@ const AIAnalysisConfig = () => {
       if (fundamentalEnabled && fundamentalCheckedCount > 0) {
         selection.fundamental = { ...fundamental };
       }
+      selection.weight = { ...weight };
       params.dataSelection = JSON.stringify(selection);
     }
 
@@ -327,12 +534,47 @@ const AIAnalysisConfig = () => {
           />
         </View>
 
-        {/* ── Manual config ── */}
+        {/* ── Weight allocation ── */}
         {mode === "manual" && (
           <View
             style={[
               styles.configCard,
               { backgroundColor: theme.background.bg },
+            ]}
+          >
+            <Text
+              typography="titleSmall"
+              color={theme.text.primary + "88"}
+              style={{ marginBottom: 4 }}
+            >
+              {t("aiAnalysis.weightTitle")}
+            </Text>
+            <Text
+              typography="bodySmall"
+              color={theme.text.primary + "66"}
+              style={{ marginBottom: 16 }}
+            >
+              {t("aiAnalysis.weightHint")}
+            </Text>
+            <WeightSlider
+              weight={weight}
+              onChange={setWeight}
+              theme={theme}
+              labels={{
+                technical: t("aiAnalysis.technical"),
+                fundamental: t("aiAnalysis.fundamental"),
+                news: t("aiAnalysis.news"),
+              }}
+            />
+          </View>
+        )}
+
+        {/* ── Manual config ── */}
+        {mode === "manual" && (
+          <View
+            style={[
+              styles.configCard,
+              { backgroundColor: theme.background.bg, marginTop: 12 },
             ]}
           >
             <Text
@@ -522,6 +764,52 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
     alignItems: "center",
+  },
+  weightLegendRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  weightLegendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  weightLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  weightTrack: {
+    height: 28,
+    justifyContent: "center",
+  },
+  weightFillRow: {
+    flexDirection: "row",
+    width: "100%",
+    height: 16,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  weightHandle: {
+    position: "absolute",
+    top: -6,
+    width: 28,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  weightHandleKnob: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });
 
