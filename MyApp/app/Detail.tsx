@@ -7,6 +7,7 @@ import PriceChartComponent from "@/components/detail/PriceChartComponent";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import IntroductionSection from "@/components/detail/IntroductionSection";
 import FinancialIndicatorsSection from "@/components/detail/FinancialIndicatorsSection";
+import IncomeStatementSection from "@/components/detail/IncomeStatementSection";
 import NewsSection from "@/components/detail/NewsSection";
 import RelatedStocksSection from "@/components/detail/RelatedStocksSection";
 import AIFloatingButton from "@/components/AIFloatingButton";
@@ -62,6 +63,11 @@ const Detail = () => {
         />
 
         <FinancialIndicatorsSection
+          stockSymbol={stockSymbol}
+          registerRefresh={registerRefresh}
+        />
+
+        <IncomeStatementSection
           stockSymbol={stockSymbol}
           registerRefresh={registerRefresh}
         />

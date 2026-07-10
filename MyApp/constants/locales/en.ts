@@ -193,6 +193,14 @@ export default {
     currentRatio: "Current Ratio",
     billionVND: "billion VND",
   },
+  incomeStatement: {
+    sectionTitle: "Business Results",
+    revenueTitle: "Net Revenue",
+    profitTitle: "Net Profit After Tax",
+    yearAxis: "By year",
+    unit: "Billion VND",
+    noData: "No income statement data available",
+  },
   timeframe: {
     title: "Select Timeframe",
     oneMinute: "1 minute",

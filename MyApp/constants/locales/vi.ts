@@ -193,6 +193,14 @@ export default {
     currentRatio: "Thanh toán hiện hành",
     billionVND: "tỷ đồng",
   },
+  incomeStatement: {
+    sectionTitle: "Kết quả kinh doanh",
+    revenueTitle: "Doanh thu thuần",
+    profitTitle: "Lợi nhuận sau thuế",
+    yearAxis: "Theo năm",
+    unit: "Tỷ đồng",
+    noData: "Chưa có dữ liệu kết quả kinh doanh",
+  },
   timeframe: {
     title: "Chọn khung thời gian",
     oneMinute: "1 phút",

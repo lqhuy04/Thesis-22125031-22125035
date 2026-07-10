@@ -125,6 +125,64 @@ export const getCashFlows = async (
   }
 };
 
+export type IncomeStatement = {
+  symbol: string;
+  year: number;
+  gross_revenue: number | null;
+  net_revenue: number | null;
+  cogs: number | null;
+  gross_profit: number | null;
+  financial_income: number | null;
+  financial_expense: number | null;
+  interest_expense: number | null;
+  selling_expense: number | null;
+  admin_expense: number | null;
+  operating_profit: number | null;
+  profit_before_tax: number | null;
+  income_tax_expense: number | null;
+  net_profit_after_tax: number | null;
+  net_income_parent: number | null;
+  eps_basic: number | null;
+  ebit: number | null;
+  ebitda: number | null;
+};
+
+export const getIncomeStatements = async (
+  stockSymbol: string,
+): Promise<{
+  status: boolean;
+  data: IncomeStatement[];
+}> => {
+  try {
+    const result = await sendMessage(
+      `api/fundamental-analysis/${stockSymbol}/income-statements`,
+    );
+    const { errorCode, data } = result || {};
+
+    if (errorCode === 0 && data && Array.isArray(data) && data.length > 0) {
+      // Sắp xếp tăng dần theo năm để vẽ biểu đồ từ trái sang phải
+      const sorted = [...(data as IncomeStatement[])].sort(
+        (a, b) => a.year - b.year,
+      );
+      return {
+        status: true,
+        data: sorted,
+      };
+    } else {
+      return {
+        status: false,
+        data: [],
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+};
+
 export const getFinancialAnalysisSummary = async (
   stockSymbol: string,
 ): Promise<{
