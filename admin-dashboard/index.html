@@ -31,14 +31,14 @@
 
       <!-- Tabs Navigation -->
       <nav class="tabs-nav card fade-in fade-delay-1">
-        <button id="tab-data-btn" class="tab-btn active" type="button">Cập nhật dữ liệu</button>
-        <button id="tab-backtest-btn" class="tab-btn" type="button">Chạy Backtest & Trực quan hóa</button>
+        <button id="tab-data-btn" class="tab-btn" type="button" style="display: none;">Cập nhật dữ liệu</button>
+        <button id="tab-backtest-btn" class="tab-btn active"  type="button">Chạy Backtest & Trực quan hóa</button>
         <button id="tab-analyze-btn" class="tab-btn" type="button">Phân tích AI</button>
         <span id="adminAuthBadge" class="badge" style="margin-left: auto; align-self: center;">Chưa đăng nhập</span>
       </nav>
 
       <!-- Tab 1: Data Update Content -->
-      <div id="data-tab-content" class="tab-content active fade-in fade-delay-2">
+      <div id="data-tab-content" class="tab-content active fade-in fade-delay-2" style="display: none;">
         <section class="controls card">
           <div class="field">
             <label for="baseUrl">API Base URL</label>
@@ -106,7 +106,7 @@
       </div>
 
       <!-- Tab 2: Backtest & Visualizations Content -->
-      <div id="backtest-tab-content" class="tab-content fade-in fade-delay-2" style="display: none;">
+      <div id="backtest-tab-content" class="tab-content fade-in fade-delay-2" style="display: block;">
         <div class="backtest-setup-grid">
           <!-- Backtest Parameters Form -->
           <section class="backtest-controls card">

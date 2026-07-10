@@ -5729,49 +5729,49 @@
     },
     "VHM": {
       "performance": {
-        "n_trades": 19,
-        "win_rate": 0.42105263157894735,
-        "total_return": 1.014340380455316,
-        "avg_return": 0.04809790955953395,
-        "annualized_return": 0.289277533923354,
-        "max_drawdown": -0.3018016360848721,
-        "sharpe_ratio": 1.3086212849730743,
-        "profit_factor": 2.3843090046894804
+        "n_trades": 2,
+        "win_rate": 1.0,
+        "total_return": 0.6925559526275278,
+        "avg_return": 0.30098502554054996,
+        "annualized_return": 2.452883969100379,
+        "max_drawdown": 0.0,
+        "sharpe_ratio": 122.02487943262331,
+        "profit_factor": 0.0
       },
       "baseline_engine_performance": {
-        "n_trades": 26,
-        "win_rate": 0.5769230769230769,
-        "total_return": 0.973830908568506,
-        "avg_return": 0.031281385184877525,
-        "annualized_return": 0.2798092905075187,
-        "max_drawdown": -0.3576350204481724,
-        "sharpe_ratio": 1.5704434923885606,
-        "profit_factor": 2.2110661474770814
+        "n_trades": 8,
+        "win_rate": 0.875,
+        "total_return": 1.1773924580906643,
+        "avg_return": 0.10541086843063462,
+        "annualized_return": 1.7377914140226935,
+        "max_drawdown": -0.015605042016806745,
+        "sharpe_ratio": 3.266535109457086,
+        "profit_factor": 55.03938973934517
       },
       "benchmark": {
-        "pipeline_return": 1.014340380455316,
-        "buy_hold_return": 1.5833333333333335,
-        "delta_vs_buy_hold": -0.5689929528780175,
-        "impact_on_returns": 0.04050947188680998,
-        "agreement_rate": 0.3076923076923077,
-        "cases_llm_filtered_out": 18,
-        "random_percentile_rank": 0.904,
-        "random_p_value": 0.09599999999999997
+        "pipeline_return": 0.6925559526275278,
+        "buy_hold_return": 2.0922693266832915,
+        "delta_vs_buy_hold": -1.3997133740557637,
+        "impact_on_returns": -0.4848365054631365,
+        "agreement_rate": 0.0,
+        "cases_llm_filtered_out": 8,
+        "random_percentile_rank": 1.0,
+        "random_p_value": 0.0
       },
       "statistical_tests": {
         "ttest": {
-          "t_stat": 1.3086212849730743,
-          "p_value": 0.20712576802205948,
-          "significant": false
+          "t_stat": 122.0248794326233,
+          "p_value": 0.005217014139674359,
+          "significant": true
         },
         "permutation": {
-          "p_value": 0.222,
-          "percentile_rank": 0.885,
+          "p_value": 0.493,
+          "percentile_rank": 1.0,
           "significant": false
         },
         "information_coefficient": {
-          "ic": 0.13357387168995635,
-          "p_value": 0.5856430019935144,
+          "ic": 1.0,
+          "p_value": 1.0,
           "interpretation": "positive"
         },
         "confidence_vs_outcome_anova": {
@@ -5779,172 +5779,46 @@
           "p_value": 1.0,
           "significant": false,
           "group_means": {
-            "high": 0.04809790955953395,
+            "high": 0.30098502554054996,
             "medium": 0.0,
             "low": 0.0
           }
         }
       },
       "walk_forward": {
-        "n_windows": 21,
+        "n_windows": 3,
         "avg_sharpe": 0.0,
         "std_sharpe": 0.0,
-        "consistent_wins": 0.2857142857142857,
+        "consistent_wins": 0.0,
         "windows": [
           {
-            "window_start": "2024-01-05 14:45:00",
-            "window_end": "2024-04-09 14:45:00",
-            "total_return": -0.007608294930875448,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2024-02-05 14:45:00",
-            "window_end": "2024-05-14 14:45:00",
+            "window_start": "2025-07-08 14:45:00",
+            "window_end": "2025-08-27 14:45:00",
             "total_return": 0.0,
             "sharpe_ratio": 0.0,
             "n_trades": 0
           },
           {
-            "window_start": "2024-03-12 14:45:00",
-            "window_end": "2024-06-12 14:45:00",
+            "window_start": "2025-08-28 14:45:00",
+            "window_end": "2025-10-21 14:45:00",
             "total_return": 0.0,
             "sharpe_ratio": 0.0,
             "n_trades": 0
           },
           {
-            "window_start": "2024-04-10 14:45:00",
-            "window_end": "2024-07-11 14:45:00",
+            "window_start": "2025-10-22 14:45:00",
+            "window_end": "2025-12-11 14:45:00",
             "total_return": 0.0,
             "sharpe_ratio": 0.0,
             "n_trades": 0
-          },
-          {
-            "window_start": "2024-05-15 14:45:00",
-            "window_end": "2024-08-09 14:45:00",
-            "total_return": -0.01887301587301571,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2024-06-13 14:45:00",
-            "window_end": "2024-09-11 14:45:00",
-            "total_return": 0.004025761124121674,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2024-07-12 14:45:00",
-            "window_end": "2024-10-10 14:45:00",
-            "total_return": -0.05580898876404494,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2024-08-12 14:45:00",
-            "window_end": "2024-11-08 14:45:00",
-            "total_return": 0.0,
-            "sharpe_ratio": 0.0,
-            "n_trades": 0
-          },
-          {
-            "window_start": "2024-09-12 14:45:00",
-            "window_end": "2024-12-09 14:45:00",
-            "total_return": 0.0,
-            "sharpe_ratio": 0.0,
-            "n_trades": 0
-          },
-          {
-            "window_start": "2024-10-11 14:45:00",
-            "window_end": "2025-01-08 14:45:00",
-            "total_return": 0.0,
-            "sharpe_ratio": 0.0,
-            "n_trades": 0
-          },
-          {
-            "window_start": "2024-11-11 14:45:00",
-            "window_end": "2025-02-13 14:45:00",
-            "total_return": 0.0,
-            "sharpe_ratio": 0.0,
-            "n_trades": 0
-          },
-          {
-            "window_start": "2024-12-10 14:45:00",
-            "window_end": "2025-03-14 14:45:00",
-            "total_return": 0.16386967113276496,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2025-01-09 14:45:00",
-            "window_end": "2025-04-15 14:45:00",
-            "total_return": 0.0778270676691728,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2025-02-14 14:45:00",
-            "window_end": "2025-05-19 14:45:00",
-            "total_return": -0.054612903225806475,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2025-03-17 14:45:00",
-            "window_end": "2025-06-17 14:45:00",
-            "total_return": -0.03633333333333344,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2025-04-16 14:45:00",
-            "window_end": "2025-07-16 14:45:00",
-            "total_return": 0.15034207077326345,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2025-05-20 14:45:00",
-            "window_end": "2025-08-14 14:45:00",
-            "total_return": 0.006677419354838676,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2025-06-18 14:45:00",
-            "window_end": "2025-09-16 14:45:00",
-            "total_return": 0.008822660098522173,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
-          },
-          {
-            "window_start": "2025-07-17 14:45:00",
-            "window_end": "2025-10-15 14:45:00",
-            "total_return": 0.0,
-            "sharpe_ratio": 0.0,
-            "n_trades": 0
-          },
-          {
-            "window_start": "2025-08-15 14:45:00",
-            "window_end": "2025-11-13 14:45:00",
-            "total_return": 0.0,
-            "sharpe_ratio": 0.0,
-            "n_trades": 0
-          },
-          {
-            "window_start": "2025-09-17 14:45:00",
-            "window_end": "2025-12-12 14:45:00",
-            "total_return": -0.08045098039215692,
-            "sharpe_ratio": 0.0,
-            "n_trades": 1
           }
         ]
       },
       "regime": {
         "uptrend": {
           "win_rate": 1.0,
-          "avg_return": 0.1961601012434035,
-          "n_trades": 2
+          "avg_return": 0.29851843817787416,
+          "n_trades": 1
         },
         "downtrend": {
           "win_rate": 0.0,
@@ -5952,16 +5826,16 @@
           "n_trades": 0
         },
         "sideway": {
-          "win_rate": 0.35294117647058826,
-          "avg_return": 0.03067882818496106,
-          "n_trades": 17
+          "win_rate": 1.0,
+          "avg_return": 0.3034516129032258,
+          "n_trades": 1
         }
       },
       "confidence_calibration": {
         "high": {
-          "win_rate": 0.42105263157894735,
-          "avg_return": 0.04809790955953395,
-          "n_trades": 19
+          "win_rate": 1.0,
+          "avg_return": 0.30098502554054996,
+          "n_trades": 2
         },
         "medium": {
           "win_rate": 0.0,
@@ -5974,7 +5848,7 @@
           "n_trades": 0
         }
       },
-      "updated_at": "2026-06-30 23:50:51"
+      "updated_at": "2026-07-05 20:44:58"
     },
     "VIC": {
       "performance": {
@@ -7347,33 +7221,33 @@
   },
   "aggregate": {
     "pipeline": {
-      "mean_total_return": 0.34077396486117517,
+      "mean_total_return": 0.3300478172669156,
       "median_total_return": 0.2321283039423635,
-      "compounded_return": 0.253939446237784,
-      "mean_win_rate": 0.48619234168164044,
-      "mean_sharpe": 0.6652589946390942,
-      "mean_max_drawdown": -0.17661343791088055,
-      "total_trades": 450,
+      "compounded_return": 0.2466854869549533,
+      "mean_win_rate": 0.5054905872956755,
+      "mean_sharpe": 4.689134266227436,
+      "mean_max_drawdown": -0.16655338337471814,
+      "total_trades": 433,
       "profitable_symbols": 22
     },
     "baseline_engine": {
-      "mean_total_return": 0.485935942896101,
+      "mean_total_return": 0.49272132788017287,
       "median_total_return": 0.21326564694515393,
-      "compounded_return": 0.2994730455362624,
-      "mean_win_rate": 0.5201608780376897,
-      "mean_sharpe": 0.6996952227739307,
-      "mean_max_drawdown": -0.26825656591302555,
-      "total_trades": 759,
+      "compounded_return": 0.30373152702788775,
+      "mean_win_rate": 0.5300967754735871,
+      "mean_sharpe": 0.7562316100095482,
+      "mean_max_drawdown": -0.25685556663198,
+      "total_trades": 741,
       "profitable_symbols": 22
     },
     "comparison": {
-      "delta_mean_total_return": -0.1451619780349258,
-      "delta_compounded_return": -0.045533599298478444,
-      "delta_mean_win_rate": -0.033968536356049295,
-      "delta_mean_sharpe": -0.03443622813483649,
-      "symbols_pipeline_beats_engine": 13
+      "delta_mean_total_return": -0.16267351061325724,
+      "delta_compounded_return": -0.057046040072934456,
+      "delta_mean_win_rate": -0.024606188177911603,
+      "delta_mean_sharpe": 3.9329026562178875,
+      "symbols_pipeline_beats_engine": 12
     }
   },
   "n_symbols": 30,
-  "generated_at": "2026-07-01 01:55:59"
+  "generated_at": "2026-07-05 20:44:58"
 }
