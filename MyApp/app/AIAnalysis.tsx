@@ -157,6 +157,15 @@ const AIAnalysis = () => {
   const formatPrice = (value: number | null | undefined) =>
     value == null ? t("aiAnalysis.notAvailable") : value.toFixed(2);
 
+  const formatPercentDiff = (
+    value: number | null | undefined,
+    entryPrice: number | null | undefined,
+  ) => {
+    if (value == null || entryPrice == null || entryPrice === 0) return null;
+    const diff = ((value - entryPrice) / entryPrice) * 100;
+    return `${diff >= 0 ? "+" : "-"}${Math.abs(diff).toFixed(2)}%`;
+  };
+
   // Order must match axisAnalysisKeys below (index 0 = news, 1 = fundamental, 2 = technical).
   const scoreData = useMemo<RadarAxis[]>(
     () => [
@@ -215,7 +224,10 @@ const AIAnalysis = () => {
     if (!analysis || seeding) return;
     setSeeding(true);
 
-    const question = t("aiAnalysis.chatQuestion").replace("{symbol}", stockSymbol);
+    const question = t("aiAnalysis.chatQuestion").replace(
+      "{symbol}",
+      stockSymbol,
+    );
     const answer = buildAssistantMessage(analysis);
     const sessionId = Crypto.randomUUID();
 
@@ -334,23 +346,33 @@ const AIAnalysis = () => {
                 label: t("aiAnalysis.entryPrice"),
                 value: formatPrice(analysis.entry_price),
                 color: theme.text.primary,
+                percent: null,
               },
               {
                 label: t("aiAnalysis.takeProfit"),
                 value: formatPrice(analysis.take_profit_price),
                 color: theme.base.success,
+                percent: formatPercentDiff(
+                  analysis.take_profit_price,
+                  analysis.entry_price,
+                ),
               },
               {
                 label: t("aiAnalysis.stopLoss"),
                 value: formatPrice(analysis.stop_loss_price),
                 color: theme.base.error,
+                percent: formatPercentDiff(
+                  analysis.stop_loss_price,
+                  analysis.entry_price,
+                ),
               },
               {
                 label: t("aiAnalysis.maxHoldCandles"),
                 value: formatPrice(analysis.max_hold_candles),
                 color: theme.text.primary,
+                percent: null,
               },
-            ].map(({ label, value, color }, i, arr) => (
+            ].map(({ label, value, color, percent }, i, arr) => (
               <React.Fragment key={label}>
                 <View style={styles.rowBetween}>
                   <Text
@@ -359,9 +381,20 @@ const AIAnalysis = () => {
                   >
                     {label}
                   </Text>
-                  <Text typography="titleMedium" color={color}>
-                    {value}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <Text typography="titleMedium" color={color}>
+                      {value}{" "}
+                    </Text>
+                    {percent != null && (
+                      <Text
+                        typography="labelMedium"
+                        color={color}
+                        style={{ marginLeft: 6 }}
+                      >
+                        ({percent})
+                      </Text>
+                    )}
+                  </View>
                 </View>
                 {i < arr.length - 1 && (
                   <View
