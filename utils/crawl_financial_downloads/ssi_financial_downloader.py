@@ -623,6 +623,24 @@ def process_cash_flow_csv(
     return _process_wide_csv(csv_path, _CASH_FLOW_MAP, symbol)
 
 
+# Substrings seen in Selenium WebDriverException messages when the Chrome
+# tab/session has died and navigation can no longer recover on its own.
+_BROWSER_DEAD_SIGNATURES = (
+    "tab crashed",
+    "invalid session id",
+    "no such window",
+    "chrome not reachable",
+    "disconnected",
+    "session deleted",
+)
+
+
+def is_browser_dead(exc: Exception) -> bool:
+    """True if *exc* indicates the Chrome tab/session crashed and needs a restart."""
+    msg = str(exc).lower()
+    return any(sig in msg for sig in _BROWSER_DEAD_SIGNATURES)
+
+
 def _wait_for_new_download(download_dir: str, before_mtime: float, timeout: int = DOWNLOAD_WAIT_SEC) -> Optional[str]:
     """
     Poll *download_dir* until a file newer than *before_mtime* appears
@@ -689,6 +707,18 @@ class SSIFinancialDownloader:
         if self.driver:
             self.driver.quit()
             print("Browser closed.")
+
+    def restart(self) -> bool:
+        """Recover from a crashed/dead tab: quit, relaunch, and log back in."""
+        print("[RECOVER] Restarting browser session …")
+        try:
+            if self.driver:
+                self.driver.quit()
+        except Exception:
+            pass
+        self.driver = None
+        self.start()
+        return self.login()
 
     # ── login ─────────────────────────────────────────────────
 
@@ -923,6 +953,44 @@ class SSIFinancialDownloader:
 
     # ── public API ────────────────────────────────────────────
 
+    def download_financial_indicators(self, symbol: str) -> Optional[str]:
+        """
+        Download only the "Chỉ số tài chính" tab (Panel 2) for *symbol*.
+        Assumes go_to_fundamental_analysis() → switch_to_iframe() →
+        search_symbol() have already run. Returns the saved CSV path, or
+        None on failure.
+        """
+        print("\n── Chỉ số tài chính ──")
+        self._click_lm_tab(1)
+        time.sleep(1.5)
+        dest = os.path.join(self.download_dir, f"{symbol}_financial_indicators.csv")
+        ok = self._click_download_and_save(
+            "div.lm_items > div:nth-of-type(2) span > span", "Chỉ số tài chính", dest
+        )
+        return dest if ok else None
+
+    def download_financial_indicators_for_symbol(self, symbol: str) -> Optional[str]:
+        """
+        Navigate to fundamental-analysis, search *symbol*, and download only
+        the "Chỉ số tài chính" tab — skips Cân đối kế toán / Kết quả kinh
+        doanh / Lưu chuyển tiền tệ entirely, since those tabs never carry
+        bank-only indicators.
+        """
+        symbol = symbol.upper().strip()
+
+        self.go_to_fundamental_analysis()
+
+        if not self.switch_to_iframe():
+            print("Could not switch into iframe. Aborting.")
+            return None
+
+        if not self.search_symbol(symbol):
+            print(f"Could not load symbol: {symbol}")
+            return None
+        time.sleep(2)
+
+        return self.download_financial_indicators(symbol)
+
     def download_all(self, symbol: str) -> dict:
         """
         Download all report sheets for *symbol* using selectors from the
@@ -991,14 +1059,7 @@ class SSIFinancialDownloader:
         time.sleep(1)
 
         # ── Panel 2: Chỉ số tài chính ─────────────────────────
-        print("\n── Chỉ số tài chính ──")
-        self._click_lm_tab(1)
-        time.sleep(1.5)
-        dest = os.path.join(self.download_dir, f"{symbol}_financial_indicators.csv")
-        ok = self._click_download_and_save(
-            "div.lm_items > div:nth-of-type(2) span > span", "Chỉ số tài chính", dest
-        )
-        results["Chỉ số tài chính"] = dest if ok else None
+        results["Chỉ số tài chính"] = self.download_financial_indicators(symbol)
         time.sleep(1)
 
         return results
@@ -1199,6 +1260,14 @@ def main():
                 print(f"[ERROR] {symbol}: {exc}")
                 import traceback
                 traceback.print_exc()
+
+                if is_browser_dead(exc):
+                    try:
+                        downloader.restart()
+                    except Exception as restart_exc:
+                        print(f"[FATAL] Could not restart browser: {restart_exc}")
+                        break
+
                 print(f"Skipping {symbol} and continuing …")
                 continue
 

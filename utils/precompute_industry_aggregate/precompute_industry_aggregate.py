@@ -41,6 +41,8 @@ INDICATOR_KEYS = [
     "loans_to_equity", "interest_coverage", "current_ratio", "quick_ratio", "cash_ratio",
     "days_inventory", "days_receivable", "pe_ratio", "pb_ratio", "ps_ratio",
     "ev_ebitda", "eps", "bvps",
+    # Bank-only (CAMELS) — chỉ ngành 8300 (Ngân hàng) có dữ liệu, các ngành khác NULL.
+    "car", "nim", "ldr", "npl_ratio",
 ]
 
 _ICB_CATEGORY_CODE = {

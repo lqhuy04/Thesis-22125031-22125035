@@ -34,6 +34,12 @@ CREATE TABLE IF NOT EXISTS "FA_Industry_Aggregate" (
     eps                  FLOAT,
     bvps                 FLOAT,
 
+    -- Bank-only (CAMELS) — chỉ ngành 8300 (Ngân hàng) có dữ liệu, ngành khác NULL.
+    car                  FLOAT,
+    nim                  FLOAT,
+    ldr                  FLOAT,
+    npl_ratio            FLOAT,
+
     updated_at TIMESTAMPTZ DEFAULT now(),
     PRIMARY KEY (category_id, year)
 );

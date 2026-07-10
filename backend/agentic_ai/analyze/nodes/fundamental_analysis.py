@@ -40,6 +40,10 @@ _COMPARE_METRICS_FINANCIAL = [
     ("Dư nợ/VCSH", "loans_to_equity", ".2f", 1, ""),
     ("Thanh toán tiền mặt", "cash_ratio", ".2f", 1, ""),
     ("P/B", "pb_ratio", ".2f", 1, ""),
+    ("CAR", "car", ".2f", 100, "%"),
+    ("NIM", "nim", ".2f", 100, "%"),
+    ("LDR", "ldr", ".2f", 100, "%"),
+    ("Tỷ lệ nợ xấu (NPL)", "npl_ratio", ".2f", 100, "%"),
 ]
 _COMPARE_METRICS_NONFINANCIAL = [
     ("ROE", "roe", ".2f", 100, "%"),
@@ -377,6 +381,8 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
             parts.append(_line("Đòn bẩy tài chính (Tổng TS/VCSH)", inds, "financial_leverage", ".2f", cagr=True))
             parts.append(_line("Nợ/Vốn chủ sở hữu", inds, "debt_to_equity", ".2f", cagr=True))
             parts.append(_line("VCSH/Tổng tài sản", inds, "equity_to_assets", ".2f", scale=100, suffix="%", cagr=True))
+            parts.append(_line("VCSH/Tổng nợ", inds, "equity_to_liabilities", ".2f", scale=100, suffix="%", cagr=True))
+            parts.append(_line("VCSH/Tổng cho vay", inds, "equity_to_loans", ".2f", scale=100, suffix="%", cagr=True))
             parts.append(_line("Giá trị sổ sách/CP (BVPS, đồng)", inds, "bvps", ",.0f", cagr=True))
 
         if selection.get("efficiency", True):
@@ -388,6 +394,9 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
             parts.append(_line("Bao phủ nợ xấu (dự phòng/NPL)", inds, "npl_coverage_ratio", ".2f", scale=100, suffix="%", cagr=True))
             parts.append(_line("Dư nợ/Vốn chủ sở hữu", inds, "loans_to_equity", ".2f", cagr=True))
             parts.append(_line("ROA", inds, "roa", ".2f", scale=100, suffix="%", cagr=True))
+            parts.append(_line("Dự phòng rủi ro tín dụng/Cho vay", inds, "loan_loss_reserve_ratio", ".2f", scale=100, suffix="%", cagr=True))
+            parts.append(_line("Trích lập dự phòng/Cho vay", inds, "provision_expense_to_loans", ".2f", scale=100, suffix="%", cagr=True))
+            parts.append(_line("Tăng trưởng tín dụng", inds, "credit_growth", ".2f", scale=100, suffix="%"))
 
             parts.append("")
             parts.append("### M — Năng lực quản trị (Management)")
@@ -396,6 +405,7 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
             parts.append(_line("CIR (chi phí/thu nhập)", inds, "cir", ".2f", scale=100, suffix="%", cagr=True))
             parts.append(_line("Vòng quay tài sản", inds, "asset_turnover", ".2f", suffix="x", cagr=True))
             parts.append(_line("ROIC", inds, "roic", ".2f", scale=100, suffix="%", cagr=True))
+            parts.append(_line("Thu nhập ngoài lãi/Thu nhập từ lãi", inds, "non_interest_to_interest_income", ".2f", scale=100, suffix="%", cagr=True))
 
         if selection.get("profitability", True):
             parts.append("")
@@ -407,6 +417,11 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
             parts.append(_line("ROA", inds, "roa", ".2f", scale=100, suffix="%", cagr=True))
             parts.append(_line("Biên lợi nhuận ròng", inds, "net_margin", ".2f", scale=100, suffix="%", cagr=True))
             parts.append(_line("EPS (đồng)", inds, "eps", ",.0f", cagr=True))
+            parts.append(_line("Thu nhập lãi thuần (đồng)", inds, "net_interest_income", ",.0f", cagr=True))
+            parts.append(_line("Tăng trưởng thu nhập lãi thuần", inds, "nii_growth", ".2f", scale=100, suffix="%"))
+            parts.append(_line("Tỉ suất sinh lời TS có sinh lãi (YOEA)", inds, "yield_on_earning_assets", ".2f", scale=100, suffix="%", cagr=True))
+            parts.append(_line("Chi phí vốn bình quân (COF)", inds, "cost_of_funds", ".2f", scale=100, suffix="%", cagr=True))
+            parts.append(_line("Tỉ lệ CASA (tiền gửi không kỳ hạn)", inds, "casa_ratio", ".2f", scale=100, suffix="%", cagr=True))
             # Thêm phân tích DuPont cho ngành tài chính
             dupont_text = _dupont_analysis(inds)
             if dupont_text:
@@ -421,6 +436,7 @@ def _format_fundamental_output(summary, indicators, income_statements, cash_flow
             parts.append(_line("Thanh toán tiền mặt", inds, "cash_ratio", ".2f", cagr=True))
             parts.append(_line("Thanh toán nhanh", inds, "quick_ratio", ".2f", cagr=True))
             parts.append(_line("Thanh toán hiện hành", inds, "current_ratio", ".2f", cagr=True))
+            parts.append(_line("Tăng trưởng huy động tiền gửi", inds, "deposit_growth", ".2f", scale=100, suffix="%"))
 
         # S — Sensitivity: không có dữ liệu định lượng → chỉ nêu caveat, hiển thị khi
         # có ít nhất 1 cấu phần CAMELS khác được bật.
