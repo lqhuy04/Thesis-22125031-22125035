@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
@@ -116,112 +110,82 @@ const NewsItemSkeleton = ({
 
 const CategorySkeleton = () => {
   const { theme } = useTheme();
-  const { t } = useLocalization();
   const opacity = useShimmer();
 
   return (
-    <View style={{ marginTop: 24, marginHorizontal: 12 }}>
-      <Text
-        typography="titleLarge"
-        color={theme.text.primary}
-        style={{ marginBottom: 12 }}
-      >
-        {t("market.newsByIndustry")}
-      </Text>
-
-      <View
+    <View
+      style={{
+        backgroundColor: theme.background.bg,
+        borderRadius: 12,
+      }}
+    >
+      {/* Featured skeleton */}
+      <Animated.View
         style={{
-          backgroundColor: theme.background.bg,
-          padding: 12,
-          borderRadius: 12,
+          width: "100%",
+          height: 200,
+          borderRadius: 8,
+          backgroundColor: theme.border.default,
+          opacity,
         }}
-      >
-        {/* Tab pills skeleton */}
-        <View style={{ flexDirection: "row", marginBottom: 12, gap: 8 }}>
-          {[80, 60, 100].map((width, i) => (
-            <Animated.View
-              key={i}
-              style={{
-                height: 28,
-                width,
-                borderRadius: 16,
-                borderWidth: 2,
-                borderColor: theme.border.default,
-                backgroundColor: theme.border.default,
-                opacity,
-              }}
+      />
+      <Animated.View
+        style={{
+          height: 16,
+          borderRadius: 4,
+          backgroundColor: theme.border.default,
+          opacity,
+          marginTop: 12,
+          width: "85%",
+        }}
+      />
+      <Animated.View
+        style={{
+          height: 16,
+          borderRadius: 4,
+          backgroundColor: theme.border.default,
+          opacity,
+          marginTop: 8,
+          width: "60%",
+        }}
+      />
+      <Animated.View
+        style={{
+          height: 11,
+          borderRadius: 4,
+          backgroundColor: theme.border.default,
+          opacity,
+          marginTop: 8,
+          marginBottom: 12,
+          width: "40%",
+        }}
+      />
+      <View style={{ height: 1, backgroundColor: theme.border.default }} />
+
+      {/* News items skeleton */}
+      {Array.from({ length: 2 }).map((_, i) => (
+        <View key={i}>
+          {i !== 0 && (
+            <View
+              style={{ height: 1, backgroundColor: theme.border.default }}
             />
-          ))}
+          )}
+          <NewsItemSkeleton opacity={opacity} />
         </View>
+      ))}
 
-        {/* Featured skeleton */}
-        <Animated.View
-          style={{
-            width: "100%",
-            height: 200,
-            borderRadius: 8,
-            backgroundColor: theme.border.default,
-            opacity,
-          }}
-        />
-        <Animated.View
-          style={{
-            height: 16,
-            borderRadius: 4,
-            backgroundColor: theme.border.default,
-            opacity,
-            marginTop: 12,
-            width: "85%",
-          }}
-        />
-        <Animated.View
-          style={{
-            height: 16,
-            borderRadius: 4,
-            backgroundColor: theme.border.default,
-            opacity,
-            marginTop: 8,
-            width: "60%",
-          }}
-        />
-        <Animated.View
-          style={{
-            height: 11,
-            borderRadius: 4,
-            backgroundColor: theme.border.default,
-            opacity,
-            marginTop: 8,
-            marginBottom: 12,
-            width: "40%",
-          }}
-        />
-        <View style={{ height: 1, backgroundColor: theme.border.default }} />
-
-        {/* News items skeleton */}
-        {Array.from({ length: 2 }).map((_, i) => (
-          <View key={i}>
-            {i !== 0 && (
-              <View
-                style={{ height: 1, backgroundColor: theme.border.default }}
-              />
-            )}
-            <NewsItemSkeleton opacity={opacity} />
-          </View>
-        ))}
-
-        <View style={{ height: 1, backgroundColor: theme.border.default }} />
-        <Animated.View
-          style={{
-            height: 16,
-            width: 80,
-            borderRadius: 4,
-            backgroundColor: theme.border.default,
-            opacity,
-            alignSelf: "center",
-            marginTop: 12,
-          }}
-        />
-      </View>
+      <View style={{ height: 1, backgroundColor: theme.border.default }} />
+      <Animated.View
+        style={{
+          height: 16,
+          width: 80,
+          borderRadius: 4,
+          backgroundColor: theme.border.default,
+          opacity,
+          alignSelf: "center",
+          marginTop: 12,
+        }}
+      />
     </View>
   );
 };
@@ -373,10 +337,6 @@ type Props = {
 };
 
 const CategoriesNewsSection = ({ registerRefresh }: Props) => {
-  const realEstateId = "8600";
-  const bankId = "8300";
-  const consumerGoodsId = "3700";
-
   const { theme } = useTheme();
   const { t } = useLocalization();
 
@@ -385,6 +345,8 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
 
   // Cache: map category_id → news[]
   const cacheRef = useRef<Record<string, New[]>>({});
+  // Track những category đã fetch xong (dù kết quả rỗng) để không fetch lại
+  const loadedRef = useRef<Set<string>>(new Set());
   const [categoryArticles, setCategoryArticles] = useState<CategoryData[]>([]);
   // Track loading state riêng cho từng category khi lazy fetch
   const [loadingCategoryId, setLoadingCategoryId] = useState<string | null>(
@@ -393,51 +355,46 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
 
   const categories = useMemo(() => {
     return [
-      { id: realEstateId, name: t("market.categoryRealEstate") },
-      { id: bankId, name: t("market.categoryBank") },
-      { id: consumerGoodsId, name: t("market.categoryConsumerGoods") },
+      { name: t("home.industryBanks"), id: "8300" },
+      { name: t("home.industryRealEstate"), id: "8600" },
+      { name: t("home.industryFoodBeverage"), id: "3500" },
+      { name: t("home.industryIndustrialGoods"), id: "2700" },
+      { name: t("home.industryUtilities"), id: "7500" },
+      { name: t("home.industryFinancialServices"), id: "8700" },
+      { name: t("home.industryBasicResources"), id: "1700" },
+      { name: t("home.industryTravelLeisure"), id: "5700" },
+      { name: t("home.industryMedia"), id: "5500" },
+      { name: t("home.industryConstruction"), id: "2300" },
+      { name: t("home.industryChemicals"), id: "1300" },
+      { name: t("home.industryTechnology"), id: "9500" },
+      { name: t("home.industryRetail"), id: "5300" },
+      { name: t("home.industryOilGas"), id: "0500" },
+      { name: t("home.industryInsurance"), id: "8500" },
+      { name: t("home.industryPersonalHousehold"), id: "3700" },
+      { name: t("home.industryHealthcare"), id: "4500" },
+      { name: t("home.industryAutomobiles"), id: "3300" },
+      { name: t("home.industryTelecom"), id: "6500" },
+      { name: t("home.industryInvestment"), id: "8900" },
     ];
   }, [t]);
 
-  // Fetch tất cả song song lần đầu
+  // Đồng bộ danh sách tab theo categories (không fetch news ở đây)
   useEffect(() => {
-    const fetchAll = async () => {
-      const results = await Promise.allSettled(
-        categories.map((cat) => getNewsByCategoryId(cat.id, 9)),
-      );
-
-      const formatted: CategoryData[] = results.map((res, index) => {
-        const news =
-          res.status === "fulfilled" && res.value.status ? res.value.data : [];
-        // Lưu vào cache
-        cacheRef.current[categories[index].id] = news;
-        return {
-          category_id: categories[index].id,
-          category_name: categories[index].name,
-          news,
-        };
-      });
-
-      setCategoryArticles(formatted);
-      setIsLoading(false);
-    };
-
-    fetchAll();
+    setCategoryArticles(
+      categories.map((cat) => ({
+        category_id: cat.id,
+        category_name: cat.name,
+        news: cacheRef.current[cat.id] || [],
+      })),
+    );
   }, [categories]);
 
-  const handleSelectCategory = async (index: number) => {
-    setChosenIndex(index);
-
-    const categoryId = categories[index].id;
-
-    // Đã có cache → không fetch lại
-    if (cacheRef.current[categoryId]?.length > 0) return;
-
-    // Chưa có cache → fetch lazy
+  const loadCategory = async (categoryId: string) => {
     setLoadingCategoryId(categoryId);
     const result = await getNewsByCategoryId(categoryId, 9);
     const news = result.status ? result.data : [];
     cacheRef.current[categoryId] = news;
+    loadedRef.current.add(categoryId);
 
     setCategoryArticles((prev) =>
       prev.map((cat) =>
@@ -447,21 +404,35 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
     setLoadingCategoryId(null);
   };
 
+  // Chỉ fetch tab đầu tiên khi mount, các tab khác load lazy khi chọn
+  useEffect(() => {
+    const categoryId = categories[0]?.id;
+    if (!categoryId || loadedRef.current.has(categoryId)) {
+      setIsLoading(false);
+      return;
+    }
+    loadCategory(categoryId).finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSelectCategory = async (index: number) => {
+    setChosenIndex(index);
+
+    const categoryId = categories[index].id;
+
+    // Đã fetch trước đó → không fetch lại
+    if (loadedRef.current.has(categoryId)) return;
+
+    await loadCategory(categoryId);
+  };
+
   // Pull-to-refresh — fetch lại category đang xem và invalidate cache
   useEffect(() => {
     const refreshFn = async () => {
       const categoryId = categories[chosenIndex].id;
       delete cacheRef.current[categoryId];
-      setLoadingCategoryId(categoryId);
-      const result = await getNewsByCategoryId(categoryId, 9);
-      const news = result.status ? result.data : [];
-      cacheRef.current[categoryId] = news;
-      setCategoryArticles((prev) =>
-        prev.map((cat) =>
-          cat.category_id === categoryId ? { ...cat, news } : cat,
-        ),
-      );
-      setLoadingCategoryId(null);
+      loadedRef.current.delete(categoryId);
+      await loadCategory(categoryId);
     };
     const unregister = registerRefresh?.(refreshFn);
     return () => unregister?.();

@@ -151,49 +151,30 @@ class ArticlesService:
     def get_articles_by_category_id(category_id: str, limit: int = 100) -> List[ArticlesResponse]:
         """
         Get news for a specific category by ID.
-        Category(id) -> Category_Stock(stock_id) -> Article_Stock(article_id) -> Article
+        Category(id) -> Article_Category(category_id, article_id) -> Article(id)
         """
         try:
             limit = max(1, limit)
 
-
-            # Step 1: Get all stock_ids linked to this category
-            category_stock_result = (
-                supabase.table("Category_Stock")
-                .select("stock_id")
+            # Step 1: Get all article_ids linked to this category
+            article_category_result = (
+                supabase.table("Article_Category")
+                .select("article_id")
                 .eq("category_id", category_id)
                 .execute()
             )
-            if not category_stock_result.data:
-                return []
-
-            stock_ids = list({
-                str(row["stock_id"])
-                for row in category_stock_result.data
-                if row.get("stock_id")
-            })
-            if not stock_ids:
-                return []
-
-            # Step 2: Get all article_ids linked to these stocks
-            links_result = (
-                supabase.table("Article_Stock")
-                .select("article_id")
-                .in_("stock_id", stock_ids)
-                .execute()
-            )
-            if not links_result.data:
+            if not article_category_result.data:
                 return []
 
             article_ids = list({
                 str(row["article_id"])
-                for row in links_result.data
+                for row in article_category_result.data
                 if row.get("article_id")
             })
             if not article_ids:
                 return []
 
-            # Step 3: Fetch articles, sorted by time desc
+            # Step 2: Fetch articles, sorted by time desc
             articles_result = (
                 supabase.table("Article")
                 .select("*")

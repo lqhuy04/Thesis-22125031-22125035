@@ -1,8 +1,19 @@
+"""
+update_category_articles.py - Daily update of category (industry) news.
+
+Runs once per day (end of day). For every row in the Category table, runs a
+single Serper query for a single page ("tbs": "qdr:d" to scope results to
+the past 24 hours). Same extraction/insert logic as init_category_articles.py,
+minus the multi-page checkpoint/resume machinery (not needed for a 1-page-
+per-category daily job).
+"""
+
 import os
 import time
 import logging
 import requests
 from datetime import datetime
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 from supabase import create_client
 from newspaper import Article
@@ -23,11 +34,13 @@ class Config:
 
 config = Config()
 
-TABLE         = "Article"
-SLEEP_SECONDS = 1.1
-MACRO_QUERY   = "Tin tức kinh tế vĩ mô trong tuần"
-MACRO_PAGES   = 3
-TRUSTED_SOURCES = ["vietstock.vn", "cafef.vn", "vneconomy.vn", "stockbiz.vn"]
+ARTICLE_TABLE          = "Article"
+CATEGORY_TABLE         = "Category"
+ARTICLE_CATEGORY_TABLE = "Article_Category"
+SLEEP_SECONDS          = 1.1
+CATEGORY_SLEEP_SECONDS = 3
+PAGES_PER_CATEGORY     = 1
+SERPER_TIME_FILTER     = "qdr:d"   # giới hạn 1 ngày gần nhất
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,10 +54,10 @@ supabase = create_client(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# NEWS EXTRACTION MODEL (macro: chỉ cần sentiment + summary)
+# NEWS EXTRACTION MODEL (category: chỉ cần sentiment + summary)
 # ═════════════════════════════════════════════════════════════════════════════
 
-class MacroExtraction(BaseModel):
+class CategoryExtraction(BaseModel):
     sentiment: str = Field(
         description="positive | neutral | negative"
     )
@@ -53,11 +66,24 @@ class MacroExtraction(BaseModel):
     )
 
 # ═════════════════════════════════════════════════════════════════════════════
+# CATEGORY
+# ═════════════════════════════════════════════════════════════════════════════
+
+def get_categories() -> List[dict]:
+    """Fetch all categories (id, category_name) from the database."""
+    try:
+        result = supabase.table(CATEGORY_TABLE).select("id, category_name").execute()
+        return result.data or []
+    except Exception as e:
+        logger.error(f"Error loading categories: {e}")
+        return []
+
+# ═════════════════════════════════════════════════════════════════════════════
 # SERPER + ARTICLE EXTRACTION
 # ═════════════════════════════════════════════════════════════════════════════
 
 def search_serper(query: str, page: int = 1) -> List[dict]:
-    """Search news using Serper API."""
+    """Search news using Serper API (giới hạn 1 ngày gần nhất)."""
     if not config.serper_key:
         logger.warning("SERPER_API_KEY not set")
         return []
@@ -70,7 +96,8 @@ def search_serper(query: str, page: int = 1) -> List[dict]:
             "gl": "vn",
             "hl": "vi",
             "page": page,
-            "num": 10
+            "num": 10,
+            "tbs": SERPER_TIME_FILTER,
         }
 
         headers = {
@@ -84,21 +111,16 @@ def search_serper(query: str, page: int = 1) -> List[dict]:
         data = response.json()
         return data.get("news", [])
     except Exception as e:
-        logger.error(f"Serper search error: {e}")
+        logger.error(f"Serper search error (page {page}): {e}")
         return []
 
-def is_trusted_source(url: str) -> bool:
-    """Check if URL is from a trusted source."""
-    url_lower = url.lower()
-    return any(src in url_lower for src in TRUSTED_SOURCES)
-
 def get_source(url: str) -> str:
-    """Extract source name from URL."""
-    url_lower = url.lower()
-    for src in TRUSTED_SOURCES:
-        if src in url_lower:
-            return src
-    return ""
+    """Extract the domain (source) name from a URL."""
+    try:
+        netloc = urlparse(url).netloc.lower()
+        return netloc[4:] if netloc.startswith("www.") else netloc
+    except Exception:
+        return ""
 
 def extract_article_content(url: str) -> Optional[dict]:
     """Extract article content using Newspaper."""
@@ -116,17 +138,17 @@ def extract_article_content(url: str) -> Optional[dict]:
         logger.debug(f"Newspaper extraction error ({url}): {e}")
         return None
 
-def extract_macro_info(title: str, content: str) -> Optional[dict]:
-    """Extract sentiment and summary using OpenAI (no stock symbols for macro news)."""
+def extract_category_info(title: str, content: str, category_name: str) -> Optional[dict]:
+    """Extract sentiment and summary using OpenAI (no stock symbols for category news)."""
     if not config.openai_key:
         logger.warning("OPENAI_API_KEY not set")
         return None
 
     try:
-        system_prompt = """
-Bạn là hệ thống phân tích tin tức kinh tế vĩ mô Việt Nam.
+        system_prompt = f"""
+Bạn là hệ thống phân tích tin tức ngành {category_name} tại Việt Nam.
 Nhiệm vụ:
-1. Gán sentiment: positive | neutral | negative.
+1. Gán sentiment: positive | neutral | negative (theo góc nhìn tác động đến ngành {category_name}).
 2. Viết summary ngắn bằng tiếng Việt (1-3 câu).
 """.strip()
 
@@ -140,7 +162,7 @@ Nhiệm vụ:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            response_format=MacroExtraction,
+            response_format=CategoryExtraction,
             temperature=0,
         )
 
@@ -164,7 +186,7 @@ def article_exists(title: str, link: str) -> bool:
     """Check if article already exists in database."""
     try:
         result = (
-            supabase.table(TABLE)
+            supabase.table(ARTICLE_TABLE)
             .select("id")
             .eq("title", title)
             .eq("link", link)
@@ -176,21 +198,21 @@ def article_exists(title: str, link: str) -> bool:
         logger.error(f"Error checking article existence: {e}")
         return False
 
-def insert_macro_article(article_data: dict) -> bool:
-    """Insert macro article (no stock linking)."""
+def insert_category_article(article_data: dict) -> Optional[int]:
+    """Insert category article (no stock linking). Returns new article id, or None if skipped."""
     try:
         # Check for duplicates
         if article_exists(article_data["title"], article_data["link"]):
             logger.info(f"⏭  Skipped (duplicate): {article_data['title'][:50]}...")
-            return False
+            return None
 
         # Skip if content too short
         if not article_data.get("content") or len(article_data["content"]) < 100:
             logger.info(f"⏭  Skipped (no content): {article_data['title'][:50]}...")
-            return False
+            return None
 
         # Insert article
-        article_res = supabase.table(TABLE).insert({
+        article_res = supabase.table(ARTICLE_TABLE).insert({
             "title": article_data["title"],
             "link": article_data["link"],
             "description": article_data.get("description", ""),
@@ -200,78 +222,98 @@ def insert_macro_article(article_data: dict) -> bool:
             "content": article_data.get("content", ""),
             "sentiment": article_data.get("sentiment", "neutral"),
             "summary": article_data.get("summary", ""),
-            "article_type": "macro",
+            "article_type": "category",
         }).execute()
 
         if not article_res.data:
             logger.error(f"Failed to insert article: {article_data['title'][:50]}...")
-            return False
+            return None
 
+        article_id = article_res.data[0]["id"]
         logger.info(f"✅ Saved: {article_data['title'][:50]}...")
-        return True
+        return article_id
     except Exception as e:
         logger.error(f"Error inserting article: {e}")
-        return False
+        return None
 
-def get_seen_links_from_db() -> set[str]:
-    """Load existing article links so we can skip duplicates before OpenAI runs."""
+def link_article_category(article_id: int, category_id) -> None:
+    """Link an article to a category via Article_Category, skipping if already linked."""
     try:
-        result = supabase.table(TABLE).select("link").execute()
-        return {row.get("link") for row in (result.data or []) if row.get("link")}
+        existing = (
+            supabase.table(ARTICLE_CATEGORY_TABLE)
+            .select("id")
+            .eq("article_id", article_id)
+            .eq("category_id", category_id)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            return
+
+        supabase.table(ARTICLE_CATEGORY_TABLE).insert({
+            "article_id": article_id,
+            "category_id": category_id,
+        }).execute()
+    except Exception as e:
+        logger.error(f"Error linking article {article_id} to category {category_id}: {e}")
+
+def get_seen_links_from_db() -> dict[str, int]:
+    """Load existing article links -> id so we can skip duplicates before OpenAI runs
+    while still being able to link an already-seen article to a new category."""
+    try:
+        result = supabase.table(ARTICLE_TABLE).select("id, link").execute()
+        return {
+            row["link"]: row["id"]
+            for row in (result.data or [])
+            if row.get("link") and row.get("id") is not None
+        }
     except Exception as e:
         logger.error(f"Error loading existing article links: {e}")
-        return set()
+        return {}
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ═════════════════════════════════════════════════════════════════════════════
 
-def main():
-    logger.info("Starting macro economic news fetch...")
+def process_category(
+    category_id,
+    category_name: str,
+    seen_links: dict[str, int],
+) -> tuple[int, int]:
+    """Quét 1 trang Serper cho 1 ngành (tin trong 24h qua), lưu các bài mới.
+    Trả về (số bài fetch được, số bài đã lưu)."""
+    query = f"Tin tức của ngành {category_name} tại Việt Nam"
 
-    total_articles_fetched = 0
-    total_articles_inserted = 0
-    seen_links = get_seen_links_from_db()
-
-    news_items: List[dict] = []
-    for page in range(1, MACRO_PAGES + 1):
-        page_items = search_serper(MACRO_QUERY, page=page)
-        if not page_items:
-            break
-        news_items.extend(page_items)
-        time.sleep(SLEEP_SECONDS)
-
+    news_items = search_serper(query, page=1)
     if not news_items:
-        logger.info("No macro news found. Exiting.")
-        return
+        logger.info(f"  → không có tin mới cho ngành {category_name}")
+        return 0, 0
 
-    logger.info(f"Found {len(news_items)} results")
+    logger.info(f"  → {len(news_items)} tin")
+    inserted = 0
 
-    # Filter trusted sources
-    trusted_items = [item for item in news_items if is_trusted_source(item.get("link", ""))]
-    logger.info(f"{len(trusted_items)} from trusted sources")
-
-    for item in trusted_items:
+    for item in news_items:
         link = item.get("link", "")
-
         if not link:
             continue
 
+        # Already have this article (from this or an earlier category run):
+        # skip re-extraction/AI cost, just link it to this category.
         if link in seen_links:
-            logger.info(f"⏭  Skipped duplicate URL before extraction: {link}")
+            logger.info(f"↺  Already have article, linking category only: {link}")
+            link_article_category(seen_links[link], category_id)
             continue
 
-        # Extract content
         article_content = extract_article_content(link)
         if not article_content:
             continue
 
-        # Extract sentiment + summary with AI (no stock symbols)
-        macro_info = extract_macro_info(article_content["title"], article_content["content"])
-        if not macro_info:
+        category_info = extract_category_info(
+            article_content["title"], article_content["content"], category_name
+        )
+        if not category_info:
             continue
 
-        # Use article's actual publish_date if available, otherwise use current time
         publish_date = article_content.get("publish_date")
         article_time = publish_date.isoformat() if publish_date else datetime.now().isoformat()
 
@@ -283,22 +325,52 @@ def main():
             "thumbnail": item.get("imageUrl") or article_content.get("top_image"),
             "source": get_source(link),
             "content": article_content["content"],
-            "sentiment": macro_info["sentiment"],
-            "summary": macro_info["summary"],
+            "sentiment": category_info["sentiment"],
+            "summary": category_info["summary"],
         }
 
-        # Insert to database
-        if insert_macro_article(article_data):
-            total_articles_inserted += 1
-            seen_links.add(link)
+        article_id = insert_category_article(article_data)
+        if article_id:
+            inserted += 1
+            seen_links[link] = article_id
+            link_article_category(article_id, category_id)
 
-        time.sleep(SLEEP_SECONDS)  # Rate limiting
+        time.sleep(SLEEP_SECONDS)
 
-    total_articles_fetched += len(trusted_items)
+    return len(news_items), inserted
+
+def main():
+    categories = get_categories()
+    if not categories:
+        logger.error("No categories found. Exiting.")
+        return
+
+    logger.info(
+        f"Starting daily category news update for {len(categories)} categories "
+        f"({PAGES_PER_CATEGORY} page each, past 24h)..."
+    )
+
+    seen_links = get_seen_links_from_db()
+
+    total_fetched = 0
+    total_inserted = 0
+
+    for c_idx, category in enumerate(categories, 1):
+        category_id = category["id"]
+        category_name = category["category_name"]
+
+        logger.info(f"\n===== [{c_idx}/{len(categories)}] Category: {category_name} =====")
+
+        fetched, inserted = process_category(category_id, category_name, seen_links)
+        total_fetched += fetched
+        total_inserted += inserted
+        logger.info(f"  → {category_name}: đã lưu {inserted} bài")
+
+        time.sleep(CATEGORY_SLEEP_SECONDS)
 
     logger.info(f"\n✅ Completed!")
-    logger.info(f"Total articles fetched: {total_articles_fetched}")
-    logger.info(f"Total articles inserted: {total_articles_inserted}")
+    logger.info(f"Total articles fetched: {total_fetched}")
+    logger.info(f"Total articles inserted: {total_inserted}")
 
 if __name__ == "__main__":
     main()

@@ -28,8 +28,6 @@ ALLOWED_TABLES: set[str] = {
     "Current_Stock_Price",
     "Current_Market_Index",
     "Stock_Price_1m",
-    "Stock_Price_15m",
-    "Stock_Price_1h",
     "Stock_Price_1d",
     "FA_Summary",
     "FA_Indicator",
@@ -142,24 +140,42 @@ def get_schema_ddl() -> str:
     table_list = sorted(ALLOWED_TABLES)
     pool = get_pool()
     cols_by_table: dict[str, list[str]] = {t: [] for t in table_list}
+    table_comment: dict[str, str] = {}
 
+    # Lấy kèm comment (mô tả nghiệp vụ) đã set bằng COMMENT ON — xem schema_comments.sql.
+    # information_schema không có sẵn comment nên phải join pg_catalog:
+    #   obj_description(oid)        → comment của bảng
+    #   col_description(oid, colno) → comment của cột (theo ordinal_position)
     with pool.connection() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             cur.execute(
                 """
-                SELECT table_name, column_name, data_type
-                FROM information_schema.columns
-                WHERE table_schema = 'public'
-                  AND table_name = ANY(%s)
-                ORDER BY table_name, ordinal_position
+                SELECT
+                    c.table_name,
+                    c.column_name,
+                    c.data_type,
+                    col_description(pc.oid, c.ordinal_position) AS column_comment,
+                    obj_description(pc.oid) AS table_comment
+                FROM information_schema.columns c
+                JOIN pg_class pc
+                    ON pc.relname = c.table_name
+                JOIN pg_namespace pn
+                    ON pn.oid = pc.relnamespace
+                   AND pn.nspname = c.table_schema
+                WHERE c.table_schema = 'public'
+                  AND c.table_name = ANY(%s)
+                ORDER BY c.table_name, c.ordinal_position
                 """,
                 (table_list,),
             )
             for row in cur.fetchall():
                 t = row["table_name"]
-                cols_by_table.setdefault(t, []).append(
-                    f"{row['column_name']} {row['data_type']}"
-                )
+                if row["table_comment"] and t not in table_comment:
+                    table_comment[t] = row["table_comment"]
+                col_def = f"{row['column_name']} {row['data_type']}"
+                if row["column_comment"]:
+                    col_def += f"  -- {row['column_comment']}"
+                cols_by_table.setdefault(t, []).append(col_def)
 
     lines: list[str] = []
     for table in table_list:
@@ -167,7 +183,10 @@ def get_schema_ddl() -> str:
         if not cols:
             continue  # Bảng chưa tồn tại trong DB — bỏ qua khỏi prompt
         cols_str = ",\n  ".join(cols)
-        lines.append(f'TABLE "{table}" (\n  {cols_str}\n);')
+        header = f'TABLE "{table}"'
+        if table in table_comment:
+            header += f"  -- {table_comment[table]}"
+        lines.append(f"{header} (\n  {cols_str}\n);")
 
     _schema_cache = "\n\n".join(lines)
     return _schema_cache

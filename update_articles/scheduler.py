@@ -1,7 +1,7 @@
 """
 scheduler.py - Articles Update Scheduler
 Chạy liên tục, quản lý 1 tác vụ:
-  1. Fetch articles for today → chạy 1 lần lúc 00:00 (nửa đêm)
+  1. Fetch articles mới (macro, category, stock) → chạy 1 lần mỗi ngày vào cuối ngày
 
 Giờ Việt Nam = UTC+7
 """
@@ -20,14 +20,10 @@ logger = logging.getLogger(__name__)
 
 VN_TZ = timezone(timedelta(hours=7))
 
-# Giờ chạy (giờ Việt Nam)
-# Run once per week on the configured weekday at the given hour/minute.
-# Weekday: 0=Monday .. 6=Sunday
-ARTICLES_RUN_H,  ARTICLES_RUN_M  = 0, 0  # Midnight
-ARTICLES_RUN_WEEKDAY = 0  # Monday
+# Giờ chạy (giờ Việt Nam) — cuối ngày, sau khi thị trường đóng cửa
+ARTICLES_RUN_H, ARTICLES_RUN_M = 23, 0
 
-articles_process: subprocess.Popen | None = None
-articles_done_week: str = ""   # "YYYY-WW" của tuần đã chạy article fetching
+articles_done_date: str = ""   # "YYYY-MM-DD" của ngày đã chạy article update
 
 
 def now_vn() -> datetime:
@@ -39,55 +35,35 @@ def hm(dt: datetime) -> tuple[int, int]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ARTICLE FETCH PROCESS
+# ARTICLE UPDATE PROCESSES
 # ─────────────────────────────────────────────────────────────────────────────
 
-def run_article_fetch():
-    """Chạy websocket_articles_1d.py để fetch articles cho hôm nay."""
-    global articles_process
-    
+def run_script(script_name: str) -> None:
+    """Chạy một script update_articles và chờ hoàn tất."""
     try:
-        logger.info("▶ Running websocket_articles_1d.py")
-        articles_process = subprocess.Popen(
-            [sys.executable, "websocket_articles_1d.py"],
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-        )
-        
-        # Wait for completion
-        articles_process.wait()
-        
-        if articles_process.returncode == 0:
-            logger.info("✅ websocket_articles_1d.py completed successfully")
-        else:
-            logger.error(f"❌ websocket_articles_1d.py exited with code {articles_process.returncode}")
-    
-    except Exception as e:
-        logger.error(f"Error running article fetch: {e}")
-    finally:
-        articles_process = None
-
-
-def run_macro_fetch():
-    """Chạy websocket_articles_macro_1d.py để fetch tin kinh tế vĩ mô."""
-    try:
-        logger.info("▶ Running websocket_articles_macro_1d.py")
+        logger.info(f"▶ Running {script_name}")
         proc = subprocess.Popen(
-            [sys.executable, "websocket_articles_macro_1d.py"],
+            [sys.executable, script_name],
             stdout=sys.stdout,
             stderr=sys.stderr,
         )
 
-        # Wait for completion
         proc.wait()
 
         if proc.returncode == 0:
-            logger.info("✅ websocket_articles_macro_1d.py completed successfully")
+            logger.info(f"✅ {script_name} completed successfully")
         else:
-            logger.error(f"❌ websocket_articles_macro_1d.py exited with code {proc.returncode}")
+            logger.error(f"❌ {script_name} exited with code {proc.returncode}")
 
     except Exception as e:
-        logger.error(f"Error running macro fetch: {e}")
+        logger.error(f"Error running {script_name}: {e}")
+
+
+def run_daily_updates():
+    """Chạy lần lượt 3 job update articles hàng ngày."""
+    run_script("update_macro_articles.py")
+    run_script("update_category_articles.py")
+    run_script("update_stock_articles.py")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -95,23 +71,20 @@ def run_macro_fetch():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
-    global articles_done_week
-    logger.info("Scheduler started. Waiting for weekly schedule (VN UTC+7)...")
+    global articles_done_date
+    logger.info("Scheduler started. Waiting for daily schedule (VN UTC+7)...")
 
     while True:
-        now   = now_vn()
-        h, m  = hm(now)
-        # ISO week string for tracking (year-weeknumber)
-        current_week = f"{now.isocalendar()[0]}-{now.isocalendar()[1]}"
+        now = now_vn()
+        h, m = hm(now)
+        current_date = now.strftime("%Y-%m-%d")
 
-        # 1️⃣  Chạy fetch articles một lần mỗi tuần trên ngày/giờ cấu hình
-        # Compare weekday (0=Mon .. 6=Sun)
-        if now.weekday() == ARTICLES_RUN_WEEKDAY and (h, m) >= (ARTICLES_RUN_H, ARTICLES_RUN_M):
-            if articles_done_week != current_week:
-                logger.info(f"🔄 Triggering weekly article fetch for week {current_week} at {h:02d}:{m:02d}")
-                articles_done_week = current_week
-                run_article_fetch()
-                run_macro_fetch()
+        # Chạy fetch articles một lần mỗi ngày vào cuối ngày (giờ cấu hình)
+        if (h, m) >= (ARTICLES_RUN_H, ARTICLES_RUN_M):
+            if articles_done_date != current_date:
+                logger.info(f"🔄 Triggering daily article update for {current_date} at {h:02d}:{m:02d}")
+                articles_done_date = current_date
+                run_daily_updates()
 
         time.sleep(60)  # Check every minute
 

@@ -4,7 +4,9 @@
       "Bash(python3 -m py_compile app/services/ssi_service.py)",
       "Bash(python3 -c \"import ast; [ast.parse\\(open\\(f\\).read\\(\\), f\\) for f in ['app/services/auth_service.py','app/middleware/auth_middleware.py','app/services/ssi_service.py']]; print\\('AST OK'\\)\")",
       "Bash(python3 -c ' *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(python -m py_compile agentic_ai/chatbot/sql_runner.py)",
+      "Bash(python3 -m py_compile agentic_ai/chatbot/sql_runner.py)"
     ]
   }
 }
