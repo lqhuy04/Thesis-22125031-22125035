@@ -1,11 +1,11 @@
 """
-init_category_article.py - One-time backfill of category (industry) news.
+init_stock_articles.py - One-time backfill of stock (VN30) news.
 
-For every row in the Category table, runs a single Serper query (paginated
-across 10 pages, "tbs": "qdr:y" to scope results to the past year). No AI
-symbol extraction is performed; only sentiment + summary are extracted.
-Every inserted article is saved with article_type = "category" and linked
-to its category via the Article_Category join table.
+For every VN30 stock, runs a single Serper query (paginated across 10 pages,
+"tbs": "qdr:y" to scope results to the past year). No AI symbol extraction
+is performed; only sentiment + summary are extracted. Every inserted
+article is saved with article_type = "stock" and linked to its stock via
+the Article_Stock join table.
 """
 
 import os
@@ -22,6 +22,8 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
+from vn30_symbols import get_vn30_symbols, get_vn30_company_names
+
 load_dotenv()
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -35,14 +37,14 @@ class Config:
 
 config = Config()
 
-ARTICLE_TABLE          = "Article"
-CATEGORY_TABLE         = "Category"
-ARTICLE_CATEGORY_TABLE = "Article_Category"
-SLEEP_SECONDS          = 1.1
-CATEGORY_SLEEP_SECONDS = 3
-PAGES_PER_CATEGORY     = 10            # Serper trả 10 tin/trang → 10 trang ≈ 100 tin/ngành
-SERPER_TIME_FILTER     = "qdr:y"       # giới hạn 1 năm gần nhất
-CHECKPOINT_FILE        = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init_category_article_checkpoint.json")
+ARTICLE_TABLE       = "Article"
+STOCK_TABLE         = "Stock"
+ARTICLE_STOCK_TABLE = "Article_Stock"
+SLEEP_SECONDS       = 1.1
+STOCK_SLEEP_SECONDS = 3
+PAGES_PER_STOCK     = 5           # Serper trả 5 tin/trang → 5 trang ≈ 50 tin/mã
+SERPER_TIME_FILTER  = "qdr:y"      # giới hạn 1 năm gần nhất
+CHECKPOINT_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init_stock_articles_checkpoint.json")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -56,10 +58,10 @@ supabase = create_client(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# NEWS EXTRACTION MODEL (category: chỉ cần sentiment + summary)
+# NEWS EXTRACTION MODEL (stock: chỉ cần sentiment + summary)
 # ═════════════════════════════════════════════════════════════════════════════
 
-class CategoryExtraction(BaseModel):
+class StockExtraction(BaseModel):
     sentiment: str = Field(
         description="positive | neutral | negative"
     )
@@ -68,16 +70,37 @@ class CategoryExtraction(BaseModel):
     )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# CATEGORY
+# STOCK (VN30)
 # ═════════════════════════════════════════════════════════════════════════════
 
-def get_categories() -> List[dict]:
-    """Fetch all categories (id, category_name) from the database."""
+def get_stocks() -> List[dict]:
+    """Fetch all VN30 stocks as [{id, stock_symbol, company_name}, ...]."""
     try:
-        result = supabase.table(CATEGORY_TABLE).select("id, category_name").execute()
-        return result.data or []
+        symbols = get_vn30_symbols(supabase)
+        if not symbols:
+            return []
+
+        stock_res = (
+            supabase.table(STOCK_TABLE)
+            .select("id, stock_symbol")
+            .in_("stock_symbol", list(symbols))
+            .execute()
+        )
+        stock_rows = stock_res.data or []
+
+        company_map = get_vn30_company_names(supabase)
+
+        return [
+            {
+                "id": row["id"],
+                "stock_symbol": row["stock_symbol"],
+                "company_name": company_map.get(row["stock_symbol"], row["stock_symbol"]),
+            }
+            for row in stock_rows
+            if row.get("id") is not None and row.get("stock_symbol")
+        ]
     except Exception as e:
-        logger.error(f"Error loading categories: {e}")
+        logger.error(f"Error loading VN30 stocks: {e}")
         return []
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -140,17 +163,17 @@ def extract_article_content(url: str) -> Optional[dict]:
         logger.debug(f"Newspaper extraction error ({url}): {e}")
         return None
 
-def extract_category_info(title: str, content: str, category_name: str) -> Optional[dict]:
-    """Extract sentiment and summary using OpenAI (no stock symbols for category news)."""
+def extract_stock_info(title: str, content: str, symbol: str, company_name: str) -> Optional[dict]:
+    """Extract sentiment and summary using OpenAI (no stock symbol extraction needed)."""
     if not config.openai_key:
         logger.warning("OPENAI_API_KEY not set")
         return None
 
     try:
         system_prompt = f"""
-Bạn là hệ thống phân tích tin tức ngành {category_name} tại Việt Nam.
+Bạn là hệ thống phân tích tin tức tài chính Việt Nam về mã cổ phiếu {symbol} ({company_name}).
 Nhiệm vụ:
-1. Gán sentiment: positive | neutral | negative (theo góc nhìn tác động đến ngành {category_name}).
+1. Gán sentiment: positive | neutral | negative (theo góc nhìn tác động đến mã {symbol}).
 2. Viết summary ngắn bằng tiếng Việt (1-3 câu).
 """.strip()
 
@@ -164,7 +187,7 @@ Nhiệm vụ:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            response_format=CategoryExtraction,
+            response_format=StockExtraction,
             temperature=0,
         )
 
@@ -200,8 +223,8 @@ def article_exists(title: str, link: str) -> bool:
         logger.error(f"Error checking article existence: {e}")
         return False
 
-def insert_category_article(article_data: dict) -> Optional[int]:
-    """Insert category article (no stock linking). Returns new article id, or None if skipped."""
+def insert_stock_article(article_data: dict) -> Optional[int]:
+    """Insert stock article (no AI symbol linking). Returns new article id, or None if skipped."""
     try:
         # Check for duplicates
         if article_exists(article_data["title"], article_data["link"]):
@@ -224,7 +247,7 @@ def insert_category_article(article_data: dict) -> Optional[int]:
             "content": article_data.get("content", ""),
             "sentiment": article_data.get("sentiment", "neutral"),
             "summary": article_data.get("summary", ""),
-            "article_type": "category",
+            "article_type": "stock",
         }).execute()
 
         if not article_res.data:
@@ -238,30 +261,30 @@ def insert_category_article(article_data: dict) -> Optional[int]:
         logger.error(f"Error inserting article: {e}")
         return None
 
-def link_article_category(article_id: int, category_id) -> None:
-    """Link an article to a category via Article_Category, skipping if already linked."""
+def link_article_stock(article_id: int, stock_id) -> None:
+    """Link an article to a stock via Article_Stock, skipping if already linked."""
     try:
         existing = (
-            supabase.table(ARTICLE_CATEGORY_TABLE)
+            supabase.table(ARTICLE_STOCK_TABLE)
             .select("id")
             .eq("article_id", article_id)
-            .eq("category_id", category_id)
+            .eq("stock_id", stock_id)
             .limit(1)
             .execute()
         )
         if existing.data:
             return
 
-        supabase.table(ARTICLE_CATEGORY_TABLE).insert({
+        supabase.table(ARTICLE_STOCK_TABLE).insert({
             "article_id": article_id,
-            "category_id": category_id,
+            "stock_id": stock_id,
         }).execute()
     except Exception as e:
-        logger.error(f"Error linking article {article_id} to category {category_id}: {e}")
+        logger.error(f"Error linking article {article_id} to stock {stock_id}: {e}")
 
 def get_seen_links_from_db() -> dict[str, int]:
     """Load existing article links -> id so we can skip duplicates before OpenAI runs
-    while still being able to link an already-seen article to a new category."""
+    while still being able to link an already-seen article to a new stock."""
     try:
         result = supabase.table(ARTICLE_TABLE).select("id, link").execute()
         return {
@@ -278,9 +301,9 @@ def get_seen_links_from_db() -> dict[str, int]:
 # ═════════════════════════════════════════════════════════════════════════════
 #
 # {
-#   "categories_completed": [1, 2],    category ids fully processed
-#   "current_category_id": 3,          category currently in progress (if any)
-#   "next_page_index": 5               next Serper page (1-based) to fetch
+#   "stocks_completed": [1, 2],    stock ids fully processed
+#   "current_stock_id": 3,        stock currently in progress (if any)
+#   "next_page_index": 5          next Serper page (1-based) to fetch
 # }
 
 def load_checkpoint() -> dict:
@@ -310,25 +333,26 @@ def clear_checkpoint() -> None:
 # MAIN
 # ═════════════════════════════════════════════════════════════════════════════
 
-def process_category(
-    category_id,
-    category_name: str,
+def process_stock(
+    stock_id,
+    symbol: str,
+    company_name: str,
     seen_links: dict[str, int],
     start_page: int,
     checkpoint: dict,
 ) -> tuple[int, int]:
-    """Quét PAGES_PER_CATEGORY trang Serper cho 1 ngành, lưu các bài mới.
+    """Quét PAGES_PER_STOCK trang Serper cho 1 mã, lưu các bài mới.
     Trả về (số bài fetch được, số bài đã lưu)."""
-    query = f"Tin tức của ngành {category_name} tại Việt Nam"
+    query = f"Tin tức tình hình kinh doanh, hoạt động của {company_name} {symbol}"
 
     fetched = 0
     inserted = 0
 
-    for page in range(start_page, PAGES_PER_CATEGORY + 1):
+    for page in range(start_page, PAGES_PER_STOCK + 1):
         news_items = search_serper(query, page=page)
 
         if not news_items:
-            logger.info(f"  [page {page}] → không còn kết quả, dừng ngành {category_name}")
+            logger.info(f"  [page {page}] → không còn kết quả, dừng mã {symbol}")
             break
 
         logger.info(f"  [page {page}] {len(news_items)} tin")
@@ -339,21 +363,21 @@ def process_category(
             if not link:
                 continue
 
-            # Already have this article (from this or an earlier category run):
-            # skip re-extraction/AI cost, just link it to this category.
+            # Already have this article (from this or an earlier stock run):
+            # skip re-extraction/AI cost, just link it to this stock.
             if link in seen_links:
-                logger.info(f"↺  Already have article, linking category only: {link}")
-                link_article_category(seen_links[link], category_id)
+                logger.info(f"↺  Already have article, linking stock only: {link}")
+                link_article_stock(seen_links[link], stock_id)
                 continue
 
             article_content = extract_article_content(link)
             if not article_content:
                 continue
 
-            category_info = extract_category_info(
-                article_content["title"], article_content["content"], category_name
+            stock_info = extract_stock_info(
+                article_content["title"], article_content["content"], symbol, company_name
             )
-            if not category_info:
+            if not stock_info:
                 continue
 
             publish_date = article_content.get("publish_date")
@@ -367,19 +391,19 @@ def process_category(
                 "thumbnail": item.get("imageUrl") or article_content.get("top_image"),
                 "source": get_source(link),
                 "content": article_content["content"],
-                "sentiment": category_info["sentiment"],
-                "summary": category_info["summary"],
+                "sentiment": stock_info["sentiment"],
+                "summary": stock_info["summary"],
             }
 
-            article_id = insert_category_article(article_data)
+            article_id = insert_stock_article(article_data)
             if article_id:
                 inserted += 1
                 seen_links[link] = article_id
-                link_article_category(article_id, category_id)
+                link_article_stock(article_id, stock_id)
 
             time.sleep(SLEEP_SECONDS)
 
-        checkpoint["current_category_id"] = category_id
+        checkpoint["current_stock_id"] = stock_id
         checkpoint["next_page_index"] = page + 1
         save_checkpoint(checkpoint)
 
@@ -388,9 +412,9 @@ def process_category(
     return fetched, inserted
 
 def main():
-    categories = get_categories()
-    if not categories:
-        logger.error("No categories found. Exiting.")
+    stocks = get_stocks()
+    if not stocks:
+        logger.error("No VN30 stocks found. Exiting.")
         return
 
     checkpoint = load_checkpoint()
@@ -398,19 +422,19 @@ def main():
         logger.info("↻ Resuming from checkpoint...")
     else:
         checkpoint = {
-            "categories_completed": [],
-            "current_category_id": None,
+            "stocks_completed": [],
+            "current_stock_id": None,
             "next_page_index": 1,
         }
         save_checkpoint(checkpoint)
 
-    completed_ids = set(checkpoint.get("categories_completed", []))
-    resume_category_id = checkpoint.get("current_category_id")
+    completed_ids = set(checkpoint.get("stocks_completed", []))
+    resume_stock_id = checkpoint.get("current_stock_id")
     resume_page_index = checkpoint.get("next_page_index", 1)
 
     logger.info(
-        f"Starting category news backfill for {len(categories)} categories "
-        f"({PAGES_PER_CATEGORY} pages each, past 1 year)..."
+        f"Starting stock news backfill for {len(stocks)} VN30 stocks "
+        f"({PAGES_PER_STOCK} pages each, past 1 year)..."
     )
 
     seen_links = get_seen_links_from_db()
@@ -418,32 +442,33 @@ def main():
     total_fetched = 0
     total_inserted = 0
 
-    for c_idx, category in enumerate(categories, 1):
-        category_id = category["id"]
-        category_name = category["category_name"]
+    for s_idx, stock in enumerate(stocks, 1):
+        stock_id = stock["id"]
+        symbol = stock["stock_symbol"]
+        company_name = stock["company_name"]
 
-        if category_id in completed_ids:
-            logger.info(f"⏭  [{c_idx}/{len(categories)}] Category '{category_name}' already completed, skipping.")
+        if stock_id in completed_ids:
+            logger.info(f"⏭  [{s_idx}/{len(stocks)}] Stock '{symbol}' already completed, skipping.")
             continue
 
-        start_page = resume_page_index if category_id == resume_category_id else 1
+        start_page = resume_page_index if stock_id == resume_stock_id else 1
 
-        logger.info(f"\n===== [{c_idx}/{len(categories)}] Category: {category_name} =====")
+        logger.info(f"\n===== [{s_idx}/{len(stocks)}] Stock: {symbol} ({company_name}) =====")
 
-        fetched, inserted = process_category(
-            category_id, category_name, seen_links, start_page, checkpoint
+        fetched, inserted = process_stock(
+            stock_id, symbol, company_name, seen_links, start_page, checkpoint
         )
         total_fetched += fetched
         total_inserted += inserted
-        logger.info(f"  → {category_name}: đã lưu {inserted} bài")
+        logger.info(f"  → {symbol}: đã lưu {inserted} bài")
 
-        completed_ids.add(category_id)
-        checkpoint["categories_completed"] = sorted(completed_ids, key=str)
-        checkpoint["current_category_id"] = None
+        completed_ids.add(stock_id)
+        checkpoint["stocks_completed"] = sorted(completed_ids, key=str)
+        checkpoint["current_stock_id"] = None
         checkpoint["next_page_index"] = 1
         save_checkpoint(checkpoint)
 
-        time.sleep(CATEGORY_SLEEP_SECONDS)
+        time.sleep(STOCK_SLEEP_SECONDS)
 
     clear_checkpoint()
 
