@@ -20,9 +20,10 @@ from agentic_ai.chatbot.db import get_pool
 
 # ─── Cấu hình guardrail ───────────────────────────────────────────────────────
 
-# Các bảng dữ liệu thị trường được phép truy vấn. Cố tình LOẠI các bảng nhạy cảm:
-# User, RiskAppetite, Portfolio, Favorite, chat_sessions, và các bảng checkpoint
-# của LangGraph.
+# Các bảng dữ liệu thị trường được phép truy vấn. Cố tình LOẠI các bảng nhạy cảm/
+# nội bộ: User, RiskAppetite, Portfolio, Favorite, Search_History, chat_sessions,
+# và các bảng checkpoint của LangGraph (checkpoints, checkpoint_blobs,
+# checkpoint_writes, checkpoint_migrations).
 ALLOWED_TABLES: set[str] = {
     "Stock",
     "Current_Stock_Price",
@@ -34,12 +35,17 @@ ALLOWED_TABLES: set[str] = {
     "FA_BalanceSheet",
     "FA_CashFlow",
     "FA_IncomeStatement",
+    "FA_Industry_Aggregate",
     "Article",
     "Article_Stock",
+    "Article_Category",
+    "Category",
     "Category_Stock",
     "BI_Profile",
     "BI_Leader",
     "BI_Subsidiary",
+    "MarketIndex",
+    "Stock_MarketIndex",
 }
 
 MAX_ROWS = 100            # Số dòng tối đa trả về (chống ngốn token + lạm dụng)

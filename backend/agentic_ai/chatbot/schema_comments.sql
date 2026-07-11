@@ -54,6 +54,16 @@ COMMENT ON COLUMN public."Current_Market_Index".trading_date IS 'Ngày giao dị
 COMMENT ON COLUMN public."Current_Market_Index".trading_time IS 'Thời điểm cập nhật trong phiên (chuỗi).';
 COMMENT ON COLUMN public."Current_Market_Index".trading_session IS 'Phiên giao dịch (mở cửa/khớp lệnh liên tục/đóng cửa...).';
 
+-- ─── MarketIndex / Stock_MarketIndex (danh mục & thành phần chỉ số) ────────────
+COMMENT ON TABLE  public."MarketIndex" IS
+  'Danh mục các chỉ số thị trường (vd VN-Index, VN30...). Liên kết với "Stock" qua bảng nối "Stock_MarketIndex".';
+COMMENT ON COLUMN public."MarketIndex".name IS 'Tên chỉ số.';
+
+COMMENT ON TABLE  public."Stock_MarketIndex" IS
+  'Bảng nối nhiều-nhiều giữa "Stock" và "MarketIndex": mỗi dòng gắn 1 mã vào rổ của 1 chỉ số (vd thành phần VN30).';
+COMMENT ON COLUMN public."Stock_MarketIndex".stock_id IS 'FK → Stock.id.';
+COMMENT ON COLUMN public."Stock_MarketIndex".market_index_id IS 'FK → MarketIndex.id.';
+
 -- ─── Stock_Price_1m (nến 1 phút) ───────────────────────────────────────────────
 COMMENT ON TABLE  public."Stock_Price_1m" IS
   'Nến (OHLCV) khung 1 PHÚT theo mã. ⚠ open/high/low/close/volume ĐÃ CHIA 1000 — phải NHÂN 1000 trong SQL để ra giá trị thật.';
@@ -209,6 +219,13 @@ COMMENT ON COLUMN public."FA_IncomeStatement".eps_basic IS 'EPS cơ bản (lãi 
 COMMENT ON COLUMN public."FA_IncomeStatement".ebit IS 'Lợi nhuận trước lãi vay và thuế (EBIT).';
 COMMENT ON COLUMN public."FA_IncomeStatement".ebitda IS 'Lợi nhuận trước lãi vay, thuế và khấu hao (EBITDA).';
 
+-- ─── FA_Industry_Aggregate (trung vị ngành, precompute) ────────────────────────
+COMMENT ON TABLE  public."FA_Industry_Aggregate" IS
+  'Chỉ tiêu TRUNG VỊ ngành đã precompute theo (category_id, year) — dùng để so sánh một mã CP với mặt bằng chung của ngành (Category) và tính CAGR ngành. Mỗi dòng = 1 ngành × 1 năm.';
+COMMENT ON COLUMN public."FA_Industry_Aggregate".category_id IS 'FK → Category.id (mã ngành).';
+COMMENT ON COLUMN public."FA_Industry_Aggregate".year IS 'Năm tài chính.';
+COMMENT ON COLUMN public."FA_Industry_Aggregate".peer_count IS 'Số mã CK trong ngành dùng để tính trung vị.';
+
 -- ─── Article (tin tức) ──────────────────────────────────────────────────────────
 COMMENT ON TABLE  public."Article" IS
   'Tin tức / bài báo. Liên kết với mã CK qua bảng nối "Article_Stock" (Article.id = Article_Stock.article_id).';
@@ -228,6 +245,18 @@ COMMENT ON TABLE  public."Article_Stock" IS
   'Bảng nối nhiều-nhiều giữa "Article" và "Stock": mỗi dòng gắn 1 bài báo với 1 mã CK.';
 COMMENT ON COLUMN public."Article_Stock".article_id IS 'FK → Article.id.';
 COMMENT ON COLUMN public."Article_Stock".stock_id IS 'FK → Stock.id.';
+
+-- ─── Article_Category (bảng nối tin tức ↔ ngành) ───────────────────────────────
+COMMENT ON TABLE  public."Article_Category" IS
+  'Bảng nối nhiều-nhiều giữa "Article" và "Category": mỗi dòng gắn 1 bài báo với 1 ngành (dùng cho tin tức ở cấp ngành thay vì 1 mã cụ thể).';
+COMMENT ON COLUMN public."Article_Category".article_id IS 'FK → Article.id.';
+COMMENT ON COLUMN public."Article_Category".category_id IS 'FK → Category.id.';
+
+-- ─── Category (danh mục ngành/nhóm) ────────────────────────────────────────────
+COMMENT ON TABLE  public."Category" IS
+  'Danh mục ngành/nhóm (ICB cấp Industry). Bảng gốc cho câu hỏi liên quan đến NGÀNH — liên kết với "Stock" qua bảng nối "Category_Stock" (Category.id = Category_Stock.category_id).';
+COMMENT ON COLUMN public."Category".id IS 'Mã ngành ICB (vd "8300" = Ngân hàng), khóa chính, được "Category_Stock" tham chiếu qua category_id.';
+COMMENT ON COLUMN public."Category".category_name IS 'Tên ngành (tiếng Việt), vd "Ngân hàng", "Bất động sản".';
 
 -- ─── Category_Stock (bảng nối mã ↔ ngành) ──────────────────────────────────────
 COMMENT ON TABLE  public."Category_Stock" IS

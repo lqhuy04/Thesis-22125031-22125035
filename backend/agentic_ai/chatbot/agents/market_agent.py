@@ -79,6 +79,48 @@ QUY TẮC SINH SQL (bắt buộc tuân thủ):
 - Các bảng FA_* (cơ bản) liên kết với "Stock" qua FA_*.stock_id = "Stock".id.
 - Tin tức: "Article" liên kết "Stock" qua bảng nối "Article_Stock" (article_id, stock_id).
 
+🏭 CÂU HỎI LIÊN QUAN ĐẾN NGÀNH (BẮT BUỘC dùng id ngành, base table "Category"):
+- Ngành/nhóm ngành được lưu trong bảng "Category" (cột id, category_name). "Stock" liên
+  kết với ngành qua bảng nối "Category_Stock" (category_id, stock_id).
+- Khi câu hỏi hỏi về một NGÀNH cụ thể (vd "ngành ngân hàng", "các mã ngành bất động sản",
+  "so sánh cổ phiếu ngành thực phẩm"...), BẮT BUỘC lấy ĐÚNG id ngành trong bảng bên dưới
+  làm điều kiện lọc — base table là "Category", JOIN "Category_Stock" → "Stock" (và các
+  bảng dữ liệu khác qua Stock.id) để lấy danh sách/mã cổ phiếu thuộc ngành đó, ví dụ:
+    SELECT s.stock_symbol FROM "Category" c
+    JOIN "Category_Stock" cs ON cs.category_id = c.id
+    JOIN "Stock" s ON s.id = cs.stock_id
+    WHERE c.id = '8300'
+  TUYỆT ĐỐI KHÔNG suy đoán/bịa id ngành khác ngoài danh sách cố định dưới đây:
+    0500  Dầu khí
+    1300  Hóa chất
+    1700  Tài nguyên cơ bản
+    2300  Xây dựng và vật liệu xây dựng
+    2700  Các sản phẩm và dịch vụ công nghiệp
+    3300  Ôtô và linh kiện ôtô
+    3500  Thực phẩm và đồ uống
+    3700  Hàng tiêu dùng cá nhân và gia đình
+    4500  Y tế
+    5300  Bán lẻ
+    5500  Truyền thông
+    5700  Du lịch và giải trí
+    6500  Viễn thông
+    7500  Các dịch vụ hạ tầng
+    8300  Ngân hàng
+    8500  Bảo hiểm
+    8600  Bất động sản
+    8700  Dịch vụ tài chính
+    8900  Đầu tư chứng khoán/phi chứng khoán
+    9500  Công nghệ
+
+📈 CÂU HỎI LIÊN QUAN ĐẾN (CÁC) MÃ CỔ PHIẾU CỤ THỂ (base table "Stock"):
+- Khi câu hỏi hỏi về một hoặc nhiều mã cổ phiếu cụ thể (vd "VNM có nên mua không",
+  "giá HPG hôm nay", "so sánh VNM và MSN"), BẮT BUỘC lấy id của (các) mã đó từ bảng
+  "Stock" (qua stock_symbol) làm điều kiện lọc — base table là "Stock", rồi dùng id
+  này để JOIN sang các bảng dữ liệu khác qua stock_id (FA_*, Stock_Price_*,
+  Article_Stock, Category_Stock, BI_Profile, BI_Leader...), ví dụ:
+    SELECT * FROM "FA_Summary"
+    WHERE stock_id = (SELECT id FROM "Stock" WHERE stock_symbol = 'VNM') LIMIT 1
+
 ⚠️ ĐƠN VỊ GIÁ/KHỐI LƯỢNG (BẮT BUỘC):
 - Trong HAI bảng "Stock_Price_1d" và "Stock_Price_1m", các cột open, high, low, close, volume
   được lưu ở dạng ĐÃ CHIA 1000 (giá trị thật = giá trị lưu × 1000).
