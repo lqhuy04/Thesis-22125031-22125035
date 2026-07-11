@@ -12,6 +12,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Animated,
   PanResponder,
   Pressable,
   ScrollView,
@@ -22,6 +23,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import Octicons from "@expo/vector-icons/Octicons";
+import Feather from "@expo/vector-icons/Feather";
 
 const PURPLE_GRADIENT = ["#9D8CFF", "#7B5CFF", "#613DE4"] as const;
 
@@ -59,6 +61,29 @@ const DEFAULT_WEIGHT: WeightSelection = {
 
 const clampPct = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
+
+const SOURCE_ORDER: (keyof WeightSelection)[] = [
+  "technical",
+  "fundamental",
+  "news",
+];
+
+// Chia đều trọng số cho các nguồn đang bật, các nguồn bị tắt nhận 0.
+const equalWeights = (
+  activeKeys: (keyof WeightSelection)[],
+): WeightSelection => {
+  const result: WeightSelection = { technical: 0, fundamental: 0, news: 0 };
+  const n = activeKeys.length;
+  if (n === 0) return result;
+  const basePct = Math.round(100 / n);
+  let remaining = 100;
+  activeKeys.forEach((k, i) => {
+    const value = i === n - 1 ? remaining : basePct;
+    result[k] = value / 100;
+    remaining -= value;
+  });
+  return result;
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -218,95 +243,125 @@ const WeightSlider = ({
   onChange,
   theme,
   labels,
+  enabled,
 }: {
   weight: WeightSelection;
   onChange: (w: WeightSelection) => void;
   theme: ReturnType<typeof useTheme>["theme"];
   labels: { technical: string; fundamental: string; news: string };
+  enabled: { technical: boolean; fundamental: boolean; news: boolean };
 }) => {
   const [trackWidth, setTrackWidth] = useState(0);
-  const grantRef = useRef({ d1: 0, d2: 0 });
 
-  const techPct = Math.round(weight.technical * 100);
-  const fundPct = Math.round(weight.fundamental * 100);
-  const newsPct = 100 - techPct - fundPct;
+  const activeKeys = SOURCE_ORDER.filter((k) => enabled[k]);
 
-  // PanResponder tracks touch/gesture state internally, so it must be created
-  // ONCE (not on every render) or an in-flight drag loses its starting point
-  // the moment `onChange` triggers a re-render. Fresh values it needs mid-drag
-  // are read from this ref instead of being captured in a stale closure.
-  const liveRef = useRef({ techPct, fundPct, trackWidth, onChange });
-  liveRef.current = { techPct, fundPct, trackWidth, onChange };
+  // Làm tròn % cho từng nguồn đang bật; nguồn cuối cùng nhận phần dư để tổng
+  // luôn bằng 100 (tránh lệch do làm tròn). Nguồn bị tắt luôn là 0%.
+  const activePcts: Partial<Record<keyof WeightSelection, number>> = {};
+  let runningSum = 0;
+  activeKeys.forEach((k, i) => {
+    if (i === activeKeys.length - 1) {
+      activePcts[k] = 100 - runningSum;
+    } else {
+      const p = Math.round(weight[k] * 100);
+      activePcts[k] = p;
+      runningSum += p;
+    }
+  });
+  const techPct = activePcts.technical ?? 0;
+  const fundPct = activePcts.fundamental ?? 0;
+  const newsPct = activePcts.news ?? 0;
 
-  const commit = (d1: number, d2: number) => {
-    const t1 = Math.round(d1);
-    const t2 = Math.round(d2);
-    liveRef.current.onChange({
-      technical: t1 / 100,
-      fundamental: (t2 - t1) / 100,
-      news: (100 - t2) / 100,
+  // Vị trí các đường phân chia (boundary) giữa các nguồn đang bật, tính theo %
+  // cộng dồn. Với n nguồn bật thì có n-1 đường phân chia có thể kéo.
+  const boundaries: number[] = [];
+  let cum = 0;
+  activeKeys.forEach((k, i) => {
+    cum += activePcts[k] ?? 0;
+    if (i < activeKeys.length - 1) boundaries.push(cum);
+  });
+
+  // PanResponder tracks touch/gesture state internally, so responders must be
+  // created ONCE (not on every render) or an in-flight drag loses its
+  // starting point the moment `onChange` triggers a re-render. Fresh values
+  // needed mid-drag are read from this ref instead of a stale closure.
+  const liveRef = useRef({ boundaries, activeKeys, trackWidth, onChange });
+  liveRef.current = { boundaries, activeKeys, trackWidth, onChange };
+
+  const grantRef = useRef<{ idx: number; values: number[] }>({
+    idx: 0,
+    values: [],
+  });
+
+  const commitBoundaries = (values: number[]) => {
+    const { activeKeys, onChange } = liveRef.current;
+    const next: WeightSelection = { technical: 0, fundamental: 0, news: 0 };
+    let prev = 0;
+    activeKeys.forEach((k, i) => {
+      const upper = i < values.length ? Math.round(values[i]) : 100;
+      next[k] = Math.max(0, upper - prev) / 100;
+      prev = upper;
     });
+    onChange(next);
   };
 
-  const createResponder = (handle: 1 | 2) =>
-    PanResponder.create({
+  const respondersRef = useRef<
+    Map<number, ReturnType<typeof PanResponder.create>>
+  >(new Map());
+
+  const getResponder = (idx: number) => {
+    const map = respondersRef.current;
+    const existing = map.get(idx);
+    if (existing) return existing;
+    const responder = PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
-        const { techPct, fundPct } = liveRef.current;
-        grantRef.current = { d1: techPct, d2: techPct + fundPct };
+        grantRef.current = { idx, values: [...liveRef.current.boundaries] };
       },
       onPanResponderMove: (_evt, gestureState) => {
         const { trackWidth } = liveRef.current;
-        if (trackWidth <= 0) return;
+        if (trackWidth <= 0 || grantRef.current.idx !== idx) return;
         const deltaPct = (gestureState.dx / trackWidth) * 100;
-        const { d1, d2 } = grantRef.current;
-        if (handle === 1) {
-          const next = clampPct(
-            d1 + deltaPct,
-            MIN_WEIGHT_PCT,
-            d2 - MIN_WEIGHT_PCT,
-          );
-          commit(next, d2);
-        } else {
-          const next = clampPct(
-            d2 + deltaPct,
-            d1 + MIN_WEIGHT_PCT,
-            100 - MIN_WEIGHT_PCT,
-          );
-          commit(d1, next);
-        }
+        const values = [...grantRef.current.values];
+        const lower = idx > 0 ? values[idx - 1] : MIN_WEIGHT_PCT;
+        const upper =
+          idx < values.length - 1 ? values[idx + 1] : 100 - MIN_WEIGHT_PCT;
+        values[idx] = clampPct(values[idx] + deltaPct, lower, upper);
+        commitBoundaries(values);
       },
     });
-
-  const handle1Ref = useRef<ReturnType<typeof createResponder> | null>(null);
-  const handle2Ref = useRef<ReturnType<typeof createResponder> | null>(null);
-  if (!handle1Ref.current) handle1Ref.current = createResponder(1);
-  if (!handle2Ref.current) handle2Ref.current = createResponder(2);
-  const handle1 = handle1Ref.current;
-  const handle2 = handle2Ref.current;
+    map.set(idx, responder);
+    return responder;
+  };
 
   return (
     <View>
       <View style={styles.weightLegendRow}>
-        <WeightLegendItem
-          color={WEIGHT_COLORS.technical}
-          label={labels.technical}
-          pct={techPct}
-        />
-        <WeightLegendItem
-          color={WEIGHT_COLORS.fundamental}
-          label={labels.fundamental}
-          pct={fundPct}
-        />
-        <WeightLegendItem
-          color={WEIGHT_COLORS.news}
-          label={labels.news}
-          pct={newsPct}
-        />
+        {enabled.technical && (
+          <WeightLegendItem
+            color={WEIGHT_COLORS.technical}
+            label={labels.technical}
+            pct={techPct}
+          />
+        )}
+        {enabled.fundamental && (
+          <WeightLegendItem
+            color={WEIGHT_COLORS.fundamental}
+            label={labels.fundamental}
+            pct={fundPct}
+          />
+        )}
+        {enabled.news && (
+          <WeightLegendItem
+            color={WEIGHT_COLORS.news}
+            label={labels.news}
+            pct={newsPct}
+          />
+        )}
       </View>
 
       <View
@@ -334,38 +389,27 @@ const WeightSlider = ({
           />
         </View>
 
-        {trackWidth > 0 && (
-          <>
-            <View
-              {...handle1.panHandlers}
-              style={[
-                styles.weightHandle,
-                { left: (techPct / 100) * trackWidth - 14 },
-              ]}
-            >
+        {trackWidth > 0 &&
+          boundaries.map((pos, idx) => {
+            const responder = getResponder(idx);
+            return (
               <View
+                key={idx}
+                {...responder.panHandlers}
                 style={[
-                  styles.weightHandleKnob,
-                  { borderColor: theme.background.bg },
+                  styles.weightHandle,
+                  { left: (pos / 100) * trackWidth - 14 },
                 ]}
-              />
-            </View>
-            <View
-              {...handle2.panHandlers}
-              style={[
-                styles.weightHandle,
-                { left: ((techPct + fundPct) / 100) * trackWidth - 14 },
-              ]}
-            >
-              <View
-                style={[
-                  styles.weightHandleKnob,
-                  { borderColor: theme.background.bg },
-                ]}
-              />
-            </View>
-          </>
-        )}
+              >
+                <View
+                  style={[
+                    styles.weightHandleKnob,
+                    { borderColor: theme.background.bg },
+                  ]}
+                />
+              </View>
+            );
+          })}
       </View>
     </View>
   );
@@ -398,6 +442,35 @@ const AIAnalysisConfig = () => {
 
   const PRESET_KEY = "ai_analysis_preset";
   const [hydrated, setHydrated] = useState(false);
+
+  // Toast cảnh báo khi cố tắt data source cuối cùng còn lại.
+  const [toastVisible, setToastVisible] = useState(false);
+  const toastAnim = useRef(new Animated.Value(0)).current;
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToastVisible(true);
+    Animated.timing(toastAnim, {
+      toValue: 1,
+      duration: 180,
+      useNativeDriver: true,
+    }).start();
+
+    toastTimer.current = setTimeout(() => {
+      Animated.timing(toastAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start(() => setToastVisible(false));
+    }, 2200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
+  }, []);
 
   // Load preset on mount
   useEffect(() => {
@@ -447,6 +520,30 @@ const AIAnalysisConfig = () => {
     weight,
   ]);
 
+  // Khi bật/tắt một data source, chia đều lại trọng số cho các source còn
+  // đang bật (nguồn vừa tắt về 0%). Bỏ qua trước khi hydrate xong và bỏ qua
+  // lần chạy đầu sau khi hydrate để không ghi đè trọng số vừa nạp từ preset.
+  const prevEnabledKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hydrated) return;
+    const key = `${technicalEnabled}-${fundamentalEnabled}-${newsEnabled}`;
+    if (prevEnabledKeyRef.current === null) {
+      prevEnabledKeyRef.current = key;
+      return;
+    }
+    if (prevEnabledKeyRef.current === key) return;
+    prevEnabledKeyRef.current = key;
+
+    const activeKeys = SOURCE_ORDER.filter((k) =>
+      k === "technical"
+        ? technicalEnabled
+        : k === "fundamental"
+          ? fundamentalEnabled
+          : newsEnabled,
+    );
+    setWeight(equalWeights(activeKeys));
+  }, [hydrated, technicalEnabled, fundamentalEnabled, newsEnabled]);
+
   const technicalKeys = Object.keys(
     DEFAULT_TECHNICAL,
   ) as (keyof TechnicalSelection)[];
@@ -460,6 +557,33 @@ const AIAnalysisConfig = () => {
   const fundamentalCheckedCount = fundamentalKeys.filter(
     (k) => fundamental[k],
   ).length;
+
+  // Nguồn nào đang thực sự đóng góp dữ liệu (toggle bật và, với technical/
+  // fundamental, còn ít nhất một checkbox con được chọn).
+  const sourceActive = {
+    news: newsEnabled,
+    technical: technicalEnabled && technicalCheckedCount > 0,
+    fundamental: fundamentalEnabled && fundamentalCheckedCount > 0,
+  };
+
+  // Có được phép tắt `source` không: chỉ chặn khi đây là nguồn active duy nhất.
+  const canDisableSource = (source: keyof typeof sourceActive) =>
+    (["news", "technical", "fundamental"] as const).some(
+      (k) => k !== source && sourceActive[k],
+    );
+
+  // Bỏ hết checkbox thành phần thì tự động tắt toggle của section đó.
+  useEffect(() => {
+    if (technicalEnabled && technicalCheckedCount === 0) {
+      setTechnicalEnabled(false);
+    }
+  }, [technicalEnabled, technicalCheckedCount]);
+
+  useEffect(() => {
+    if (fundamentalEnabled && fundamentalCheckedCount === 0) {
+      setFundamentalEnabled(false);
+    }
+  }, [fundamentalEnabled, fundamentalCheckedCount]);
 
   const isValid =
     mode === "auto" ||
@@ -490,15 +614,28 @@ const AIAnalysisConfig = () => {
     };
 
     if (mode === "manual") {
-      const selection: DataSelection = {};
-      if (newsEnabled) selection.news = true;
-      if (technicalEnabled && technicalCheckedCount > 0) {
-        selection.technical = { ...technical };
-      }
-      if (fundamentalEnabled && fundamentalCheckedCount > 0) {
-        selection.fundamental = { ...fundamental };
-      }
-      selection.weight = { ...weight };
+      const selection: DataSelection = {
+        news: newsEnabled,
+        technical: technicalEnabled
+          ? { ...technical }
+          : {
+              ma: false,
+              boll: false,
+              rsi: false,
+              macd: false,
+              kdj: false,
+            },
+        fundamental: fundamentalEnabled
+          ? { ...fundamental }
+          : {
+              liquidity: false,
+              leverage: false,
+              efficiency: false,
+              profitability: false,
+              valuation: false,
+            },
+        weight: { ...weight },
+      };
       params.dataSelection = JSON.stringify(selection);
     }
 
@@ -560,6 +697,11 @@ const AIAnalysisConfig = () => {
               weight={weight}
               onChange={setWeight}
               theme={theme}
+              enabled={{
+                technical: technicalEnabled,
+                fundamental: fundamentalEnabled,
+                news: newsEnabled,
+              }}
               labels={{
                 technical: t("aiAnalysis.technical"),
                 fundamental: t("aiAnalysis.fundamental"),
@@ -591,7 +733,13 @@ const AIAnalysisConfig = () => {
               enabled={newsEnabled}
               checkedCount={1}
               totalCount={1}
-              onToggle={setNewsEnabled}
+              onToggle={(v) => {
+                if (!v && !canDisableSource("news")) {
+                  showToast();
+                  return;
+                }
+                setNewsEnabled(v);
+              }}
               theme={theme}
             />
 
@@ -602,6 +750,10 @@ const AIAnalysisConfig = () => {
               checkedCount={technicalCheckedCount}
               totalCount={technicalKeys.length}
               onToggle={(v) => {
+                if (!v && !canDisableSource("technical")) {
+                  showToast();
+                  return;
+                }
                 setTechnicalEnabled(v);
                 if (v) setTechnical({ ...DEFAULT_TECHNICAL });
               }}
@@ -613,9 +765,15 @@ const AIAnalysisConfig = () => {
                   key={key}
                   label={technicalLabels[key]}
                   checked={!!technical[key]}
-                  onPress={() =>
-                    setTechnical((prev) => ({ ...prev, [key]: !prev[key] }))
-                  }
+                  onPress={() => {
+                    const isLastChecked =
+                      technical[key] && technicalCheckedCount === 1;
+                    if (isLastChecked && !canDisableSource("technical")) {
+                      showToast();
+                      return;
+                    }
+                    setTechnical((prev) => ({ ...prev, [key]: !prev[key] }));
+                  }}
                   theme={theme}
                 />
               ))}
@@ -629,6 +787,10 @@ const AIAnalysisConfig = () => {
               checkedCount={fundamentalCheckedCount}
               totalCount={fundamentalKeys.length}
               onToggle={(v) => {
+                if (!v && !canDisableSource("fundamental")) {
+                  showToast();
+                  return;
+                }
                 setFundamentalEnabled(v);
                 if (v) setFundamental({ ...DEFAULT_FUNDAMENTAL });
               }}
@@ -640,9 +802,18 @@ const AIAnalysisConfig = () => {
                   key={key}
                   label={fundamentalLabels[key]}
                   checked={!!fundamental[key]}
-                  onPress={() =>
-                    setFundamental((prev) => ({ ...prev, [key]: !prev[key] }))
-                  }
+                  onPress={() => {
+                    const isLastChecked =
+                      fundamental[key] && fundamentalCheckedCount === 1;
+                    if (isLastChecked && !canDisableSource("fundamental")) {
+                      showToast();
+                      return;
+                    }
+                    setFundamental((prev) => ({
+                      ...prev,
+                      [key]: !prev[key],
+                    }));
+                  }}
                   theme={theme}
                 />
               ))}
@@ -670,6 +841,37 @@ const AIAnalysisConfig = () => {
           },
         ]}
       >
+        {toastVisible && (
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              alignSelf: "center",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              marginBottom: 10,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              borderRadius: 20,
+              backgroundColor: theme.base.error,
+              opacity: toastAnim,
+              transform: [
+                {
+                  translateY: toastAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [8, 0],
+                  }),
+                },
+              ],
+            }}
+          >
+            <Feather name="alert-triangle" size={16} color="#FFFFFF" />
+            <Text typography="labelLarge" color="#FFFFFF">
+              {t("aiAnalysis.selectAtLeastOne")}
+            </Text>
+          </Animated.View>
+        )}
+
         <Pressable
           onPress={handleAnalyze}
           disabled={!isValid}
