@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
 
-from vn30_symbols import get_vn30_symbols
+from vnindex_symbols import get_vnindex_symbols
 
 load_dotenv()
 
@@ -48,11 +48,11 @@ supabase = create_client(
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_target_symbols() -> set[str]:
-    """30 mã VN30 (từ DB) ∪ các chỉ số cần giữ."""
-    vn30 = get_vn30_symbols(supabase)
-    if not vn30:
-        logger.warning("VN30 symbol list is empty (DB issue?); processing indices only")
-    return vn30 | ALLOWED_INDICES
+    """Toàn bộ mã cổ phiếu thuộc VNINDEX (từ DB) ∪ các chỉ số cần giữ."""
+    vnindex_stocks = get_vnindex_symbols(supabase)
+    if not vnindex_stocks:
+        logger.warning("VNINDEX symbol list is empty (DB issue?); processing indices only")
+    return vnindex_stocks | ALLOWED_INDICES
 
 # ═════════════════════════════════════════════════════════════════════════════
 # SSI DATA
@@ -163,7 +163,6 @@ def delete_old_candles(symbol: str, cutoff_iso: str) -> None:
         .eq("symbol", symbol) \
         .lt("trading_time", cutoff_iso) \
         .execute()
-    logger.info(f"[{symbol}] Deleted candles older than {cutoff_iso}")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
@@ -178,7 +177,7 @@ def main():
     logger.info(f"=== Starting intraday sync: {from_date} → {today_str} ===")
 
     symbols = get_target_symbols()
-    logger.info(f"Processing {len(symbols)} symbols (VN30 + indices)")
+    logger.info(f"Processing {len(symbols)} symbols (VNINDEX + indices)")
 
     if not symbols:
         logger.warning("No symbols to process")
@@ -189,7 +188,6 @@ def main():
         try:
             candles = fetch_intraday_ohlc(symbol, from_date, today_str)
             if candles:
-                logger.info(f"[{symbol}] Fetched {len(candles)} candles")
                 all_candles.extend(candles)
                 upsert_candles(candles)
             delete_old_candles(symbol, cutoff_iso)

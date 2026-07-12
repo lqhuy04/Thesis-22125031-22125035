@@ -122,14 +122,18 @@ def stop_websockets():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_standardize():
-    """Chạy song song 1m, 1d và market index, đợi cả 3 xong mới tiếp tục."""
+    """Chạy tuần tự 1m, 1d rồi market index (mỗi script xong mới chạy script kế).
+
+    Chạy tuần tự thay vì song song để tránh 3 script cùng gọi SSI một lúc gây
+    vượt rate-limit — quan trọng khi rổ mã mở rộng (VNINDEX ~400 mã, mỗi script
+    lặp qua toàn bộ mã với delay riêng, kéo dài nhiều phút).
+    """
     scripts = [
         "standardize_stock_price_1m.py",
         "standardize_stock_price_1d.py",
         "standardize_market_index.py",
     ]
 
-    procs = []
     for script in scripts:
         logger.info(f"▶ Running {script}")
         p = subprocess.Popen(
@@ -138,9 +142,6 @@ def run_standardize():
             stdout=sys.stdout,
             stderr=sys.stderr,
         )
-        procs.append((script, p))
-
-    for script, p in procs:
         p.wait()
         if p.returncode == 0:
             logger.info(f"✅ {script} done")

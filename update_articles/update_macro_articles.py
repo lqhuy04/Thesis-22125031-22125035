@@ -35,7 +35,7 @@ config = Config()
 TABLE               = "Article"
 SLEEP_SECONDS       = 1.1
 MACRO_PAGES         = 1
-SERPER_TIME_FILTER  = "qdr:d"   # giới hạn 1 ngày gần nhất
+SERPER_TIME_FILTER  = "qdr:w"   # giới hạn 1 tuần gần nhất
 QUERY               = "Tin tức kinh tế vĩ mô ảnh hưởng đến thị trường chứng khoán Việt Nam"
 
 logging.basicConfig(

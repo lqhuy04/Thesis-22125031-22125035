@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
 
-from vn30_symbols import get_vn30_symbols
+from vnindex_symbols import get_vnindex_symbols
 
 load_dotenv()
 
@@ -29,9 +29,6 @@ TABLE         = "Stock_Price_1d"
 CHUNK_DAYS    = 30          # SSI giới hạn tối đa 30 ngày mỗi request
 SLEEP_SECONDS = 1.1         # Delay giữa các request để tránh rate-limit SSI
 YEARS_BACK    = 5           # Số năm lấy dữ liệu lịch sử
-# Chỉ giữ để xác định hệ số nhân giá (index giữ nguyên, cổ phiếu chia 1000).
-# File này chỉ init cổ phiếu VN30; index được init riêng ở init_market_index_1d.py.
-ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -110,7 +107,7 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
             return 0.0
 
         # Indices remain the same, divide by 1000 for HOSE stocks
-        multiplier = 1 if symbol in ALLOWED_INDICES else 1/1000
+        multiplier = 1/1000
 
         result.append({
             "symbol":       symbol,
@@ -140,7 +137,7 @@ def upsert_candles(candles: list[dict]) -> None:
 def resolve_symbols(cli_symbols: list[str] | None = None) -> list[str]:
     if cli_symbols:
         return [symbol.strip().upper() for symbol in cli_symbols if symbol.strip()]
-    return sorted(get_vn30_symbols(supabase))
+    return sorted(get_vnindex_symbols(supabase))
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN

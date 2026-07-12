@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
 
-from vn30_symbols import get_vn30_symbols
+from vnindex_symbols import get_vnindex_symbols
 
 load_dotenv()
 
@@ -32,6 +32,14 @@ CHUNK_DAYS    = 30
 LOOKBACK_DAYS = 3
 SLEEP_SECONDS = 1.1
 ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
+# Các chỉ số thuộc sàn HNX cần truyền market="HNX" cho SSI daily_ohlc.
+# Mã cổ phiếu VNINDEX và các chỉ số HOSE còn lại dùng "HOSE" (mặc định).
+HNX_INDICES = {"HNXINDEX", "HNXUpcomIndex"}
+
+
+def resolve_market(symbol: str) -> str:
+    """Market truyền cho SSI daily_ohlc: HNX cho chỉ số sàn HNX, còn lại HOSE."""
+    return "HNX" if symbol in HNX_INDICES else "HOSE"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,18 +57,18 @@ supabase = create_client(
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_target_symbols() -> set[str]:
-    """30 mã VN30 (từ DB) ∪ các chỉ số cần giữ."""
-    vn30 = get_vn30_symbols(supabase)
-    if not vn30:
-        logger.warning("VN30 symbol list is empty (DB issue?); processing indices only")
-    return vn30 | ALLOWED_INDICES
+    """Toàn bộ mã cổ phiếu thuộc VNINDEX (từ DB) ∪ các chỉ số cần giữ."""
+    vnindex_stocks = get_vnindex_symbols(supabase)
+    if not vnindex_stocks:
+        logger.warning("VNINDEX symbol list is empty (DB issue?); processing indices only")
+    return vnindex_stocks | ALLOWED_INDICES
 
 # ═════════════════════════════════════════════════════════════════════════════
 # SSI DATA
 # ═════════════════════════════════════════════════════════════════════════════
 
 def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
-    req  = model.daily_ohlc(symbol, from_date, to_date, 1, 100, "HOSE")
+    req  = model.daily_ohlc(symbol, from_date, to_date, 1, 100, resolve_market(symbol))
     data = client.daily_ohlc(config, req)
 
     if isinstance(data, dict):
@@ -182,7 +190,6 @@ def delete_old_candles(symbol: str, cutoff_iso: str) -> None:
         .eq("symbol", symbol) \
         .lt("trading_time", cutoff_iso) \
         .execute()
-    logger.info(f"[{symbol}] Deleted candles older than {cutoff_iso}")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
@@ -197,7 +204,7 @@ def main():
     logger.info(f"=== Starting daily sync: {from_date} → {today_str} ===")
 
     symbols = get_target_symbols()
-    logger.info(f"Processing {len(symbols)} symbols (VN30 + indices)")
+    logger.info(f"Processing {len(symbols)} symbols (VNINDEX + indices)")
 
     if not symbols:
         logger.warning("No symbols to process")
@@ -208,7 +215,6 @@ def main():
         try:
             candles = fetch_daily_ohlc(symbol, from_date, today_str)
             if candles:
-                logger.info(f"[{symbol}] Fetched {len(candles)} candles")
                 all_candles.extend(candles)
                 upsert_candles(candles)
             delete_old_candles(symbol, cutoff_iso)

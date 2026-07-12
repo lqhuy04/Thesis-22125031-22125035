@@ -120,10 +120,6 @@ def get_market_data(message) -> None:
             return
 
         upsert_index_snapshot(snapshot)
-        logger.info(
-            "[INDEX ROW] %s",
-            snapshot,
-        )
         logger.debug(
             "[INDEX] %s %s value=%s change=%s ratio=%s",
             snapshot["index_id"],

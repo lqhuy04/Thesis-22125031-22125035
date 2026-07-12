@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 from supabase import create_client
 
-from vn30_symbols import get_vn30_symbols
+from vnindex_symbols import get_vnindex_symbols
 
 load_dotenv()
 
@@ -25,8 +25,6 @@ config = Config()
 
 TABLE         = "Stock_Price_1m"
 SLEEP_SECONDS = 1.1
-# Chỉ giữ để xác định hệ số nhân giá; file này chỉ init cổ phiếu VN30.
-ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -137,10 +135,10 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str, access_token:
             result.append({
                 "symbol":       symbol,
                 "trading_time": f"{yyyy}-{mm}-{dd}T{raw_time[:5]}:00",
-                "open":         float(r.get("Open")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-                "high":         float(r.get("High")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-                "low":          float(r.get("Low")    or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-                "close":        float(r.get("Close")  or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
+                "open":         float(r.get("Open")   or 0) *  1/1000,
+                "high":         float(r.get("High")   or 0) *  1/1000,
+                "low":          float(r.get("Low")    or 0) *  1/1000,
+                "close":        float(r.get("Close")  or 0) *  1/1000,
                 "volume":       float(r.get("Volume") or 0),
             })
 
@@ -174,11 +172,11 @@ def main():
         logger.error("No SSI access token found. Exiting.")
         return
 
-    symbols = sorted(get_vn30_symbols(supabase))
+    symbols = sorted(get_vnindex_symbols(supabase))
     if not symbols:
-        logger.error("No VN30 symbols found. Exiting.")
+        logger.error("No VNINDEX symbols found. Exiting.")
         return
-    logger.info(f"Processing {len(symbols)} VN30 symbols: {symbols[:5]}...")
+    logger.info(f"Processing {len(symbols)} VNINDEX symbols: {symbols[:5]}...")
 
     today     = date.today()
     to_date   = today.strftime("%d/%m/%Y")

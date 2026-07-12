@@ -1,7 +1,8 @@
 """
-init_stock_articles.py - One-time backfill of stock (VN30) news.
+init_stock_articles.py - One-time backfill of stock (VNINDEX) news.
 
-For every VN30 stock, runs a single Serper query (paginated across 10 pages,
+For every VNINDEX stock that is NOT already in VN30 (VN30 đã được backfill
+trước đó nên chỉ init phần còn lại), runs a single Serper query (paginated,
 "tbs": "qdr:y" to scope results to the past year). No AI symbol extraction
 is performed; only sentiment + summary are extracted. Every inserted
 article is saved with article_type = "stock" and linked to its stock via
@@ -22,7 +23,8 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
-from vn30_symbols import get_vn30_symbols, get_vn30_company_names
+from vn30_symbols import get_vn30_symbols
+from vnindex_symbols import get_vnindex_symbols, get_vnindex_company_names
 
 load_dotenv()
 
@@ -70,14 +72,23 @@ class StockExtraction(BaseModel):
     )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# STOCK (VN30)
+# STOCK (VNINDEX trừ VN30)
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_stocks() -> List[dict]:
-    """Fetch all VN30 stocks as [{id, stock_symbol, company_name}, ...]."""
+    """Fetch VNINDEX stocks KHÔNG thuộc VN30 (VN30 đã backfill trước đó).
+
+    Trả về [{id, stock_symbol, company_name}, ...].
+    """
     try:
-        symbols = get_vn30_symbols(supabase)
+        vnindex_symbols = get_vnindex_symbols(supabase)
+        if not vnindex_symbols:
+            return []
+
+        # VN30 đã có dữ liệu → chỉ init phần VNINDEX còn lại.
+        symbols = vnindex_symbols - get_vn30_symbols(supabase)
         if not symbols:
+            logger.info("Không còn mã VNINDEX nào ngoài VN30 để init.")
             return []
 
         stock_res = (
@@ -88,7 +99,7 @@ def get_stocks() -> List[dict]:
         )
         stock_rows = stock_res.data or []
 
-        company_map = get_vn30_company_names(supabase)
+        company_map = get_vnindex_company_names(supabase)
 
         return [
             {
@@ -100,7 +111,7 @@ def get_stocks() -> List[dict]:
             if row.get("id") is not None and row.get("stock_symbol")
         ]
     except Exception as e:
-        logger.error(f"Error loading VN30 stocks: {e}")
+        logger.error(f"Error loading VNINDEX stocks: {e}")
         return []
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -414,7 +425,7 @@ def process_stock(
 def main():
     stocks = get_stocks()
     if not stocks:
-        logger.error("No VN30 stocks found. Exiting.")
+        logger.error("No VNINDEX stocks (ngoài VN30) found. Exiting.")
         return
 
     checkpoint = load_checkpoint()
@@ -433,7 +444,7 @@ def main():
     resume_page_index = checkpoint.get("next_page_index", 1)
 
     logger.info(
-        f"Starting stock news backfill for {len(stocks)} VN30 stocks "
+        f"Starting stock news backfill for {len(stocks)} VNINDEX stocks (ngoài VN30) "
         f"({PAGES_PER_STOCK} pages each, past 1 year)..."
     )
 

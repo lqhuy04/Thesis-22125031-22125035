@@ -1,7 +1,7 @@
 """
-update_stock_articles.py - Daily update of stock (VN30) news.
+update_stock_articles.py - Daily update of stock (VNINDEX) news.
 
-Runs once per day (end of day). For every VN30 stock, runs a single Serper
+Runs once per day (end of day). For every VNINDEX stock, runs a single Serper
 query for a single page ("tbs": "qdr:d" to scope results to the past 24
 hours). Same extraction/insert logic as init_stock_articles.py, minus the
 multi-page checkpoint/resume machinery (not needed for a 1-page-per-stock
@@ -21,7 +21,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
-from vn30_symbols import get_vn30_symbols, get_vn30_company_names
+from vnindex_symbols import get_vnindex_symbols, get_vnindex_company_names
 
 load_dotenv()
 
@@ -42,7 +42,7 @@ ARTICLE_STOCK_TABLE = "Article_Stock"
 SLEEP_SECONDS       = 1.1
 STOCK_SLEEP_SECONDS = 3
 PAGES_PER_STOCK     = 1
-SERPER_TIME_FILTER  = "qdr:d"   # giới hạn 1 ngày gần nhất
+SERPER_TIME_FILTER  = "qdr:w"   # giới hạn 1 tuần gần nhất
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,13 +68,13 @@ class StockExtraction(BaseModel):
     )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# STOCK (VN30)
+# STOCK (VNINDEX)
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_stocks() -> List[dict]:
-    """Fetch all VN30 stocks as [{id, stock_symbol, company_name}, ...]."""
+    """Fetch all VNINDEX stocks as [{id, stock_symbol, company_name}, ...]."""
     try:
-        symbols = get_vn30_symbols(supabase)
+        symbols = get_vnindex_symbols(supabase)
         if not symbols:
             return []
 
@@ -86,7 +86,7 @@ def get_stocks() -> List[dict]:
         )
         stock_rows = stock_res.data or []
 
-        company_map = get_vn30_company_names(supabase)
+        company_map = get_vnindex_company_names(supabase)
 
         return [
             {
@@ -98,7 +98,7 @@ def get_stocks() -> List[dict]:
             if row.get("id") is not None and row.get("stock_symbol")
         ]
     except Exception as e:
-        logger.error(f"Error loading VN30 stocks: {e}")
+        logger.error(f"Error loading VNINDEX stocks: {e}")
         return []
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -366,11 +366,11 @@ def process_stock(
 def main():
     stocks = get_stocks()
     if not stocks:
-        logger.error("No VN30 stocks found. Exiting.")
+        logger.error("No VNINDEX stocks found. Exiting.")
         return
 
     logger.info(
-        f"Starting daily stock news update for {len(stocks)} VN30 stocks "
+        f"Starting daily stock news update for {len(stocks)} VNINDEX stocks "
         f"({PAGES_PER_STOCK} page each, past 24h)..."
     )
 

@@ -40,7 +40,7 @@ ARTICLE_CATEGORY_TABLE = "Article_Category"
 SLEEP_SECONDS          = 1.1
 CATEGORY_SLEEP_SECONDS = 3
 PAGES_PER_CATEGORY     = 1
-SERPER_TIME_FILTER     = "qdr:d"   # giới hạn 1 ngày gần nhất
+SERPER_TIME_FILTER     = "qdr:w"   # giới hạn 1 tuần gần nhất
 
 logging.basicConfig(
     level=logging.INFO,
