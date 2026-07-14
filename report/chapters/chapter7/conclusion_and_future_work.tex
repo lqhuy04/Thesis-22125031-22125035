@@ -1,0 +1,102 @@
+\section{Conclusion}
+\label{sec:chapter7-conclusion}
+
+This thesis presented Stockrium, an integrated decision-support and research platform for the Vietnamese equity market. The work was motivated by a practical information problem: an individual investor must often combine price behavior, company fundamentals, and financial news while navigating data from separate sources and interpreting results without a consistent analytical framework. Stockrium addresses this problem through a mobile application, a layered backend, coordinated analytical agents, structured data-acquisition pipelines, and a historical backtesting subsystem. The system is designed to organize evidence and explain an assessment; it does not replace investor judgment or execute trades.
+
+The implemented architecture separates presentation, domain services, data storage, deterministic financial computation, and language-model reasoning. Within the agentic workflow, technical, fundamental, and article specialists examine different evidence domains before an aggregator produces a structured recommendation. Deterministic post-processing then calculates the final confidence and enforces the acceptance rule. This design makes individual evidence contributions visible, allows analytical branches to be enabled or disabled, and supports reuse of the same logic in interactive analysis and historical evaluation.
+
+The historical experiment provides a deliberately cautious view of the analytical results. On the evaluated VN30 stock set, the complete pipeline reduced 741 engine-only trades to 433 completed trades. It lowered mean maximum drawdown and modestly improved median return and the median trade-level Sharpe statistic, but it also produced lower mean return, geometric aggregate return, and win rate. It outperformed the engine-only strategy for 12 of 30 securities and buy-and-hold for 4 of 30. Statistical and robustness evidence was limited. The agentic stage is therefore best interpreted as a selective exposure filter within an explainable decision-support process, not as evidence of reliable market outperformance or guaranteed future profit.
+
+\section{Achievement of the Project Objectives}
+\label{sec:objective-achievement}
+
+The three objectives introduced in Section~\ref{sec:application-objectives} were achieved to different degrees. Table~\ref{tab:objective-achievement} summarizes the outcome.
+
+\begin{table}[H]
+    \centering
+    \caption{Achievement of the Stockrium project objectives}
+    \label{tab:objective-achievement}
+    \begin{tabularx}{\textwidth}{p{1.1cm} p{3.2cm} X}
+        \toprule
+        \textbf{Objective} & \textbf{Assessment} & \textbf{Outcome} \\
+        \midrule
+        O1 & Substantially achieved & A working mobile and backend architecture integrates market exploration, company and news information, technical visualization, configurable multi-agent analysis, and conversational support. The result is an implemented decision-support prototype, although broader usability and production validation remain future work. \\
+        O2 & Substantially achieved & The project implements a reusable historical simulation framework with scoring-parity checks, explicit execution assumptions, configurable signals and exits, transaction costs, benchmarks, risk measures, statistical tests, and stored experiment artifacts. Chapter~6 demonstrates its use and also establishes the limits of the current evidence. \\
+        O3 & Partially achieved & Acquisition and normalization pipelines organize historical OHLCV data, company profiles and financial records, industry aggregates, and financial articles with generated summaries and sentiment labels. However, a versioned public release, licensing documentation, historical constituent reconstruction, and complete point-in-time metadata are still required for the dataset to be fully reproducible and research-ready. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+The first objective was achieved at the prototype level. Stockrium provides a coherent path from market discovery to evidence inspection and AI-assisted synthesis. Its configurable analysis supports both a simplified automatic mode and a manual mode in which analytical perspectives and weights can be selected. The structured response exposes component scores, confidence, explanations, and risk-related price levels when a Buy recommendation is accepted. These properties make the result more inspectable than a single unrestricted language-model response. Nevertheless, completion of the software prototype is not equivalent to proving that every recommendation is correct or that the application is ready for unrestricted financial use.
+
+The second objective was achieved as an engineering and evaluation capability. The backtesting subsystem reuses production technical and agentic logic, prevents same-close execution, includes a warm-up interval, applies configurable transaction costs, and records both agent-filtered and deterministic baselines. Its parity gate checks that vectorized historical scores reproduce production scoring rules before a full run proceeds. More importantly, the evaluation reports unfavorable and non-significant outcomes rather than selecting only positive cases. This makes the framework useful for diagnosing behavior even though the current evidence does not establish profitable performance.
+
+The third objective remains incomplete. Stockrium establishes a common schema and maintainable pipelines for the three evidence domains, which is a necessary foundation for a Vietnamese-market research dataset. However, public research use requires more than populated application tables. Each release must define its observation interval, source and licensing conditions, schema version, missing-data policy, collection time, correction history, and information-availability time. Until those controls and a versioned release are completed, the data should be described as a curated application dataset rather than a finished public benchmark.
+
+\section{Principal Contributions}
+\label{sec:principal-contributions}
+
+The principal contributions of the thesis are summarized as follows.
+
+\begin{enumerate}[label=\textbf{C\arabic*.}, leftmargin=1.7cm]
+    \item \textbf{An integrated Vietnamese-market decision-support platform.}
+
+    Stockrium connects market monitoring, stock discovery, company information, interactive technical charts, financial news, user preferences, AI-assisted analysis, and conversational follow-up within one mobile-oriented system. The platform focuses on Vietnamese securities and preserves a clear boundary between information support and order execution.
+
+    \item \textbf{An inspectable hybrid multi-agent analysis workflow.}
+
+    The workflow separates orchestration, evidence preparation, specialist analysis, aggregation, and deterministic decision controls. Specialized agents handle evidence with different structures, while typed outputs and deterministic confidence calculations reduce ambiguity at the system boundary. Selectable branches and normalized weights make the influence of each analytical perspective easier to examine.
+
+    \item \textbf{A unified data architecture for heterogeneous financial evidence.}
+
+    The project defines acquisition and storage processes for market candles, current prices, company profiles, financial statements and ratios, industry aggregates, and Vietnamese financial articles. Deduplication, normalization, upsert behavior, scheduled refresh, and explicit relational associations make the data usable across application screens, analytical services, and experiments.
+
+    \item \textbf{A production-aligned backtesting and evaluation framework.}
+
+    The framework evaluates the implemented decision logic rather than a separate research-only model. It includes parity verification, threshold-crossing signals, next-open execution, risk-based exits, transaction costs, deterministic and passive benchmarks, ablation experiments, regime summaries, walk-forward views, and machine-readable artifacts. Its evaluation demonstrates both the filtering behavior of the agentic layer and the weaknesses that prevent strong investment-performance claims.
+\end{enumerate}
+
+\section{Remaining Limitations}
+\label{sec:chapter7-limitations}
+
+Several limitations constrain the conclusions of this thesis. The most important is historical information integrity. Technical and article evidence are bounded by the simulated decision date, but the fundamental branch can retrieve the latest stored annual records rather than only records known at that date. The current VN30 universe is also based on membership available when the experiment is run. These conditions introduce look-ahead and survivorship risks that weaken causal interpretation of full-pipeline performance.
+
+The experiment is further limited by sample size and construction. Every security has relatively few completed pipeline trades, walk-forward groups are sparse, and the evaluated data include almost no downtrend trades. The saved results do not show consistent benchmark outperformance, robust confidence separation, or broad statistical significance. Multiple comparisons, model nondeterminism, prompt changes, and unrecorded random seeds can also affect reproducibility.
+
+The execution model is necessarily simplified. Daily OHLCV bars cannot determine the intraday ordering of take-profit and stop-loss events and do not fully represent gaps, bid--ask spread, liquidity, market impact, partial fills, price limits, or latency. Results are calculated per security without a shared cash balance, position-sizing policy, concurrent-exposure constraint, or portfolio rebalancing rule. Consequently, aggregate returns are comparative research measures rather than a directly investable portfolio record.
+
+The system also depends on external market-data, search, storage, and language-model services. Changes in their availability, response formats, quotas, or model behavior can affect system reliability and analytical reproducibility. The current platform requires further security, load, recovery, device-compatibility, accessibility, and longitudinal usability validation before production-scale deployment. Finally, generated recommendations and article labels may contain reasoning or classification errors even when their structure is valid; human review remains necessary.
+
+\section{Future Work}
+\label{sec:future-work}
+
+\subsection{Point-in-Time Data and Dataset Publication}
+
+The highest priority is to establish point-in-time correctness. Fundamental records should store both the reporting period and the date on which the filing became publicly available. Historical analysis should retrieve only records available by the candidate date. Index membership should be reconstructed by effective date and should retain removed, suspended, and delisted securities where data permit. News records should preserve retrieval time, publication-time corrections, source identity, and association provenance.
+
+The dataset can then be released as versioned snapshots rather than as an evolving database export. Each version should include a data dictionary, schema and unit definitions, source and licensing notes, coverage statistics, missing-value rules, deduplication procedures, checksums, and reproducible preparation scripts. A fixed benchmark split would make comparisons between future Stockrium versions and external methods more credible.
+
+\subsection{More Realistic and Reproducible Evaluation}
+
+Every experiment should store an immutable manifest containing the security universe, exact interval, effective parameters, code revision, model and prompt versions, data snapshot, transaction-cost assumptions, and random seeds. Model outputs can be cached for deterministic replay. Statistical analysis should use prespecified hypotheses, multiple-comparison correction, and bootstrap or hierarchical uncertainty intervals where conventional asymptotic tests are unreliable.
+
+The simulator should be extended with a shared capital ledger, position sizing, simultaneous-position limits, cash constraints, and portfolio-level risk measures. Conservative gap-aware fills, Vietnamese price-limit rules, liquidity filters, spread and slippage estimates, and, where available, intraday quote data would improve execution realism. Longer out-of-sample periods and historically reconstructed universes should be used to obtain meaningful bull, sideways, and bear-market samples. Forward outcomes should also be recorded for rejected candidates so that confidence calibration and the value of the Buy gate can be evaluated without selection truncation.
+
+\subsection{Analytical and Agentic Improvements}
+
+Future versions should strengthen evidence grounding. Each specialist output can include references to the exact candles, financial periods, ratios, and articles used in its reasoning. The aggregator can then verify evidence availability and reject unsupported claims before generating a recommendation. Confidence should be calibrated against observed forward outcomes rather than interpreted only as a weighted internal score.
+
+Additional research can compare the current agent decomposition with deterministic ranking models, classical machine-learning methods, time-series models, and Vietnamese finance-specific language models under the same point-in-time protocol. Model and prompt ablations should identify whether observed changes arise from new information, the specialist decomposition, or language-model variability. Human expert review can be incorporated to assess factual grounding, explanation quality, usefulness, and disagreement between analysts and automated outputs.
+
+\subsection{System Quality and User Experience}
+
+The software platform would benefit from automated unit, integration, contract, end-to-end, security, and performance testing in continuous integration. Long-running collection, analysis, and backtesting jobs should use durable background queues with progress reporting, retry policies, idempotency keys, and operational monitoring. Secrets management, audit logging, rate limiting, dependency scanning, backup restoration, and incident procedures should be strengthened for a production deployment.
+
+User-facing research should examine whether investors correctly understand confidence values, explanations, risk levels, and the distinction between decision support and advice. Accessibility, localization quality, onboarding, notification controls, and explanation design can be evaluated with representative Vietnamese retail investors. Portfolio tracking and paper-trading features could support learning and retrospective review without enabling automatic execution. Any later brokerage integration would require separate legal, security, suitability, and operational analysis beyond the scope of the present thesis.
+
+\section{Closing Remarks}
+\label{sec:closing-remarks}
+
+Stockrium demonstrates that heterogeneous Vietnamese market evidence can be organized into a coherent mobile and research platform and processed through an inspectable combination of deterministic analytics and specialized language-model agents. Its strongest result is not a claim of superior returns, but the construction of an end-to-end environment in which analytical assumptions, decisions, baselines, and limitations can be examined together.
+
+The evaluation also shows why caution is essential in financial AI. A system may generate structured explanations and reduce exposure while still failing to outperform simple alternatives consistently. By reporting this distinction and identifying the data and experimental controls still required, the thesis establishes a practical foundation for future work on more reproducible, realistic, and trustworthy decision support for the Vietnamese stock market.
