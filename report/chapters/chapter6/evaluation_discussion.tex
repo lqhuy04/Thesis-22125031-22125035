@@ -1,0 +1,49 @@
+\section{Discussion and Threats to Validity}
+\label{sec:evaluation-discussion}
+
+\subsection{Answers to the Evaluation Questions}
+\label{subsec:evaluation-question-answers}
+
+For EQ1, the agentic layer changes the strategy materially by reducing 741 engine-only trades to 433 executed trades. This filtering lowers mean maximum drawdown and slightly improves median return and the median trade-level Sharpe statistic. However, it also lowers mean return, geometric aggregate return, and win rate. It exceeds engine-only return for 12 of 30 symbols and buy-and-hold return for 4 of 30. The evidence therefore supports interpreting the agentic stage as a conservative exposure filter, not as a broadly superior return strategy.
+
+For EQ2, robustness is limited. Results vary substantially among securities, no individual technical indicator dominates every measure, high- and medium-confidence outcomes are nearly identical, and the Buy gate leaves no low-confidence trade group. Walk-forward windows are sparse, while the downtrend regime contains only one trade. These findings do not show that the observed behavior is stable across confidence levels, time windows, or market regimes.
+
+For EQ3, only three per-symbol one-sample $t$-tests and two sign-permutation tests are significant at the 5\% level. No multiple-comparison-adjusted universe-level hypothesis test is stored. Sparse trades also create unstable risk statistics, including an extreme two-trade Sharpe value. The current experiment is valuable as a transparent comparative evaluation, but it does not establish statistically reliable alpha or expected future profitability.
+
+\subsection{Validity Limitations}
+\label{subsec:backtest-validity-limitations}
+
+\begin{longtable}{p{3.2cm} p{4.7cm} p{5.3cm}}
+    \caption{Principal evaluation limitations and recommended improvements}
+    \label{tab:backtest-validity-threats} \\
+    \toprule
+    \textbf{Limitation} & \textbf{Effect on interpretation} & \textbf{Recommended improvement} \\
+    \midrule
+    \endfirsthead
+    \multicolumn{3}{l}{\small\itshape Table~\ref{tab:backtest-validity-threats} continued} \\
+    \toprule
+    \textbf{Limitation} & \textbf{Effect on interpretation} & \textbf{Recommended improvement} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endfoot
+    Fundamental point-in-time availability & The fundamental agent loads the latest stored annual records without filtering them by candidate date, permitting historical leakage. & Store filing-availability timestamps and restrict records to information public by the signal date. \\
+    Current-constituent universe & Current VN30 membership can omit removed or delisted securities and include later entrants. & Reconstruct membership by effective date and retain delisted securities. \\
+    Aggregate metadata & The full-pipeline aggregate lacks one common interval, model version, prompt version, and random seed. & Store an immutable run manifest and reject aggregation across incompatible configurations. \\
+    Model and random nondeterminism & Nonzero model temperature and unseeded random tests can change decisions and $p$-values. & Pin model snapshots and prompts, cache structured outputs, and record random seeds. \\
+    Sparse observations & Every symbol has fewer than 30 pipeline trades, making risk and significance estimates unstable. & Extend history and report bootstrap or hierarchical uncertainty intervals. \\
+    Simplified execution & Daily bars cannot determine intraday event order and do not model gaps, spread, liquidity, price limits, or market impact. & Use conservative gap-aware fills and intraday or quote data where available. \\
+    Portfolio abstraction & Per-symbol results lack shared capital, sizing, concurrent exposure, and portfolio-level risk. & Add a cash and position ledger with allocation and rebalancing rules. \\
+    Walk-forward construction & Test windows reinitialize indicator warm-up, and no model parameters are fitted on the nominal training slice. & Carry historical context into feature calculation and define which choices are learned only from training data. \\
+    Confidence truncation & Only accepted Buy recommendations become trades, leaving no low-confidence outcome group. & Record forward outcomes for every candidate, including rejected decisions. \\
+    Configuration wiring & The request-level transaction cost is not forwarded and loaded one-minute scores do not affect the daily simulator. & Wire exposed settings end to end and store the effective configuration with every result. \\
+\end{longtable}
+
+The most important limitation is point-in-time fundamental availability. Technical and article inputs are bounded by the candidate date, but the fundamental branch reads the latest stored multi-year series. The full-pipeline results can therefore contain information unavailable at the simulated decision date. Single-indicator experiments avoid this specific leakage because they do not use fundamental or news evidence, although they retain universe and execution-model limitations.
+
+\subsection{Overall Evaluation}
+\label{subsec:overall-evaluation}
+
+The evaluation demonstrates that Stockrium can produce inspectable historical decisions, compare the agentic workflow with deterministic and passive alternatives, and expose both performance and risk trade-offs. The agentic layer reduces trading frequency and drawdown, but the saved results do not demonstrate consistent benchmark outperformance, strong confidence calibration, or stable behavior across regimes.
+
+The defensible conclusion is therefore limited: Stockrium provides a useful and transparent evaluation environment for Vietnamese equity decision support, while stronger point-in-time data controls, reproducible experiment manifests, realistic portfolio simulation, and larger out-of-sample evidence are required before investment-performance claims can be made.
