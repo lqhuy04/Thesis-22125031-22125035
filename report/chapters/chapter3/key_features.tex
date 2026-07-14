@@ -1,0 +1,46 @@
+\section{Key Features}
+\label{sec:key-features}
+
+Stockrium provides a connected set of features for exploring the Vietnamese stock market, examining financial evidence, and obtaining AI-assisted analysis. The mobile application is intended for individual investors, while a separate administrative web interface supports controlled analysis and historical backtesting. This section summarizes the main user-visible capabilities; their architecture and implementation are presented in Chapter 4.
+
+\subsection{Authentication and Account Management}
+\label{subsec:authentication-account-management}
+
+Users can create an account with an email address, verify it through a one-time password, and sign in using either a password or Google authentication. The application also supports password recovery, session persistence, and secure sign-out. After authentication, users can manage their investment horizon, conversation history, theme, and language preferences. They can also add or remove stocks from a personal watchlist for later monitoring. This watchlist stores only selected symbols and does not manage quantities, purchase prices, profit and loss, or capital allocation. The security mechanisms used to protect credentials and sessions are discussed in Chapter 4.
+
+\subsection{Market Overview and Stock Discovery}
+\label{subsec:market-overview-discovery}
+
+The Overview and Market tabs provide a concise view of current Vietnamese market conditions. Users can inspect major indices, industry movements, financial news, and stock collections such as top gainers, top decliners, highly traded stocks, and frequently followed symbols. The search function allows users to locate listed companies by stock symbol and revisit previous queries through their search history. These discovery features support navigation rather than constitute investment recommendations. A selected index, industry, stock, or article can be opened for further examination.
+
+\subsection{Stock Details and Interactive Technical Charts}
+\label{subsec:stock-details-charts}
+
+The stock-detail screen combines current and historical market data with company information, fundamental indicators, related news, and similar securities. Interactive area and candlestick charts allow users to examine price, volume, and selected technical indicators over different periods. The same screen also presents the company's business profile, leadership information, historical financial performance, financial statements, and representative measures of valuation, profitability, liquidity, and financial strength. Together, these features help users compare market behavior with the company's operating condition. The displayed information supports independent inspection but does not generate orders or trading actions; AI-assisted analysis is initiated separately.
+
+\subsection{Financial News Exploration}
+\label{subsec:financial-news-exploration}
+
+The News tab organizes financial articles into business, macroeconomic, and topic-based views. Stock-specific articles are also accessible from the corresponding stock-detail screen, allowing users to relate company events and market sentiment to price and fundamental data. Articles may include processed summaries and sentiment information to make large news collections easier to review. News collection and processing occur in a separate scheduled pipeline described in Chapter 4.
+
+\subsection{Investment-Horizon Profile}
+\label{subsec:investment-horizon-profile}
+
+Users can save an intended investment horizon as short term (under three months), medium term (three to twelve months), or long term (over one year). This preference is retrieved when an AI analysis is requested and is used to adapt the analytical time scale and the boundaries of the proposed holding period and risk-related values. Within the current application scope, this profile considers only investment horizon and is not a comprehensive assessment of financial capacity or psychological risk tolerance.
+
+\subsection{Configurable AI Analysis}
+\label{subsec:configurable-ai-analysis}
+
+Stockrium provides automatic and manual modes for AI-assisted stock analysis. Automatic mode applies a predefined configuration, whereas manual mode allows the user to select technical, fundamental, and news perspectives and adjust their relative importance. The submitted configuration and saved investment horizon are processed by the multi-agent system, which coordinates the required analytical components and returns a \textit{Buy} or \textit{Wait} assessment with confidence, source-level scores, and written explanations. A \textit{Buy} result may also include a proposed entry price, take-profit price, stop-loss price, and maximum holding period consistent with the selected horizon. The feature provides a simple default path for beginners and greater control for experienced users, while its outputs remain decision-support information rather than guaranteed returns or executable orders.
+
+\subsection{Conversational Financial Assistant}
+\label{subsec:conversational-financial-assistant}
+
+The conversational assistant allows users to ask natural-language questions about the financial and market information available in Stockrium. Conversations are stored as sessions so that users can create, reopen, continue, or delete previous discussions. A conversation may begin as a general inquiry or from an AI-analysis result, enabling follow-up questions about the recommendation and its supporting evidence. The assistant explains and summarizes available information but does not act as a brokerage service or licensed financial adviser.
+
+\subsection{Administrative Analysis and Backtesting}
+\label{subsec:administrative-analysis-backtesting}
+
+The administrative web interface provides protected tools for running stock analysis and historical backtests. An administrator can analyze an individual stock or a predefined stock universe, configure an experiment, monitor batch progress, and inspect or export the resulting reports. Backtesting summarizes historical behavior through measures such as net profit, win rate, Sharpe ratio, maximum drawdown, and trade history, with visualizations linking generated signals to price data. This interface is an internal research and operational tool; it is not publicly deployed and does not execute live securities transactions.
+
+Together, these features form a decision-support environment that connects market discovery, evidence inspection, AI-assisted synthesis, explanation, and conversational follow-up. Stockrium helps users organize and interpret Vietnamese market information while keeping investment decisions and any subsequent transactions under the user's responsibility.

@@ -1,0 +1,291 @@
+\section{Data Architecture and Acquisition Pipelines}
+\label{sec:data-architecture-acquisition}
+
+Stockrium depends on data with substantially different lifecycles. User preferences change through application requests; prices change throughout a trading session; financial statements are collected periodically through administrative tools; articles are refreshed weekly; and chatbot checkpoints grow one conversation turn at a time. The data architecture therefore separates persistent relational records, generated file artifacts, short-lived security state, and device-local credentials. It also separates acquisition work from interactive API execution: the mobile application reads normalized data through the backend but does not start a Selenium crawler, an SSI stream, or a news-collection job.
+
+\subsection{Supabase Data Model}
+\label{subsec:supabase-data-model}
+
+Supabase PostgreSQL is the principal system of record. PostgreSQL is exposed through Supabase rather than replaced by a proprietary document model, allowing the application to use keys, constraints, relations, pagination, and conflict-aware upserts \cite{supabaseDatabase2026}. Stockrium organizes its application tables into the groups summarized in Table~\ref{tab:supabase-table-groups}. The names shown are the case-sensitive names used by the current backend; quoted identifiers are therefore retained when direct SQL is generated for the chatbot.
+
+\begin{table}[H]
+    \centering
+    \caption{Principal relational-table groups in Stockrium}
+    \label{tab:supabase-table-groups}
+    \footnotesize
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{p{3.0cm} p{9.8cm}}
+        \toprule
+        \textbf{Data group} & \textbf{Tables and responsibility} \\
+        \midrule
+        Account and personalization & \texttt{User} stores account identity, credential metadata, and role. \texttt{RiskAppetite} stores the selected investment horizon. \texttt{Favorite} implements the user's stock watchlist. \texttt{Search\_History} stores at most six recent unique stock searches per user. \\
+        Market data & \texttt{Stock} is the canonical security directory. \texttt{Stock\_Price\_1m} and \texttt{Stock\_Price\_1d} store OHLCV candles. \texttt{Current\_Stock\_Price} is a latest-quote read model. \texttt{MarketIndex} defines index baskets, \texttt{Current\_Market\_Index} stores the most recent index snapshots, and \texttt{Stock\_MarketIndex} associates securities with indices. \\
+        Company and fundamentals & \texttt{BI\_Profile}, \texttt{BI\_Leader}, and \texttt{BI\_Subsidiary} store company description, management, and subsidiary or associate records. \texttt{FA\_Summary}, \texttt{FA\_Indicator}, \texttt{FA\_BalanceSheet}, \texttt{FA\_CashFlow}, and \texttt{FA\_IncomeStatement} store company-level financial evidence. \texttt{FA\_Industry\_Aggregate} stores precomputed annual industry medians and peer counts. \\
+        News and classification & \texttt{Article} stores extracted article content, metadata, summary, and sentiment. \texttt{Article\_Stock} and \texttt{Article\_Category} associate articles with securities and categories. \texttt{Category} defines ICB-related groups, while \texttt{Category\_Stock} associates categories with securities. \\
+        Chatbot persistence & \texttt{chat\_sessions} records session ownership, title, and timestamps. LangGraph's \texttt{checkpoints}, \texttt{checkpoint\_blobs}, \texttt{checkpoint\_writes}, and \texttt{checkpoint\_migrations} tables persist graph state and checkpoint metadata. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The central entity is \texttt{Stock}. Company and financial tables use \texttt{stock\_id} to associate a record with a listed security. Annual financial tables conceptually contain one row for a stock and year, while \texttt{FA\_Summary} and \texttt{BI\_Profile} provide stock-level text or profile information. The company can have many leaders and subsidiaries. Price tables currently use a normalized symbol and timestamp as their conflict key; the relationship to \texttt{Stock} is therefore logical through the symbol rather than necessarily enforced by a foreign key.
+
+Account data is separated from market data. \texttt{Favorite} contains only a user--stock association and should not be interpreted as a holding, order, or portfolio position. \texttt{Search\_History} uses the same user and stock identities but applies a recency policy in the service layer. \texttt{RiskAppetite} currently stores one dimension---the selected investment horizon---for each user. These relations let the backend enrich a lightweight personalization record with profile and latest-price information without duplicating company data in each user's rows.
+
+Three explicit join tables represent many-to-many relationships. \texttt{Stock\_MarketIndex} records index constituents, \texttt{Category\_Stock} records the categories to which a stock belongs, and the two article join tables allow one article to be associated with multiple securities or categories without copying the article body. \texttt{FA\_Industry\_Aggregate} is linked to \texttt{Category} by industry identifier and year so a company can be compared with the precomputed median of its peers.
+
+Chat metadata and conversational content are deliberately separated. \texttt{chat\_sessions} maps a client-supplied session identifier to a user and a short title. LangGraph's PostgreSQL saver uses the same session identifier as its thread identifier and stores message-bearing graph states in checkpoint tables \cite{langgraphPersistence2026}. Deleting a conversation removes checkpoint writes, blobs, checkpoints, and then the session record, while the checkpoint-migration table remains framework metadata.
+
+Figure~\ref{fig:stockrium-reduced-erd} presents a reduced entity--relationship view. It intentionally omits most columns and low-level constraints so the important ownership, stock-centered, classification, and conversation relations remain legible.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[
+        entity/.style={draw, rounded corners=4pt, fill=blue!7, minimum width=3.1cm, minimum height=0.9cm, align=center, font=\small\bfseries},
+        group/.style={draw, rounded corners=4pt, fill=green!7, minimum width=4.7cm, minimum height=1.35cm, align=center, font=\scriptsize},
+        join/.style={draw, rounded corners=4pt, fill=purple!8, minimum width=3.4cm, minimum height=0.9cm, align=center, font=\scriptsize},
+        chat/.style={draw, rounded corners=4pt, fill=orange!9, minimum width=4.2cm, minimum height=1.1cm, align=center, font=\scriptsize},
+        rel/.style={-{Latex[length=2.0mm]}, line width=0.6pt, gray!80},
+        logical/.style={-{Latex[length=2.0mm]}, line width=0.6pt, dashed, gray!75}
+    ]
+        \node[entity] (user) at (0,3.2) {\texttt{User}};
+        \node[group] (personal) at (4.8,3.2) {\texttt{RiskAppetite}\\\texttt{Favorite}\\\texttt{Search\_History}};
+        \node[entity] (stock) at (10.0,3.2) {\texttt{Stock}};
+        \node[group] (market) at (15.1,5.2) {\texttt{Stock\_Price\_1m}, \texttt{Stock\_Price\_1d}\\\texttt{Current\_Stock\_Price}};
+        \node[group] (company) at (15.1,2.7) {\texttt{BI\_Profile}, \texttt{BI\_Leader}, \texttt{BI\_Subsidiary}\\\texttt{FA\_Summary}, \texttt{FA\_Indicator}\\\texttt{FA\_BalanceSheet}, \texttt{FA\_CashFlow}, \texttt{FA\_IncomeStatement}};
+        \node[group] (index) at (10.0,6.1) {\texttt{MarketIndex}\\\texttt{Current\_Market\_Index}};
+        \node[join] (stockindex) at (10.0,4.75) {\texttt{Stock\_MarketIndex}};
+
+        \node[entity] (article) at (4.8,-0.5) {\texttt{Article}};
+        \node[entity] (category) at (10.0,-0.5) {\texttt{Category}};
+        \node[join] (artstock) at (7.4,1.0) {\texttt{Article\_Stock}};
+        \node[join] (artcat) at (7.4,-1.7) {\texttt{Article\_Category}};
+        \node[join] (catstock) at (12.7,0.7) {\texttt{Category\_Stock}};
+        \node[group, minimum width=3.9cm] (industry) at (15.1,-1.2) {\texttt{FA\_Industry\_Aggregate}\\median by category and year};
+
+        \node[chat] (sessions) at (0,-0.3) {\texttt{chat\_sessions}\\session owner and title};
+        \node[chat] (checkpoints) at (0,-2.4) {LangGraph checkpoint tables\\state keyed by \texttt{thread\_id}};
+
+        \draw[rel] (user.east) -- node[above, font=\scriptsize] {1:N} (personal.west);
+        \draw[rel] (stock.west) -- node[above, font=\scriptsize] {1:N for favorites/searches} (personal.east);
+        \draw[rel] (user.south) -- node[right, font=\scriptsize] {1:N} (sessions.north);
+        \draw[logical] (sessions.south) -- node[right, font=\scriptsize] {session = thread} (checkpoints.north);
+
+        \draw[logical] (stock.east) to[bend left=18] node[above, font=\scriptsize] {symbol} (market.west);
+        \draw[rel] (stock.east) -- node[below, font=\scriptsize] {1:N} (company.west);
+        \draw[rel] (stock.north) -- (stockindex.south);
+        \draw[rel] (stockindex.north) -- (index.south);
+
+        \draw[rel] (article.north east) -- (artstock.south west);
+        \draw[rel] (artstock.north east) -- (stock.south west);
+        \draw[rel] (article.south east) -- (artcat.north west);
+        \draw[rel] (artcat.north east) -- (category.south west);
+        \draw[rel] (category.east) -- (catstock.west);
+        \draw[rel] (catstock.north) -- (stock.south east);
+        \draw[rel] (category.east) to[bend right=20] node[below, font=\scriptsize] {1:N by year} (industry.west);
+    \end{tikzpicture}%
+    }
+    \caption{Reduced ERD of the principal Stockrium data relationships}
+    \label{fig:stockrium-reduced-erd}
+\end{figure}
+
+\subsection{Market Price Acquisition Pipeline}
+\label{subsec:market-price-acquisition}
+
+The \texttt{update\_stock\_price/} subsystem supports two acquisition modes: historical initialization and daily live operation. Initialization scripts obtain an SSI access token and backfill OHLCV data for stocks in the configured VN-Index universe and for five retained market-index symbols. Daily initialization is divided into 30-day requests because of the upstream API limit and currently loads approximately five years for daily candles. One-minute initialization retrieves the latest 30 days. Rows are normalized into a common \texttt{symbol}, \texttt{trading\_time}, \texttt{open}, \texttt{high}, \texttt{low}, \texttt{close}, and \texttt{volume} representation, deduplicated, and upserted on \texttt{(symbol, trading\_time)}. Requests are paced by approximately 1.1 seconds to reduce SSI rate-limit pressure.
+
+Live acquisition is controlled by a long-running scheduler using Vietnam time (UTC+7). On Monday through Friday, it ensures that three child processes are running from 09:00 inclusive until 15:00 exclusive: a one-minute stock-price stream, a daily stock-price stream, and a market-index stream. The scheduler polls every 30 seconds and restarts a child process if it has exited unexpectedly. At 15:00, it sends an interrupt signal to each stream, waits for a graceful shutdown, and terminates a process only if it does not stop within the timeout.
+
+The one-minute worker subscribes to SSI bar messages, restricts accepted symbols to the configured stock universe and retained indices, and aggregates incoming ticks in an in-memory candle buffer. The key is the pair of symbol and minute. The first tick establishes open, high, low, close, and volume; later ticks update the high and low, replace the close, and accumulate volume. Closed minutes are flushed from a separate loop so network I/O to Supabase does not block the SSI callback. The current open minute is not written during shutdown because it is incomplete.
+
+The daily worker subscribes to the same bar stream but accumulates one current-session record per symbol in \texttt{Stock\_Price\_1d}. Index-bar history is also stored in the 1-minute and daily price tables using the index identifier as the symbol, while index-wide breadth and turnover snapshots arrive through the SSI \texttt{MI} stream and are upserted into \texttt{Current\_Market\_Index} by \texttt{index\_id}. Historical index candles and current index state are therefore separate representations with different query purposes.
+
+At or after 15:05, the scheduler runs three reconciliation jobs exactly once for the date and, importantly, runs them sequentially: one-minute candles, daily candles, and market indices. The one-minute job re-fetches a short two-day lookback and retains 30 days of minute data. The daily job reconciles a three-day lookback and retains five years. The index job retrieves the end-of-day state for the supported indices. Sequential execution prevents three full-universe jobs from making SSI requests simultaneously and exceeding provider limits.
+
+Figure~\ref{fig:market-acquisition-pipeline} summarizes the market-data flow.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[
+        source/.style={draw, rounded corners=5pt, fill=blue!8, minimum width=3.2cm, minimum height=1.0cm, align=center, font=\small\bfseries},
+        process/.style={draw, rounded corners=5pt, fill=green!9, minimum width=3.5cm, minimum height=1.05cm, align=center, font=\small},
+        store/.style={draw, rounded corners=5pt, fill=orange!10, minimum width=3.6cm, minimum height=1.0cm, align=center, font=\small\bfseries},
+        schedule/.style={draw, rounded corners=5pt, fill=yellow!14, minimum width=3.6cm, minimum height=1.0cm, align=center, font=\small},
+        flow/.style={-{Latex[length=2.1mm]}, line width=0.65pt, gray!80}
+    ]
+        \node[source] (ssiapi) at (0,2.4) {SSI HTTP API\\historical OHLCV};
+        \node[source] (ssibar) at (0,0) {SSI WebSocket\\bar stream};
+        \node[source] (ssiindex) at (0,-2.4) {SSI WebSocket\\market-index stream};
+        \node[source, minimum width=3.8cm] (edgejob) at (0,-4.5) {Scheduled Supabase\\Edge Function job};
+
+        \node[process] (init) at (4.7,2.4) {Initialization\\chunk, normalize, pace};
+        \node[process] (minute) at (4.7,0.6) {1-minute buffer\\flush completed candles};
+        \node[process] (daily) at (4.7,-0.9) {Daily in-session\\snapshot aggregation};
+        \node[process] (indexproc) at (4.7,-2.4) {Index snapshot\\normalization};
+
+        \node[store] (one) at (9.4,1.2) {\texttt{Stock\_Price\_1m}};
+        \node[store] (day) at (9.4,-0.4) {\texttt{Stock\_Price\_1d}};
+        \node[store] (idx) at (9.4,-2.4) {\texttt{Current\_Market\_Index}};
+        \node[store] (currentstock) at (9.4,-4.5) {\texttt{Current\_Stock\_Price}};
+
+        \node[schedule] (scheduler) at (14.1,1.2) {09:00 start\\15:00 stop};
+        \node[schedule] (reconcile) at (14.1,-1.4) {15:05 sequential\\1m $\rightarrow$ 1d $\rightarrow$ index};
+
+        \draw[flow] (ssiapi.east) -- (init.west);
+        \draw[flow] (init.east) to[bend left=12] (one.west);
+        \draw[flow] (init.east) to[bend right=12] (day.west);
+        \draw[flow] (ssibar.east) to[bend left=8] (minute.west);
+        \draw[flow] (ssibar.east) to[bend right=8] (daily.west);
+        \draw[flow] (minute.east) -- (one.west);
+        \draw[flow] (daily.east) -- (day.west);
+        \draw[flow] (ssiindex.east) -- (indexproc.west);
+        \draw[flow] (indexproc.east) -- (idx.west);
+        \draw[flow] (edgejob.east) -- node[above, font=\scriptsize] {latest-quote refresh} (currentstock.west);
+        \draw[flow] (scheduler.west) -- (one.east);
+        \draw[flow] (scheduler.west) -- (day.east);
+        \draw[flow] (scheduler.south west) -- (idx.east);
+        \draw[flow] (reconcile.west) to[bend left=18] (one.east);
+        \draw[flow] (reconcile.west) -- (day.east);
+        \draw[flow] (reconcile.west) to[bend right=18] (idx.east);
+    \end{tikzpicture}%
+    }
+    \caption{Historical, live, and post-session market-data acquisition}
+    \label{fig:market-acquisition-pipeline}
+\end{figure}
+
+The \texttt{Current\_Stock\_Price} table remains important to market lists, favorites, search history, and current-price cards. It is refreshed by scheduled Supabase Edge Function jobs rather than by the Python processes in \texttt{update\_stock\_price/}. This design makes the table a separately maintained latest-quote read model: the Python scheduler owns candle and index-stream persistence, while the managed database-side schedule owns current stock snapshots. Deployment documentation must therefore include both schedules; deploying only the Python service would leave current-price cards dependent on the existing Supabase job.
+
+The scheduler's trading-day test currently recognizes weekdays rather than an exchange-holiday calendar. On a weekday market holiday it may start streams and later execute reconciliation even though no session occurred. Upserts and empty-response handling reduce the risk of corrupting stored candles, but a production version should consume an official Vietnamese exchange calendar.
+
+\subsection{Company and Fundamental Data Pipeline}
+\label{subsec:company-fundamental-pipeline}
+
+Company and financial acquisition is an administrative, offline process. It is not invoked from a mobile request because browser automation, file downloads, report parsing, and multi-company imports are too slow and operationally fragile for an interactive API path. The backend serves only data that has already been normalized and stored.
+
+Company-profile collection uses Selenium WebDriver to open SSI iBoard, establish an authenticated browser session, search for a stock, enter dynamically loaded page regions, and parse company information. The crawler obtains profile attributes, leadership records, and subsidiaries or associates. A stock is first resolved through \texttt{Stock}; profile fields are updated in \texttt{BI\_Profile}. Leadership and subsidiary collections are replaced for the stock by deleting their previous rows and inserting the newly observed records. The crawler supports batch operation from symbols already present in \texttt{BI\_Profile} and maintains progress so a long run can resume after a browser or page failure. The use of Selenium for a dynamically rendered source follows the browser-automation rationale introduced in Chapter 2 \cite{seleniumWebDriver2025}.
+
+A separate SSI financial downloader navigates the fundamental-analysis interface and triggers downloads for the balance sheet, income statement, cash-flow statement, and financial-indicator sections. Excel files are converted where necessary, and pandas transforms the downloaded wide layouts into tidy records containing one symbol and financial year per row. Processing removes unnamed or empty columns, normalizes Vietnamese labels into stable database fields, converts numerical values, drops empty trailing years, and serializes missing values as database nulls. The current application schema associates the processed records with \texttt{Stock.id} and stores them in the corresponding \texttt{FA\_*} tables. Upserts use the stock--year identity so rerunning an import corrects or completes existing observations instead of blindly duplicating them. pandas and its workbook engines are suited to this conversion of heterogeneous tabular reports \cite{pandasIO2026}.
+
+Industry aggregation is performed after company profiles and financial indicators are available. The utility maps detailed \texttt{BI\_Profile.icb\_code} values to an ICB industry identifier, groups \texttt{FA\_Indicator} records by industry and year, and computes the median of every available metric while ignoring missing values. It also counts the contributing stocks. Results are upserted into \texttt{FA\_Industry\_Aggregate} on \texttt{(category\_id, year)}. The current utility retains the configured 2021--2025 range and removes obsolete years or invalid category identifiers. Precomputation moves repeated peer aggregation out of user requests and lets the fundamental agent compare a company with a consistent industry benchmark.
+
+Fundamental summaries are also generated as an offline maintenance operation rather than during a mobile request. The active backend reads \texttt{FA\_Summary} by \texttt{stock\_id}. The OpenAI batch utility performs multi-year evidence retrieval, retry, pacing, and skip-existing behavior before persisting the generated text. Its source code retains the earlier name \texttt{fundamental\_analysis\_summary} and earlier lower-case financial-table names; these identifiers refer to the predecessor schema that was later renamed to the active \texttt{FA\_*} tables. They are treated as one logical dataset in this report, with \texttt{FA\_Summary} used consistently as the current name.
+
+Figure~\ref{fig:company-fundamental-pipeline} shows the separation between acquisition, transformation, enrichment, and serving.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[
+        source/.style={draw, rounded corners=5pt, fill=blue!8, minimum width=3.0cm, minimum height=1.0cm, align=center, font=\small\bfseries},
+        process/.style={draw, rounded corners=5pt, fill=green!9, minimum width=3.5cm, minimum height=1.05cm, align=center, font=\small},
+        store/.style={draw, rounded corners=5pt, fill=orange!10, minimum width=4.2cm, minimum height=1.0cm, align=center, font=\small},
+        flow/.style={-{Latex[length=2.1mm]}, line width=0.65pt, gray!80}
+    ]
+        \node[source] (iboard) at (0,0) {SSI iBoard\\authenticated pages};
+        \node[process] (selenium) at (4.2,1.4) {Selenium crawler\\profile, leaders, subsidiaries};
+        \node[process] (download) at (4.2,-1.4) {Selenium downloader\\four financial report types};
+        \node[process] (pandas) at (8.6,-1.4) {pandas transformation\\wide reports $\rightarrow$ stock--year rows};
+        \node[store] (company) at (8.6,1.4) {\texttt{BI\_Profile}\\\texttt{BI\_Leader}, \texttt{BI\_Subsidiary}};
+        \node[store] (financial) at (13.1,-1.4) {\texttt{FA\_Indicator} and\\financial-statement tables};
+        \node[process] (median) at (17.4,-1.4) {Industry grouping\\median and peer count};
+        \node[store] (aggregate) at (21.7,-1.4) {\texttt{FA\_Industry\_Aggregate}};
+        \node[process] (summary) at (17.4,1.4) {Offline OpenAI\\summary generation};
+        \node[store] (fasummary) at (21.7,1.4) {\texttt{FA\_Summary}};
+
+        \draw[flow] (iboard.east) to[bend left=15] (selenium.west);
+        \draw[flow] (iboard.east) to[bend right=15] (download.west);
+        \draw[flow] (selenium.east) -- (company.west);
+        \draw[flow] (download.east) -- (pandas.west);
+        \draw[flow] (pandas.east) -- (financial.west);
+        \draw[flow] (financial.east) -- (median.west);
+        \draw[flow] (median.east) -- (aggregate.west);
+        \draw[flow] (financial.north east) to[bend left=18] (summary.west);
+        \draw[flow] (summary.east) -- (fasummary.west);
+    \end{tikzpicture}%
+    }
+    \caption{Offline company and fundamental-data preparation pipeline}
+    \label{fig:company-fundamental-pipeline}
+\end{figure}
+
+\subsection{Financial News Pipeline}
+\label{subsec:financial-news-pipeline}
+
+The \texttt{update\_articles/} subsystem separates initial collection from periodic refresh. Initial scripts backfill stock-specific, macroeconomic, and category-level news over a longer search horizon and include checkpoint files for resuming multi-page collection. Update scripts request only the latest week and perform one current search page for each configured topic, category, or stock. This distinction reduces the cost of routine updates while preserving a path for initializing a new deployment.
+
+For each target, the pipeline submits a Vietnamese news query to the Serper news endpoint. A result supplies candidate metadata and a source URL. Newspaper3k then downloads the selected page and extracts the article title, body, publication information, and representative image when available. Failed or empty pages are skipped because an inaccessible URL should not produce an article containing only generated text.
+
+The extracted article is passed to \texttt{gpt-4o-mini} with a typed response schema. Stock queries request a short Vietnamese summary and a positive, neutral, or negative label from the perspective of the named security. Category queries use the corresponding industry perspective, while macroeconomic articles receive a general market label. Invalid labels are normalized to neutral before insertion. The original content and source metadata remain in \texttt{Article}, so the summary does not replace the source evidence.
+
+Duplicate prevention occurs at two levels. Existing links are loaded before extraction so a known URL can be skipped without another model call. The insertion path checks again before creating the article. After an article exists, the pipeline checks the relevant join table before inserting \texttt{Article\_Stock} or \texttt{Article\_Category}. The same article can consequently be reused across associations without duplicated content or duplicate join rows. General macroeconomic articles can remain unassociated with an individual security.
+
+The production scheduler uses Vietnam time and executes once per ISO week on Saturday at 23:00. It runs \texttt{update\_macro\_articles.py}, \texttt{update\_category\_articles.py}, and \texttt{update\_stock\_articles.py} sequentially, waiting for each process to finish. A process-local week key prevents a second execution during the same uninterrupted scheduler run. Even if a service restart causes a repeated attempt, link-level duplicate checks make the update substantially idempotent.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[
+        source/.style={draw, rounded corners=5pt, fill=blue!8, minimum width=3.0cm, minimum height=1.0cm, align=center, font=\small\bfseries},
+        process/.style={draw, rounded corners=5pt, fill=green!9, minimum width=3.25cm, minimum height=1.0cm, align=center, font=\small},
+        decision/.style={draw, rounded corners=5pt, fill=yellow!13, minimum width=2.8cm, minimum height=1.0cm, align=center, font=\scriptsize},
+        store/.style={draw, rounded corners=5pt, fill=orange!10, minimum width=3.5cm, minimum height=1.0cm, align=center, font=\small\bfseries},
+        flow/.style={-{Latex[length=2.1mm]}, line width=0.65pt, gray!80}
+    ]
+        \node[source] (targets) at (0,0) {Macro topics, categories,\\and stock targets};
+        \node[process] (serper) at (4.0,0) {Serper News search\\candidate URLs};
+        \node[decision] (dup) at (8.0,0) {Link already\\known?};
+        \node[process] (newspaper) at (12.1,0) {Newspaper3k\\content extraction};
+        \node[process] (openai) at (16.2,0) {OpenAI structured output\\summary and sentiment};
+        \node[store] (article) at (20.5,0) {\texttt{Article}};
+        \node[store] (joins) at (20.5,-2.2) {\texttt{Article\_Stock} or\\\texttt{Article\_Category}};
+        \node[process, fill=yellow!10] (schedule) at (0,-2.2) {Saturday 23:00 VN\\macro $\rightarrow$ category $\rightarrow$ stock};
+        \node[process, fill=gray!8] (skip) at (8.0,-2.2) {Skip duplicate\\without another model call};
+
+        \draw[flow] (targets.east) -- (serper.west);
+        \draw[flow] (serper.east) -- (dup.west);
+        \draw[flow] (dup.east) -- node[above, font=\scriptsize] {no} (newspaper.west);
+        \draw[flow] (newspaper.east) -- (openai.west);
+        \draw[flow] (openai.east) -- (article.west);
+        \draw[flow] (article.south) -- (joins.north);
+        \draw[flow] (dup.south) -- node[right, font=\scriptsize] {yes} (skip.north);
+        \draw[flow] (schedule.north) -- (targets.south);
+    \end{tikzpicture}%
+    }
+    \caption{Initial and weekly financial-news processing flow}
+    \label{fig:financial-news-pipeline}
+\end{figure}
+
+The article updater is deployed as a separate Railway service rather than as an in-process FastAPI job. This separation prevents a crawl and a sequence of model calls from delaying API requests or being duplicated for every web-server worker. It also allows the updater container to install the native parsing dependencies required by Newspaper3k independently of the main backend image.
+
+\subsection{Storage Responsibilities}
+\label{subsec:storage-responsibilities}
+
+Not every value belongs in the relational database. Table~\ref{tab:storage-responsibility-boundaries} distinguishes the four storage mechanisms used by Stockrium and clarifies which copy is authoritative.
+
+\begin{table}[H]
+    \centering
+    \caption{Storage responsibility boundaries}
+    \label{tab:storage-responsibility-boundaries}
+    \footnotesize
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{p{2.8cm} p{5.1cm} p{5.0cm}}
+        \toprule
+        \textbf{Storage} & \textbf{Stored information} & \textbf{Responsibility and lifecycle} \\
+        \midrule
+        Supabase PostgreSQL & Accounts, personalization, security directory, market candles and snapshots, company profiles, financial records, industry aggregates, articles, classifications, chat-session metadata, and LangGraph checkpoints & Authoritative durable relational data. Accessed through Supabase PostgREST for domain services and through pooled PostgreSQL connections for checkpointing and controlled chatbot queries. \\
+        Supabase Storage & Manually uploaded JSON backtest reports in the \texttt{backtests} bucket & Durable object artifacts that are listed by the backend and opened by the administrative dashboard. The storage helper supports replacement upload and public-URL generation, but the current backtest execution route does not upload automatically. \\
+        Redis & Access token, refresh token, verification or reset OTP, attempt counter, resend cooldown state, and one-time reset-session mappings & Expiring server-side security state. Enables token revocation and automatic removal through TTL; it is not a source of permanent user or financial records \cite{redisDataTypes2026}. \\
+        Expo SecureStore & Mobile access token and refresh token; also small local preferences such as onboarding completion, theme, language, and saved analysis configuration & Device-local encrypted key--value state. Tokens are removed when refresh fails or the user signs out. The backend remains authoritative for accounts and sessions \cite{expoSecureStore2026}. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Backtest execution returns its result to the administrative workflow, where the JSON artifact can be inspected or exported. Upload to the \texttt{backtests} bucket is a separate manual administrative action. Once an artifact has been uploaded, the backend storage helper lists the available JSON files and produces the public URLs used by the dashboard. This distinction prevents the presence of an upload helper from being mistaken for an automatic persistence step in every backtest request.
+
+Redis key namespaces reflect these responsibilities. Access and refresh sessions use \texttt{session:access:\{user\_id\}} and \texttt{session:refresh:\{user\_id\}} with configurable token lifetimes. OTP values use \texttt{otp:\{purpose\}:\{email\}}, while \texttt{otp:attempts:\{purpose\}:\{email\}} counts failed verification attempts under the same expiry. The default OTP validity is ten minutes with a maximum of five attempts. A successful password-reset verification produces a five-minute one-time reset session and an email-to-session reverse mapping so an older session can be invalidated.
+
+The mobile application stores the access and refresh tokens under \texttt{access\_token} and \texttt{refresh\_token} in SecureStore. It does not store a durable copy of favorites, risk horizon, chat history, or financial records as an authoritative local database. Those values are requested from the backend. This boundary prevents a device preference or stale cache from being mistaken for a confirmed server-side state.
+
+The acquisition pipelines and storage boundaries together provide a stable evidence layer for the analytical components. Live and offline processes normalize heterogeneous sources before they reach application services; relational links preserve stock, industry, article, and user context; and short-lived secrets remain outside durable business tables. The next section builds the agentic stock-analysis design on top of these prepared data products.

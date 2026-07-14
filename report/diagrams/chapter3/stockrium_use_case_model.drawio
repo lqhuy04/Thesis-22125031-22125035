@@ -1,0 +1,193 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="stockrium-use-cases" name="Stockrium Use Cases">
+    <mxGraphModel dx="1414" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1240" pageHeight="1754" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="boundary" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#374151;strokeWidth=2;verticalAlign=top;align=center;spacingTop=10;fontStyle=1;fontSize=20;" value="Stockrium System" vertex="1">
+          <mxGeometry height="1680" width="850" x="190" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="label-account" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=14;" value="Account Access" vertex="1">
+          <mxGeometry height="30" width="220" x="220" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="label-research" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=14;" value="Market and Stock Research" vertex="1">
+          <mxGeometry height="30" width="260" x="220" y="455" as="geometry" />
+        </mxCell>
+        <mxCell id="label-personal" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=14;" value="Personalized Decision Support" vertex="1">
+          <mxGeometry height="30" width="280" x="220" y="815" as="geometry" />
+        </mxCell>
+        <mxCell id="label-operations" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontStyle=1;fontSize=14;" value="Administration" vertex="1">
+          <mxGeometry height="30" width="280" x="220" y="1305" as="geometry" />
+        </mxCell>
+        <mxCell id="actor-guest" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;strokeColor=#374151;fillColor=#ffffff;fontSize=14;" value="Guest" vertex="1">
+          <mxGeometry height="130" width="100" x="30" y="225" as="geometry" />
+        </mxCell>
+        <mxCell id="actor-investor" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;strokeColor=#374151;fillColor=#ffffff;fontSize=14;" value="Authenticated&lt;br&gt;Investor" vertex="1">
+          <mxGeometry height="140" width="110" x="25" y="930" as="geometry" />
+        </mxCell>
+        <mxCell id="actor-admin" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;strokeColor=#374151;fillColor=#ffffff;fontSize=14;" value="Administrator" vertex="1">
+          <mxGeometry height="140" width="110" x="1080" y="1450" as="geometry" />
+        </mxCell>
+        <mxCell id="uc01" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Complete onboarding" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="uc02" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Register account" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="uc03" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Verify email" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="uc04" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Sign in with password or Google" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="uc05" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Recover password" vertex="1">
+          <mxGeometry height="65" width="280" x="460" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="uc06" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Explore market and industries" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="uc07" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Read financial news" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="uc08" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Search for a stock" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="uc09" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Inspect price and company information" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="uc10" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="View fundamentals, charts, and indicators" vertex="1">
+          <mxGeometry height="65" width="280" x="460" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="uc11" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Manage watchlist and preferences" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="uc12" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Set investment horizon" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="uc13" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Configure analytical sources and weights" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="970" as="geometry" />
+        </mxCell>
+        <mxCell id="uc14" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Request AI-assisted analysis" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="970" as="geometry" />
+        </mxCell>
+        <mxCell id="uc15" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Review action, confidence, and evidence" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="1080" as="geometry" />
+        </mxCell>
+        <mxCell id="uc16" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Ask follow-up questions" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="1080" as="geometry" />
+        </mxCell>
+        <mxCell id="uc17" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Review conversation history" vertex="1">
+          <mxGeometry height="65" width="280" x="460" y="1190" as="geometry" />
+        </mxCell>
+        <mxCell id="uc18" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Trigger supported data operations" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="1350" as="geometry" />
+        </mxCell>
+        <mxCell id="uc19" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Run individual stock analysis" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="1350" as="geometry" />
+        </mxCell>
+        <mxCell id="uc20" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Run VN30 or VN100 batch analysis" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="1460" as="geometry" />
+        </mxCell>
+        <mxCell id="uc21" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Configure and execute backtest" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="1460" as="geometry" />
+        </mxCell>
+        <mxCell id="uc22" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Monitor execution progress" vertex="1">
+          <mxGeometry height="65" width="280" x="270" y="1570" as="geometry" />
+        </mxCell>
+        <mxCell id="uc23" parent="1" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4b5563;strokeWidth=1.5;fontSize=13;" value="Review stored experiment results" vertex="1">
+          <mxGeometry height="65" width="280" x="650" y="1570" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-g-01" edge="1" parent="1" source="actor-guest" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc01">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-g-02" edge="1" parent="1" source="actor-guest" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc02">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-g-04" edge="1" parent="1" source="actor-guest" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc04">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-g-05" edge="1" parent="1" source="actor-guest" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc05">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-06" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc06">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-07" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc07">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-08" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc08">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-09" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc09">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-10" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc10">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-11" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-12" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-13" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc13">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-14" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-15" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-16" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-i-17" edge="1" parent="1" source="actor-investor" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-a-18" edge="1" parent="1" source="actor-admin" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-a-19" edge="1" parent="1" source="actor-admin" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc19">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-a-20" edge="1" parent="1" source="actor-admin" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-a-21" edge="1" parent="1" source="actor-admin" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc21">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-a-22" edge="1" parent="1" source="actor-admin" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-a-23" edge="1" parent="1" source="actor-admin" style="html=1;rounded=0;endArrow=none;strokeColor=#6b7280;" target="uc23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="include-register-verify" edge="1" parent="1" source="uc02" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#4b5563;fontStyle=1;fontSize=12;" target="uc03" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="extend-recover-login" edge="1" parent="1" source="uc05" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#4b5563;fontStyle=1;fontSize=12;" target="uc04" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="include-analysis-config" edge="1" parent="1" source="uc14" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#4b5563;fontStyle=1;fontSize=12;" target="uc13" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="include-analysis-review" edge="1" parent="1" source="uc14" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#4b5563;fontStyle=1;fontSize=12;" target="uc15" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="extend-follow-up" edge="1" parent="1" source="uc16" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#4b5563;fontStyle=1;fontSize=12;" target="uc15" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="include-batch-progress" edge="1" parent="1" source="uc20" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#4b5563;fontStyle=1;fontSize=12;" target="uc22" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="include-backtest-progress" edge="1" parent="1" source="uc21" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#4b5563;fontStyle=1;fontSize=12;" target="uc22" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="extend-result-backtest" edge="1" parent="1" source="uc23" style="html=1;rounded=0;dashed=1;endArrow=open;endFill=0;strokeColor=#4b5563;fontStyle=1;fontSize=12;" target="uc21" value="&amp;lt;&amp;lt;extend&amp;gt;&amp;gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,42 @@
+\section{Foundation Technologies}
+\label{sec:foundation-technologies}
+
+Stockrium combines financial-analysis methods, large language models, multi-agent coordination, deterministic rules, and historical evaluation. This section briefly introduces the concepts required to understand the system; their implementation is presented in Chapter 4.
+
+\subsection{Financial Analysis Foundations}
+
+Equity analysis commonly considers three complementary sources of evidence: market behavior, company fundamentals, and financial news. Each describes a different aspect of a stock and should therefore be interpreted together rather than treated as an independent guarantee of future performance.
+
+\paragraph{Technical analysis.}
+
+Technical analysis examines historical price and volume data to describe trend, momentum, volatility, and possible turning points \cite{murphy1999technical}. Stockrium uses moving averages, Bollinger Bands, RSI, MACD, and KDJ. Moving averages and MACD primarily describe trend and momentum; Bollinger Bands show price position relative to recent volatility; and RSI and KDJ identify momentum conditions. These indicators summarize market behavior but are lagging or sensitive to noise, so no single signal is considered sufficient for a recommendation.
+
+\paragraph{Fundamental analysis.}
+
+Fundamental analysis evaluates the financial condition and operating performance of a company using its balance sheet, income statement, cash-flow statement, and derived ratios \cite{penman2013financial}. Stockrium groups indicators into liquidity, leverage, efficiency, profitability, and valuation. Their interpretation considers changes over time and comparisons with industry peers because a favorable value in one sector or period may not have the same meaning in another.
+
+\paragraph{Financial news analysis.}
+
+Financial news provides information about corporate events, macroeconomic changes, and market expectations that may not yet appear in accounting data. Sentiment analysis classifies this content as positive, neutral, or negative, while summarization makes long articles easier to review. However, sentiment depends on the affected company, publication time, source, and market context; Vietnamese studies also show that textual polarity alone is not a reliable trading rule \cite{tung2021phobert,vu2023sentiments}. Stockrium therefore treats news as supporting evidence alongside technical and fundamental information.
+
+\subsection{Large Language Models}
+
+Large language models (LLMs) are neural models trained on extensive text collections to understand and generate natural language. Most modern LLMs are based on the Transformer architecture, which uses attention to represent relationships among words in a context \cite{vaswani2017attention}. Their instruction-following capability allows one model to summarize articles, interpret financial observations, classify content, and generate explanations without training a separate model for every task \cite{brown2020gpt3}. Nevertheless, LLMs can produce unsupported or inconsistent statements, and a valid response structure does not guarantee factual or numerical correctness. In Stockrium, LLMs are consequently used mainly for interpretation and explanation, while exact calculations and selected validation rules remain in conventional code.
+
+\subsection{AI Agents, Design Patterns, and Agentic Workflows}
+
+An AI agent combines a model with a defined role, available information, state, and actions such as calling an API or returning a structured result. Frameworks such as ReAct illustrate how reasoning can be interleaved with external actions and observations \cite{yao2022react}. A multi-agent system divides a larger task among cooperating agents \cite{wooldridge2009multiagent}. This separation allows each Stockrium agent to focus on technical data, fundamentals, or news and exposes intermediate results for later synthesis. The approach improves modularity but can also increase latency and propagate errors, making clear responsibilities and compatible output formats necessary.
+
+Several common patterns organize agent-based applications. A \textit{specialized agent} owns one domain; an \textit{orchestrator--worker} structure assigns work to the appropriate agents; \textit{fan-out/fan-in} executes independent branches in parallel before joining them; and an \textit{aggregator} reconciles their outputs. Shared state provides a common data contract, while conditional routing selects the next node from the current state. Stockrium combines these patterns to make its analytical flow explicit and bounded rather than relying on unrestricted agent-to-agent conversation.
+
+An agentic workflow represents processing as a graph of nodes and transitions. Nodes may retrieve data, perform calculations, invoke an LLM, or update shared state, while edges define sequential, conditional, or parallel execution. LangGraph provides these graph and state abstractions together with checkpointing for persistent conversations \cite{langgraph2026graphapi}. In Stockrium, one graph coordinates the stock-analysis agents and another routes chatbot requests. This structure makes the allowed execution paths visible and allows deterministic functions and language-model nodes to operate within the same workflow.
+
+\subsection{Hybrid LLM--Rule Decision Support}
+
+A hybrid decision-support system assigns qualitative interpretation to LLMs and reproducible calculations to deterministic components. Stockrium's agents interpret evidence and propose structured assessments, whereas conventional code calculates indicators and confidence, checks minimum conditions, and constrains selected recommendation values according to the investment horizon. This arrangement improves consistency and traceability but does not eliminate uncertainty because the analytical inputs and qualitative interpretations may still be incomplete or incorrect. The generated result must therefore be understood as decision support rather than a guaranteed investment outcome.
+
+\subsection{Backtesting and Evaluation Foundations}
+
+Backtesting applies a defined strategy to historical data to estimate how it would have behaved under past market conditions. A meaningful simulation specifies signal, entry, exit, holding-period, and transaction-cost assumptions while preventing the strategy from using future information. Common measures include total return, win rate, Sharpe ratio, and maximum drawdown \cite{sharpe1994ratio}. Comparisons with simple baselines, market-regime analysis, and walk-forward evaluation provide additional context. Nevertheless, historical results can be distorted by overfitting, survivorship bias, incomplete data, and simplified execution assumptions \cite{bailey2017pbo}; they describe past behavior and do not prove future profitability.
+
+Together, these foundations explain the principal division of responsibilities in Stockrium: financial methods define the evidence, LLMs interpret it, agents organize the work, deterministic rules constrain the result, and backtesting evaluates historical behavior.

@@ -1,0 +1,18 @@
+\section{Application Scope}
+\label{sec:application-scope}
+
+\subsection{Target Users and Interfaces}
+
+Stockrium primarily serves Vietnamese retail investors. The mobile application is intended for both beginners who need accessible financial information and experienced individual investors who wish to configure and examine analytical strategies. The administrative web interface is intended for system operators and researchers who manage data, run analysis over selected stock groups, conduct backtesting experiments, and review stored results; it is not a public investment interface.
+
+\subsection{Functional Scope}
+
+The functional scope of the mobile application includes authentication, market exploration, stock search, company information, price charts, technical indicators, fundamental data, financial news, a personal watchlist, and natural-language interaction. Its intelligent-analysis function combines technical, fundamental, and news evidence through specialized agents to generate an explainable recommendation, confidence value, and, when appropriate, entry, take-profit, stop-loss, and holding-period information. Users may also configure selected analytical components and their relative weights. Stockrium is limited to decision support: it does not place, modify, or cancel buy or sell orders; connect to brokerage firms or other financial institutions; transfer funds; automatically execute recommendations; or perform portfolio construction, optimization, and rebalancing. It is not intended for high-frequency trading or professional financial advisory services.
+
+\subsection{Market and Data Scope}
+
+The data scope is limited to the Vietnamese equity market, including stocks listed on HOSE, HNX, and UPCoM and representative domestic market indices. The system processes current and historical prices, trading volumes, company profiles, financial statements and ratios, technical indicators, and Vietnamese financial news, subject to the availability and quality of the integrated sources. Foreign equities, bonds, commodities, foreign exchange, cryptocurrencies, and derivatives are outside the scope of this thesis.
+
+\subsection{Evaluation Scope}
+
+The system is evaluated using historical Vietnamese market data to examine the behavior, explainability, risk controls, and performance of the analytical pipeline. Backtesting reports measures such as trade count, win rate, return, Sharpe ratio, and maximum drawdown. Because the evaluation is a simplified historical simulation, it does not reproduce every condition of live execution, including order-book depth, latency, and partial fills. Its results are used to assess the implemented approach and do not guarantee future investment performance.

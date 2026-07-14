@@ -1,0 +1,130 @@
+\section{Application Idea}
+\label{sec:application-idea}
+
+Stockrium is proposed as a decision-support platform that helps individual investors examine Vietnamese listed companies without collecting information from many disconnected sources. The mobile application guides the user through a continuous process of discovering a stock, reviewing market and company information, configuring an analysis, receiving a multi-perspective assessment, and investigating the supporting evidence. Technical, fundamental, and news perspectives remain distinguishable so that the recommendation is presented as an explainable synthesis rather than an unexplained prediction.
+
+The project also provides an administrative web interface for controlled analysis and historical backtesting, together with a curated dataset covering price and volume history, company fundamentals, and financial news with sentiment labels. Stockrium remains analytical rather than transactional: it does not place securities orders, transfer funds, or connect to brokerage firms. Any investment action following an analysis remains the user's responsibility.
+
+\subsection{Stakeholders}
+\label{subsec:application-stakeholders}
+
+The proposed system considers four principal stakeholder groups. Individual investors are the primary users, while the administrator operates system and experimental functions through the restricted web interface. Financial experts contribute practical evaluation, and technical teams and service providers support the data and software infrastructure.
+
+\begin{table}[H]
+    \centering
+    \caption{Principal stakeholders of Stockrium}
+    \label{tab:stockrium-stakeholders}
+    \small
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.5cm} X X}
+        \toprule
+        \textbf{Stakeholder} & \textbf{Primary interest} & \textbf{Relationship with Stockrium} \\
+        \midrule
+        Individual investors & Accessible and explainable analysis of Vietnamese stocks & Use the mobile application to explore stocks, configure analysis, review recommendations, and ask follow-up questions \\
+        Administrator & Controlled system operation and repeatable experimentation & Uses the internal web interface for data operations, batch analysis, backtesting, and result inspection \\
+        Financial-domain experts & Practical usefulness, clarity, and analytical transparency & Experience the application and provide qualitative feedback for the evaluation \\
+        Technical teams and service providers & Reliable software, data, infrastructure, and external services & Develop and operate Stockrium or supply market data, news discovery, storage, and language-model capabilities \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Beginner and experienced investors are treated as profiles within the same stakeholder group rather than as different account roles. Beginners may rely more on default configurations and explanations, whereas experienced users may inspect individual evidence sources and adjust the analytical configuration.
+
+\subsection{Use Case Model}
+\label{subsec:application-use-cases}
+
+Stockrium has three direct actors. A guest accesses onboarding and account functions, an authenticated investor uses the personalized mobile features, and an administrator accesses restricted operational and experimental functions. Figure~\ref{fig:stockrium-use-case-overview} presents these actors and their principal use cases.
+
+\begin{figure}[H]
+    \centering
+    \IfFileExists{figures/chapter3/stockrium_use_case_model.pdf}{%
+        \includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/chapter3/stockrium_use_case_model.pdf}%
+    }{%
+        \fbox{\parbox[c][4.5cm][c]{0.92\textwidth}{\centering
+        Export the Mermaid diagram as\\
+        \texttt{figures/chapter3/stockrium\_use\_case\_model.pdf}}}%
+    }
+    \caption{Stockrium actors and principal use cases}
+    \label{fig:stockrium-use-case-overview}
+\end{figure}
+
+\begin{table}[H]
+    \centering
+    \caption{Use-case groups by actor}
+    \label{tab:stockrium-use-cases}
+    \small
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.2cm} X}
+        \toprule
+        \textbf{Actor} & \textbf{Principal use cases} \\
+        \midrule
+        Guest & Complete onboarding; register and verify an account; sign in with a password or Google; recover account access \\
+        Authenticated investor & Explore the market and news; search and inspect stocks; manage watchlist and preferences; configure and request AI analysis; review recommendations; use the conversational assistant \\
+        Administrator & Trigger data operations; run individual or batch analysis; configure and execute backtests; monitor progress; review stored results \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Market-data providers, news services, and language-model services are supporting dependencies rather than direct actors because they do not initiate the user goals shown in the model. Their interactions with Stockrium are described in the system architecture and data-pipeline sections of Chapter 4.
+
+\subsection{Main Application Flows}
+\label{subsec:main-application-flows}
+
+The use cases form two primary experiences: an investor-facing mobile journey and an administrative workflow. These flows describe user-visible behavior and intentionally treat the internal agent system as a single analytical service; its nodes, state, and execution logic are presented in Chapter 4.
+
+\subsubsection{Mobile Exploration and Stock-Analysis Flow}
+
+A guest first completes onboarding and authenticates through registration, password sign-in, or the supported Google Sign-In flow. After authentication, the investor can enter a stock context from the market overview, search, financial news, or the watchlist. The stock-detail view consolidates price and volume charts, company information, fundamental data, technical indicators, and related news, allowing the investor to examine the available evidence before requesting an assessment.
+
+The user may proceed with an automatic analysis configuration or manually select the evidence sources and their relative weights. The request combines the selected configuration, stock symbol, and saved investment horizon. Figure~\ref{fig:stockrium-primary-flow} summarizes the first part of the mobile journey, from account access and stock discovery to submission of the analysis request.
+
+\begin{figure}[H]
+    \centering
+    \IfFileExists{figures/chapter3/mobile_decision_support_flow_part1.pdf}{%
+        \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{figures/chapter3/mobile_decision_support_flow_part1.pdf}%
+    }{%
+        \fbox{\parbox[c][4.5cm][c]{0.92\textwidth}{\centering
+        Export the Mermaid diagram as\\
+        \texttt{figures/chapter3/mobile\_decision\_support\_flow\_part1.pdf}}}%
+    }
+    \caption{Mobile decision-support flow: account access, stock discovery, and analysis configuration}
+    \label{fig:stockrium-primary-flow}
+\end{figure}
+
+After submission, Stockrium processes the enabled technical, fundamental, and news perspectives and returns either a \textit{Buy} or \textit{Wait} assessment. The result includes confidence and source-specific explanations; an accepted buy assessment may additionally contain entry, take-profit, stop-loss, and maximum-holding values. Figure~\ref{fig:stockrium-analysis-follow-up-flow} presents the second part of the journey, including evidence evaluation, recommendation validation, and subsequent user choices.
+
+\begin{figure}[H]
+    \centering
+    \IfFileExists{figures/chapter3/mobile_decision_support_flow_part2.pdf}{%
+        \includegraphics[width=\textwidth,height=0.72\textheight,keepaspectratio]{figures/chapter3/mobile_decision_support_flow_part2.pdf}%
+    }{%
+        \fbox{\parbox[c][4.5cm][c]{0.92\textwidth}{\centering
+        Export the Mermaid diagram as\\
+        \texttt{figures/chapter3/mobile\_decision\_support\_flow\_part2.pdf}}}%
+    }
+    \caption{Mobile decision-support flow: analysis processing, recommendation, and follow-up}
+    \label{fig:stockrium-analysis-follow-up-flow}
+\end{figure}
+
+The recommendation is not the final step of the user journey. The investor can return to the supporting charts and company data, revise the configuration, update the watchlist, or ask a contextual question. These paths form an iterative cycle in which the user continues to examine the evidence rather than acting solely on the generated action label.
+
+\subsubsection{Conversational Follow-up Flow}
+
+The conversational assistant supports both independent financial questions and follow-up questions about an existing analysis. An authenticated investor may create or revisit a conversation, submit a Vietnamese natural-language question, receive an answer based on available system information, and continue with additional turns. The assistant helps explain terminology and analytical evidence, but its answers remain informational and are subject to the same data and model limitations as the main analysis.
+
+\subsubsection{Administrative Analysis and Backtesting Flow}
+
+The administrator uses the internal web interface for controlled operations. From the dashboard, the administrator may trigger supported data updates, request analysis for one stock or a universe such as VN30 or VN100, start a historical backtest, monitor execution, and inspect stored results. A completed backtest presents price charts, generated entries and exits, performance and risk measures, and relevant analytical reports. Figure~\ref{fig:stockrium-admin-flow} separates these operational branches and shows how their outputs return to the dashboard for later review.
+
+\begin{figure}[H]
+    \centering
+    \IfFileExists{figures/chapter3/admin_backtesting_flow.pdf}{%
+        \includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/chapter3/admin_backtesting_flow.pdf}%
+    }{%
+        \fbox{\parbox[c][4.2cm][c]{0.92\textwidth}{\centering
+        Export the Mermaid diagram as\\
+        \texttt{figures/chapter3/admin\_backtesting\_flow.pdf}}}%
+    }
+    \caption{Administrative analysis and backtesting flow}
+    \label{fig:stockrium-admin-flow}
+\end{figure}
+
+The administrative workflow supports system operation and thesis evaluation; it is not a public web trading platform and does not cause any real-market transaction. Together with the mobile journey, it positions Stockrium as an evidence-centered application and a controlled environment for evaluating analytical strategies.

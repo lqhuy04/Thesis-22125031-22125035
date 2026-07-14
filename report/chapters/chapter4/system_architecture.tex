@@ -1,0 +1,89 @@
+\section{System Architecture Overview}
+\label{sec:system-architecture-overview}
+
+Stockrium follows a client--server architecture supported by asynchronous data-acquisition services. The React Native mobile application is the primary interface for individual investors, while an internal web dashboard allows administrators to run controlled analysis and backtesting. Both clients communicate with a FastAPI backend that centralizes authentication, business logic, data access, AI workflows, and standardized API responses.
+
+Supabase PostgreSQL stores the application's durable business, market, financial, news, and conversational data, while Redis maintains temporary authentication and verification state. Separate workers collect and prepare information from external sources such as SSI and online news providers. This separation keeps provider credentials and processing logic outside the clients and allows most user requests to read normalized data that have already been prepared.
+
+\subsection{Architectural Requirements}
+\label{subsec:architectural-requirements}
+
+The architecture must support mobile market exploration, configurable multi-agent analysis, conversational queries, and administrative backtesting without coupling these responsibilities to the user interface. It must integrate heterogeneous financial evidence, protect user-specific and administrative operations, preserve conversation state, and update market and news data without blocking normal requests. Maintainability is supported by separating presentation, domain services, AI workflows, and data access. Most importantly, the architecture reflects the application's decision-support scope: no component connects to a brokerage account, transfers funds, or executes securities transactions.
+
+\subsection{Logical Architecture}
+\label{subsec:logical-architecture}
+
+The logical architecture is organized into presentation, API and application services, AI and evaluation, data integration, and persistence. Background workers connect external providers to the data layer independently of user requests. Figure~\ref{fig:stockrium-overall-architecture} summarizes the principal components and their relationships.
+
+\begin{figure}[H]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[
+        client/.style={draw, rounded corners=5pt, fill=blue!9, minimum width=4.4cm, minimum height=1.05cm, align=center, font=\small\bfseries},
+        api/.style={draw, rounded corners=5pt, fill=green!10, minimum width=5.2cm, minimum height=1.05cm, align=center, font=\small\bfseries},
+        core/.style={draw, rounded corners=5pt, fill=orange!12, minimum width=4.5cm, minimum height=1.15cm, align=center, font=\small},
+        worker/.style={draw, rounded corners=5pt, fill=purple!9, minimum width=4.6cm, minimum height=1.05cm, align=center, font=\small},
+        store/.style={draw, rounded corners=5pt, fill=yellow!14, minimum width=4.3cm, minimum height=1.05cm, align=center, font=\small\bfseries},
+        external/.style={draw, rounded corners=5pt, fill=gray!12, minimum width=4.0cm, minimum height=1.05cm, align=center, font=\small},
+        flow/.style={-{Latex[length=2.3mm]}, line width=0.65pt, gray!80},
+        dataflow/.style={-{Latex[length=2.3mm]}, line width=0.65pt, blue!60!black}
+    ]
+        \node[client] (mobile) at (1.5,0) {React Native Mobile Application};
+        \node[client] (admin) at (10.5,0) {Internal Administrative Dashboard};
+
+        \node[api, minimum width=13.2cm] (fastapi) at (6.0,-2.0) {FastAPI API Boundary};
+
+        \node[core] (domain) at (0.7,-4.25) {Domain Services};
+        \node[core] (analysis) at (6.0,-4.25) {Agentic Analysis Graph};
+        \node[core] (chat) at (11.3,-4.25) {Chatbot and Backtesting};
+
+        \node[worker] (priceworker) at (-0.5,-6.65) {Market-Data Worker};
+        \node[store] (supabase) at (5.0,-6.65) {Supabase PostgreSQL\\and Storage};
+        \node[store] (redis) at (10.0,-6.65) {Redis};
+        \node[worker] (articleworker) at (15.5,-6.65) {Article Worker};
+
+        \node[external] (ssi) at (-0.5,-8.85) {SSI Market Data Services};
+        \node[external] (ai) at (5.0,-8.85) {OpenAI Language Models};
+        \node[external] (identity) at (10.0,-8.85) {Google Identity and Email};
+        \node[external] (search) at (15.5,-8.85) {Serper and Article Sources};
+
+        \draw[flow] (mobile.south) -- (fastapi.north west);
+        \draw[flow] (admin.south) -- (fastapi.north east);
+        \draw[flow] (fastapi.south west) -- (domain.north);
+        \draw[flow] (fastapi.south) -- (analysis.north);
+        \draw[flow] (fastapi.south east) -- (chat.north);
+
+        \draw[dataflow] (domain.south east) -- (supabase.north west);
+        \draw[dataflow] (analysis.south west) -- (supabase.north);
+        \draw[dataflow] (chat.south west) -- (supabase.north east);
+        \draw[dataflow] (fastapi.east) to[bend left=18] (redis.north);
+
+        \draw[dataflow] (priceworker.east) -- (supabase.west);
+        \draw[dataflow] (articleworker.west) -- (supabase.east);
+        \draw[flow] (ssi.north) -- (priceworker.south);
+        \draw[flow] (search.north) -- (articleworker.south);
+        \draw[flow] (ai.north) -- (analysis.south);
+        \draw[flow] (ai.north east) to[bend left=18] (chat.south);
+        \draw[flow] (identity.north west) to[bend left=34] (fastapi.south east);
+    \end{tikzpicture}%
+    }
+    \caption{Overall logical architecture of Stockrium}
+    \label{fig:stockrium-overall-architecture}
+\end{figure}
+
+The presentation layer contains the mobile application and the internal administrative dashboard. These clients handle interaction and visualization, while protected operations and financial-processing logic remain in the backend. The web dashboard is used only by administrators and is not deployed as a public web version of Stockrium.
+
+FastAPI forms the application boundary. Routes validate requests and authentication information before delegating work to domain services for accounts, market data, company information, fundamentals, articles, user preferences, and other application functions. This organization allows the same prepared data and services to support mobile screens, analytical workflows, chatbot tools, and backtesting without embedding database logic in the clients.
+
+The AI layer contains separate workflows for stock analysis and conversational assistance, together with the historical backtesting subsystem. The stock-analysis graph combines technical, fundamental, and news perspectives into a structured result. The chatbot maintains multi-turn state, whereas backtesting applies analysis logic to historical data. Keeping these execution models separate prevents conversational context or experiment state from affecting an ordinary stock-analysis request.
+
+The data-integration and persistence layers isolate the application from provider-specific formats. Acquisition workers normalize market prices, company information, financial statements, and articles before storing them in Supabase. Redis is reserved for temporary authentication state, and Supabase Storage holds backtest artifacts. The detailed data model, acquisition pipelines, and storage responsibilities are presented later in this chapter.
+
+\subsection{End-to-End Request Flows}
+\label{subsec:end-to-end-request-flows}
+
+For a typical synchronous request, a client sends an authenticated request to FastAPI. The corresponding route validates the input and invokes either a domain service or an AI workflow. The selected component reads prepared data from the persistence layer, performs the required processing, and returns a standardized response for display. Stock-analysis requests additionally coordinate the selected analytical perspectives, while conversational requests load and update their associated chat state. Administrative backtests follow the same protected boundary but operate over historical data and produce experiment results rather than live transactions.
+
+Data acquisition follows an asynchronous path. Market and article workers retrieve information from external providers, normalize it, and upsert it into Supabase according to their schedules. The user-facing clients therefore do not communicate directly with SSI, Serper, or article websites. This design centralizes credentials and data preparation while keeping interactive requests comparatively lightweight.
+
+Overall, Stockrium combines thin client applications, a validated FastAPI boundary, modular domain and AI services, scheduled acquisition workers, and storage selected according to data lifetime. The following sections describe each of these areas in greater detail.
