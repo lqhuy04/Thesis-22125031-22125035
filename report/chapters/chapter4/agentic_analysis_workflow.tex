@@ -195,7 +195,7 @@ Confidence is calculated after structured parsing and must not be interpreted as
     \label{eq:confidence-components}
 \end{equation}
 
-where fundamental labels \texttt{strong}, \texttt{neutral}, and \texttt{weak} map respectively to $1$, $0.5$, and $0$, while article labels \texttt{positive}, \texttt{neutral}, and \texttt{negative} use the same mapping. If no technical indicator is enabled, the internal technical component defaults to $0.5$, but it contributes only if the technical source is considered active.
+where fundamental labels \texttt{strong}, \texttt{neutral}, and \texttt{weak} map respectively to $1$, $0.5$, and $0$, while article labels \texttt{positive}, \texttt{neutral}, and \texttt{negative} use the same mapping. If no technical indicator is enabled, the technical component is set to $0$; in that configuration the technical source is inactive and is removed by the effective-weight renormalization in Equation~\ref{eq:effective-confidence}, so this value does not affect the final confidence.
 
 Default weights vary by horizon as shown in Table~\ref{tab:confidence-horizon-weights}. The short-term profile emphasizes price signals, while the long-term profile emphasizes company fundamentals. Manual weights replace this table after API validation has established that the three values are within $[0,1]$ and total one.
 

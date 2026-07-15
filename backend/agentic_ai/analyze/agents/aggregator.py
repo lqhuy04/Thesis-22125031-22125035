@@ -117,14 +117,16 @@ def _confidence_components(
       article_component     = _ARTICLE_SCORE_MAP[article_sentiment]
 
     technical_max_score = số chỉ số kỹ thuật người dùng bật (mặc định 5).
-    Nếu người dùng tắt hết chỉ số kỹ thuật (max = 0) → coi technical là trung lập (0.5).
+    Nếu người dùng tắt hết chỉ số kỹ thuật (max = 0) → technical_component = 0
+    (chỉ mang tính hiển thị: nguồn technical khi đó đã bị loại khỏi công thức qua
+    has_technical trong _effective_weights, nên giá trị này không ảnh hưởng kết quả).
 
     Khi nguồn thiếu dữ liệu (N/A) → dùng _NA_SCORE = 0.5 (trung lập).
     """
     if technical_max_score and technical_max_score > 0:
         technical_component = max(0.0, min(technical_score, technical_max_score)) / float(technical_max_score)
     else:
-        technical_component = _NA_SCORE
+        technical_component = 0.0
     fundamental_component = _FUNDAMENTAL_SCORE_MAP.get(fundamental_health, _NA_SCORE)
     article_component     = _ARTICLE_SCORE_MAP.get(article_sentiment, _NA_SCORE)
 
