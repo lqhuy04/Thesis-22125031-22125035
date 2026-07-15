@@ -97,3 +97,5 @@ See `backend/.env.example` for the full list.
 **Backend:** FastAPI, Supabase (PostgreSQL), LangGraph, OpenAI, Google Gemini, SSI FC Data API, TA-Lib, pandas/numpy, Selenium + BeautifulSoup (scraping), PyJWT, bcrypt
 
 **Frontend:** React Native 0.81, Expo 54, Expo Router, TypeScript, @shopify/react-native-skia, react-native-wagmi-charts, victory-native, react-native-reanimated, jwt-decode
+
+## Imported Claude Cowork project instructions
