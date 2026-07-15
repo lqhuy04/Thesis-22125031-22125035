@@ -1,0 +1,65 @@
+<mxfile host="app.diagrams.net" modified="2026-07-15T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="financial-news-pipeline" name="Financial News Pipeline">
+    <mxGraphModel dx="1400" dy="1050" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1050" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Execution modes -->
+        <mxCell id="initial-backfill" value="&lt;b&gt;Initial Backfill&lt;/b&gt;&lt;br&gt;Long search range" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="210" y="40" width="390" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="weekly-update" value="&lt;b&gt;Daily Update&lt;/b&gt;&lt;br&gt;23:00 (Vietnam time)&lt;br&gt;Macro → Category → Stock" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="800" y="40" width="390" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Shared collection flow -->
+        <mxCell id="targets" value="&lt;b&gt;Configured News Targets&lt;/b&gt;&lt;br&gt;Macro topics, categories, and stocks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="500" y="175" width="400" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="serper" value="&lt;b&gt;Serper News Search&lt;/b&gt;&lt;br&gt;Candidate article URLs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="500" y="295" width="400" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="duplicate-check" value="&lt;b&gt;URL Already Stored?&lt;/b&gt;" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="565" y="415" width="270" height="105" as="geometry"/>
+        </mxCell>
+        <mxCell id="skip-duplicate" value="&lt;b&gt;Skip Duplicate&lt;/b&gt;&lt;br&gt;No extraction or model call" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="955" y="430" width="300" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="newspaper" value="&lt;b&gt;Newspaper3k Extraction&lt;/b&gt;&lt;br&gt;Title, content, publication data, and image" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="500" y="570" width="400" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="openai" value="&lt;b&gt;OpenAI Structured Processing&lt;/b&gt;&lt;br&gt;Vietnamese summary and sentiment label" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="500" y="695" width="400" height="75" as="geometry"/>
+        </mxCell>
+
+        <!-- Persistence and association -->
+        <mxCell id="article" value="&lt;b&gt;Article&lt;/b&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=17;" vertex="1" parent="1">
+          <mxGeometry x="550" y="820" width="300" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="stock-link" value="&lt;b&gt;Article_Stock&lt;/b&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="110" y="950" width="300" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="macro-only" value="&lt;b&gt;Macroeconomic Article&lt;/b&gt;&lt;br&gt;No stock or category link required" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=15;" vertex="1" parent="1">
+          <mxGeometry x="550" y="950" width="300" height="75" as="geometry"/>
+        </mxCell>
+        <mxCell id="category-link" value="&lt;b&gt;Article_Category&lt;/b&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="990" y="950" width="300" height="75" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="edge-initial-targets" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.25;entryY=0;" edge="1" parent="1" source="initial-backfill" target="targets"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-weekly-targets" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.75;entryY=0;" edge="1" parent="1" source="weekly-update" target="targets"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-targets-serper" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="targets" target="serper"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-serper-duplicate" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="serper" target="duplicate-check"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-duplicate-skip" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=14;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="duplicate-check" target="skip-duplicate"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-duplicate-newspaper" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=14;fontStyle=1;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="duplicate-check" target="newspaper"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-newspaper-openai" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="newspaper" target="openai"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-openai-article" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="openai" target="article"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-article-stock" value="Stock target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=14;labelBackgroundColor=#ffffff;exitX=0.25;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="article" target="stock-link"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-article-macro" value="Macro target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=14;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="article" target="macro-only"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="edge-article-category" value="Category target" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=14;labelBackgroundColor=#ffffff;exitX=0.75;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="article" target="category-link"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

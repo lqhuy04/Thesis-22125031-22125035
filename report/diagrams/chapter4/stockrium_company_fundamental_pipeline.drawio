@@ -1,0 +1,76 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="company-fundamental-pipeline" name="Company and Fundamental Pipeline">
+    <mxGraphModel dx="1488" dy="842" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ssi-iboard" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=17;" value="&lt;b&gt;SSI iBoard&lt;/b&gt;" vertex="1">
+          <mxGeometry height="65" width="300" x="630" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="company-crawler" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=17;" value="&lt;b&gt;Selenium Company Crawler&lt;/b&gt;" vertex="1">
+          <mxGeometry height="65" width="330" x="290" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="financial-downloader" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=17;" value="&lt;b&gt;Selenium Financial Downloader&lt;/b&gt;" vertex="1">
+          <mxGeometry height="65" width="330" x="860" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="company-tables" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=17;" value="&lt;b&gt;BI_Profile&lt;/b&gt;&lt;br&gt;&lt;b&gt;BI_Leader&lt;/b&gt;&lt;br&gt;&lt;b&gt;BI_Subsidiary&lt;/b&gt;" vertex="1">
+          <mxGeometry height="110" width="330" x="290" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="pandas-transform" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=17;" value="&lt;b&gt;pandas Transformation&lt;/b&gt;" vertex="1">
+          <mxGeometry height="65" width="330" x="860" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="financial-tables" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=17;" value="&lt;b&gt;FA_Indicator&lt;/b&gt;&lt;br&gt;&lt;b&gt;FA_BalanceSheet&lt;/b&gt;&lt;br&gt;&lt;b&gt;FA_CashFlow&lt;/b&gt;&lt;br&gt;&lt;b&gt;FA_IncomeStatement&lt;/b&gt;" vertex="1">
+          <mxGeometry height="130" width="390" x="830" y="450" as="geometry" />
+        </mxCell>
+        <mxCell id="openai-summary" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=17;" value="&lt;b&gt;OpenAI Summary Generation&lt;/b&gt;" vertex="1">
+          <mxGeometry height="70" width="350" x="330" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="industry-aggregation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=17;" value="&lt;b&gt;Industry Aggregation&lt;/b&gt;" vertex="1">
+          <mxGeometry height="70" width="350" x="850" y="640" as="geometry" />
+        </mxCell>
+        <mxCell id="fa-summary" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=17;" value="&lt;b&gt;FA_Summary&lt;/b&gt;" vertex="1">
+          <mxGeometry height="80" width="300" x="355" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="fa-industry" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=17;" value="&lt;b&gt;FA_Industry_Aggregate&lt;/b&gt;" vertex="1">
+          <mxGeometry height="80" width="300" x="875" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-source-company" edge="1" parent="1" source="ssi-iboard" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.35;exitY=1;entryX=0.5;entryY=0;fontSize=17;" target="company-crawler" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-source-financial" edge="1" parent="1" source="ssi-iboard" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.65;exitY=1;entryX=0.5;entryY=0;fontSize=17;" target="financial-downloader" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-company-store" edge="1" parent="1" source="company-crawler" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=17;" target="company-tables" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-downloader-pandas" edge="1" parent="1" source="financial-downloader" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=17;" target="pandas-transform" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-pandas-store" edge="1" parent="1" source="pandas-transform" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=17;" target="financial-tables" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-financial-summary" edge="1" parent="1" source="financial-tables" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.25;exitY=1;entryX=0.5;entryY=0;fontSize=17;" target="openai-summary" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-summary-store" edge="1" parent="1" source="openai-summary" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=17;" target="fa-summary" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-financial-industry" edge="1" parent="1" source="financial-tables" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.75;exitY=1;entryX=0.65;entryY=0;fontSize=17;" target="industry-aggregation" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-profile-industry" edge="1" parent="1" source="company-tables" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=17;labelBackgroundColor=#ffffff;exitX=1;exitY=0.75;entryX=0.15;entryY=0;" target="industry-aggregation" value="ICB category">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="403" />
+              <mxPoint x="720" y="590" />
+              <mxPoint x="903" y="590" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-industry-store" edge="1" parent="1" source="industry-aggregation" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=17;" target="fa-industry" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

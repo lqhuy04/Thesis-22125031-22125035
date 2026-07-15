@@ -10,9 +10,9 @@ The application combines Expo Router's file-based stack navigation with a custom
 
 The root layout establishes the providers and infrastructure that every screen requires. It first loads the Roboto font family and then nests the application inside a safe-area provider, gesture-handler root, localization provider, and theme provider. An Expo Router stack manages screen transitions with the default header disabled because Stockrium screens provide their own headers. A global session-expired modal is rendered beside the stack so that authentication failure can be communicated regardless of which screen is currently active.
 
-The index route acts as a navigation gateway rather than a visible home screen. It reads the persistent onboarding flag and the stored session. If onboarding has not been completed, the user is redirected to the Onboarding route. If onboarding is complete and an unexpired refresh token is available, the user is redirected to the main Tabs route. Otherwise, the Authentication route is opened. The gateway checks the refresh token rather than requiring the access token to remain valid because an expired access token can be renewed transparently by the centralized HTTP client.
+The index route acts as a navigation gateway rather than a visible home screen. It reads the persistent onboarding flag and the stored session. If onboarding has not been completed, the user is redirected to the Onboarding route. If onboarding is complete, both token values are present, and the refresh token has not expired, the user is redirected to the main Tabs route. Otherwise, the Authentication route is opened. The gateway does not require the access token itself to remain valid because an expired access token can be renewed transparently by the centralized HTTP client.
 
-The authentication branch contains two related paths. The account-creation path proceeds from the sign-up form to OTP verification and then to the main application after successful confirmation. The account-recovery path proceeds from email input to OTP verification and then to the new-password screen. Returning users can sign in with application credentials or Google and move directly to the Tabs route. Navigation replacement is used after onboarding or successful authentication so that the Android back action does not return the user to a completed entry screen.
+The authentication branch contains two related paths. The account-creation path proceeds from the sign-up form to one-time password (OTP) verification. Successful verification confirms the email address and returns the user to authentication; it does not create an authenticated session automatically. The account-recovery path proceeds from email input to OTP verification and then to the new-password screen before returning to authentication. Returning users can sign in with application credentials or Google and move directly to the Tabs route. Navigation replacement is used after onboarding or successful authentication so that the Android back action does not return the user to a completed entry screen.
 
 The main shell contains Overview, Market, Chatbot, News, and Profile. It is implemented with a pager and a custom bottom bar rather than Expo Router's default tab navigator. A tab is mounted only after it has been visited, reducing the initial work required to construct data-heavy market and news screens. The active-tab indicator is animated, and the Chatbot is represented by a raised central button instead of a conventional tab item. Swiping the pager or selecting a bottom-bar item updates the same active index.
 
@@ -20,62 +20,12 @@ Figure~\ref{fig:mobile-navigation-structure} summarizes the principal route rela
 
 \begin{figure}[H]
     \centering
-    \resizebox{\textwidth}{!}{%
-    \begin{tikzpicture}[
-        gate/.style={draw, rounded corners=10pt, fill=yellow!15, minimum width=3.2cm, minimum height=1.0cm, align=center, font=\small\bfseries},
-        screen/.style={draw, rounded corners=5pt, fill=blue!7, minimum width=3.0cm, minimum height=0.95cm, align=center, font=\small},
-        tab/.style={draw, rounded corners=5pt, fill=green!9, minimum width=2.6cm, minimum height=0.95cm, align=center, font=\small\bfseries},
-        detail/.style={draw, rounded corners=5pt, fill=purple!8, minimum width=3.1cm, minimum height=0.95cm, align=center, font=\small},
-        flow/.style={-{Latex[length=2.2mm]}, line width=0.65pt, gray!80}
-    ]
-        \node[screen] (launch) at (0,0) {Application launch};
-        \node[gate] (gateway) at (4.0,0) {Index gateway};
-        \node[screen] (onboarding) at (8.0,1.7) {Onboarding};
-        \node[screen] (auth) at (8.0,0) {Authentication};
-        \node[screen] (recovery) at (12.1,0) {OTP verification and\\password recovery};
-        \node[screen] (tabs) at (8.0,-1.7) {Main Tabs shell};
-
-        \draw[flow] (launch.east) -- (gateway.west);
-        \draw[flow] (gateway.east) to[bend left=18] node[above, font=\scriptsize] {first use} (onboarding.west);
-        \draw[flow] (gateway.east) -- node[above, font=\scriptsize] {no valid session} (auth.west);
-        \draw[flow] (gateway.east) to[bend right=18] node[below, font=\scriptsize] {refresh token valid} (tabs.west);
-        \draw[flow] (onboarding.south) -- (auth.north);
-        \draw[flow] (auth.east) -- (recovery.west);
-        \draw[flow] (auth.south) -- (tabs.north);
-
-        \node[tab] (overview) at (0,-4.3) {Overview};
-        \node[tab] (market) at (3.2,-4.3) {Market};
-        \node[tab] (chatbot) at (6.4,-4.3) {Chatbot};
-        \node[tab] (news) at (9.6,-4.3) {News};
-        \node[tab] (profile) at (12.8,-4.3) {Profile};
-
-        \draw[flow] (tabs.south) -- (6.4,-3.3);
-        \draw[line width=0.65pt, gray!80] (0,-3.3) -- (12.8,-3.3);
-        \draw[flow] (0,-3.3) -- (overview.north);
-        \draw[flow] (3.2,-3.3) -- (market.north);
-        \draw[flow] (6.4,-3.3) -- (chatbot.north);
-        \draw[flow] (9.6,-3.3) -- (news.north);
-        \draw[flow] (12.8,-3.3) -- (profile.north);
-
-        \node[detail] (discovery) at (0,-6.5) {Investment Ideas and\\Index Detail};
-        \node[detail] (stock) at (4.1,-6.5) {Search, Industry, and\\Stock Detail};
-        \node[detail] (chatdetail) at (8.2,-6.5) {Chat Compose and\\Chat Detail};
-        \node[detail] (articledetail) at (12.3,-6.5) {All News and\\Article Detail};
-        \node[detail] (settings) at (16.4,-6.5) {Horizon, language,\\theme, and password};
-
-        \draw[flow] (overview.south) -- (discovery.north);
-        \draw[flow] (market.south) -- (stock.north);
-        \draw[flow] (chatbot.south) -- (chatdetail.north);
-        \draw[flow] (news.south) -- (articledetail.north);
-        \draw[flow] (profile.south) -- (settings.north);
-        \draw[flow] (discovery.east) -- (stock.west);
-
-        \node[detail, fill=orange!10] (aiconfig) at (5.8,-8.7) {AI Analysis\\Configuration};
-        \node[detail, fill=orange!10] (airesult) at (10.0,-8.7) {AI Analysis\\Result};
-        \draw[flow] (stock.south) -- (aiconfig.north);
-        \draw[flow] (aiconfig.east) -- (airesult.west);
-        \draw[flow] (airesult.north) to[bend right=18] (chatdetail.south);
-    \end{tikzpicture}%
+    \IfFileExists{figures/chapter4/stockrium_mobile_navigation_structure.png}{%
+        \includegraphics[width=0.96\textwidth,height=0.82\textheight,keepaspectratio]{figures/chapter4/stockrium_mobile_navigation_structure.png}%
+    }{%
+        \fbox{\parbox[c][5.5cm][c]{0.92\textwidth}{\centering
+        Export the Draw.io diagram as\\
+        \texttt{figures/chapter4/stockrium\_mobile\_navigation\_structure.png}}}%
     }
     \caption{Principal navigation structure of the Stockrium mobile application}
     \label{fig:mobile-navigation-structure}
@@ -107,7 +57,7 @@ The source tree separates route-level orchestration from reusable presentation a
         \addlinespace
         \texttt{helpers/api/} & Shared network and session infrastructure used by every feature helper. & Base-URL selection, bearer-token injection, refresh coordination, secure token persistence, authentication events, and tab events. \\
         \addlinespace
-        \texttt{hooks/} & Cross-screen application contexts and interaction providers. & Theme, localization, and keyboard-related context. \\
+        \texttt{hooks/} & Cross-screen providers and reusable interaction hooks. & Theme and localization contexts, together with a keyboard-visibility hook. \\
         \addlinespace
         \texttt{constants/} & Centralized design tokens and bilingual content. & Theme colors, typography, font names, image references, and Vietnamese and English translation dictionaries. \\
         \addlinespace
@@ -118,7 +68,7 @@ The source tree separates route-level orchestration from reusable presentation a
 
 Route-level screens are responsible for composition rather than implementing every visual element directly. For example, the Detail route arranges a price-chart component, stock-related news, financial indicators, income-statement visualization, company introduction, and related stocks. Each child receives the stock symbol and, where appropriate, a callback through which it registers its refresh operation. The parent's pull-to-refresh handler executes the registered functions concurrently with \texttt{Promise.all}. This refresh-registry pattern preserves section ownership of data-fetching logic while providing one coherent gesture at screen level.
 
-The same approach is used on the Overview, Market, and News screens. Their child sections load different endpoints but register with the visible parent. The Market screen keeps separate registries for its Market and Favorites pages so that refreshing one page does not unnecessarily reload the other. This design avoids a single large screen component with detailed knowledge of every endpoint.
+The same approach is used on the Overview, Market, and News screens. Their child sections load different endpoints but register with the visible parent. The Market screen keeps separate registries for its Market and Watchlist pages so that refreshing one page does not unnecessarily reload the other. This design avoids a single large screen component with detailed knowledge of every endpoint.
 
 Reusable domain components are grouped by business context. The \texttt{market} group contains index, industry, watchlist, and news-list sections. The \texttt{detail} group contains chart controls, financial sections, company information, related-stock cards, and educational bottom sheets. The \texttt{chatbot} group manages history and conversation options. The \texttt{authentication} group contains sign-in, sign-up, social login, and session-expiration presentation. Components that are independent of a specific feature---such as the typographic Text wrapper, screen header, search bar, dropdown, news item, and visual charts---are placed under \texttt{ui}.
 
@@ -140,15 +90,15 @@ Financial information contains temporal, categorical, and multi-dimensional rela
         \toprule
         \textbf{Visualization} & \textbf{Implementation approach} & \textbf{Purpose and interaction} \\
         \midrule
-        Price and candlestick chart & TradingView Lightweight Charts executed inside a React Native WebView. TypeScript converts API records into serializable OHLC series and injects them into the chart runtime. & Displays historical area or candlestick prices, supports time navigation, and provides a detailed stock-centered view. \\
+        Price and candlestick chart & TradingView Lightweight Charts executed inside a React Native WebView. TypeScript converts API records into serializable open, high, low, and close (OHLC) series and injects them into the chart runtime. & Displays historical area or candlestick prices, supports time navigation, and provides a detailed stock-centered view. \\
         \addlinespace
-        Volume and technical indicators & Volume, MA, Bollinger, RSI, MACD, and KDJ series are prepared with memoized transformations and passed to the same chart runtime. & Lets the user combine one main-chart overlay, one oscillator-style subchart, and optional volume without permanently overcrowding the price view. \\
+        Volume and technical indicators & Volume, moving average (MA), Bollinger Bands, RSI, MACD, and KDJ series are prepared with memoized transformations and passed to the same chart runtime. & Lets the user combine one main-chart overlay, one oscillator-style subchart, and optional volume without permanently overcrowding the price view. \\
         \addlinespace
         AI radar chart & React Native SVG with Reanimated paths and points. & Compares normalized technical, fundamental, and news scores; pressing an axis selects and reveals the corresponding written explanation. \\
         \addlinespace
-        Industry tree map & D3 hierarchy computes a squarified rectangle layout, while React Native SVG draws the result. & Encodes trading value through rectangle area and price direction through color; selecting a rectangle opens stock information and navigation. \\
+        Industry tree map & D3 hierarchy computes a squarified rectangle layout, while React Native SVG draws the result. & Encodes trading value through rectangle area and price movement through color, with a distinct highlight for large positive changes; selecting a rectangle opens stock information and navigation. \\
         \addlinespace
-        Financial bar charts & Native chart primitives render historical revenue and profit series. & Makes changes across reporting periods easier to compare than a list of yearly values. \\
+        Financial bar charts & Victory Native and Shopify Skia render historical revenue and profit series. & Makes changes across reporting periods easier to compare than a list of yearly values. \\
         \addlinespace
         Progress and confidence indicators & Native views and animations render percentages, loading progress, and selection state. & Communicates AI confidence, active configuration, loading state, and completion without requiring a separate charting runtime. \\
         \bottomrule
@@ -165,20 +115,20 @@ Memoization is used for these transformations because the same price series cont
 
 Chart options are sent through small injected functions. The native side can switch between area and candlestick series, update the theme, show or hide volume, and select technical modes. The WebView posts readiness events back to React Native. This two-way boundary isolates browser chart code from the screen while preserving native controls and theme integration.
 
-An expanded Trading View route gives the chart additional space. A bottom sheet provides time-frame selection, another controls indicators, and a multi-step guide explains chart structure, volume, controls, and representative candlestick patterns. These educational controls make the visualization usable for both experienced investors and users who are still learning financial charts.
+On the Stock Detail route, one bottom sheet provides time-frame selection, another controls indicators, and a multi-step guide explains chart structure, volume, controls, and representative candlestick patterns. These educational controls make the local Lightweight Charts visualization usable for both experienced investors and users who are still learning financial charts. A separate TradingView route embeds the external TradingView chart page in a WebView and provides additional viewing space with portrait and rotated landscape modes; it is distinct from the locally constructed chart and its bottom-sheet controls.
 
 \subsubsection{Native Analytical Visualizations}
 
 The AI radar chart remains native because its data contain only three normalized values and benefit from direct interaction with result-screen state. Concentric SVG polygons and axes form the grid; the data polygon animates from the center when values arrive. Each axis label displays a percentage and can be pressed. The selected index controls which source explanation is visible below the chart.
 
-The industry tree map combines D3 layout computation with native SVG rendering. Each stock becomes a leaf whose area is proportional to trading value. Color indicates positive, negative, reference, or ceiling-like movement according to the application theme. Selecting a rectangle opens a detail modal and allows navigation to the stock. This visualization makes it possible to see both market direction and relative activity across many stocks without requiring a long sorted list.
+The industry tree map combines D3 layout computation with native SVG rendering. Each stock becomes a leaf whose area is proportional to trading value. Color distinguishes positive, negative, and unchanged movement, with a separate highlight for changes above the application's large-increase threshold. Selecting a rectangle opens a detail modal and allows navigation to the stock. This visualization makes it possible to see both market direction and relative activity across many stocks without requiring a long sorted list.
 
 Historical revenue and profit are displayed with bar-chart primitives suited to periodic categorical comparison. These charts are intentionally separate from the market-price runtime because annual financial statements have a different scale and interaction model. Across all visualizations, colors are read from the theme when possible so that success, error, neutral, background, and text semantics remain consistent in light and dark modes.
 
 \subsection{API Integration and Client State}
 \label{subsec:api-integration-client-state}
 
-The mobile application does not call \texttt{fetch} directly from every screen. Feature-specific helpers expose typed functions such as market-index retrieval, stock-price retrieval, company-profile retrieval, favorite operations, risk-horizon persistence, analysis execution, and chat-session management. These helpers build endpoint paths and request bodies, then delegate network behavior to a single HTTP function. This structure keeps route strings, response interpretation, and authentication recovery out of visual components.
+The mobile application does not call \texttt{fetch} directly from every screen. Feature-specific helpers expose typed functions such as market-index retrieval, stock-price retrieval, company-profile retrieval, watchlist operations, investment-horizon persistence, analysis execution, and chat-session management. These helpers build endpoint paths and request bodies, then delegate network behavior to a single HTTP function. This structure keeps route strings, response interpretation, and authentication recovery out of visual components.
 
 \subsubsection{Base URL and Request Construction}
 
@@ -188,11 +138,11 @@ For each request, the shared client reads the access and refresh tokens from Sec
 
 \subsubsection{Automatic Token Refresh}
 
-An HTTP 401 response triggers coordinated token renewal. If no refresh is currently running, the failed request becomes the refresh leader and submits the stored refresh token to the authentication endpoint. Other requests that receive 401 during this interval subscribe to the same operation instead of issuing additional refresh calls. After a new access token is saved, subscribers retry using the new value, followed by the original leader request. Figure~\ref{fig:mobile-token-refresh-flow} illustrates this sequence.
+An HTTP 401 Unauthorized response triggers coordinated token renewal. If no refresh is currently running, the failed request becomes the refresh leader and submits the stored refresh token to the authentication endpoint. Other requests that receive 401 during this interval subscribe to the same operation instead of issuing additional refresh calls. If renewal succeeds, a new access token is saved and the subscribed requests retry using the new value, followed by the original leader request. Figure~\ref{fig:mobile-token-refresh-flow} illustrates this sequence.
 
 \begin{figure}[H]
     \centering
-    \resizebox{\textwidth}{!}{%
+    \resizebox{0.86\textwidth}{!}{%
     \begin{tikzpicture}[
         box/.style={draw, rounded corners=5pt, fill=blue!7, minimum width=3.0cm, minimum height=1.0cm, align=center, font=\small},
         decision/.style={draw, rounded corners=10pt, fill=yellow!15, minimum width=2.8cm, minimum height=1.0cm, align=center, font=\small},
@@ -201,26 +151,26 @@ An HTTP 401 response triggers coordinated token renewal. If no refresh is curren
         flow/.style={-{Latex[length=2.2mm]}, line width=0.65pt, gray!80}
     ]
         \node[box] (screen) at (0,0) {Screen calls a\\feature helper};
-        \node[box] (session) at (3.9,0) {Read session and\\send bearer request};
-        \node[decision] (status) at (7.8,0) {Response\\status};
-        \node[action] (success) at (11.7,1.5) {Return parsed response\\to the screen};
-        \node[decision] (active) at (11.7,-1.5) {Refresh already\\in progress?};
-        \node[action] (wait) at (15.8,-2.8) {Subscribe and wait for\\the shared new token};
-        \node[action] (refresh) at (15.8,-0.2) {Call refresh endpoint\\with refresh token};
-        \node[decision] (refreshstatus) at (20.0,-0.2) {Refresh\\succeeds?};
-        \node[action] (retry) at (24.0,1.0) {Save token, notify\\subscribers, and retry};
-        \node[failure] (expired) at (24.0,-1.5) {Emit session-expired\\event and show modal};
+        \node[box] (session) at (0,-1.8) {Read session and\\send bearer request};
+        \node[decision] (status) at (0,-3.6) {Response\\status};
+        \node[action] (success) at (4.4,-3.6) {Return parsed response\\to the screen};
+        \node[decision] (active) at (0,-5.5) {Refresh already\\in progress?};
+        \node[action] (wait) at (-3.7,-7.5) {Subscribe and wait for\\the shared new token};
+        \node[action] (refresh) at (3.7,-7.5) {Call refresh endpoint\\with refresh token};
+        \node[decision] (refreshstatus) at (3.7,-9.4) {Refresh\\succeeds?};
+        \node[action] (retry) at (0,-11.4) {Save token, notify\\subscribers, and retry};
+        \node[failure] (expired) at (7.4,-11.4) {Emit session-expired\\event and show modal};
 
-        \draw[flow] (screen.east) -- (session.west);
-        \draw[flow] (session.east) -- (status.west);
-        \draw[flow] (status.north east) -- node[above, font=\scriptsize] {not 401} (success.west);
-        \draw[flow] (status.south east) -- node[below, font=\scriptsize] {401} (active.west);
-        \draw[flow] (active.south east) -- node[below, font=\scriptsize] {yes} (wait.west);
-        \draw[flow] (active.north east) -- node[above, font=\scriptsize] {no} (refresh.west);
-        \draw[flow] (refresh.east) -- (refreshstatus.west);
-        \draw[flow] (refreshstatus.north east) -- node[above, font=\scriptsize] {yes} (retry.west);
-        \draw[flow] (refreshstatus.south east) -- node[below, font=\scriptsize] {no} (expired.west);
-        \draw[flow] (wait.north east) to[bend right=18] (retry.south west);
+        \draw[flow] (screen.south) -- (session.north);
+        \draw[flow] (session.south) -- (status.north);
+        \draw[flow] (status.east) -- node[above, font=\scriptsize] {not 401} (success.west);
+        \draw[flow] (status.south) -- node[right, font=\scriptsize] {401} (active.north);
+        \draw[flow] (active.south west) -- node[above left, font=\scriptsize] {yes} (wait.north east);
+        \draw[flow] (active.south east) -- node[above right, font=\scriptsize] {no} (refresh.north west);
+        \draw[flow] (refresh.south) -- (refreshstatus.north);
+        \draw[flow] (refreshstatus.south west) -- node[above left, font=\scriptsize] {yes} (retry.north east);
+        \draw[flow] (refreshstatus.south east) -- node[above right, font=\scriptsize] {no} (expired.north west);
+        \draw[flow] (wait.south) |- node[left, font=\scriptsize] {on success} (retry.west);
     \end{tikzpicture}%
     }
     \caption{Coordinated access-token refresh in the mobile HTTP client}
@@ -231,7 +181,7 @@ If refresh fails or returns incomplete token data, the client emits a global aut
 
 \subsubsection{State Scope and Persistence}
 
-Stockrium uses local React state for screen-specific data, React context for a small number of application-wide preferences, SecureStore for persistent device state, and backend storage for user-owned domain state. A large global state framework is not required because market and detail screens can request their own independent data and because user-specific records such as favorites and conversations already have authoritative server representations.
+Stockrium uses local React state for screen-specific data, React context for a small number of application-wide preferences, SecureStore for persistent device state, and backend storage for user-owned domain state. A large global state framework is not required because market and detail screens can request their own independent data and because user-specific records such as watchlist entries and conversations already have authoritative server representations.
 
 \begin{table}[H]
     \centering
@@ -242,9 +192,9 @@ Stockrium uses local React state for screen-specific data, React context for a s
         \toprule
         \textbf{State scope} & \textbf{Mechanism} & \textbf{Examples} \\
         \midrule
-        Screen-local transient state & React state, refs, memoization, and effects & Loading flags, fetched lists, chart type, selected time frame, active indicator, bottom-sheet visibility, search text, selected radar axis, and form validation. \\
+        Screen-local transient state & React state, refs, memoization, effects, and a keyboard-visibility hook & Loading flags, fetched lists, chart type, selected time frame, active indicator, keyboard visibility, bottom-sheet visibility, search text, selected radar axis, and form validation. \\
         \addlinespace
-        Cross-screen presentation state & React Context & Current light/dark theme, selected language, translated text lookup, and keyboard-related interaction state. \\
+        Cross-screen presentation state & React Context & Current light/dark theme, selected language, and translated text lookup. \\
         \addlinespace
         Persistent device state & Expo SecureStore & Access token, refresh token, onboarding completion, theme, language, and the saved AI-analysis preset. \\
         \addlinespace
@@ -252,13 +202,13 @@ Stockrium uses local React state for screen-specific data, React context for a s
         \addlinespace
         Global transient events & Event emitters & Authentication expiration and programmatic switching of the custom tab shell. \\
         \addlinespace
-        Authoritative user data & Backend API and Supabase & Favorite symbols, search history, investment horizon, account profile, chat sessions, and chat messages. \\
+        Authoritative user data & Backend API and Supabase & Watchlist symbols, search history, investment horizon, account profile, chat sessions, and chat messages. \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
 The Theme and Localization providers load their stored values before rendering children. This prevents a visible flash in which the application initially renders with the wrong theme or language. Theme changes and language selection are immediately reflected through context and persisted for the next launch. The AI configuration uses the same hydration principle: its saved mode, source toggles, indicator groups, and weights are read before subsequent changes are written, preventing the default state from overwriting an existing preset during initialization.
 
-The manual analysis screen also maintains consistency among related controls. At least one evidence source must remain usable; an enabled technical or fundamental source must contain at least one selected subcategory; and changing enabled sources redistributes weights among the active choices. These client checks improve the request before submission, while the backend schema remains responsible for authoritative validation.
+The manual analysis screen also maintains consistency among related controls. Submission is enabled only when at least one evidence source remains usable; an enabled technical or fundamental source must contain at least one selected subcategory; and changing enabled sources redistributes weights among the active choices. These client checks improve the request before submission, while the backend schema remains responsible for authoritative validation.
 
 Overall, the mobile design keeps screen composition, visualization, session recovery, and user preferences close to the client while delegating business rules and authoritative data to backend services. File-based routes make task transitions explicit, domain components reduce duplication, and the shared HTTP layer gives every screen consistent authentication behavior. The next section describes the server-side architecture that receives these client requests.

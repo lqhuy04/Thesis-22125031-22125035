@@ -1,0 +1,140 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="stockrium-mobile-navigation" name="Mobile Navigation Structure">
+    <mxGraphModel dx="2020" dy="1143" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#333333;" value="Stockrium Mobile Navigation" vertex="1">
+          <mxGeometry height="40" width="420" x="390" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="launch" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=20;fontStyle=1;" value="Application Launch" vertex="1">
+          <mxGeometry height="70" width="300" x="450" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gateway" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=20;fontStyle=1;" value="Index Gateway" vertex="1">
+          <mxGeometry height="70" width="300" x="450" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="onboarding" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=20;fontStyle=1;" value="Onboarding" vertex="1">
+          <mxGeometry height="70" width="240" x="70" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="authentication" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=20;fontStyle=1;" value="Authentication" vertex="1">
+          <mxGeometry height="70" width="300" x="450" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="verification" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=20;fontStyle=1;" value="OTP Verification and Password Reset" vertex="1">
+          <mxGeometry height="70" width="270" x="860" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="tabs-shell" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=20;fontStyle=1;" value="Main Tabs Shell" vertex="1">
+          <mxGeometry height="75" width="300" x="450" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="overview" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=20;fontStyle=1;" value="Overview" vertex="1">
+          <mxGeometry height="65" width="190" x="30" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="market" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=20;fontStyle=1;" value="Market" vertex="1">
+          <mxGeometry height="65" width="190" x="270" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="chatbot" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=20;fontStyle=1;" value="Chatbot" vertex="1">
+          <mxGeometry height="65" width="190" x="510" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="news" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=20;fontStyle=1;" value="News" vertex="1">
+          <mxGeometry height="65" width="190" x="750" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="profile" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=20;fontStyle=1;" value="Profile" vertex="1">
+          <mxGeometry height="65" width="190" x="990" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="discovery" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=20;" value="Investment Ideas and Index Detail" vertex="1">
+          <mxGeometry height="80" width="210" x="20" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="stock-detail" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=20;" value="Search, Industry, and Stock Detail" vertex="1">
+          <mxGeometry height="80" width="210" x="260" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="chat-detail" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=20;" value="Chat Compose and Chat Detail" vertex="1">
+          <mxGeometry height="80" width="210" x="500" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="article-detail" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=20;" value="All News and Article Detail" vertex="1">
+          <mxGeometry height="80" width="210" x="740" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="settings" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=20;" value="Horizon, Language, Theme, and Password" vertex="1">
+          <mxGeometry height="80" width="210" x="980" y="850" as="geometry" />
+        </mxCell>
+        <mxCell id="ai-config" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=20;fontStyle=1;" value="AI Analysis Configuration" vertex="1">
+          <mxGeometry height="80" width="210" x="260" y="1060" as="geometry" />
+        </mxCell>
+        <mxCell id="ai-result" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=20;fontStyle=1;" value="AI Analysis Result" vertex="1">
+          <mxGeometry height="80" width="210" x="500" y="1060" as="geometry" />
+        </mxCell>
+        <mxCell id="e-launch-gateway" edge="1" parent="1" source="launch" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;" target="gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-gateway-onboarding" edge="1" parent="1" source="gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;" target="onboarding" value="First use">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-gateway-auth" edge="1" parent="1" source="gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;" target="authentication" value="No valid session">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-gateway-tabs" edge="1" parent="1" source="gateway" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=0.6;exitY=1;entryX=0.6;entryY=0;" target="tabs-shell" value="Stored session valid">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="630" y="310" />
+              <mxPoint x="1230" y="310" />
+              <mxPoint x="1230" y="480" />
+              <mxPoint x="630" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-onboarding-auth" edge="1" parent="1" source="onboarding" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;" target="authentication">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-auth-verification" edge="1" parent="1" source="authentication" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=1;exitY=0.3;entryX=0;entryY=0.3;" target="verification" value="Register / Recover">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-verification-auth" edge="1" parent="1" source="verification" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=0;exitY=0.75;entryX=1;entryY=0.75;" target="authentication" value="Verified / Reset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-auth-tabs" edge="1" parent="1" source="authentication" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;" target="tabs-shell" value="Sign-in succeeds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-tabs-overview" edge="1" parent="1" source="tabs-shell" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#5b8c5a;strokeWidth=2;fontSize=20;" target="overview">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-tabs-market" edge="1" parent="1" source="tabs-shell" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#5b8c5a;strokeWidth=2;fontSize=20;" target="market">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-tabs-chatbot" edge="1" parent="1" source="tabs-shell" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#5b8c5a;strokeWidth=2;fontSize=20;" target="chatbot">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-tabs-news" edge="1" parent="1" source="tabs-shell" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#5b8c5a;strokeWidth=2;fontSize=20;" target="news">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-tabs-profile" edge="1" parent="1" source="tabs-shell" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#5b8c5a;strokeWidth=2;fontSize=20;" target="profile">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-overview-discovery" edge="1" parent="1" source="overview" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;" target="discovery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-market-stock" edge="1" parent="1" source="market" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;" target="stock-detail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-chatbot-detail" edge="1" parent="1" source="chatbot" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;" target="chat-detail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-news-detail" edge="1" parent="1" source="news" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;" target="article-detail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-profile-settings" edge="1" parent="1" source="profile" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;" target="settings">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-discovery-stock" edge="1" parent="1" source="discovery" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;fontSize=20;" target="stock-detail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-stock-config" edge="1" parent="1" source="stock-detail" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;strokeWidth=2;fontSize=20;" target="ai-config">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-config-result" edge="1" parent="1" source="ai-config" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;strokeWidth=2;fontSize=20;" target="ai-result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-result-chat" edge="1" parent="1" source="ai-result" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#d79b00;strokeWidth=2;fontSize=20;" target="chat-detail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
