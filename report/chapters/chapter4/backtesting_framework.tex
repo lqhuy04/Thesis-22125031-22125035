@@ -12,36 +12,7 @@ The backtest reuses the production indicator, specialist-agent, and aggregator i
 
 \begin{figure}[H]
     \centering
-    \resizebox{\textwidth}{!}{%
-    \begin{tikzpicture}[
-        data/.style={draw, rounded corners=5pt, fill=blue!8, minimum width=3.4cm, minimum height=1.0cm, align=center, font=\small},
-        deterministic/.style={draw, rounded corners=5pt, fill=green!10, minimum width=3.7cm, minimum height=1.05cm, align=center, font=\small\bfseries},
-        ai/.style={draw, rounded corners=5pt, fill=purple!9, minimum width=3.8cm, minimum height=1.05cm, align=center, font=\small\bfseries},
-        trade/.style={draw, rounded corners=5pt, fill=orange!12, minimum width=3.8cm, minimum height=1.05cm, align=center, font=\small},
-        result/.style={draw, rounded corners=5pt, fill=yellow!14, minimum width=3.9cm, minimum height=1.05cm, align=center, font=\small\bfseries},
-        flow/.style={-{Latex[length=2.2mm]}, line width=0.7pt, gray!80},
-        compare/.style={-{Latex[length=2.0mm]}, line width=0.65pt, dashed, blue!60!black}
-    ]
-        \node[data] (ohlcv) at (0,0) {Historical OHLCV\\and VN-Index data};
-        \node[deterministic] (indicators) at (4.5,0) {Indicators and\\binary scores};
-        \node[deterministic] (candidates) at (9.1,0) {Threshold-crossing\\candidate dates};
-        \node[ai] (pipeline) at (13.9,0) {Specialist analysis\\and aggregation};
-        \node[trade] (simulator) at (18.8,0) {Next-open entry and\\event-driven exits};
-        \node[result] (metrics) at (23.6,0) {Metrics, benchmarks,\\tests, and artifacts};
-
-        \node[deterministic, fill=green!5] (baseline) at (11.5,-2.5) {Engine-only baseline:\\all candidate dates};
-        \node[trade, fill=orange!7] (baselineSim) at (18.8,-2.5) {Baseline trade\\simulation};
-
-        \draw[flow] (ohlcv.east) -- (indicators.west);
-        \draw[flow] (indicators.east) -- (candidates.west);
-        \draw[flow] (candidates.east) -- (pipeline.west);
-        \draw[flow] (pipeline.east) -- (simulator.west);
-        \draw[flow] (simulator.east) -- (metrics.west);
-        \draw[compare] (candidates.south) -- (baseline.north);
-        \draw[flow] (baseline.east) -- (baselineSim.west);
-        \draw[compare] (baselineSim.east) to[bend right=18] (metrics.south);
-    \end{tikzpicture}%
-    }
+    \includegraphics[width=\textwidth,keepaspectratio]{diagrams/chapter4/stockrium_backtesting_flow.png}
     \caption{Execution flow of the Stockrium backtesting framework}
     \label{fig:backtest-execution-flow}
 \end{figure}

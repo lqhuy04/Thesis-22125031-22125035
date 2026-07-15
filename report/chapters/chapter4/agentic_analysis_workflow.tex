@@ -12,43 +12,7 @@ The compiled analysis graph contains five nodes: an orchestrator, three speciali
 
 \begin{figure}[H]
     \centering
-    \resizebox{\textwidth}{!}{%
-    \begin{tikzpicture}[
-        input/.style={draw, rounded corners=5pt, fill=blue!8, minimum width=3.3cm, minimum height=1.0cm, align=center, font=\small},
-        agent/.style={draw, rounded corners=5pt, fill=green!10, minimum width=3.4cm, minimum height=1.05cm, align=center, font=\small\bfseries},
-        specialist/.style={draw, rounded corners=5pt, fill=purple!9, minimum width=3.35cm, minimum height=1.05cm, align=center, font=\small},
-        rule/.style={draw, rounded corners=5pt, fill=orange!12, minimum width=3.6cm, minimum height=1.05cm, align=center, font=\small\bfseries},
-        output/.style={draw, rounded corners=5pt, fill=yellow!14, minimum width=3.4cm, minimum height=1.05cm, align=center, font=\small\bfseries},
-        flow/.style={-{Latex[length=2.2mm]}, line width=0.7pt, gray!80},
-        stateflow/.style={-{Latex[length=2.0mm]}, line width=0.6pt, dashed, blue!60!black}
-    ]
-        \node[input] (request) at (0,0) {Symbol, mode, horizon,\\selection, and weights};
-        \node[agent] (orchestrator) at (4.6,0) {Orchestrator\\planning node};
-
-        \node[specialist] (article) at (9.1,2.1) {Article agent\\filter and summarize};
-        \node[specialist] (fundamental) at (9.1,0) {Fundamental agent\\prepare financial evidence};
-        \node[specialist] (technical) at (9.1,-2.1) {Technical agent\\calculate and score signals};
-
-        \node[agent] (aggregator) at (13.7,0) {Aggregator\\structured synthesis};
-        \node[rule] (validator) at (18.3,0) {Deterministic controls\\confidence, vetoes, bounds};
-        \node[output] (result) at (22.8,0) {Structured Buy or Wait\\analysis result};
-
-        \draw[flow] (request.east) -- (orchestrator.west);
-        \draw[flow] (orchestrator.east) to[bend left=18] (article.west);
-        \draw[flow] (orchestrator.east) -- (fundamental.west);
-        \draw[flow] (orchestrator.east) to[bend right=18] (technical.west);
-        \draw[flow] (article.east) to[bend left=18] (aggregator.west);
-        \draw[flow] (fundamental.east) -- (aggregator.west);
-        \draw[flow] (technical.east) to[bend right=18] (aggregator.west);
-        \draw[flow] (aggregator.east) -- (validator.west);
-        \draw[flow] (validator.east) -- (result.west);
-
-        \node[input, fill=blue!4, minimum width=13.0cm] (state) at (11.4,-4.3) {Shared \texttt{AgentState}: plan, source results, final output, and error};
-        \draw[stateflow] (orchestrator.south) -- (state.north west);
-        \draw[stateflow] (technical.south) -- (state.north);
-        \draw[stateflow] (aggregator.south) -- (state.north east);
-    \end{tikzpicture}%
-    }
+    \includegraphics[width=\textwidth,keepaspectratio]{diagrams/chapter4/stockrium_agent_topology.png}
     \caption{Execution topology of the Stockrium analysis graph}
     \label{fig:analysis-graph-topology}
 \end{figure}
