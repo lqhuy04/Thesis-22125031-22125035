@@ -148,7 +148,7 @@ const NewsSection = ({
     );
   }
 
-  return (
+  return newsItems.length === 0 ? null : (
     <View>
       <View style={[styles.header, { marginTop: 12, marginHorizontal: 12 }]}>
         <Text typography="titleLarge" color={theme.text.primary}>

@@ -37,7 +37,6 @@ const News = () => {
       style={{
         flex: 1,
         backgroundColor: theme.background.surface,
-        paddingTop: insets.top + 12,
       }}
     >
       <ScrollView
@@ -45,6 +44,11 @@ const News = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        <View
+          style={{
+            height: insets.top,
+          }}
+        />
         <TodayHighlightSection registerRefresh={registerRefresh} />
         <BusinessNewsSection registerRefresh={registerRefresh} />
         <CategoriesNewsSection registerRefresh={registerRefresh} />

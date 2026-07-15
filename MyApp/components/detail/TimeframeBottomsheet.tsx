@@ -11,6 +11,7 @@ import {
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { Text } from "../ui/Text";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -41,6 +42,7 @@ interface Props {
   selectedTimeframe: TIMEFRAME;
   onSelect: (value: TIMEFRAME) => void;
   onClose: () => void;
+  onLearnMore: () => void;
 }
 
 const TimeframeBottomSheet = ({
@@ -48,9 +50,11 @@ const TimeframeBottomSheet = ({
   selectedTimeframe,
   onSelect,
   onClose,
+  onLearnMore,
 }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
+  const insets = useSafeAreaInsets();
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -117,7 +121,10 @@ const TimeframeBottomSheet = ({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: theme.background.bg },
+          {
+            backgroundColor: theme.background.bg,
+            paddingBottom: insets.bottom,
+          },
           { transform: [{ translateY: slideAnim }] },
         ]}
       >
@@ -151,19 +158,15 @@ const TimeframeBottomSheet = ({
                 style={[
                   styles.optionBtn,
                   {
-                    borderWidth: 2,
                     backgroundColor: isSelected
-                      ? theme.base.primary + "20"
+                      ? theme.base.primary
                       : theme.background.surface,
-                    borderColor: isSelected
-                      ? theme.base.primary + "60"
-                      : "transparent",
                   },
                 ]}
               >
                 <Text
                   typography="bodyMedium"
-                  color={isSelected ? theme.base.primary : theme.text.primary}
+                  color={isSelected ? theme.text.onPrimary : theme.text.primary}
                 >
                   {t(option.labelKey)}
                 </Text>
@@ -215,13 +218,15 @@ const TimeframeBottomSheet = ({
           <Text typography="bodyMedium" color={theme.text.primary}>
             {t("timeframe.description")}
           </Text>
-          <Text
-            typography="labelLarge"
-            color={theme.base.success}
-            style={{ textAlign: "right", marginTop: 8 }}
-          >
-            {t("timeframe.learnMore")}
-          </Text>
+          <TouchableOpacity onPress={() => onLearnMore()}>
+            <Text
+              typography="labelLarge"
+              color={theme.base.success}
+              style={{ textAlign: "right", marginTop: 8 }}
+            >
+              {t("timeframe.learnMore")}
+            </Text>
+          </TouchableOpacity>
         </View>
       </Animated.View>
     </Modal>
@@ -239,7 +244,6 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    paddingBottom: 36,
     paddingTop: 12,
     elevation: 20,
     shadowColor: "#000",
@@ -267,7 +271,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   optionBtn: {
-    paddingVertical: 4,
+    paddingVertical: 6,
     paddingHorizontal: 6,
     borderRadius: 16,
     flex: 1,

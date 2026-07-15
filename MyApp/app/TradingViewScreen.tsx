@@ -152,7 +152,7 @@ const TradingViewScreen = () => {
 
   const webViewUri = useMemo(
     () =>
-      `${BASE_URL}?symbol=${exchange ? `${exchange}:${stockCode}` : stockCode}`,
+      `${BASE_URL}?symbol=${stockCode === "HNXUpcomIndex" ? "HNX:301" : exchange ? `${exchange}:${stockCode}` : stockCode}`,
     [stockCode, exchange],
   );
 

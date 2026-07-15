@@ -294,7 +294,15 @@ const BusinessNewsSection = ({ registerRefresh }: Props) => {
         }}
       >
         {/* Featured article */}
-        <View style={{ marginHorizontal: 12 }}>
+        <TouchableOpacity
+          onPress={() => {
+            router.push({
+              pathname: "/NewDetail",
+              params: { data: JSON.stringify(articles[0]) },
+            });
+          }}
+          style={{ marginHorizontal: 12 }}
+        >
           <Image
             source={{ uri: articles[0].thumbnail }}
             style={{ width: "100%", height: 200, borderRadius: 8 }}
@@ -317,7 +325,7 @@ const BusinessNewsSection = ({ registerRefresh }: Props) => {
             {articles[0].time.slice(0, 10)}
           </Text>
           <View style={{ height: 1, backgroundColor: theme.border.default }} />
-        </View>
+        </TouchableOpacity>
 
         {/* Carousel */}
         <FlatList

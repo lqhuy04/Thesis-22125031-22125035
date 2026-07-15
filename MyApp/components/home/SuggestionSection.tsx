@@ -1023,6 +1023,12 @@ const SuggestionSection = ({ registerRefresh }: Props) => {
 
                     {/* Xem thêm */}
                     <TouchableOpacity
+                      onPress={() => {
+                        router.push({
+                          pathname: "/InvestmentIdeas",
+                          params: { tab: item.group, msgType: item.msgType },
+                        });
+                      }}
                       style={{
                         alignItems: "center",
                         paddingBottom: 16,

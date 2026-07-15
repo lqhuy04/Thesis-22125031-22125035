@@ -227,7 +227,15 @@ const CategoryContent = ({
   return (
     <>
       {/* Featured article */}
-      <View style={{ marginHorizontal: 0 }}>
+      <TouchableOpacity
+        onPress={() => {
+          router.push({
+            pathname: "/NewDetail",
+            params: { data: JSON.stringify(featured) },
+          });
+        }}
+        style={{ marginHorizontal: 0 }}
+      >
         <Image
           source={{ uri: featured.thumbnail }}
           style={{ width: "100%", height: 200, borderRadius: 8 }}
@@ -250,7 +258,7 @@ const CategoryContent = ({
           {featured.time.slice(0, 10)}
         </Text>
         <View style={{ height: 1, backgroundColor: theme.border.default }} />
-      </View>
+      </TouchableOpacity>
 
       {/* Carousel */}
       <FlatList

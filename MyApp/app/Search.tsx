@@ -294,20 +294,17 @@ const Search = () => {
     return () => clearTimeout(handler);
   }, [text, onSearch]);
 
-  const goToStock = useCallback(
-    async (symbol: string) => {
-      // Chỉ cho phép điều hướng một lần; bấm trùng sẽ bị bỏ qua
-      if (isNavigatingRef.current) return;
-      isNavigatingRef.current = true;
+  const goToStock = useCallback(async (symbol: string) => {
+    // Chỉ cho phép điều hướng một lần; bấm trùng sẽ bị bỏ qua
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
 
-      await saveSearchHistory(symbol);
-      router.push({
-        pathname: "/Detail",
-        params: { data: symbol },
-      });
-    },
-    [],
-  );
+    router.push({
+      pathname: "/Detail",
+      params: { data: symbol },
+    });
+    await saveSearchHistory(symbol);
+  }, []);
 
   const handleSelectItem = useCallback(
     (item: SearchStockItem) => goToStock(item.symbol),
@@ -416,9 +413,16 @@ const Search = () => {
                           }
                           typography="bodySmall"
                         >
-                          {subItem?.current_price?.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                          {subItem?.current_price?.toLocaleString("vi-VN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}{" "}
                           {subItem?.per_price_change >= 0 ? "+" : ""}
-                          {subItem?.per_price_change?.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                          {subItem?.per_price_change?.toLocaleString("vi-VN", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                          %
                         </Text>
                       </TouchableOpacity>
                     ) : (
