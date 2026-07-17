@@ -11,6 +11,7 @@ import {
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { Text } from "../ui/Text";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -59,6 +60,7 @@ const IndicatorBottomSheet = ({
 }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
+  const insets = useSafeAreaInsets();
 
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
@@ -113,17 +115,15 @@ const IndicatorBottomSheet = ({
       style={[
         styles.optionBtn,
         {
-          borderWidth: 2,
           backgroundColor: isSelected
-            ? theme.base.primary + "20"
+            ? theme.base.primary
             : theme.background.surface,
-          borderColor: isSelected ? theme.base.primary + "60" : "transparent",
         },
       ]}
     >
       <Text
         typography="bodyMedium"
-        color={isSelected ? theme.base.primary : theme.text.primary}
+        color={isSelected ? theme.text.onPrimary : theme.text.primary}
       >
         {option.label}
       </Text>
@@ -152,7 +152,10 @@ const IndicatorBottomSheet = ({
       <Animated.View
         style={[
           styles.sheet,
-          { backgroundColor: theme.background.bg },
+          {
+            backgroundColor: theme.background.bg,
+            paddingBottom: insets.bottom + 16,
+          },
           { transform: [{ translateY: slideAnim }] },
         ]}
       >
@@ -280,7 +283,6 @@ const styles = StyleSheet.create({
     right: 0,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
-    paddingBottom: 36,
     paddingTop: 12,
     elevation: 20,
     shadowColor: "#000",
@@ -307,7 +309,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   optionBtn: {
-    paddingVertical: 4,
+    paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 16,
     alignItems: "center",

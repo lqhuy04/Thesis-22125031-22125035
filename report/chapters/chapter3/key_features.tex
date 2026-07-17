@@ -8,35 +8,183 @@ Stockrium provides a connected set of features for exploring the Vietnamese stoc
 
 Users can create an account with an email address, verify it through a one-time password, and sign in using either a password or Google Sign-In. The application also supports password recovery, session persistence, and secure sign-out. After authentication, users can manage their investment horizon, conversation history, theme, and language preferences. They can also add or remove stocks from a personal watchlist for later monitoring. This watchlist stores only selected symbols and does not manage quantities, purchase prices, profit and loss, or capital allocation. The security mechanisms used to protect credentials and sessions are discussed in Chapter 4.
 
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/account1.png}\\[2pt]
+\footnotesize (a) Authentication Screen
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/account2.png}\\[2pt]
+\footnotesize (b) Watchlist Screen
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/account3.png}\\[2pt]
+\footnotesize (c) Profile Screen
+\end{minipage}
+\caption{Authentication and Account Management}
+\label{fig:stockrium-captures1}
+\end{figure}
+
+
+
 \subsection{Market Overview and Stock Discovery}
 \label{subsec:market-overview-discovery}
 
 The Overview and Market tabs provide a concise view of current Vietnamese market conditions. Users can inspect major indices, industry movements, financial news, and stock collections such as top gainers, top decliners, highly traded stocks, and frequently followed symbols. The search function allows users to locate listed companies by stock symbol or company name and revisit previous queries through their search history. These discovery features support navigation rather than constitute investment recommendations. A selected index, industry, stock, or article can be opened for further examination.
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/market1.png}\\[2pt]
+\footnotesize (a) Home Screen
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/market2.png}\\[2pt]
+\footnotesize (b) Market Screen
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/market3.png}\\[2pt]
+\footnotesize (c) Search Screen
+\end{minipage}
+\caption{Market Overview and Stock Discovery}
+\label{fig:stockrium-captures2}
+\end{figure}
+
 
 \subsection{Stock Details and Interactive Technical Charts}
 \label{subsec:stock-details-charts}
 
 The stock-detail screen combines current and historical market data with company information, fundamental indicators, related news, and similar securities. Interactive area and candlestick charts allow users to examine price, volume, and selected technical indicators over different periods. The same screen also presents the company's business profile, leadership information, historical financial performance, financial statements, and representative measures of valuation, profitability, liquidity, and financial strength. Together, these features help users compare market behavior with the company's operating condition. The displayed information supports independent inspection but does not place orders or initiate financial transactions; AI-assisted analysis is requested separately.
 
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/detail1.png}\\[2pt]
+\footnotesize (a) Stock Details 1
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/detail2.png}\\[2pt]
+\footnotesize (b) Stock Details 2
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/detail3.png}\\[2pt]
+\footnotesize (c) Stock Details 3
+\end{minipage}
+\caption{Stock Details and Interactive Technical Charts}
+\label{fig:stockrium-captures3}
+\end{figure}
+
+
 \subsection{Financial News Exploration}
 \label{subsec:financial-news-exploration}
 
 The News tab organizes financial articles into business, macroeconomic, and topic-based views. Stock-specific articles are also accessible from the corresponding stock-detail screen, allowing users to relate company events and market sentiment to price and fundamental data. The collection pipeline enriches stored articles with short summaries and positive, neutral, or negative sentiment labels. The mobile application presents article content and surfaces sentiment in selected news views, while the processed fields also provide evidence for subsequent analysis. News collection and processing occur in a separate scheduled pipeline described in Chapter 4.
 
-\subsection{Investment-Horizon Profile}
-\label{subsec:investment-horizon-profile}
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/news1.png}\\[2pt]
+\footnotesize (a) News Screen 1
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/news2.png}\\[2pt]
+\footnotesize (b) News Screen 2
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/news3.png}\\[2pt]
+\footnotesize (c) News Screen 3
+\end{minipage}
+\caption{Financial News Explorations}
+\label{fig:stockrium-captures4}
+\end{figure}
 
-Users can save an intended investment horizon as short term (under three months), medium term (three to twelve months), or long term (over one year). When an AI analysis is requested, the system maps this preference to a daily, weekly, or monthly technical-analysis interval. For an accepted \textit{Buy} assessment, the horizon also determines the permitted ranges for take-profit, stop-loss, and maximum holding period. Within the current application scope, this profile considers only investment horizon and is not a comprehensive assessment of financial capacity or psychological risk tolerance.
-
-\subsection{Configurable AI Analysis}
+\subsection{Investment-Horizon Profile and Configurable AI Analysis}
 \label{subsec:configurable-ai-analysis}
 
-Stockrium provides automatic and manual modes for AI-assisted stock analysis. Automatic mode uses all available analytical perspectives with default weights determined by the saved investment horizon. Manual mode allows the user to enable or disable news, individual technical indicators, and fundamental-indicator categories, and to adjust the relative weights of the technical, fundamental, and news perspectives. The multi-agent system coordinates the enabled components and returns a \textit{Buy} or \textit{Wait} assessment with a normalized confidence score, technical, fundamental, and news scores, and written explanations. Confidence represents the system's internal strength of evidence and is not a probability of future profit. A \textit{Buy} result may also include a proposed entry price, take-profit price, stop-loss price, and maximum holding period consistent with the selected horizon. The feature provides a simple default path for beginners and greater control for experienced users, while its outputs remain decision-support information rather than guaranteed returns or executable orders.
+Users can save an intended investment horizon as short term (under three months), medium term (three to twelve months), or long term (over one year). Stockrium provides automatic and manual modes for AI-assisted stock analysis. Automatic mode uses all available analytical perspectives with default weights determined by the saved investment horizon, which the system also maps to a daily, weekly, or monthly technical-analysis interval. Manual mode allows the user to enable or disable news, individual technical indicators, and fundamental-indicator categories, and to adjust the relative weights of the technical, fundamental, and news perspectives. The multi-agent system coordinates the enabled components and returns a \textit{Buy} or \textit{Wait} assessment with a normalized confidence score, technical, fundamental, and news scores, and written explanations. Confidence represents the system's internal strength of evidence and is not a probability of future profit. For an accepted \textit{Buy} assessment, the saved investment horizon determines the permitted ranges for the proposed entry price, take-profit price, stop-loss price, and maximum holding period. Within the current application scope, the investment-horizon profile considers only time horizon and is not a comprehensive assessment of financial capacity or psychological risk tolerance. The feature provides a simple default path for beginners and greater control for experienced users, while its outputs remain decision-support information rather than guaranteed returns or executable orders.
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.45\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/AI1.png}\\[2pt]
+\footnotesize (a) Risk appetite
+\end{minipage}%
+\hspace{1cm}%
+\begin{minipage}{0.45\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/AI2.png}\\[2pt]
+\footnotesize (b) Manual configs
+\end{minipage}
+\caption{Initial input for Agents}
+\label{fig:stockrium-captures5}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.45\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/AI3.png}\\[2pt]
+\footnotesize (a) Analysis result 1
+\end{minipage}%
+\hspace{1cm}%
+\begin{minipage}{0.45\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/AI4.png}\\[2pt]
+\footnotesize (b) Analysis result 2
+\end{minipage}
+\caption{Agents' analysis results}
+\label{fig:stockrium-captures6}
+\end{figure}
 
 \subsection{Conversational Financial Assistant}
 \label{subsec:conversational-financial-assistant}
 
 The conversational assistant allows users to ask natural-language questions about the financial and market information available in Stockrium. Conversations are stored as sessions so that users can create, reopen, continue, or delete previous discussions. A conversation may begin as a general inquiry or from an AI-analysis result, enabling follow-up questions about the recommendation and its supporting evidence. The assistant explains and summarizes available information but does not act as a brokerage service or licensed financial adviser.
+
+\begin{figure}[H]
+\centering
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/chatbot1.png}\\[2pt]
+\footnotesize (a) Chatbot Screen
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/chatbot2.png}\\[2pt]
+\footnotesize (b) Chat History
+\end{minipage}%
+\hfill
+\begin{minipage}{0.32\textwidth}
+\centering
+\includegraphics[width=\linewidth]{screenshots/chatbot3.png}\\[2pt]
+\footnotesize (c) Conversation Screen
+\end{minipage}
+\caption{Conversational Financial Assistant}
+\label{fig:stockrium-captures7}
+\end{figure}
 
 \subsection{Administrative Analysis and Backtesting}
 \label{subsec:administrative-analysis-backtesting}
@@ -44,3 +192,31 @@ The conversational assistant allows users to ask natural-language questions abou
 The administrative web interface provides protected tools for running stock analysis and historical backtests. An administrator can request AI-assisted analysis for an individual stock or the VN30 or VN100 index basket. Backtesting can be configured for an individual stock or executed sequentially across VN30 using the supported inputs and analytical selections. The administrator can monitor batch progress and inspect or export the resulting reports. Backtesting summarizes historical behavior through measures such as total return, win rate, Sharpe ratio, maximum drawdown, and trade history, with visualizations linking generated signals to price data. This interface is an internal evaluation and operational tool; it is not publicly deployed and does not execute live securities transactions.
 
 Together, these features form a decision-support environment that connects market discovery, evidence inspection, AI-assisted synthesis, explanation, and conversational follow-up. Stockrium helps users organize and interpret Vietnamese market information while keeping investment decisions and any subsequent transactions under the user's responsibility.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{screenshots/web1.png}\\[2pt]
+\caption{Admin Backtest Screen}
+\label{fig:stockrium-captures8}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{screenshots/web2.png}\\[2pt]
+\caption{Admin Backtest Result Screen}
+\label{fig:stockrium-captures9}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{screenshots/web3.png}\\[2pt]
+\caption{Admin Analyze Screen}
+\label{fig:stockrium-captures10}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{screenshots/web4.png}\\[2pt]
+\caption{Admin Analyzer Result Screen}
+\label{fig:stockrium-captures11}
+\end{figure}

@@ -616,12 +616,10 @@ class MarketService:
           - Bảng Stock_Price_1d → interval: 1d, 1w, 1M
         """
         try:
-            symbol_up = symbol.upper()
-
             if interval in MarketService._INTRADAY_INTERVALS:
-                return MarketService._aggregate_from_1m(symbol_up, interval)
+                return MarketService._aggregate_from_1m(symbol, interval)
             elif interval in MarketService._DAILY_INTERVALS:
-                return MarketService._aggregate_from_1d(symbol_up, interval)
+                return MarketService._aggregate_from_1d(symbol, interval)
             else:
                 valid = list(MarketService._INTRADAY_INTERVALS) + list(MarketService._DAILY_INTERVALS)
                 raise ValueError(f"Unsupported interval: '{interval}'. Valid: {valid}")

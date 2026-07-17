@@ -1,0 +1,401 @@
+{"kind":"deck","id":"pr/l4lcnt","name":"Deck"}
+{"kind":"layout","layoutId":"d2a81d58-736e-40c2-82df-5f98ba80217f","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"3c0ddc37-ee77-43f5-812b-e18b94de7805","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/yyyaty","slide":1,"title":"BACHELOR THESIS · 2026","textShapes":6}
+{"kind":"shape","id":"sh/3e54nut8","slide":1,"bbox":[850,0,430,720]}
+{"kind":"textbox","id":"sh/4felwzut","slide":1,"text":"BACHELOR THESIS · 2026","textPreview":"BACHELOR THESIS · 2026","textChars":22,"textLines":1,"bbox":[58,52,360,22]}
+{"kind":"textbox","id":"sh/pgnmpkbe","slide":1,"text":"STOCKRIUM","textPreview":"STOCKRIUM","textChars":9,"textLines":1,"bbox":[58,126,740,100]}
+{"kind":"textbox","id":"sh/upc3q5cr","slide":1,"text":"Hệ thống Agentic AI phân tích và tổng hợp dữ liệu thị trường tài chính Việt Nam","textPreview":"Hệ thống Agentic AI phân tích và tổng hợp dữ liệu thị trường tài chính Việt Nam","textChars":79,"textLines":1,"bbox":[58,235,720,152]}
+{"kind":"shape","id":"sh/vql4jatc","slide":1,"bbox":[58,417,120,0]}
+{"kind":"textbox","id":"sh/grulsfux","slide":1,"text":"Le Quoc Huy · 22125031\nNguyen Vinh Khang · 22125035","textPreview":"Le Quoc Huy · 22125031 | Nguyen Vinh Khang · 22125035","textChars":51,"textLines":2,"bbox":[58,458,440,76]}
+{"kind":"textbox","id":"sh/hs3mlkbi","slide":1,"text":"GVHD: Dr. Nguyen Thi Minh Tuyen\nAdvanced Program in Computer Science · University of Science","textPreview":"GVHD: Dr. Nguyen Thi Minh Tuyen | Advanced Program in Computer Science · University of Science","textChars":92,"textLines":2,"bbox":[58,558,650,60]}
+{"kind":"shape","id":"sh/6ls3m5cv","slide":1,"bbox":[944,68,250,560]}
+{"kind":"textbox","id":"sh/zadof6p4","slide":1,"text":"Decision support, not trade execution","textPreview":"Decision support, not trade execution","textChars":37,"textLines":1,"bbox":[867,650,360,20]}
+{"kind":"image","id":"im/il8j25c3","slide":1,"name":"","geometry":"roundRect","alt":"Stockrium AI Hub trên ứng dụng di động","bbox":[950,74,238,548]}
+{"kind":"notes","id":"nt/yyyaty","slide":1,"text":""}
+{"kind":"slide","id":"sl/322wur","slide":2,"title":"BÀI TOÁN","textShapes":15}
+{"kind":"textbox","id":"sh/toradgrq","slide":2,"text":"BÀI TOÁN","textPreview":"BÀI TOÁN","textChars":8,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/6lgril8f","slide":2,"text":"11,9 triệu tài khoản, dữ liệu vẫn phân mảnh","textPreview":"11,9 triệu tài khoản, dữ liệu vẫn phân mảnh","textChars":43,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/rmpsbq90","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/gri9ovqh","slide":2,"text":"Tiếp cận giao dịch tăng nhanh không đồng nghĩa với khả năng tổng hợp bằng chứng và ra quyết định có kỷ luật.","textPreview":"Tiếp cận giao dịch tăng nhanh không đồng nghĩa với khả năng tổng hợp bằng chứng và ra quyết định có kỷ luật.","textChars":108,"textLines":1,"bbox":[52,128,1070,54]}
+{"kind":"textbox","id":"sh/1srah0r2","slide":2,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[52,214,80,34]}
+{"kind":"textbox","id":"sh/ep0rml8b","slide":2,"text":"Kỹ thuật","textPreview":"Kỹ thuật","textChars":8,"textLines":1,"bbox":[52,262,330,48]}
+{"kind":"textbox","id":"sh/fq9sfq9w","slide":2,"text":"Giá, khối lượng, RSI, MA, Bollinger, MACD, KDJ","textPreview":"Giá, khối lượng, RSI, MA, Bollinger, MACD, KDJ","textChars":46,"textLines":1,"bbox":[52,326,335,92]}
+{"kind":"shape","id":"sh/wve9cbqd","slide":2,"bbox":[425,220,0,218]}
+{"kind":"textbox","id":"sh/hw7a5wri","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[453,214,80,34]}
+{"kind":"textbox","id":"sh/5kbapozq","slide":2,"text":"Cơ bản","textPreview":"Cơ bản","textChars":6,"textLines":1,"bbox":[453,262,330,48]}
+{"kind":"textbox","id":"sh/4j29wjy5","slide":2,"text":"Báo cáo tài chính, tỷ số, tăng trưởng, so sánh ngành","textPreview":"Báo cáo tài chính, tỷ số, tăng trưởng, so sánh ngành","textChars":52,"textLines":1,"bbox":[453,326,335,92]}
+{"kind":"shape","id":"sh/3itsnehk","slide":2,"bbox":[826,220,0,218]}
+{"kind":"textbox","id":"sh/ihkru9gf","slide":2,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[854,214,80,34]}
+{"kind":"textbox","id":"sh/dovat8z2","slide":2,"text":"Tin tức","textPreview":"Tin tức","textChars":7,"textLines":1,"bbox":[854,262,330,48]}
+{"kind":"textbox","id":"sh/snmt03yh","slide":2,"text":"Bài báo rời rạc, mức độ liên quan và tác động khó đánh giá","textPreview":"Bài báo rời rạc, mức độ liên quan và tác động khó đánh giá","textChars":58,"textLines":1,"bbox":[854,326,335,92]}
+{"kind":"shape","id":"sh/rmdsryhw","slide":2,"bbox":[52,485,1176,132]}
+{"kind":"textbox","id":"sh/ql4bytgb","slide":2,"text":"Khoảng trống","textPreview":"Khoảng trống","textChars":12,"textLines":1,"bbox":[80,512,180,28]}
+{"kind":"textbox","id":"sh/1cfax8zy","slide":2,"text":"Một môi trường tích hợp ba góc nhìn, giải thích được kết luận và cho phép kiểm tra bằng chứng.","textPreview":"Một môi trường tích hợp ba góc nhìn, giải thích được kết luận và cho phép kiểm tra bằng chứng.","textChars":94,"textLines":1,"bbox":[80,548,1080,48]}
+{"kind":"notes","id":"nt/322wur","slide":2,"text":""}
+{"kind":"slide","id":"sl/avbadt","slide":3,"title":"MỤC TIÊU","textShapes":15}
+{"kind":"textbox","id":"sh/sn21wf6t","slide":3,"text":"MỤC TIÊU","textPreview":"MỤC TIÊU","textChars":8,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/7mtk3a5o","slide":3,"text":"Ba mục tiêu định hình Stockrium","textPreview":"Ba mục tiêu định hình Stockrium","textChars":31,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/6l0ju5o3","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/5kr210ni","slide":3,"text":"Sản phẩm phục vụ đồng thời nhu cầu sử dụng, đánh giá hệ thống và chuẩn hóa dữ liệu nghiên cứu.","textPreview":"Sản phẩm phục vụ đồng thời nhu cầu sử dụng, đánh giá hệ thống và chuẩn hóa dữ liệu nghiên cứu.","textChars":94,"textLines":1,"bbox":[52,125,1040,52]}
+{"kind":"textbox","id":"sh/kji1sv6x","slide":3,"text":"O1","textPreview":"O1","textChars":2,"textLines":1,"bbox":[52,220,86,58]}
+{"kind":"textbox","id":"sh/ji9kzq5c","slide":3,"text":"Ứng dụng hỗ trợ quyết định","textPreview":"Ứng dụng hỗ trợ quyết định","textChars":26,"textLines":1,"bbox":[52,300,340,70]}
+{"kind":"textbox","id":"sh/ih0jq5or","slide":3,"text":"Kết hợp kỹ thuật, cơ bản và tin tức; giải thích theo kỳ đầu tư.","textPreview":"Kết hợp kỹ thuật, cơ bản và tin tức; giải thích theo kỳ đầu tư.","textChars":63,"textLines":1,"bbox":[52,388,340,96]}
+{"kind":"shape","id":"sh/pgv2d4nm","slide":3,"bbox":[428,220,0,262]}
+{"kind":"textbox","id":"sh/ofml4z61","slide":3,"text":"O2","textPreview":"O2","textChars":2,"textLines":1,"bbox":[452,220,86,58]}
+{"kind":"textbox","id":"sh/u14be10r","slide":3,"text":"Backtesting nội bộ","textPreview":"Backtesting nội bộ","textChars":18,"textLines":1,"bbox":[452,300,340,70]}
+{"kind":"textbox","id":"sh/v2ds76hc","slide":3,"text":"Đo hành vi pipeline, so sánh baseline và kiểm tra rủi ro.","textPreview":"Đo hành vi pipeline, so sánh baseline và kiểm tra rủi ro.","textChars":57,"textLines":1,"bbox":[452,388,340,96]}
+{"kind":"shape","id":"sh/w3mtgbix","slide":3,"bbox":[828,220,0,262]}
+{"kind":"textbox","id":"sh/h4fa9wzi","slide":3,"text":"O3","textPreview":"O3","textChars":2,"textLines":1,"bbox":[852,220,86,58]}
+{"kind":"textbox","id":"sh/mx4rah0v","slide":3,"text":"Dữ liệu nghiên cứu","textPreview":"Dữ liệu nghiên cứu","textChars":18,"textLines":1,"bbox":[852,300,340,70]}
+{"kind":"textbox","id":"sh/7yds3mhg","slide":3,"text":"OHLCV, dữ liệu doanh nghiệp và tin tức có nhãn cảm xúc.","textPreview":"OHLCV, dữ liệu doanh nghiệp và tin tức có nhãn cảm xúc.","textChars":55,"textLines":1,"bbox":[852,388,340,96]}
+{"kind":"shape","id":"sh/8zm9cril","slide":3,"bbox":[52,536,1176,0]}
+{"kind":"textbox","id":"sh/90va5wz6","slide":3,"text":"PHẠM VI","textPreview":"PHẠM VI","textChars":7,"textLines":1,"bbox":[52,560,120,24]}
+{"kind":"textbox","id":"sh/6tobml0z","slide":3,"text":"Cổ phiếu Việt Nam · Mobile cho nhà đầu tư · Web nội bộ cho admin · Không đặt lệnh, không kết nối môi giới, không bảo đảm lợi nhuận","textPreview":"Cổ phiếu Việt Nam · Mobile cho nhà đầu tư · Web nội bộ cho admin · Không đặt lệnh, không kết nối môi giới, không bảo đảm lợi nhuận","textChars":130,"textLines":1,"bbox":[190,556,1010,46]}
+{"kind":"notes","id":"nt/avbadt","slide":3,"text":""}
+{"kind":"slide","id":"sl/wgb8aw","slide":4,"title":"SẢN PHẨM","textShapes":10}
+{"kind":"textbox","id":"sh/adw7ipcj","slide":4,"text":"SẢN PHẨM","textPreview":"SẢN PHẨM","textChars":8,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/x0nqt4va","slide":4,"text":"Một hành trình liền mạch trong Stockrium","textPreview":"Một hành trình liền mạch trong Stockrium","textChars":40,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/wzepkzup","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/j258vedg","slide":4,"text":"Thay vì chuyển qua nhiều nền tảng, nhà đầu tư giữ nguyên ngữ cảnh của mã cổ phiếu trong một ứng dụng.","textPreview":"Thay vì chuyển qua nhiều nền tảng, nhà đầu tư giữ nguyên ngữ cảnh của mã cổ phiếu trong một ứng dụng.","textChars":101,"textLines":1,"bbox":[52,128,1080,52]}
+{"kind":"textbox","id":"sh/y1w7m9cv","slide":4,"text":"Khám phá","textPreview":"Khám phá","textChars":8,"textLines":1,"bbox":[58,222,300,38]}
+{"kind":"textbox","id":"sh/l47qx4v6","slide":4,"text":"Theo dõi chỉ số, ý tưởng và biến động ngành.","textPreview":"Theo dõi chỉ số, ý tưởng và biến động ngành.","textChars":44,"textLines":1,"bbox":[58,270,330,64]}
+{"kind":"textbox","id":"sh/k3epojul","slide":4,"text":"Kiểm chứng","textPreview":"Kiểm chứng","textChars":10,"textLines":1,"bbox":[58,380,300,38]}
+{"kind":"textbox","id":"sh/76p8zedc","slide":4,"text":"Đi sâu vào giá, chỉ báo, doanh nghiệp và tin tức liên quan.","textPreview":"Đi sâu vào giá, chỉ báo, doanh nghiệp và tin tức liên quan.","textChars":59,"textLines":1,"bbox":[58,428,340,72]}
+{"kind":"textbox","id":"sh/65g7q9cr","slide":4,"text":"Tiếp tục","textPreview":"Tiếp tục","textChars":8,"textLines":1,"bbox":[58,544,300,38]}
+{"kind":"textbox","id":"sh/gf65s7mh","slide":4,"text":"Lưu watchlist, phân tích AI hoặc hỏi tiếp theo ngữ cảnh.","textPreview":"Lưu watchlist, phân tích AI hoặc hỏi tiếp theo ngữ cảnh.","textChars":56,"textLines":1,"bbox":[58,592,340,56]}
+{"kind":"shape","id":"sh/hgf61cn2","slide":4,"bbox":[473,171,226,490]}
+{"kind":"shape","id":"sh/fed4z25w","slide":4,"bbox":[733,171,226,490]}
+{"kind":"shape","id":"sh/p4f65cny","slide":4,"bbox":[993,171,226,490]}
+{"kind":"image","id":"im/pg7ql8bm","slide":4,"name":"","geometry":"roundRect","alt":"Tổng quan thị trường Stockrium","bbox":[478,176,216,480]}
+{"kind":"image","id":"im/fa58fytk","slide":4,"name":"","geometry":"roundRect","alt":"Chi tiết cổ phiếu với biểu đồ và chỉ báo","bbox":[738,176,216,480]}
+{"kind":"image","id":"im/hc7qhobq","slide":4,"name":"","geometry":"roundRect","alt":"Tin tức theo ngành và vĩ mô","bbox":[998,176,216,480]}
+{"kind":"notes","id":"nt/wgb8aw","slide":4,"text":""}
+{"kind":"slide","id":"sl/2imoym","slide":5,"title":"AGENTIC AI","textShapes":15}
+{"kind":"textbox","id":"sh/ra9gbyxc","slide":5,"text":"AGENTIC AI","textPreview":"AGENTIC AI","textChars":10,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/sb2xkjeh","slide":5,"text":"Phân tích thay đổi theo mục tiêu của người dùng","textPreview":"Phân tích thay đổi theo mục tiêu của người dùng","textChars":47,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/dcbydof2","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/il0fe9wf","slide":5,"text":"Cùng một kiến trúc, nhưng kỳ đầu tư, nguồn bằng chứng và trọng số có thể được cấu hình rõ ràng.","textPreview":"Cùng một kiến trúc, nhưng kỳ đầu tư, nguồn bằng chứng và trọng số có thể được cấu hình rõ ràng.","textChars":95,"textLines":1,"bbox":[52,126,1080,52]}
+{"kind":"textbox","id":"sh/jm9g7ex0","slide":5,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[474,170,50,24]}
+{"kind":"textbox","id":"sh/4nixgjel","slide":5,"text":"Chọn kỳ đầu tư","textPreview":"Chọn kỳ đầu tư","textChars":14,"textLines":1,"bbox":[474,196,220,28]}
+{"kind":"shape","id":"sh/58ry9of6","slide":5,"bbox":[469,233,216,422]}
+{"kind":"textbox","id":"sh/nidgjix4","slide":5,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[742,170,50,24]}
+{"kind":"textbox","id":"sh/3ax83elw","slide":5,"text":"Chọn bằng chứng","textPreview":"Chọn bằng chứng","textChars":15,"textLines":1,"bbox":[742,196,220,28]}
+{"kind":"shape","id":"sh/i9oru94r","slide":5,"bbox":[737,233,216,422]}
+{"kind":"textbox","id":"sh/4v69wjmh","slide":5,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1010,170,50,24]}
+{"kind":"textbox","id":"sh/ryhs7el8","slide":5,"text":"Nhận kết quả","textPreview":"Nhận kết quả","textChars":12,"textLines":1,"bbox":[1010,196,220,28]}
+{"kind":"shape","id":"sh/qx8ry94n","slide":5,"bbox":[1005,233,216,422]}
+{"kind":"textbox","id":"sh/szq90j2t","slide":5,"text":"Một kết quả tốt phải trả lời được ba câu hỏi","textPreview":"Một kết quả tốt phải trả lời được ba câu hỏi","textChars":44,"textLines":1,"bbox":[58,238,350,68]}
+{"kind":"shape","id":"sh/f2hsbyl4","slide":5,"bbox":[58,350,9,9]}
+{"kind":"textbox","id":"sh/e18r2tkj","slide":5,"text":"Bằng chứng nào đang được dùng?","textPreview":"Bằng chứng nào đang được dùng?","textChars":30,"textLines":1,"bbox":[78,342,330,44]}
+{"kind":"shape","id":"sh/a9c3qhs3","slide":5,"bbox":[58,416,9,9]}
+{"kind":"textbox","id":"sh/ba5kjm9o","slide":5,"text":"Kết luận được hình thành như thế nào?","textPreview":"Kết luận được hình thành như thế nào?","textChars":37,"textLines":1,"bbox":[78,408,330,50]}
+{"kind":"shape","id":"sh/wbelsrq9","slide":5,"bbox":[58,490,9,9]}
+{"kind":"textbox","id":"sh/xwn2lwru","slide":5,"text":"Quy tắc nào có thể chặn một quyết định Buy?","textPreview":"Quy tắc nào có thể chặn một quyết định Buy?","textChars":43,"textLines":1,"bbox":[78,482,330,58]}
+{"kind":"textbox","id":"sh/m5c3mhs7","slide":5,"text":"Kết quả hỗ trợ phán đoán; không tự động đặt lệnh.","textPreview":"Kết quả hỗ trợ phán đoán; không tự động đặt lệnh.","textChars":49,"textLines":1,"bbox":[58,586,350,54]}
+{"kind":"image","id":"im/ry5cnqpo","slide":5,"name":"","geometry":"roundRect","alt":"Chọn kỳ đầu tư","bbox":[474,238,206,412]}
+{"kind":"image","id":"im/ydcvup4n","slide":5,"name":"","geometry":"roundRect","alt":"Cấu hình phân tích AI","bbox":[742,238,206,412]}
+{"kind":"image","id":"im/mhwvy94j","slide":5,"name":"","geometry":"roundRect","alt":"Kết quả phân tích AI có confidence và kế hoạch giao dịch","bbox":[1010,238,206,412]}
+{"kind":"notes","id":"nt/2imoym","slide":5,"text":""}
+{"kind":"slide","id":"sl/nf8vga","slide":6,"title":"KIẾN TRÚC","textShapes":7}
+{"kind":"textbox","id":"sh/cnatgz6d","slide":6,"text":"KIẾN TRÚC","textPreview":"KIẾN TRÚC","textChars":9,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/rmhc7u5s","slide":6,"text":"Stockrium tách rõ giao diện, trí tuệ và dữ liệu","textPreview":"Stockrium tách rõ giao diện, trí tuệ và dữ liệu","textChars":47,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/ql8bepo7","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/1sjud4nu","slide":6,"text":"React Native/Expo · FastAPI · LangGraph · Supabase PostgreSQL/Storage · Redis · SSI và nguồn tin","textPreview":"React Native/Expo · FastAPI · LangGraph · Supabase PostgreSQL/Storage · Redis · SSI và nguồn tin","textChars":96,"textLines":1,"bbox":[52,124,1120,28]}
+{"kind":"shape","id":"sh/0ratkz69","slide":6,"bbox":[52,170,1176,478]}
+{"kind":"textbox","id":"sh/epsbipoj","slide":6,"text":"Clients","textPreview":"Clients","textChars":7,"textLines":1,"bbox":[72,646,180,20]}
+{"kind":"textbox","id":"sh/hwzu1knq","slide":6,"text":"Services & AI","textPreview":"Services & AI","textChars":13,"textLines":1,"bbox":[492,646,180,20]}
+{"kind":"textbox","id":"sh/gvqt8f65","slide":6,"text":"Data & providers","textPreview":"Data & providers","textChars":16,"textLines":1,"bbox":[958,646,240,20]}
+{"kind":"image","id":"im/et0nadsr","slide":6,"name":"","geometry":"roundRect","alt":"Kiến trúc client-server tổng thể của Stockrium","bbox":[70,184,1140,448]}
+{"kind":"notes","id":"nt/nf8vga","slide":6,"text":""}
+{"kind":"slide","id":"sl/wz1emv","slide":7,"title":"DỮ LIỆU","textShapes":13}
+{"kind":"textbox","id":"sh/q9sne5c7","slide":7,"text":"DỮ LIỆU","textPreview":"DỮ LIỆU","textChars":7,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/dcj6pkvy","slide":7,"text":"Ba pipeline, một mô hình dữ liệu dùng chung","textPreview":"Ba pipeline, một mô hình dữ liệu dùng chung","textChars":43,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/cba5gfud","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/36hojadw","slide":7,"text":"Dữ liệu được thu thập, chuẩn hóa và lưu trước khi phục vụ ứng dụng, Agentic AI và backtesting.","textPreview":"Dữ liệu được thu thập, chuẩn hóa và lưu trước khi phục vụ ứng dụng, Agentic AI và backtesting.","textChars":94,"textLines":1,"bbox":[52,126,1080,52]}
+{"kind":"textbox","id":"sh/2l8na5cb","slide":7,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[52,202,50,22]}
+{"kind":"textbox","id":"sh/p8j6l0v2","slide":7,"text":"Thị trường","textPreview":"Thị trường","textChars":10,"textLines":1,"bbox":[52,232,350,38]}
+{"kind":"textbox","id":"sh/47q5cfuh","slide":7,"text":"Backfill, WebSocket và reconciliation sau phiên.","textPreview":"Backfill, WebSocket và reconciliation sau phiên.","textChars":48,"textLines":1,"bbox":[52,282,350,64]}
+{"kind":"shape","id":"sh/mhc7mpcf","slide":7,"bbox":[428,196,0,420]}
+{"kind":"textbox","id":"sh/4bmdwb2t","slide":7,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[452,202,50,22]}
+{"kind":"textbox","id":"sh/pcvu5gjy","slide":7,"text":"Doanh nghiệp","textPreview":"Doanh nghiệp","textChars":12,"textLines":1,"bbox":[452,232,350,38]}
+{"kind":"textbox","id":"sh/29kvu1kn","slide":7,"text":"Selenium/Excel, pandas, tỷ số và median ngành.","textPreview":"Selenium/Excel, pandas, tỷ số và median ngành.","textChars":46,"textLines":1,"bbox":[452,282,350,64]}
+{"kind":"shape","id":"sh/g72dsb2h","slide":7,"bbox":[828,196,0,420]}
+{"kind":"textbox","id":"sh/h8bu1wj2","slide":7,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[852,202,50,22]}
+{"kind":"textbox","id":"sh/u5kvq1kb","slide":7,"text":"Tin tức","textPreview":"Tin tức","textChars":7,"textLines":1,"bbox":[852,232,350,38]}
+{"kind":"textbox","id":"sh/f6tcz61w","slide":7,"text":"Tìm kiếm, trích xuất, khử trùng, tóm tắt và sentiment.","textPreview":"Tìm kiếm, trích xuất, khử trùng, tóm tắt và sentiment.","textChars":54,"textLines":1,"bbox":[852,282,350,64]}
+{"kind":"image","id":"im/edc3y1gb","slide":7,"name":"","geometry":"roundRect","alt":"Pipeline dữ liệu thị trường của Stockrium","bbox":[52,356,350,260]}
+{"kind":"image","id":"im/kvqlk72p","slide":7,"name":"","geometry":"roundRect","alt":"Pipeline dữ liệu doanh nghiệp của Stockrium","bbox":[452,356,350,260]}
+{"kind":"image","id":"im/vm1kzm1c","slide":7,"name":"","geometry":"roundRect","alt":"Pipeline dữ liệu tin tức của Stockrium","bbox":[852,356,350,260]}
+{"kind":"notes","id":"nt/wz1emv","slide":7,"text":""}
+{"kind":"slide","id":"sl/qgu8o7","slide":8,"title":"THIẾT KẾ AI","textShapes":30}
+{"kind":"textbox","id":"sh/jqlkv2tk","slide":8,"text":"THIẾT KẾ AI","textPreview":"THIẾT KẾ AI","textChars":11,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/kru1o7u5","slide":8,"text":"LLM diễn giải, Python kiểm soát quyết định","textPreview":"LLM diễn giải, Python kiểm soát quyết định","textChars":42,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/5s32xcbq","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/6twjqhcb","slide":8,"text":"Workflow là một state graph có các nhánh chuyên biệt, không phải một prompt đơn khối.","textPreview":"Workflow là một state graph có các nhánh chuyên biệt, không phải một prompt đơn khối.","textChars":85,"textLines":1,"bbox":[52,124,1050,40]}
+{"kind":"shape","id":"sh/7u5kzmtw","slide":8,"bbox":[195,332,35,0]}
+{"kind":"shape","id":"sh/sfelsruh","slide":8,"bbox":[380,332,40,0]}
+{"kind":"shape","id":"sh/tgn21wbm","slide":8,"bbox":[420,224,0,216]}
+{"kind":"shape","id":"sh/uhw3u1c7","slide":8,"bbox":[420,224,30,0]}
+{"kind":"shape","id":"sh/fi5k3mts","slide":8,"bbox":[420,332,30,0]}
+{"kind":"shape","id":"sh/zydwzulg","slide":8,"bbox":[420,440,30,0]}
+{"kind":"shape","id":"sh/ex4v6p4v","slide":8,"bbox":[670,224,30,0]}
+{"kind":"shape","id":"sh/10ve1436","slide":8,"bbox":[670,332,30,0]}
+{"kind":"shape","id":"sh/0zmd8zml","slide":8,"bbox":[670,440,30,0]}
+{"kind":"shape","id":"sh/rudcval4","slide":8,"bbox":[700,224,0,216]}
+{"kind":"shape","id":"sh/qt4v2p4j","slide":8,"bbox":[700,332,20,0]}
+{"kind":"shape","id":"sh/dwvexk3a","slide":8,"bbox":[870,332,40,0]}
+{"kind":"shape","id":"sh/cvmd4fmp","slide":8,"bbox":[1070,332,40,0]}
+{"kind":"shape","id":"sh/bqxw7elo","slide":8,"bbox":[50,278,145,108]}
+{"kind":"textbox","id":"sh/apove943","slide":8,"text":"INPUT","textPreview":"INPUT","textChars":5,"textLines":1,"bbox":[64,290,117,18]}
+{"kind":"textbox","id":"sh/6xc7mhs7","slide":8,"text":"Request","textPreview":"Request","textChars":7,"textLines":1,"bbox":[64,310,117,28]}
+{"kind":"textbox","id":"sh/7yl8v29s","slide":8,"text":"Mã, horizon, nguồn và trọng số","textPreview":"Mã, horizon, nguồn và trọng số","textChars":30,"textLines":1,"bbox":[64,339,117,40]}
+{"kind":"shape","id":"sh/szupo7ad","slide":8,"bbox":[230,278,150,108]}
+{"kind":"textbox","id":"sh/t03qxcry","slide":8,"text":"PLAN","textPreview":"PLAN","textChars":4,"textLines":1,"bbox":[244,290,122,18]}
+{"kind":"textbox","id":"sh/ulc7qhsj","slide":8,"text":"Orchestrator","textPreview":"Orchestrator","textChars":12,"textLines":1,"bbox":[244,310,122,28]}
+{"kind":"textbox","id":"sh/fml8zm94","slide":8,"text":"Lập khoảng thời gian và kế hoạch","textPreview":"Lập khoảng thời gian và kế hoạch","textChars":32,"textLines":1,"bbox":[244,339,122,40]}
+{"kind":"shape","id":"sh/gnupsrap","slide":8,"bbox":[450,180,220,88]}
+{"kind":"textbox","id":"sh/ho3q1wru","slide":8,"text":"LLM + FILTER","textPreview":"LLM + FILTER","textChars":12,"textLines":1,"bbox":[464,192,192,18]}
+{"kind":"textbox","id":"sh/a587edsf","slide":8,"text":"Article","textPreview":"Article","textChars":7,"textLines":1,"bbox":[464,212,192,28]}
+{"kind":"textbox","id":"sh/vq1oni9k","slide":8,"text":"Lọc và tóm tắt tin","textPreview":"Lọc và tóm tắt tin","textChars":18,"textLines":1,"bbox":[464,241,192,20]}
+{"kind":"shape","id":"sh/dk7at0b2","slide":8,"bbox":[450,288,220,88]}
+{"kind":"textbox","id":"sh/cjytkvux","slide":8,"text":"EVIDENCE","textPreview":"EVIDENCE","textChars":8,"textLines":1,"bbox":[464,300,192,18]}
+{"kind":"textbox","id":"sh/bipsrqtc","slide":8,"text":"Fundamental","textPreview":"Fundamental","textChars":11,"textLines":1,"bbox":[464,320,192,28]}
+{"kind":"textbox","id":"sh/qhgrilcr","slide":8,"text":"5 năm, CAGR, ngành","textPreview":"5 năm, CAGR, ngành","textChars":18,"textLines":1,"bbox":[464,349,192,20]}
+{"kind":"shape","id":"sh/lorax0be","slide":8,"bbox":[450,396,220,88]}
+{"kind":"textbox","id":"sh/0nytovut","slide":8,"text":"DETERMINISTIC","textPreview":"DETERMINISTIC","textChars":13,"textLines":1,"bbox":[464,408,192,18]}
+{"kind":"textbox","id":"sh/zmpsvqt8","slide":8,"text":"Technical","textPreview":"Technical","textChars":9,"textLines":1,"bbox":[464,428,192,28]}
+{"kind":"textbox","id":"sh/ylgbmlcn","slide":8,"text":"Indicators và điểm nhị phân","textPreview":"Indicators và điểm nhị phân","textChars":27,"textLines":1,"bbox":[464,457,192,20]}
+{"kind":"shape","id":"sh/1snalgba","slide":8,"bbox":[720,278,150,108]}
+{"kind":"textbox","id":"sh/gre9sbup","slide":8,"text":"SYNTHESIS","textPreview":"SYNTHESIS","textChars":9,"textLines":1,"bbox":[734,290,122,18]}
+{"kind":"textbox","id":"sh/k7md0jex","slide":8,"text":"Aggregator","textPreview":"Aggregator","textChars":10,"textLines":1,"bbox":[734,310,122,28]}
+{"kind":"textbox","id":"sh/58vet4vi","slide":8,"text":"Tổng hợp có cấu trúc","textPreview":"Tổng hợp có cấu trúc","textChars":20,"textLines":1,"bbox":[734,339,122,40]}
+{"kind":"shape","id":"sh/i5kvy9w7","slide":8,"bbox":[910,278,160,108]}
+{"kind":"textbox","id":"sh/j6twreds","slide":8,"text":"PYTHON","textPreview":"PYTHON","textChars":6,"textLines":1,"bbox":[924,290,132,18]}
+{"kind":"textbox","id":"sh/wj2dwze1","slide":8,"text":"Controls","textPreview":"Controls","textChars":8,"textLines":1,"bbox":[924,310,132,28]}
+{"kind":"textbox","id":"sh/xkbup4vm","slide":8,"text":"Confidence, veto, bounds","textPreview":"Confidence, veto, bounds","textChars":24,"textLines":1,"bbox":[924,339,132,40]}
+{"kind":"shape","id":"sh/ahkvupwv","slide":8,"bbox":[1110,278,120,108]}
+{"kind":"textbox","id":"sh/vitcnudg","slide":8,"text":"OUTPUT","textPreview":"OUTPUT","textChars":6,"textLines":1,"bbox":[1124,290,92,18]}
+{"kind":"textbox","id":"sh/8fidsze5","slide":8,"text":"Buy / Wait","textPreview":"Buy / Wait","textChars":10,"textLines":1,"bbox":[1124,310,92,28]}
+{"kind":"textbox","id":"sh/9gbulkva","slide":8,"text":"Kết quả có thể kiểm tra","textPreview":"Kết quả có thể kiểm tra","textChars":23,"textLines":1,"bbox":[1124,339,92,40]}
+{"kind":"shape","id":"sh/ba9wvuhc","slide":8,"bbox":[230,536,840,74]}
+{"kind":"textbox","id":"sh/q90v2pgr","slide":8,"text":"Shared AgentState","textPreview":"Shared AgentState","textChars":17,"textLines":1,"bbox":[252,555,210,25]}
+{"kind":"textbox","id":"sh/dcrexkzi","slide":8,"text":"plan · agent_results · final_output · error","textPreview":"plan · agent_results · final_output · error","textChars":43,"textLines":1,"bbox":[462,555,560,25]}
+{"kind":"notes","id":"nt/qgu8o7","slide":8,"text":""}
+{"kind":"slide","id":"sl/8ehyje","slide":9,"title":"KIỂM SOÁT","textShapes":29}
+{"kind":"textbox","id":"sh/10zu9kfi","slide":9,"text":"KIỂM SOÁT","textPreview":"KIỂM SOÁT","textChars":9,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/edovy5g7","slide":9,"text":"LLM đề xuất; Python có quyền nói “Chờ”","textPreview":"LLM đề xuất; Python có quyền nói “Chờ”","textChars":38,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/fyhc7axs","slide":9,"text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/o3qd4zy9","slide":9,"text":"Trọng số thay đổi theo kỳ đầu tư; nguồn không hoạt động được loại bỏ và tái chuẩn hóa.","textPreview":"Trọng số thay đổi theo kỳ đầu tư; nguồn không hoạt động được loại bỏ và tái chuẩn hóa.","textChars":86,"textLines":1,"bbox":[52,124,1080,44]}
+{"kind":"textbox","id":"sh/p4zedkfu","slide":9,"text":"Trọng số mặc định","textPreview":"Trọng số mặc định","textChars":17,"textLines":1,"bbox":[52,192,560,36]}
+{"kind":"shape","id":"sh/218v2pg3","slide":9,"bbox":[52,242,18,18]}
+{"kind":"textbox","id":"sh/n2hcbuxo","slide":9,"text":"Kỹ thuật","textPreview":"Kỹ thuật","textChars":8,"textLines":1,"bbox":[78,240,100,24]}
+{"kind":"shape","id":"sh/w7ad8zy5","slide":9,"bbox":[182,242,18,18]}
+{"kind":"textbox","id":"sh/x8jeh4fq","slide":9,"text":"Cơ bản","textPreview":"Cơ bản","textChars":6,"textLines":1,"bbox":[208,240,100,24]}
+{"kind":"shape","id":"sh/p0n6dwfm","slide":9,"bbox":[312,242,18,18]}
+{"kind":"textbox","id":"sh/4zep4ry1","slide":9,"text":"Tin tức","textPreview":"Tin tức","textChars":7,"textLines":1,"bbox":[338,240,100,24]}
+{"kind":"textbox","id":"sh/3ylobmxw","slide":9,"text":"Ngắn hạn","textPreview":"Ngắn hạn","textChars":8,"textLines":1,"bbox":[52,312,120,28]}
+{"kind":"shape","id":"sh/2xc72hgb","slide":9,"bbox":[180,300,264,52]}
+{"kind":"textbox","id":"sh/don6hwfy","slide":9,"text":"60%","textPreview":"60%","textChars":3,"textLines":1,"bbox":[180,315,264,24]}
+{"kind":"shape","id":"sh/cnep8ryd","slide":9,"bbox":[444,300,44,52]}
+{"kind":"textbox","id":"sh/rm5ofmxs","slide":9,"text":"10%","textPreview":"10%","textChars":3,"textLines":1,"bbox":[444,315,44,24]}
+{"kind":"shape","id":"sh/qlw76hg7","slide":9,"bbox":[488,300,132,52]}
+{"kind":"textbox","id":"sh/ts365cze","slide":9,"text":"30%","textPreview":"30%","textChars":3,"textLines":1,"bbox":[488,315,132,24]}
+{"kind":"textbox","id":"sh/sru5c7y9","slide":9,"text":"Trung hạn","textPreview":"Trung hạn","textChars":9,"textLines":1,"bbox":[52,404,120,28]}
+{"kind":"shape","id":"sh/kbeps76p","slide":9,"bbox":[180,392,176,52]}
+{"kind":"textbox","id":"sh/lc76lc7a","slide":9,"text":"40%","textPreview":"40%","textChars":3,"textLines":1,"bbox":[180,407,176,24]}
+{"kind":"shape","id":"sh/y9w7qxoz","slide":9,"bbox":[356,392,176,52]}
+{"kind":"textbox","id":"sh/ja5oj2pk","slide":9,"text":"40%","textPreview":"40%","textChars":3,"textLines":1,"bbox":[356,407,176,24]}
+{"kind":"shape","id":"sh/8fypw761","slide":9,"bbox":[532,392,88,52]}
+{"kind":"textbox","id":"sh/tg76pc7m","slide":9,"text":"20%","textPreview":"20%","textChars":3,"textLines":1,"bbox":[532,407,88,24]}
+{"kind":"textbox","id":"sh/6dg7uhov","slide":9,"text":"Dài hạn","textPreview":"Dài hạn","textChars":7,"textLines":1,"bbox":[52,496,120,28]}
+{"kind":"shape","id":"sh/7eponmpg","slide":9,"bbox":[180,484,66,52]}
+{"kind":"textbox","id":"sh/g3yp0r6x","slide":9,"text":"15%","textPreview":"15%","textChars":3,"textLines":1,"bbox":[180,499,66,24]}
+{"kind":"shape","id":"sh/h4r6twni","slide":9,"bbox":[246,484,308,52]}
+{"kind":"textbox","id":"sh/rytsjq9k","slide":9,"text":"70%","textPreview":"70%","textChars":3,"textLines":1,"bbox":[246,499,308,24]}
+{"kind":"shape","id":"sh/qxkrql8f","slide":9,"bbox":[554,484,66,52]}
+{"kind":"textbox","id":"sh/d0bal07q","slide":9,"text":"15%","textPreview":"15%","textChars":3,"textLines":1,"bbox":[554,499,66,24]}
+{"kind":"textbox","id":"sh/cz29svq5","slide":9,"text":"C = Σ w′ × c","textPreview":"C = Σ w′ × c","textChars":12,"textLines":1,"bbox":[180,588,260,34]}
+{"kind":"textbox","id":"sh/3a9sf69o","slide":9,"text":"Confidence là điểm nội bộ, không phải xác suất sinh lời.","textPreview":"Confidence là điểm nội bộ, không phải xác suất sinh lời.","textChars":56,"textLines":1,"bbox":[438,592,270,40]}
+{"kind":"shape","id":"sh/i90rml83","slide":9,"bbox":[700,188,528,426]}
+{"kind":"textbox","id":"sh/5wbahgru","slide":9,"text":"0,55","textPreview":"0,55","textChars":4,"textLines":1,"bbox":[738,220,180,70]}
+{"kind":"textbox","id":"sh/4v29obq9","slide":9,"text":"ngưỡng confidence tối thiểu","textPreview":"ngưỡng confidence tối thiểu","textChars":27,"textLines":1,"bbox":[914,245,270,32]}
+{"kind":"shape","id":"sh/nqdsraps","slide":9,"bbox":[738,306,450,0]}
+{"kind":"textbox","id":"sh/m54ry587","slide":9,"text":"Buy bị hạ thành Wait khi","textPreview":"Buy bị hạ thành Wait khi","textChars":24,"textLines":1,"bbox":[738,334,380,34]}
+{"kind":"shape","id":"sh/adkvm94r","slide":9,"bbox":[738,394,9,9]}
+{"kind":"textbox","id":"sh/vetwve5c","slide":9,"text":"Điểm kỹ thuật dưới 60% số chỉ báo bật","textPreview":"Điểm kỹ thuật dưới 60% số chỉ báo bật","textChars":37,"textLines":1,"bbox":[758,386,420,42]}
+{"kind":"shape","id":"sh/wf2dozmx","slide":9,"bbox":[738,446,9,9]}
+{"kind":"textbox","id":"sh/xgbex4n2","slide":9,"text":"Fundamental = weak","textPreview":"Fundamental = weak","textChars":18,"textLines":1,"bbox":[758,438,420,36]}
+{"kind":"shape","id":"sh/m90vip4f","slide":9,"bbox":[738,490,9,9]}
+{"kind":"textbox","id":"sh/natcru50","slide":9,"text":"News = negative","textPreview":"News = negative","textChars":15,"textLines":1,"bbox":[758,482,420,36]}
+{"kind":"shape","id":"sh/8b2dkzml","slide":9,"bbox":[738,534,9,9]}
+{"kind":"textbox","id":"sh/9cbut4n6","slide":9,"text":"Confidence < 0,55","textPreview":"Confidence < 0,55","textChars":17,"textLines":1,"bbox":[758,526,420,36]}
+{"kind":"notes","id":"nt/8ehyje","slide":9,"text":""}
+{"kind":"slide","id":"sl/hsc1z4","slide":10,"title":"ĐÁNH GIÁ","textShapes":16}
+{"kind":"textbox","id":"sh/7ydk7eh4","slide":10,"text":"ĐÁNH GIÁ","textPreview":"ĐÁNH GIÁ","textChars":8,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/szml0jyp","slide":10,"text":"Backtesting tái sử dụng logic production","textPreview":"Backtesting tái sử dụng logic production","textChars":40,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/t0v29oza","slide":10,"text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/i9k3u90n","slide":10,"text":"Mục tiêu là đo tác động của lớp agentic so với baseline, không xây một chiến lược nghiên cứu tách rời sản phẩm.","textPreview":"Mục tiêu là đo tác động của lớp agentic so với baseline, không xây một chiến lược nghiên cứu tách rời sản phẩm.","textChars":111,"textLines":1,"bbox":[52,124,1120,50]}
+{"kind":"shape","id":"sh/jatk3eh8","slide":10,"bbox":[86,220,0,340]}
+{"kind":"shape","id":"sh/kv2lwjit","slide":10,"bbox":[76,212,20,20]}
+{"kind":"shape","id":"sh/5wb25oze","slide":10,"bbox":[76,284,20,20]}
+{"kind":"shape","id":"sh/a503qp0r","slide":10,"bbox":[76,356,20,20]}
+{"kind":"shape","id":"sh/v6tkzuhc","slide":10,"bbox":[76,428,20,20]}
+{"kind":"shape","id":"sh/fudcjupo","slide":10,"bbox":[76,500,20,20]}
+{"kind":"textbox","id":"sh/ut4bqp83","slide":10,"text":"Parity gate","textPreview":"Parity gate","textChars":11,"textLines":1,"bbox":[112,208,170,28]}
+{"kind":"textbox","id":"sh/hwvul47e","slide":10,"text":"Vectorized engine khớp 100% với production scoring trên mẫu kiểm tra.","textPreview":"Vectorized engine khớp 100% với production scoring trên mẫu kiểm tra.","textChars":69,"textLines":1,"bbox":[282,206,400,52]}
+{"kind":"textbox","id":"sh/gvmtszqt","slide":10,"text":"Tín hiệu","textPreview":"Tín hiệu","textChars":8,"textLines":1,"bbox":[112,280,170,28]}
+{"kind":"textbox","id":"sh/3ixcnepk","slide":10,"text":"Điểm vượt ngưỡng từ dưới lên; dữ liệu lịch sử không dùng giá tương lai.","textPreview":"Điểm vượt ngưỡng từ dưới lên; dữ liệu lịch sử không dùng giá tương lai.","textChars":71,"textLines":1,"bbox":[282,278,400,52]}
+{"kind":"textbox","id":"sh/2xovu98z","slide":10,"text":"Mô phỏng","textPreview":"Mô phỏng","textChars":8,"textLines":1,"bbox":[112,352,170,28]}
+{"kind":"textbox","id":"sh/pkfup47q","slide":10,"text":"Vào lệnh ở open kế tiếp; phí 0,15% mỗi chiều; TP, SL hoặc timeout.","textPreview":"Vào lệnh ở open kế tiếp; phí 0,15% mỗi chiều; TP, SL hoặc timeout.","textChars":66,"textLines":1,"bbox":[282,350,400,52]}
+{"kind":"textbox","id":"sh/4j6dwjq5","slide":10,"text":"So sánh","textPreview":"So sánh","textChars":7,"textLines":1,"bbox":[112,424,170,28]}
+{"kind":"textbox","id":"sh/jmtcbapg","slide":10,"text":"Full pipeline, engine-only, buy-and-hold, 1.000 random-entry và ablation.","textPreview":"Full pipeline, engine-only, buy-and-hold, 1.000 random-entry và ablation.","textChars":73,"textLines":1,"bbox":[282,422,400,52]}
+{"kind":"textbox","id":"sh/y1kbi58v","slide":10,"text":"Đo lường","textPreview":"Đo lường","textChars":8,"textLines":1,"bbox":[112,496,170,28]}
+{"kind":"textbox","id":"sh/mhsfqdsj","slide":10,"text":"Return, win rate, drawdown, Sharpe, kiểm định, regime và walk-forward.","textPreview":"Return, win rate, drawdown, Sharpe, kiểm định, regime và walk-forward.","textChars":70,"textLines":1,"bbox":[282,494,400,52]}
+{"kind":"shape","id":"sh/ni1wji9o","slide":10,"bbox":[52,594,630,54]}
+{"kind":"textbox","id":"sh/ojaxsna9","slide":10,"text":"30 mã VN30 · Ablation 01/2023-12/2025 · Long-only · Daily bars","textPreview":"30 mã VN30 · Ablation 01/2023-12/2025 · Long-only · Daily bars","textChars":62,"textLines":1,"bbox":[70,611,600,24]}
+{"kind":"shape","id":"sh/9kjylsru","slide":10,"bbox":[724,190,504,394]}
+{"kind":"textbox","id":"sh/zehwfi9s","slide":10,"text":"Dashboard quản trị lưu cấu hình, lịch sử giao dịch, chỉ số và biểu đồ để kiểm tra lại.","textPreview":"Dashboard quản trị lưu cấu hình, lịch sử giao dịch, chỉ số và biểu đồ để kiểm tra lại.","textChars":86,"textLines":1,"bbox":[724,600,504,48]}
+{"kind":"image","id":"im/1sr6hsbm","slide":10,"name":"","geometry":"roundRect","alt":"Màn hình kết quả backtest trong dashboard quản trị Stockrium","bbox":[732,198,488,378]}
+{"kind":"notes","id":"nt/hsc1z4","slide":10,"text":""}
+{"kind":"slide","id":"sl/orfdps","slide":11,"title":"KIỂM THỬ","textShapes":27}
+{"kind":"textbox","id":"sh/o7qt8ned","slide":11,"text":"KIỂM THỬ","textPreview":"KIỂM THỬ","textChars":8,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/36hcfids","slide":11,"text":"Prototype vượt qua 108/108 test case","textPreview":"Prototype vượt qua 108/108 test case","textChars":36,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/258b6dw7","slide":11,"text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/14zad8vm","slide":11,"text":"Kiểm thử bao phủ hành trình người dùng, tích hợp dịch vụ, hiệu năng, bảo mật, usability và thiết bị.","textPreview":"Kiểm thử bao phủ hành trình người dùng, tích hợp dịch vụ, hiệu năng, bảo mật, usability và thiết bị.","textChars":100,"textLines":1,"bbox":[52,124,1080,48]}
+{"kind":"textbox","id":"sh/g3qt43e1","slide":11,"text":"108/108","textPreview":"108/108","textChars":7,"textLines":1,"bbox":[52,194,330,100]}
+{"kind":"textbox","id":"sh/f2hsbidg","slide":11,"text":"test case đạt","textPreview":"test case đạt","textChars":13,"textLines":1,"bbox":[56,302,260,36]}
+{"kind":"textbox","id":"sh/e1ob2dwv","slide":11,"text":"Không còn lỗi critical hoặc high severity chưa xử lý.","textPreview":"Không còn lỗi critical hoặc high severity chưa xử lý.","textChars":53,"textLines":1,"bbox":[56,356,320,76]}
+{"kind":"shape","id":"sh/t0fa98vq","slide":11,"bbox":[410,198,0,252]}
+{"kind":"textbox","id":"sh/sz6t03e5","slide":11,"text":"Full AI analysis","textPreview":"Full AI analysis","textChars":16,"textLines":1,"bbox":[454,204,310,32]}
+{"kind":"textbox","id":"sh/qh0r6pcn","slide":11,"text":"7,84 s","textPreview":"7,84 s","textChars":6,"textLines":1,"bbox":[454,256,220,70]}
+{"kind":"textbox","id":"sh/ri9szut8","slide":11,"text":"trung bình","textPreview":"trung bình","textChars":10,"textLines":1,"bbox":[454,314,220,26]}
+{"kind":"textbox","id":"sh/cjit8zut","slide":11,"text":"12,61 s","textPreview":"12,61 s","textChars":7,"textLines":1,"bbox":[682,256,230,70]}
+{"kind":"textbox","id":"sh/dkra14by","slide":11,"text":"P95 < 15 s","textPreview":"P95 < 15 s","textChars":10,"textLines":1,"bbox":[682,314,230,26]}
+{"kind":"shape","id":"sh/2tgr25cb","slide":11,"bbox":[930,198,0,252]}
+{"kind":"textbox","id":"sh/3u9svadw","slide":11,"text":"Chatbot","textPreview":"Chatbot","textChars":7,"textLines":1,"bbox":[974,204,220,32]}
+{"kind":"textbox","id":"sh/4vi94fuh","slide":11,"text":"4,36 s","textPreview":"4,36 s","textChars":6,"textLines":1,"bbox":[974,256,210,70]}
+{"kind":"textbox","id":"sh/pgraxkb2","slide":11,"text":"trung bình","textPreview":"trung bình","textChars":10,"textLines":1,"bbox":[974,314,210,26]}
+{"kind":"textbox","id":"sh/upgry5cf","slide":11,"text":"7,92 s","textPreview":"7,92 s","textChars":6,"textLines":1,"bbox":[974,358,210,70]}
+{"kind":"textbox","id":"sh/fqpsrad0","slide":11,"text":"P95 < 10 s","textPreview":"P95 < 10 s","textChars":10,"textLines":1,"bbox":[974,406,210,24]}
+{"kind":"shape","id":"sh/zilgj2pg","slide":11,"bbox":[52,492,1176,0]}
+{"kind":"textbox","id":"sh/yhcfaxov","slide":11,"text":"48","textPreview":"48","textChars":2,"textLines":1,"bbox":[58,520,80,48]}
+{"kind":"textbox","id":"sh/lk3ylcnm","slide":11,"text":"Functional","textPreview":"Functional","textChars":10,"textLines":1,"bbox":[140,531,190,30]}
+{"kind":"textbox","id":"sh/kjuhc761","slide":11,"text":"24","textPreview":"24","textChars":2,"textLines":1,"bbox":[350,520,80,48]}
+{"kind":"textbox","id":"sh/7mlgnm5s","slide":11,"text":"Integration/API","textPreview":"Integration/API","textChars":15,"textLines":1,"bbox":[432,531,190,30]}
+{"kind":"textbox","id":"sh/mlczeho7","slide":11,"text":"20","textPreview":"20","textChars":2,"textLines":1,"bbox":[642,520,80,48]}
+{"kind":"textbox","id":"sh/9o3ypwni","slide":11,"text":"Non-functional","textPreview":"Non-functional","textChars":14,"textLines":1,"bbox":[724,531,190,30]}
+{"kind":"textbox","id":"sh/8nuhgr6x","slide":11,"text":"16","textPreview":"16","textChars":2,"textLines":1,"bbox":[934,520,80,48]}
+{"kind":"textbox","id":"sh/nq1gbip8","slide":11,"text":"Compatibility","textPreview":"Compatibility","textChars":13,"textLines":1,"bbox":[1016,531,190,30]}
+{"kind":"textbox","id":"sh/2p8f2don","slide":11,"text":"Android + iOS · VI + EN · light + dark · UAT có chuyên viên FPT Securities","textPreview":"Android + iOS · VI + EN · light + dark · UAT có chuyên viên FPT Securities","textChars":74,"textLines":1,"bbox":[58,592,880,26]}
+{"kind":"textbox","id":"sh/sv6dcjml","slide":11,"text":"100% chỉ áp dụng cho bộ case và môi trường đã kiểm thử.","textPreview":"100% chỉ áp dụng cho bộ case và môi trường đã kiểm thử.","textChars":55,"textLines":1,"bbox":[870,592,358,38]}
+{"kind":"notes","id":"nt/orfdps","slide":11,"text":""}
+{"kind":"slide","id":"sl/vuwdw6","slide":12,"title":"KẾT QUẢ","textShapes":15}
+{"kind":"textbox","id":"sh/retcvu10","slide":12,"text":"KẾT QUẢ","textPreview":"KẾT QUẢ","textChars":7,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/sf2tozil","slide":12,"text":"Agentic layer giảm mức độ tham gia và drawdown","textPreview":"Agentic layer giảm mức độ tham gia và drawdown","textChars":46,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/dgbux4j6","slide":12,"text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/ehkbq90r","slide":12,"text":"Đổi lại, lợi nhuận trung bình và win rate thấp hơn engine-only.","textPreview":"Đổi lại, lợi nhuận trung bình và win rate thấp hơn engine-only.","textChars":63,"textLines":1,"bbox":[52,124,850,38]}
+{"kind":"shape","id":"sh/fitczehc","slide":12,"bbox":[52,178,636,442]}
+{"kind":"textbox","id":"sh/1kvu1oz2","slide":12,"text":"Đơn vị: %; Max DD hiển thị theo độ lớn tuyệt đối.","textPreview":"Đơn vị: %; Max DD hiển thị theo độ lớn tuyệt đối.","textChars":49,"textLines":1,"bbox":[80,584,560,20]}
+{"kind":"textbox","id":"sh/2l4bu90n","slide":12,"text":"-41,6%","textPreview":"-41,6%","textChars":6,"textLines":1,"bbox":[742,188,230,70]}
+{"kind":"textbox","id":"sh/nmdc3eh8","slide":12,"text":"giao dịch: 741 → 433","textPreview":"giao dịch: 741 → 433","textChars":20,"textLines":1,"bbox":[742,250,230,42]}
+{"kind":"textbox","id":"sh/bex0rq1k","slide":12,"text":"+9,03 pp","textPreview":"+9,03 pp","textChars":8,"textLines":1,"bbox":[992,188,236,70]}
+{"kind":"textbox","id":"sh/adojylkz","slide":12,"text":"cải thiện mean max drawdown","textPreview":"cải thiện mean max drawdown","textChars":27,"textLines":1,"bbox":[992,250,236,46]}
+{"kind":"shape","id":"sh/xgfit0ja","slide":12,"bbox":[742,316,486,0]}
+{"kind":"textbox","id":"sh/cf610v2p","slide":12,"text":"12/30","textPreview":"12/30","textChars":5,"textLines":1,"bbox":[742,344,220,70]}
+{"kind":"textbox","id":"sh/nqd0n618","slide":12,"text":"mã vượt engine-only","textPreview":"mã vượt engine-only","textChars":19,"textLines":1,"bbox":[742,400,220,40]}
+{"kind":"textbox","id":"sh/2p4julkn","slide":12,"text":"4/30","textPreview":"4/30","textChars":4,"textLines":1,"bbox":[992,344,220,70]}
+{"kind":"textbox","id":"sh/pcvipgje","slide":12,"text":"mã vượt buy-and-hold","textPreview":"mã vượt buy-and-hold","textChars":20,"textLines":1,"bbox":[992,400,220,40]}
+{"kind":"shape","id":"sh/orm1wb2t","slide":12,"bbox":[742,492,486,128]}
+{"kind":"textbox","id":"sh/7mhkza1s","slide":12,"text":"Diễn giải","textPreview":"Diễn giải","textChars":9,"textLines":1,"bbox":[766,514,110,24]}
+{"kind":"textbox","id":"sh/6l8j65k7","slide":12,"text":"Lớp agentic phù hợp với vai trò bộ lọc phơi nhiễm thận trọng, chưa phải nguồn alpha rộng và ổn định.","textPreview":"Lớp agentic phù hợp với vai trò bộ lọc phơi nhiễm thận trọng, chưa phải nguồn alpha rộng và ổn định.","textChars":100,"textLines":1,"bbox":[766,548,430,54]}
+{"kind":"chart","id":"ch/ovu18z2x","slide":12,"name":"","chartType":"bar","bbox":[74,204,592,366]}
+{"kind":"notes","id":"nt/vuwdw6","slide":12,"text":""}
+{"kind":"slide","id":"sl/ujbikm","slide":13,"title":"ĐỘ TIN CẬY","textShapes":13}
+{"kind":"textbox","id":"sh/03yh032x","slide":13,"text":"ĐỘ TIN CẬY","textPreview":"ĐỘ TIN CẬY","textChars":10,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/f2pg7ils","slide":13,"text":"Bằng chứng thống kê và robustness còn hạn chế","textPreview":"Bằng chứng thống kê và robustness còn hạn chế","textChars":45,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/e1gzydk7","slide":13,"text":"13","textPreview":"13","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/d07y583m","slide":13,"text":"Các tín hiệu tích cực chưa ổn định qua mã, confidence, thời gian và chế độ thị trường.","textPreview":"Các tín hiệu tích cực chưa ổn định qua mã, confidence, thời gian và chế độ thị trường.","textChars":86,"textLines":1,"bbox":[52,124,1030,42]}
+{"kind":"shape","id":"sh/szyhw321","slide":13,"bbox":[640,198,0,390]}
+{"kind":"shape","id":"sh/rypg3ylg","slide":13,"bbox":[52,394,1176,0]}
+{"kind":"textbox","id":"sh/qdgfutkv","slide":13,"text":"3/30","textPreview":"3/30","textChars":4,"textLines":1,"bbox":[52,210,520,72]}
+{"kind":"textbox","id":"sh/xwby1s3q","slide":13,"text":"one-sample t-tests có ý nghĩa ở mức 5%","textPreview":"one-sample t-tests có ý nghĩa ở mức 5%","textChars":38,"textLines":1,"bbox":[52,292,520,70]}
+{"kind":"textbox","id":"sh/cv2h8n25","slide":13,"text":"0,032","textPreview":"0,032","textChars":5,"textLines":1,"bbox":[676,210,520,72]}
+{"kind":"textbox","id":"sh/algjqd8j","slide":13,"text":"median score-return IC; chỉ 1 mã có ý nghĩa","textPreview":"median score-return IC; chỉ 1 mã có ý nghĩa","textChars":43,"textLines":1,"bbox":[676,292,520,70]}
+{"kind":"textbox","id":"sh/b6pkzyp4","slide":13,"text":"2,00% vs 1,96%","textPreview":"2,00% vs 1,96%","textChars":14,"textLines":1,"bbox":[52,420,520,72]}
+{"kind":"textbox","id":"sh/c7y1s3qp","slide":13,"text":"mean return nhóm confidence cao và trung gần như tương đương","textPreview":"mean return nhóm confidence cao và trung gần như tương đương","textChars":60,"textLines":1,"bbox":[52,502,520,70]}
+{"kind":"textbox","id":"sh/x872187u","slide":13,"text":"1","textPreview":"1","textChars":1,"textLines":1,"bbox":[676,420,520,72]}
+{"kind":"textbox","id":"sh/2hwj2t87","slide":13,"text":"giao dịch trong downtrend; walk-forward profitable windows trung bình 19,52%","textPreview":"giao dịch trong downtrend; walk-forward profitable windows trung bình 19,52%","textChars":76,"textLines":1,"bbox":[676,502,520,70]}
+{"kind":"shape","id":"sh/ni50vyps","slide":13,"bbox":[52,608,1176,52]}
+{"kind":"textbox","id":"sh/ojy143qd","slide":13,"text":"Kết luận: thí nghiệm minh bạch và hữu ích để chẩn đoán, nhưng chưa thiết lập alpha đáng tin cậy hoặc confidence được hiệu chỉnh.","textPreview":"Kết luận: thí nghiệm minh bạch và hữu ích để chẩn đoán, nhưng chưa thiết lập alpha đáng tin cậy hoặc confidence được hiệu chỉnh.","textChars":128,"textLines":1,"bbox":[72,624,1136,28]}
+{"kind":"notes","id":"nt/ujbikm","slide":13,"text":""}
+{"kind":"slide","id":"sl/elwy90","slide":14,"title":"ĐÓNG GÓP","textShapes":17}
+{"kind":"textbox","id":"sh/u90je9kb","slide":14,"text":"ĐÓNG GÓP","textPreview":"ĐÓNG GÓP","textChars":8,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/hcb2po32","slide":14,"text":"Hai mục tiêu đạt đáng kể; dữ liệu còn dang dở","textPreview":"Hai mục tiêu đạt đáng kể; dữ liệu còn dang dở","textChars":45,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/gb21gj2h","slide":14,"text":"14","textPreview":"14","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/3ytkrel8","slide":14,"text":"Mức độ hoàn thành phản ánh cả sản phẩm đã chạy và những điều kiện còn thiếu để trở thành nền tảng nghiên cứu tái lập.","textPreview":"Mức độ hoàn thành phản ánh cả sản phẩm đã chạy và những điều kiện còn thiếu để trở thành nền tảng nghiên cứu tái lập.","textChars":117,"textLines":1,"bbox":[52,124,1120,48]}
+{"kind":"textbox","id":"sh/2dkji9kn","slide":14,"text":"O1","textPreview":"O1","textChars":2,"textLines":1,"bbox":[52,208,86,58]}
+{"kind":"shape","id":"sh/p0b2to3y","slide":14,"bbox":[52,282,190,34]}
+{"kind":"textbox","id":"sh/4z21kj2d","slide":14,"text":"Substantially achieved","textPreview":"Substantially achieved","textChars":22,"textLines":1,"bbox":[62,289,170,20]}
+{"kind":"textbox","id":"sh/r2dkvyl4","slide":14,"text":"Decision-support prototype","textPreview":"Decision-support prototype","textChars":26,"textLines":1,"bbox":[52,344,340,70]}
+{"kind":"textbox","id":"sh/q1kjmtkj","slide":14,"text":"Ứng dụng mobile, backend, market/news/fundamental, configurable analysis và chatbot.","textPreview":"Ứng dụng mobile, backend, market/news/fundamental, configurable analysis và chatbot.","textChars":84,"textLines":1,"bbox":[52,432,340,132]}
+{"kind":"shape","id":"sh/gf6tsjah","slide":14,"bbox":[428,200,0,400]}
+{"kind":"textbox","id":"sh/1gfulor2","slide":14,"text":"O2","textPreview":"O2","textChars":2,"textLines":1,"bbox":[452,208,86,58]}
+{"kind":"shape","id":"sh/ed4bq9sb","slide":14,"bbox":[452,282,190,34]}
+{"kind":"textbox","id":"sh/fexcje9w","slide":14,"text":"Substantially achieved","textPreview":"Substantially achieved","textChars":22,"textLines":1,"bbox":[462,289,170,20]}
+{"kind":"textbox","id":"sh/oj6tw3ad","slide":14,"text":"Backtesting framework","textPreview":"Backtesting framework","textChars":21,"textLines":1,"bbox":[452,344,340,70]}
+{"kind":"textbox","id":"sh/pkfup8ry","slide":14,"text":"Production-aligned scoring, parity, baselines, costs, risk metrics và experiment artifacts.","textPreview":"Production-aligned scoring, parity, baselines, costs, risk metrics và experiment artifacts.","textChars":91,"textLines":1,"bbox":[452,432,340,132]}
+{"kind":"shape","id":"sh/2hobutsn","slide":14,"bbox":[828,200,0,400]}
+{"kind":"textbox","id":"sh/3ixcny98","slide":14,"text":"O3","textPreview":"O3","textChars":2,"textLines":1,"bbox":[852,208,86,58]}
+{"kind":"shape","id":"sh/c7qt03ap","slide":14,"bbox":[852,282,155,34]}
+{"kind":"textbox","id":"sh/d8zut8ra","slide":14,"text":"Partially achieved","textPreview":"Partially achieved","textChars":18,"textLines":1,"bbox":[862,289,135,20]}
+{"kind":"textbox","id":"sh/lsb2x4f2","slide":14,"text":"Research-ready dataset","textPreview":"Research-ready dataset","textChars":22,"textLines":1,"bbox":[852,344,340,70]}
+{"kind":"textbox","id":"sh/0r2lozyh","slide":14,"text":"Đã có schema và pipeline; còn thiếu versioned release, licensing và point-in-time metadata.","textPreview":"Đã có schema và pipeline; còn thiếu versioned release, licensing và point-in-time metadata.","textChars":91,"textLines":1,"bbox":[852,432,340,132]}
+{"kind":"shape","id":"sh/zqtkvexw","slide":14,"bbox":[52,616,1176,0]}
+{"kind":"textbox","id":"sh/ypkjm9gb","slide":14,"text":"Đóng góp xuyên suốt: tích hợp dữ liệu dị thể, workflow hybrid có thể kiểm tra và đánh giá lịch sử trung thực.","textPreview":"Đóng góp xuyên suốt: tích hợp dữ liệu dị thể, workflow hybrid có thể kiểm tra và đánh giá lịch sử trung thực.","textChars":109,"textLines":1,"bbox":[52,636,1120,30]}
+{"kind":"notes","id":"nt/elwy90","slide":14,"text":""}
+{"kind":"slide","id":"sl/61jvmq","slide":15,"title":"HƯỚNG PHÁT TRIỂN","textShapes":16}
+{"kind":"textbox","id":"sh/r2hkredc","slide":15,"text":"HƯỚNG PHÁT TRIỂN","textPreview":"HƯỚNG PHÁT TRIỂN","textChars":16,"textLines":1,"bbox":[52,25,380,20]}
+{"kind":"textbox","id":"sh/s3ql0jux","slide":15,"text":"Hạn chế hiện tại định hướng công việc tiếp theo","textPreview":"Hạn chế hiện tại định hướng công việc tiếp theo","textChars":47,"textLines":1,"bbox":[52,52,1176,64]}
+{"kind":"textbox","id":"sh/t4z2tovi","slide":15,"text":"15","textPreview":"15","textChars":2,"textLines":1,"bbox":[1178,676,50,18]}
+{"kind":"textbox","id":"sh/ixo3u9cv","slide":15,"text":"Ưu tiên không chỉ là thêm mô hình, mà là nâng tính đúng thời điểm, tái lập và hiện thực của đánh giá.","textPreview":"Ưu tiên không chỉ là thêm mô hình, mà là nâng tính đúng thời điểm, tái lập và hiện thực của đánh giá.","textChars":101,"textLines":1,"bbox":[52,124,1100,48]}
+{"kind":"textbox","id":"sh/jyxknud0","slide":15,"text":"Rủi ro đối với tính hợp lệ","textPreview":"Rủi ro đối với tính hợp lệ","textChars":26,"textLines":1,"bbox":[52,196,530,42]}
+{"kind":"shape","id":"sh/4z6lwzul","slide":15,"bbox":[52,252,510,0]}
+{"kind":"shape","id":"sh/50z2p4v6","slide":15,"bbox":[52,290,9,9]}
+{"kind":"textbox","id":"sh/2ts36tcz","slide":15,"text":"Fundamental chưa point-in-time; có nguy cơ look-ahead.","textPreview":"Fundamental chưa point-in-time; có nguy cơ look-ahead.","textChars":54,"textLines":1,"bbox":[72,282,500,50]}
+{"kind":"shape","id":"sh/3u14zydk","slide":15,"bbox":[52,356,9,9]}
+{"kind":"textbox","id":"sh/zah0jal4","slide":15,"text":"VN30 hiện tại tạo survivorship bias.","textPreview":"VN30 hiện tại tạo survivorship bias.","textChars":36,"textLines":1,"bbox":[72,348,500,42]}
+{"kind":"shape","id":"sh/y98japkz","slide":15,"bbox":[52,414,9,9]}
+{"kind":"textbox","id":"sh/lczilk3a","slide":15,"text":"Mẫu giao dịch, walk-forward và downtrend còn thưa.","textPreview":"Mẫu giao dịch, walk-forward và downtrend còn thưa.","textChars":50,"textLines":1,"bbox":[72,406,500,50]}
+{"kind":"shape","id":"sh/kbq1cf2p","slide":15,"bbox":[52,480,9,9]}
+{"kind":"textbox","id":"sh/7yh0nulg","slide":15,"text":"Execution model chưa có shared capital, liquidity, slippage và partial fill.","textPreview":"Execution model chưa có shared capital, liquidity, slippage và partial fill.","textChars":76,"textLines":1,"bbox":[72,472,500,68]}
+{"kind":"shape","id":"sh/md8jepkv","slide":15,"bbox":[52,566,9,9]}
+{"kind":"textbox","id":"sh/90jip43m","slide":15,"text":"Thiếu manifest chung cho model, prompt, data snapshot và seed.","textPreview":"Thiếu manifest chung cho model, prompt, data snapshot và seed.","textChars":62,"textLines":1,"bbox":[72,558,500,58]}
+{"kind":"shape","id":"sh/8zq1gz21","slide":15,"bbox":[630,190,0,438]}
+{"kind":"textbox","id":"sh/v210relc","slide":15,"text":"Ưu tiên tiếp theo","textPreview":"Ưu tiên tiếp theo","textChars":17,"textLines":1,"bbox":[676,196,520,42]}
+{"kind":"shape","id":"sh/u1sji9kr","slide":15,"bbox":[676,252,510,0]}
+{"kind":"shape","id":"sh/6xc3ad4z","slide":15,"bbox":[676,290,9,9]}
+{"kind":"textbox","id":"sh/ryl4jy5k","slide":15,"text":"Versioned point-in-time dataset và historical constituents.","textPreview":"Versioned point-in-time dataset và historical constituents.","textChars":59,"textLines":1,"bbox":[696,282,500,50]}
+{"kind":"shape","id":"sh/szulc3m5","slide":15,"bbox":[676,356,9,9]}
+{"kind":"textbox","id":"sh/t0nml8nq","slide":15,"text":"Immutable run manifest, pinned model/prompt và cached output.","textPreview":"Immutable run manifest, pinned model/prompt và cached output.","textChars":61,"textLines":1,"bbox":[696,348,500,52]}
+{"kind":"shape","id":"sh/itc36t43","slide":15,"bbox":[676,424,9,9]}
+{"kind":"textbox","id":"sh/jul4fy5o","slide":15,"text":"Portfolio simulator với cash, position sizing, gaps và price-limit.","textPreview":"Portfolio simulator với cash, position sizing, gaps và price-limit.","textChars":67,"textLines":1,"bbox":[696,416,500,54]}
+{"kind":"shape","id":"sh/4vul83m9","slide":15,"bbox":[676,494,9,9]}
+{"kind":"textbox","id":"sh/5w3mh8nu","slide":15,"text":"Grounding tới candle/report/article và calibrate confidence bằng forward outcome.","textPreview":"Grounding tới candle/report/article và calibrate confidence bằng forward outcome.","textChars":81,"textLines":1,"bbox":[696,486,500,68]}
+{"kind":"shape","id":"sh/2pw3ix47","slide":15,"bbox":[676,578,9,9]}
+{"kind":"textbox","id":"sh/3q54ri5s","slide":15,"text":"Automated CI tests, monitoring, security và nghiên cứu người dùng.","textPreview":"Automated CI tests, monitoring, security và nghiên cứu người dùng.","textChars":66,"textLines":1,"bbox":[696,570,500,52]}
+{"kind":"notes","id":"nt/61jvmq","slide":15,"text":""}
+{"kind":"slide","id":"sl/ocrc6e","slide":16,"title":"KẾT LUẬN","textShapes":11}
+{"kind":"textbox","id":"sh/u5gnup8z","slide":16,"text":"KẾT LUẬN","textPreview":"KẾT LUẬN","textChars":8,"textLines":1,"bbox":[58,50,260,24]}
+{"kind":"textbox","id":"sh/hs7m54rq","slide":16,"text":"Đóng góp mạnh nhất của Stockrium không phải là lợi nhuận vượt trội.","textPreview":"Đóng góp mạnh nhất của Stockrium không phải là lợi nhuận vượt trội.","textChars":67,"textLines":1,"bbox":[58,138,1110,130]}
+{"kind":"textbox","id":"sh/gry5wzq5","slide":16,"text":"Đó là một môi trường tích hợp, giải thích được và có thể kiểm thử.","textPreview":"Đó là một môi trường tích hợp, giải thích được và có thể kiểm thử.","textChars":66,"textLines":1,"bbox":[58,286,1070,92]}
+{"kind":"shape","id":"sh/3u9o7e9g","slide":16,"bbox":[58,418,1160,0]}
+{"kind":"textbox","id":"sh/it0ny98v","slide":16,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[58,458,42,28]}
+{"kind":"textbox","id":"sh/5wr694rm","slide":16,"text":"Tổ chức ba nguồn bằng chứng trong một trải nghiệm thống nhất.","textPreview":"Tổ chức ba nguồn bằng chứng trong một trải nghiệm thống nhất.","textChars":61,"textLines":1,"bbox":[108,454,330,64]}
+{"kind":"textbox","id":"sh/4vi50jq1","slide":16,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[470,458,42,28]}
+{"kind":"textbox","id":"sh/ry9obe9s","slide":16,"text":"Agentic layer lọc phơi nhiễm và giảm drawdown, nhưng chưa chứng minh alpha.","textPreview":"Agentic layer lọc phơi nhiễm và giảm drawdown, nhưng chưa chứng minh alpha.","textChars":75,"textLines":1,"bbox":[520,454,350,74]}
+{"kind":"textbox","id":"sh/qx0n2987","slide":16,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[902,458,42,28]}
+{"kind":"textbox","id":"sh/0vulo3ah","slide":16,"text":"Bước tiếp theo là dữ liệu point-in-time và đánh giá tái lập, hiện thực hơn.","textPreview":"Bước tiếp theo là dữ liệu point-in-time và đánh giá tái lập, hiện thực hơn.","textChars":75,"textLines":1,"bbox":[952,454,270,80]}
+{"kind":"textbox","id":"sh/1g3mx8b2","slide":16,"text":"Q&A","textPreview":"Q&A","textChars":3,"textLines":1,"bbox":[58,616,250,56]}
+{"kind":"textbox","id":"sh/ets3mtsb","slide":16,"text":"Le Quoc Huy · Nguyen Vinh Khang","textPreview":"Le Quoc Huy · Nguyen Vinh Khang","textChars":31,"textLines":1,"bbox":[780,640,440,28]}
+{"kind":"notes","id":"nt/ocrc6e","slide":16,"text":""}

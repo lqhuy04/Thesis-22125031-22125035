@@ -33,7 +33,7 @@ import Entypo from "@expo/vector-icons/build/Entypo";
 import Feather from "@expo/vector-icons/build/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/build/MaterialCommunityIcons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -160,7 +160,7 @@ const InvestmentIdeasSkeleton = () => {
           width={36}
           height={11}
           animatedOpacity={animatedOpacity}
-          style={{ flex: 1, marginRight: 12 }}
+          style={{ flex: 1.5, marginRight: 12 }}
         />
         <SkeletonBox
           width={52}
@@ -213,7 +213,7 @@ const InvestmentIdeasSkeleton = () => {
             />
           </View>
           {/* Price + change */}
-          <View style={{ flex: 1, marginRight: 12, gap: 4 }}>
+          <View style={{ flex: 1.5, marginRight: 12, gap: 4 }}>
             <SkeletonBox
               width={30}
               height={13}
@@ -293,7 +293,7 @@ const PageTableSkeleton = () => {
           width={36}
           height={11}
           animatedOpacity={animatedOpacity}
-          style={{ flex: 1, marginRight: 12 }}
+          style={{ flex: 1.5, marginRight: 12 }}
         />
         <SkeletonBox
           width={52}
@@ -346,7 +346,7 @@ const PageTableSkeleton = () => {
             />
           </View>
           {/* Price + change */}
-          <View style={{ flex: 1, marginRight: 12, gap: 4 }}>
+          <View style={{ flex: 1.5, marginRight: 12, gap: 4 }}>
             <SkeletonBox
               width={30}
               height={13}
@@ -406,6 +406,7 @@ const InvestmentIdeas = () => {
   };
 
   const flatListRef = useRef<FlatList>(null);
+  const params = useLocalSearchParams<{ tab?: string; msgType?: string }>();
 
   // ------------------------------------------------------------------
   // Tabs definition (same logic as SuggestionSection)
@@ -541,6 +542,31 @@ const InvestmentIdeas = () => {
     setCurrentPage(targetIndex);
   };
 
+  // Jump to the exact sub-tab passed via navigation params (from
+  // SuggestionSection); falls back to the group's first sub-tab if the
+  // msgType isn't found.
+  useEffect(() => {
+    if (
+      params.tab !== "trend" &&
+      params.tab !== "community" &&
+      params.tab !== "top_choice"
+    ) {
+      return;
+    }
+    const matchedIndex = tabs.findIndex((t) => t.msgType === params.msgType);
+    if (matchedIndex !== -1) {
+      setActiveGroup(params.tab);
+      flatListRef.current?.scrollToIndex({
+        index: matchedIndex,
+        animated: true,
+      });
+      setCurrentPage(matchedIndex);
+    } else {
+      handleGroupPress(params.tab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.tab, params.msgType, tabs]);
+
   const handleSubTabPress = (globalIndex: number) => {
     flatListRef.current?.scrollToIndex({ index: globalIndex, animated: true });
     setCurrentPage(globalIndex);
@@ -628,13 +654,19 @@ const InvestmentIdeas = () => {
             </Text>
           </View>
         </View>
-        <View style={{ flex: 1, marginRight: 12 }}>
+        <View style={{ flex: 1.5, marginRight: 12 }}>
           <Text typography="labelLarge" color={theme.text.primary}>
-            {stock.current_price.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {stock.current_price.toLocaleString("vi-VN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </Text>
           <Text typography="bodySmall" color={changeColor}>
             {isPositive ? "+" : ""}
-            {stock.price_change.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {stock.price_change.toLocaleString("vi-VN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
           </Text>
         </View>
         <View
@@ -648,7 +680,12 @@ const InvestmentIdeas = () => {
           }}
         >
           <Text typography="labelMedium" color={changeColor}>
-            {arrow} {Math.abs(stock.per_price_change).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+            {arrow}{" "}
+            {Math.abs(stock.per_price_change).toLocaleString("vi-VN", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            %
           </Text>
         </View>
       </TouchableOpacity>
@@ -742,7 +779,7 @@ const InvestmentIdeas = () => {
             <TouchableOpacity
               onPress={() => handleSortPress("price")}
               style={{
-                flex: 1,
+                flex: 1.5,
                 flexDirection: "row",
                 alignItems: "center",
                 marginRight: 12,
@@ -829,26 +866,6 @@ const InvestmentIdeas = () => {
                   />
                 </View>
               </TouchableOpacity>
-
-              {/* {item.group === "trend" ? (
-                <TouchableOpacity
-                  onPress={() => setIntervalSheetVisible(true)}
-                  style={{ flexDirection: "row", alignItems: "center" }}
-                >
-                  <Text typography="bodySmall" color={theme.text.primary}>
-                    {t(intervalLabelKey)}
-                  </Text>
-                  <Text
-                    typography="bodySmall"
-                    color={theme.text.primary}
-                    style={{ marginLeft: 3 }}
-                  >
-                    ▼
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <View />
-              )} */}
 
               <TouchableOpacity
                 onPress={() =>

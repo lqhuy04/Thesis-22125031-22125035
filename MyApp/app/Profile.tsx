@@ -1,6 +1,7 @@
 import { useTheme } from "@/hooks/ThemeContext";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Modal,
   Pressable,
@@ -11,7 +12,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Text } from "@/components/ui/Text";
 import { router, useFocusEffect } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
@@ -42,8 +46,16 @@ const SkeletonBox = ({
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.4,
+          duration: 700,
+          useNativeDriver: true,
+        }),
       ]),
     );
     pulse.start();
@@ -52,7 +64,16 @@ const SkeletonBox = ({
 
   return (
     <Animated.View
-      style={[{ width, height, borderRadius, backgroundColor: theme.border.default, opacity }, style]}
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: theme.border.default,
+          opacity,
+        },
+        style,
+      ]}
     />
   );
 };
@@ -153,8 +174,10 @@ const MenuSection = ({ title, items }: MenuSectionProps) => {
 
 const Profile = () => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const { toggleTheme, isDark, resetTheme } = useTheme();
   const { language, setLanguage, t } = useLocalization();
@@ -314,7 +337,11 @@ const Profile = () => {
             </>
           ) : (
             <>
-              <SkeletonBox width="75%" height={18} style={{ marginBottom: 8 }} />
+              <SkeletonBox
+                width="75%"
+                height={18}
+                style={{ marginBottom: 8 }}
+              />
               <SkeletonBox width="55%" height={14} />
             </>
           )}
@@ -347,6 +374,7 @@ const Profile = () => {
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               padding: 20,
+              paddingBottom: insets.bottom,
               gap: 8,
             }}
           >
@@ -442,6 +470,7 @@ const Profile = () => {
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <TouchableOpacity
+                disabled={isLoggingOut}
                 style={{
                   flex: 1,
                   paddingVertical: 12,
@@ -450,6 +479,7 @@ const Profile = () => {
                   borderWidth: 1,
                   borderColor: theme.border.default,
                   backgroundColor: theme.background.surface,
+                  opacity: isLoggingOut ? 0.5 : 1,
                 }}
                 onPress={() => setConfirmLogout(false)}
               >
@@ -459,26 +489,34 @@ const Profile = () => {
               </TouchableOpacity>
 
               <TouchableOpacity
+                disabled={isLoggingOut}
                 style={{
                   flex: 1,
                   paddingVertical: 12,
                   borderRadius: 12,
                   alignItems: "center",
+                  justifyContent: "center",
                   backgroundColor: theme.base.error,
+                  opacity: isLoggingOut ? 0.7 : 1,
                 }}
                 onPress={async () => {
-                  await logOut();
-                  // Đưa Onboarding, theme, lang về mặc định
-                  await resetOnboarding();
-                  await resetTheme();
-                  await setLanguage("vi");
-                  setConfirmLogout(false);
-                  router.replace("/Authentication");
+                  setIsLoggingOut(true);
+                  try {
+                    await logOut();
+                    router.replace("/Authentication");
+                  } finally {
+                    setIsLoggingOut(false);
+                    setConfirmLogout(false);
+                  }
                 }}
               >
-                <Text typography="titleMedium" color={theme.text.onPrimary}>
-                  {t("profile.logOut")}
-                </Text>
+                {isLoggingOut ? (
+                  <ActivityIndicator color={theme.text.onPrimary} />
+                ) : (
+                  <Text typography="titleMedium" color={theme.text.onPrimary}>
+                    {t("profile.logOut")}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           </Pressable>

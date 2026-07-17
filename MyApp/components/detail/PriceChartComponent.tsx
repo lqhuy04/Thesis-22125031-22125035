@@ -617,46 +617,53 @@ const PriceChartComponent = ({
 
               <View style={{ flex: 1 }} />
 
-              <Text typography="bodyMedium" color={theme.text.primary}>
-                {t("priceChart.technicalIndicator")}
-              </Text>
+              {!isMarketIndex && (
+                <>
+                  <Text typography="bodyMedium" color={theme.text.primary}>
+                    {t("priceChart.technicalIndicator")}
+                  </Text>
 
-              <TouchableOpacity
-                onPress={() => setShowIndicatorSheet(true)}
-                style={{
-                  backgroundColor: theme.background.bg,
-                  borderWidth: 1,
-                  borderColor: theme.border.default,
-                  paddingVertical: 4.5,
-                  paddingHorizontal: 8,
-                  borderRadius: 8,
-                  flexDirection: "row",
-                  alignItems: "center",
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="finance"
-                  size={18}
-                  color={theme.text.primary}
-                />
-                {activeIndicatorCount > 0 && (
-                  <View
+                  <TouchableOpacity
+                    onPress={() => setShowIndicatorSheet(true)}
                     style={{
-                      width: 16,
-                      height: 16,
+                      backgroundColor: theme.background.bg,
+                      borderWidth: 1,
+                      borderColor: theme.border.default,
+                      paddingVertical: 4.5,
+                      paddingHorizontal: 8,
                       borderRadius: 8,
+                      flexDirection: "row",
                       alignItems: "center",
-                      justifyContent: "center",
-                      backgroundColor: theme.base.primary,
-                      marginLeft: 4,
                     }}
                   >
-                    <Text typography="bodySmall" color={theme.text.onPrimary}>
-                      {activeIndicatorCount}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+                    <MaterialCommunityIcons
+                      name="finance"
+                      size={18}
+                      color={theme.text.primary}
+                    />
+                    {activeIndicatorCount > 0 && (
+                      <View
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: 8,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          backgroundColor: theme.base.primary,
+                          marginLeft: 4,
+                        }}
+                      >
+                        <Text
+                          typography="bodySmall"
+                          color={theme.text.onPrimary}
+                        >
+                          {activeIndicatorCount}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           </View>
         }
@@ -667,6 +674,9 @@ const PriceChartComponent = ({
         selectedTimeframe={timeFrame}
         onSelect={(value) => setTimeFrame(value)}
         onClose={() => setShowTimeframeSheet(false)}
+        onLearnMore={() => {
+          setShowGuideSheet(true);
+        }}
       />
 
       <IndicatorBottomSheet

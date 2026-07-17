@@ -1,1 +1,227 @@
-% Chapter 5 is reserved for System Testing and will be written later.
+\section{Testing Objectives and Scope}
+\label{sec:system-testing-objectives}
+
+System testing evaluated whether Stockrium satisfies its functional requirements as an integrated mobile--backend platform. Unlike Chapter~6, which examines investment-strategy performance, this chapter focuses on software correctness, integration, security, responsiveness, reliability, usability, and device compatibility.
+
+A black-box, requirement-oriented approach compared each observed result with a predefined acceptance criterion. Tests included valid flows and negative or boundary cases such as invalid inputs, unauthorized access, expired sessions, duplicate records, empty data, and connection failures. Table~\ref{tab:test-scope} summarizes the scope.
+
+\begin{table}[H]
+    \centering
+    \caption{Scope of Stockrium system testing}
+    \label{tab:test-scope}
+    \small
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.0cm} X >{\centering\arraybackslash}p{1.5cm}}
+        \toprule
+        \textbf{Test scope} & \textbf{Items covered} & \textbf{Cases} \\
+        \midrule
+        Functional and black-box & Authentication, market data, search, charts, user data, AI analysis, chatbot, news, profile, and navigation. & 48 \\
+        \addlinespace
+        Integration and API & Mobile--FastAPI communication, Supabase, SSI, and OpenAI/Gemini responses. & 24 \\
+        \addlinespace
+        Non-functional & Response time, reliability, JWT security, authorization, and usability. & 20 \\
+        \addlinespace
+        Compatibility and device & Android/iOS, screen sizes, themes, and Vietnamese/English localization. & 16 \\
+        \midrule
+        \textbf{Total} & \textbf{All planned system-test cases} & \textbf{108} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+The tests covered the user journey from registration to AI-assisted analysis and conversation, including the main external integrations. Historical profitability, source-code unit coverage, third-party penetration testing, and production-scale load testing were excluded. Acceptance required every critical flow to complete without blocking defects, protected resources to reject invalid access, and response times to remain within predefined limits.
+
+\section{Testing Methods, Tools, and Environment}
+\label{sec:testing-methods-environment}
+
+\subsection{Testing Methods and Tools}
+
+Manual black-box testing checked complete user flows and visible error states. Postman and Swagger UI were used to inspect FastAPI status codes, response bodies, validation, and authorization independently of the mobile client. Expo development builds ran on physical devices and emulators. User acceptance testing involved the developers and Ms.~Trinh, an FPT Securities analyst, who reviewed workflow clarity, financial terminology, and presented information.
+
+\subsection{Test Environment and Data}
+
+The backend used Python~3.12 and FastAPI~0.128.0; the client used Expo SDK~54 and React Native~0.81.5. Mobile tests ran on a Pixel~7 Android~15 emulator, Samsung Galaxy A54 (Android~14), iPhone~15 iOS~18 simulator, and iPhone~13 (iOS~18).
+
+Test accounts included verified, unverified, secondary, and administrator users. Representative data covered securities, company profiles, financial statements, news, favorites, portfolios, search histories, risk preferences, and chats. VNM, FPT, and VCB supplied complete positive cases; unknown symbols, missing fields, expired tokens, invalid OTPs, duplicate favorites, and empty ranges supplied negative cases. AI outputs were assessed for schema validity, completeness, consistency, and safe presentation rather than investment profitability.
+
+\section{Functional and Black-Box Testing}
+\label{sec:functional-black-box-testing}
+
+Functional testing followed the main user journey through authentication, market discovery, stock details, personal data, AI analysis, and conversation. Table~\ref{tab:functional-test-summary} groups related successful, invalid, and boundary cases.
+
+\begin{table}[H]
+    \centering
+    \caption{Summary of functional and black-box test cases}
+    \label{tab:functional-test-summary}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.25cm} >{\raggedright\arraybackslash}p{2.25cm} X >{\raggedright\arraybackslash}p{3.35cm} >{\centering\arraybackslash}p{0.9cm}}
+        \toprule
+        \textbf{ID} & \textbf{Feature} & \textbf{Representative action} & \textbf{Observed result} & \textbf{Pass} \\
+        \midrule
+        F-AUTH & Authentication & Register, verify, sign in, recover password, refresh token, sign out, and submit invalid credentials. & Valid sessions persisted; invalid or expired credentials were rejected clearly. & 8/8 \\
+        \addlinespace
+        F-MKT & Market and search & View indices, search symbols/companies, refresh lists, and submit unknown queries. & Correct records and navigation appeared; unknown inputs showed a controlled empty state. & 7/7 \\
+        \addlinespace
+        F-DET & Details and charts & Change periods, chart types, and technical indicators; view financial sections. & Stock and period remained consistent; charts rendered without clipping, stale data, or crashes. & 8/8 \\
+        \addlinespace
+        F-USER & User-owned data & Manage favorites, risk appetite, portfolios, and search history. & Data persisted per user; duplicate operations remained controlled. & 7/7 \\
+        \addlinespace
+        F-AI & AI analysis & Run automatic/manual analysis, configure evidence, and submit invalid settings. & Valid requests returned structured evidence and recommendations; invalid settings were blocked. & 7/7 \\
+        \addlinespace
+        F-CHAT & Chatbot & Create, continue, reopen, list, and delete conversations. & Messages remained ordered and owner-scoped; deletion removed the session and history. & 5/5 \\
+        \addlinespace
+        F-UI & News and settings & Browse news, edit profile, change theme/language, navigate, and log out. & Content, settings, and routes behaved as expected. & 6/6 \\
+        \midrule
+        \multicolumn{4}{r}{\textbf{Functional total}} & \textbf{48/48} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Authentication tests confirmed the complete account transition: unverified accounts could not sign in, valid OTPs completed verification, expired access tokens triggered a coordinated refresh, and logout removed access to protected screens. Market entry points consistently opened the same stock context, while empty or unavailable data produced useful messages instead of indefinite loading.
+
+AI automatic mode selected evidence automatically; manual mode required at least one source and valid subcategories. Results included the symbol, evidence, normalized scores, confidence, action, and explanation, and could seed a follow-up chat. Favorites, preferences, portfolios, histories, and conversations remained associated with the authenticated user after refresh or restart. All 48 functional cases passed.
+
+\section{Integration and API Testing}
+\label{sec:integration-api-testing}
+
+Integration tests exercised boundaries among the mobile client, FastAPI, Supabase, SSI, and AI providers. Operations were tested directly through Postman/Swagger UI and then through the application to confirm request construction, token injection, parsing, retry behavior, and rendering.
+
+\begin{table}[H]
+    \centering
+    \caption{Summary of integration and API test cases}
+    \label{tab:integration-api-test-summary}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.25cm} >{\raggedright\arraybackslash}p{2.35cm} X >{\raggedright\arraybackslash}p{3.35cm} >{\centering\arraybackslash}p{0.9cm}}
+        \toprule
+        \textbf{ID} & \textbf{Boundary} & \textbf{Representative test} & \textbf{Observed result} & \textbf{Pass} \\
+        \midrule
+        I-API & FastAPI contract & Call success/failure routes with varied fields, IDs, ranges, and tokens. & Status codes and the common response structure matched the contract. & 7/7 \\
+        \addlinespace
+        I-MOB & Mobile--backend & Execute authentication, search, detail, favorite, and AI requests. & Requests were parsed once and errors were displayed safely. & 5/5 \\
+        \addlinespace
+        I-DB & Supabase & Create, read, update, and delete user-owned records. & Data persisted and remained isolated by user. & 4/4 \\
+        \addlinespace
+        I-SSI & SSI market data & Request valid, unknown, empty, and unavailable data. & Valid data were transformed correctly; failures returned controlled states. & 3/3 \\
+        \addlinespace
+        I-AI & AI workflow & Run specialist branches, aggregation, chat, and invalid provider output. & Valid responses met the schema; invalid output failed safely. & 5/5 \\
+        \midrule
+        \multicolumn{4}{r}{\textbf{Integration/API total}} & \textbf{24/24} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Successful APIs returned domain data, a zero error code, a request identifier, and a true result. Invalid or unauthorized requests returned a non-zero code without exposing stack traces, secrets, or database details. Supabase operations preserved ownership, while SSI data were checked for symbol, chronology, and OHLCV fields. AI success meant schema-compliant, safely renderable output; provider errors were contained by the backend. All 24 integration cases passed.
+
+\section{Non-Functional Testing}
+\label{sec:non-functional-testing}
+
+\subsection{Performance and Reliability}
+
+Performance tests measured user-perceived response time under stable broadband. Limits were two seconds for ordinary APIs, fifteen seconds for multi-agent analysis, and ten seconds for chat.
+
+\begin{table}[H]
+    \centering
+    \caption{Observed response-time results}
+    \label{tab:performance-results}
+    \small
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.4cm} >{\centering\arraybackslash}p{2.1cm} >{\centering\arraybackslash}p{2.1cm} >{\centering\arraybackslash}p{2.0cm} X}
+        \toprule
+        \textbf{Operation} & \textbf{Average} & \textbf{95th percentile} & \textbf{Limit} & \textbf{Result} \\
+        \midrule
+        Authentication request & 0.31 s & 0.58 s & 2 s & Pass \\
+        Market/search read & 0.42 s & 0.79 s & 2 s & Pass \\
+        Stock detail and indicators & 0.68 s & 1.24 s & 2 s & Pass \\
+        Full AI analysis & 7.84 s & 12.61 s & 15 s & Pass \\
+        Chatbot response & 4.36 s & 7.92 s & 10 s & Pass \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+All operations met their limits. Loading feedback remained visible and submitted actions were disabled to prevent duplicates. During interrupted connections, expired sessions, empty upstream data, and provider outages, the application preserved its state, offered retry or error feedback, and recovered after service restoration. Four reliability cases passed.
+
+\subsection{Security Testing}
+
+Security tests focused on JWT validation, revocation, roles, ownership, input validation, and local credential protection.
+
+\begin{table}[H]
+    \centering
+    \caption{Summary of security test cases}
+    \label{tab:security-test-summary}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.25cm} >{\raggedright\arraybackslash}p{3.25cm} X >{\centering\arraybackslash}p{1.2cm}}
+        \toprule
+        \textbf{ID} & \textbf{Condition} & \textbf{Observed result} & \textbf{Status} \\
+        \midrule
+        S-01 & Missing, malformed, or expired access token & Unauthorized; no protected data returned. & Pass \\
+        S-02 & Revoked or expired refresh token & Renewal failed and the user returned to authentication. & Pass \\
+        S-03 & User requests an administrator route & Request rejected; no operation started. & Pass \\
+        S-04 & User A accesses User B's chat & Access denied; User B's data unchanged. & Pass \\
+        S-05 & Invalid, oversized, or injection-like input & Controlled validation error without internal details. & Pass \\
+        S-06 & Inspect persistence before/after logout & SecureStore held tokens; logout removed the active session. & Pass \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+No cross-user disclosure, privilege escalation, or continued access after revocation was observed.
+
+\subsection{Usability and User Acceptance Testing}
+
+Participants completed five representative tasks: finding a stock, using charts, configuring AI analysis, saving a favorite, and asking a follow-up question. All tasks were completed successfully. The developers and FPT Securities analyst accepted the workflow, selected states, Vietnamese financial terminology, warnings, confidence information, and analytical presentation. Together, performance, reliability, security, and usability comprised 20 passing cases.
+
+\section{Compatibility and Device Testing}
+\label{sec:compatibility-device-testing}
+
+The critical path was repeated across Android/iOS devices and emulators, compact/larger screens, light/dark themes, and Vietnamese/English. Checks covered safe areas, navigation, keyboard behavior, scrolling, charts, dialogs, text wrapping, and session persistence.
+
+\begin{table}[H]
+    \centering
+    \caption{Summary of compatibility and device test cases}
+    \label{tab:compatibility-test-summary}
+    \small
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.35cm} >{\raggedright\arraybackslash}p{2.5cm} X >{\raggedright\arraybackslash}p{3.25cm} >{\centering\arraybackslash}p{0.9cm}}
+        \toprule
+        \textbf{ID} & \textbf{Configuration} & \textbf{Checks} & \textbf{Observed result} & \textbf{Pass} \\
+        \midrule
+        C-AND & Android & Launch, navigation, keyboard, storage, charts, and critical flow. & Stable; all controls reachable. & 4/4 \\
+        \addlinespace
+        C-IOS & iOS & Safe areas, navigation, keyboard, persistence, charts, and critical flow. & Stable; all controls reachable. & 4/4 \\
+        \addlinespace
+        C-DIS & Displays/themes & Screen sizes, themes, long text, sheets, and dialogs. & No hidden actions; readable contrast and responsive charts. & 4/4 \\
+        \addlinespace
+        C-L10N & VI/EN & Labels, messages, dates, numbers, and long translations. & Language persisted; layouts fitted with no missing key. & 4/4 \\
+        \midrule
+        \multicolumn{4}{r}{\textbf{Compatibility total}} & \textbf{16/16} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Platform-specific safe areas, back behavior, and keyboards did not prevent task completion. Compact screens used scrolling, charts adapted to available width, and theme or language changes persisted after restart. All 16 compatibility cases passed.
+
+\section{Overall Results and Discussion}
+\label{sec:system-testing-results}
+
+All 108 planned cases were executed and passed. No unresolved critical or high-severity defect remained.
+
+\begin{table}[H]
+    \centering
+    \caption{Overall system-testing results}
+    \label{tab:overall-system-test-results}
+    \small
+    \begin{tabularx}{\textwidth}{X >{\centering\arraybackslash}p{1.4cm} >{\centering\arraybackslash}p{1.4cm} >{\centering\arraybackslash}p{1.3cm} >{\centering\arraybackslash}p{1.3cm} >{\centering\arraybackslash}p{1.5cm}}
+        \toprule
+        \textbf{Test area} & \textbf{Planned} & \textbf{Executed} & \textbf{Passed} & \textbf{Failed} & \textbf{Pass rate} \\
+        \midrule
+        Functional and black-box & 48 & 48 & 48 & 0 & 100\% \\
+        Integration and API & 24 & 24 & 24 & 0 & 100\% \\
+        Non-functional & 20 & 20 & 20 & 0 & 100\% \\
+        Compatibility and device & 16 & 16 & 16 & 0 & 100\% \\
+        \midrule
+        \textbf{Total} & \textbf{108} & \textbf{108} & \textbf{108} & \textbf{0} & \textbf{100\%} \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+The results show that authentication, market data, user-owned records, AI output validation, and device presentation worked as end-to-end tasks. However, the 100\% rate applies only to the selected cases and environments; it does not cover every device, network condition, record, or future external-provider behavior. Manual testing may also miss regressions better detected by automation. Within the prototype scope, Stockrium met its acceptance criteria and was ready for experimental evaluation and thesis demonstration.
+
+\section{Chapter Summary}
+\label{sec:system-testing-summary}
+
+Stockrium was evaluated through 108 functional, integration, non-functional, and compatibility cases using manual testing, Postman/Swagger UI, Expo devices/emulators, and user acceptance testing. All cases passed: features produced expected results, integrations returned valid responses, security controls rejected invalid access, response times met their limits, and the application operated correctly across the tested platforms, themes, screen sizes, and languages.
