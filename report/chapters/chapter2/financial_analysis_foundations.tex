@@ -1,0 +1,361 @@
+\section{Financial Analysis Foundations}
+\label{sec:financial-analysis-foundations}
+
+Stock analysis combines several forms of evidence that answer different questions. Technical analysis examines how price and trading activity are evolving, fundamental analysis assesses the business and its valuation, and financial-news analysis identifies recent events that may change expectations. None of these perspectives is sufficient by itself. Stockrium therefore treats them as complementary inputs whose relevance varies with the investment horizon and whose outputs are synthesized by the multi-agent workflow described in Chapter~4.
+
+\subsection{Technical Analysis}
+\label{subsec:technical-analysis-foundations}
+
+Technical analysis studies historical price and trading-volume behavior to describe trend, momentum, volatility, and possible turning-point conditions \cite{murphy1999technical}. It helps a trader organize market behavior into observable signals, compare the current state with recent history, and choose when a fundamentally or news-supported view may be timely. It does not determine intrinsic value, and a familiar chart pattern or indicator condition does not guarantee that the subsequent price movement will repeat.
+
+\paragraph{OHLCV market data.}
+
+A price series is divided into fixed intervals, or \textit{bars}. Let $p_{t,j}$ and $q_{t,j}$ denote the price and traded quantity of transaction $j$ during interval $t$. The five basic values of a bar are
+
+\begin{equation}
+    O_t=p_{t,1}, \qquad
+    H_t=\max_j p_{t,j}, \qquad
+    L_t=\min_j p_{t,j}, \qquad
+    C_t=p_{t,n_t}, \qquad
+    V_t=\sum_j q_{t,j},
+    \label{eq:ohlcv-definition}
+\end{equation}
+
+where $n_t$ is the number of transactions in interval $t$, and $O_t$, $H_t$, $L_t$, $C_t$, and $V_t$ are respectively the open, high, low, close, and volume. Their analytical roles are summarized in Table~\ref{tab:ohlcv-meaning}.
+
+\begin{table}[H]
+    \centering
+    \caption{Meaning of OHLCV observations}
+    \label{tab:ohlcv-meaning}
+    \begin{tabularx}{\textwidth}{@{}l l X@{}}
+        \toprule
+        Field & Definition & Information provided \\
+        \midrule
+        Open & First traded price & Starting valuation of the interval and possible gap from the preceding close. \\
+        High & Highest traded price & Upper extreme reached by buyers and sellers during the interval. \\
+        Low & Lowest traded price & Lower extreme reached during the interval. \\
+        Close & Last traded price & Ending consensus for the interval and the primary input to most indicators. \\
+        Volume & Total traded quantity & Level of market participation; it can confirm that a price move occurred with relatively high or low activity. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+The meaning of a bar depends on its interval. A one-minute bar describes intraday activity, whereas daily, weekly, and monthly bars progressively suppress short-lived fluctuations and emphasize longer trends. Stockrium uses daily, weekly, or monthly observations for short-, medium-, or long-term automated analysis, while its price chart also supports intraday intervals for exploration.
+
+\paragraph{Candlestick and volume charts.}
+
+A candlestick is the conventional visual representation of one OHLC bar. The rectangle, called the \textit{body}, spans the open and close. Its color indicates whether the close is above or below the open. The upper and lower \textit{wicks} extend to the high and low. A long body indicates a large open-to-close movement, whereas a long wick shows that trading extended well beyond the open--close range. Because a candle contains only OHLC values, it does not reveal the order of intrabar movements. The complete high--low range provides a compact view of within-bar dispersion. Volume bars are normally aligned below the price chart so that a breakout, reversal, or quiet consolidation can be interpreted together with market participation. These shapes provide context rather than deterministic rules: the same candle can have different implications depending on the preceding trend, nearby price levels, and volume.
+
+Stockrium displays a candlestick chart by default and can alternatively show a close-price area chart. The chart allows the user to inspect raw market behavior, while overlays and separate panels display derived indicators. Indicators commonly fall into four groups: trend measures such as moving averages, momentum oscillators such as RSI and KDJ, trend--momentum measures such as MACD, and volatility envelopes such as Bollinger Bands. Volume and its moving averages provide supplementary participation context.
+
+\paragraph{Simple and exponential moving averages.}
+
+For an $n$-bar window, the simple moving average (SMA) of closing prices is
+
+\begin{equation}
+    \operatorname{SMA}_{n,t}
+      =\frac{1}{n}\sum_{i=0}^{n-1} C_{t-i}.
+    \label{eq:technical-sma}
+\end{equation}
+
+An SMA smooths short-term variation so that the direction of the underlying series is easier to observe. A shorter average responds faster, while a longer average changes more slowly and provides broader trend context. Stockrium uses SMA20 and SMA50. A short average crossing above a long average, a widening positive distance between the two, or the current price remaining above both can support an upward-trend interpretation. Because both averages are calculated from past prices, their signals necessarily lag the market.
+
+The exponential moving average (EMA) places more weight on recent observations:
+
+\begin{equation}
+    \operatorname{EMA}_{n,t}
+      =\alpha C_t+(1-\alpha)\operatorname{EMA}_{n,t-1},
+    \qquad
+    \alpha=\frac{2}{n+1}.
+    \label{eq:technical-ema}
+\end{equation}
+
+In the application-analysis service, the first valid EMA is initialized with the SMA of the first $n$ observations. EMA12, EMA26, and an EMA9 of their difference are used internally by MACD rather than displayed as independent scoring perspectives.
+
+The corresponding volume moving average is
+
+\begin{equation}
+    \operatorname{VMA}_{n,t}
+      =\frac{1}{n}\sum_{i=0}^{n-1} V_{t-i}.
+    \label{eq:technical-vma}
+\end{equation}
+
+Stockrium calculates VMA20 and VMA50 so current activity can be compared with its recent baseline. They are displayed with volume but are not included in the current five-component technical score. Volume is traded quantity and should not be interpreted directly as money flowing into or out of a security.
+
+\paragraph{Relative Strength Index.}
+
+The Relative Strength Index (RSI) is a bounded momentum oscillator. For each close-to-close change, let
+
+\begin{equation}
+    \Delta C_t=C_t-C_{t-1}, \qquad
+    G_t=\max(\Delta C_t,0), \qquad
+    D_t=\max(-\Delta C_t,0),
+\end{equation}
+
+where $G_t$ and $D_t$ are non-negative gains and losses. Stockrium uses the 14-bar Wilder smoothing convention. After the initial arithmetic means of 14 changes, the averages are updated as
+
+\begin{align}
+    \overline{G}_t
+      &=\frac{13\overline{G}_{t-1}+G_t}{14}, \\
+    \overline{D}_t
+      &=\frac{13\overline{D}_{t-1}+D_t}{14}, \\
+    RS_t&=\frac{\overline{G}_t}{\overline{D}_t}, \qquad
+    RSI_t=100-\frac{100}{1+RS_t}.
+    \label{eq:technical-rsi}
+\end{align}
+
+RSI describes the balance between recent upward and downward movement on a scale from 0 to 100; the service returns 100 when the smoothed loss is zero. Values above 70 and below 30 are commonly described as overbought and oversold, but these labels do not themselves predict an immediate reversal; RSI can remain extreme during a strong trend. Stockrium looks for upward momentum through a crossing above 50, an increase within 50--70, or a recovery while below 35.
+
+\paragraph{Moving Average Convergence Divergence.}
+
+Moving Average Convergence Divergence (MACD) compares a faster and a slower EMA:
+
+\begin{align}
+    \operatorname{MACD}_t
+      &=\operatorname{EMA}_{12,t}-\operatorname{EMA}_{26,t}, \\
+    \operatorname{Signal}_t
+      &=\operatorname{EMA}_{9}(\operatorname{MACD}_t), \\
+    \operatorname{Histogram}_t
+      &=\operatorname{MACD}_t-\operatorname{Signal}_t.
+    \label{eq:technical-macd}
+\end{align}
+
+The MACD line shows whether shorter-term price momentum is stronger or weaker than its longer-term baseline. The signal line smooths that difference, and the histogram makes the distance and its change easier to inspect. Stockrium treats an upward MACD--signal crossing, an increasing histogram while MACD is above the signal line, or a change of the histogram from negative to non-negative as positive momentum evidence. MACD remains a lagging transformation of price and can create repeated false crossings in a sideways market.
+
+\paragraph{Bollinger Bands.}
+
+Bollinger Bands place a volatility-dependent envelope around a moving average. Stockrium uses a 20-bar middle band and two population standard deviations:
+
+\begin{align}
+    M_t&=\operatorname{SMA}_{20,t}, \\
+    \sigma_t
+      &=\sqrt{\frac{1}{20}\sum_{i=0}^{19}(C_{t-i}-M_t)^2}, \\
+    U_t&=M_t+2\sigma_t, \qquad
+    L_t=M_t-2\sigma_t.
+    \label{eq:technical-bollinger}
+\end{align}
+
+The band width expands when recent prices are more dispersed and contracts when volatility decreases. The position of price relative to the middle, upper, and lower bands provides trend and overextension context; touching a band is not automatically a buy or sell instruction. Stockrium looks for recovery through the middle band, strengthening movement above the middle band, or an upward reaction near or below the lower band. A price above the upper band is treated cautiously because it may be overextended, although in a strong trend it can also reflect persistent momentum.
+
+\paragraph{KDJ stochastic oscillator.}
+
+KDJ locates the close within the recent high--low range and adds a more responsive $J$ line. For a nine-bar window,
+
+\begin{align}
+    HH_{9,t}&=\max_{0\leq i<9} H_{t-i}, \qquad
+    LL_{9,t}=\min_{0\leq i<9} L_{t-i}, \\
+    RSV_t&=100\frac{C_t-LL_{9,t}}{HH_{9,t}-LL_{9,t}}, \\
+    K_t&=\frac{1}{3}RSV_t+\frac{2}{3}K_{t-1}, \\
+    D_t&=\frac{1}{3}K_t+\frac{2}{3}D_{t-1}, \qquad
+    J_t=3K_t-2D_t.
+    \label{eq:technical-kdj}
+\end{align}
+
+When the nine-bar range is zero, the application-analysis service sets $RSV_t$ to 50; the first $K$ and $D$ values are also initialized at 50. The $K$ and $D$ lines smooth the location of the close, whereas $J$ magnifies their difference and can move outside the interval $[0,100]$. Stockrium looks for $K$ crossing above $D$, strengthening $J$ while $K>D$, or an upward recovery of $K$ below 20. This sensitivity is useful for short-term turning-point context but also makes KDJ susceptible to noise.
+
+\paragraph{Combination in Stockrium.}
+
+The current technical component requires at least 50 complete OHLCV bars and evaluates five enabled perspectives: SMA, RSI, MACD, Bollinger Bands, and KDJ. Each enabled perspective contributes either 0 or 1 according to its bullish conditions, producing
+
+\begin{equation}
+    S_t=\sum_{j=1}^{m}s_{j,t},
+    \qquad s_{j,t}\in\{0,1\},
+    \label{eq:technical-score}
+\end{equation}
+
+where $m$ is the number of selected perspectives. A candidate positive technical condition requires at least $\lceil0.60m\rceil$ points. When available, the latest one-minute price is used in the current-price comparisons for SMA and Bollinger Bands; RSI, MACD, and KDJ remain based on the daily, weekly, or monthly bars selected for the investment horizon. A zero for one perspective means only that its bullish condition was not satisfied; it is not an independent sell signal. Moreover, all five perspectives are derived from the same OHLCV series, so the total should not be interpreted as five statistically independent sources of evidence.
+
+The formulas above describe the service used for current application analysis and chart data, implemented with NumPy and pandas. The historical backtesting engine presently uses the same indicator periods and scoring concepts but different numerical conventions for EMA/RSI initialization, Bollinger standard deviation, and KDJ smoothing. Exact live and backtest values can therefore differ near a threshold; the implementations must be standardized before strict indicator-parity claims are made. The available indicator set and conventional function families are also documented by TA-Lib \cite{talibFunctions2026}, but the active Stockrium service does not depend on the TA-Lib package.
+
+\subsection{Fundamental Analysis}
+\label{subsec:fundamental-analysis-foundations}
+
+Fundamental analysis examines whether a company's operating performance, financial position, and valuation support its market price and longer-term prospects \cite{penman2013financial}. Its principal inputs are the balance sheet, income statement, and cash-flow statement. The balance sheet reports assets, liabilities, and shareholders' equity at a point in time; the income statement explains how revenue and expenses produce profit over a period; and the cash-flow statement separates operating, investing, and financing cash flows. Because absolute values are affected by company size, analysts commonly convert statement items into ratios and compare them across time and with similar firms.
+
+Stockrium stores annual statements together with provider-supplied ratios. The formulas below explain the conventional financial meaning of the fields used by the system; they do not imply that every ratio is recomputed from raw statements during an analysis request. Provider definitions may differ slightly, particularly in their use of average or year-end balances and in what they classify as debt.
+
+\paragraph{Non-financial companies.}
+
+For a non-financial company, Stockrium organizes evidence into liquidity, leverage, operating efficiency, profitability, and valuation. Each category answers a different question and must be interpreted in relation to the company's business model and industry.
+
+Liquidity measures the capacity to meet near-term obligations:
+
+\begin{align}
+    \text{Current Ratio}
+      &=\frac{\text{Current Assets}}{\text{Current Liabilities}}, \\
+    \text{Quick Ratio}
+      &=\frac{\text{Current Assets}-\text{Inventories}}
+              {\text{Current Liabilities}}, \\
+    \text{Cash Ratio}
+      &=\frac{\text{Cash and Cash Equivalents}}
+              {\text{Current Liabilities}}.
+    \label{eq:fundamental-liquidity}
+\end{align}
+
+A larger liquidity buffer can reduce short-term payment risk, but an unusually high value can also indicate idle cash, excessive inventory, or inefficient working-capital use. One universal threshold is therefore inappropriate.
+
+Leverage and debt-servicing ratios describe dependence on creditors and the capacity of operating earnings to cover financing costs:
+
+\begin{align}
+    \text{Debt-to-Equity}
+      &=\frac{\text{Interest-bearing Debt}}
+              {\text{Shareholders' Equity}}, \\
+    \text{Financial Leverage}
+      &=\frac{\text{Total Assets}}
+              {\text{Shareholders' Equity}}, \\
+    \text{Interest Coverage}
+      &=\frac{\text{EBIT}}{\text{Interest Expense}}.
+    \label{eq:fundamental-leverage}
+\end{align}
+
+Leverage can increase shareholder returns when operations perform well, but it also magnifies losses and refinancing risk. Higher interest coverage generally provides a larger buffer for interest payments. Normal levels differ greatly between industries, so leverage should be compared with an appropriate peer group.
+
+Operating-efficiency ratios examine how effectively assets and working capital generate revenue:
+
+\begin{align}
+    \text{Asset Turnover}
+      &=\frac{\text{Revenue}}{\text{Average Total Assets}}, \\
+    \text{Fixed-Asset Turnover}
+      &=\frac{\text{Revenue}}{\text{Average Net Fixed Assets}}, \\
+    \text{Days Inventory}
+      &=\frac{\text{Average Inventory}}{\text{Cost of Goods Sold}}\times365, \\
+    \text{Days Receivable}
+      &=\frac{\text{Average Accounts Receivable}}{\text{Net Revenue}}\times365.
+    \label{eq:fundamental-efficiency}
+\end{align}
+
+Higher turnover generally means that each unit of assets supports more revenue. Increasing inventory or receivable days may indicate slow-moving stock or slower collection, although the expected level depends on the operating cycle. A manufacturer, utility, retailer, and software company should not be expected to have identical ratios.
+
+Profitability ratios relate earnings to sales, assets, or shareholder capital:
+
+\begin{align}
+    \text{Gross Margin}
+      &=\frac{\text{Gross Profit}}{\text{Revenue}}, \\
+    \text{Net Margin}
+      &=\frac{\text{Net Income}}{\text{Revenue}}, \\
+    ROA&=\frac{\text{Net Income}}{\text{Average Total Assets}}, \\
+    ROE&=\frac{\text{Net Income}}
+              {\text{Average Shareholders' Equity}}.
+    \label{eq:fundamental-profitability}
+\end{align}
+
+Gross margin reflects pricing and direct production or service-delivery cost, while net margin also incorporates operating expenses, financing costs, and taxes. ROA measures profit relative to the asset base and ROE measures profit relative to shareholder capital. A high ROE is not necessarily created by strong operations because it can be amplified by a small, highly leveraged equity base. The three-part DuPont identity separates these sources:
+
+\begin{equation}
+    ROE=
+    \underbrace{\frac{\text{Net Income}}{\text{Revenue}}}_{\text{Net Margin}}
+    \times
+    \underbrace{\frac{\text{Revenue}}{\text{Average Total Assets}}}_{\text{Asset Turnover}}
+    \times
+    \underbrace{\frac{\text{Average Total Assets}}
+                     {\text{Average Shareholders' Equity}}}_{\text{Financial Leverage}}.
+    \label{eq:fundamental-dupont}
+\end{equation}
+
+This decomposition reveals whether returns are supported mainly by margin, efficient asset use, or leverage. The direction of each component over several years is more informative than one isolated ROE value.
+
+Valuation ratios compare the market value assigned to the company with earnings, book value, or operating cash-generating capacity:
+
+\begin{align}
+    EPS
+      &=\frac{\text{Earnings Attributable to Ordinary Shareholders}}
+              {\text{Weighted-average Ordinary Shares}}, \\
+    P/E&=\frac{\text{Market Price per Share}}{EPS}, \\
+    P/B&=\frac{\text{Market Price per Share}}{\text{Book Value per Share}}, \\
+    EV/EBITDA&=\frac{\text{Enterprise Value}}{EBITDA}.
+    \label{eq:fundamental-valuation}
+\end{align}
+
+A lower multiple can indicate a cheaper relative valuation, but it can also reflect low expected growth or high risk. P/E is not meaningful with negative earnings and EV/EBITDA is difficult to interpret with non-positive EBITDA. Stockrium therefore treats valuation as comparative evidence rather than proof that a security is under- or overvalued.
+
+\paragraph{Financial-sector companies.}
+
+Bank analysis requires a different balance-sheet interpretation because deposits and loans are core operating inputs and outputs rather than ordinary financing and receivable items. Stockrium identifies an Industry Classification Benchmark 8xxx company as financial and organizes its available evidence using CAMELS-related categories. Because this group also contains insurers, securities firms, and other non-bank companies, specialist banking fields may be unavailable and general ratios are then used as proxies; the result is not a complete supervisory CAMELS rating.
+
+\begin{description}
+    \item[\textbf{Capital adequacy.}]
+    Capital provides a buffer against unexpected losses. For a bank, the principal measure is
+    \[
+        CAR=\frac{\text{Regulatory Capital}}{\text{Risk-weighted Assets}}.
+    \]
+    Stockrium also considers financial leverage, debt-to-equity, equity-to-assets, equity-to-liabilities, equity-to-loans, and book value per share when available.
+
+    \item[\textbf{Asset quality.}]
+    Credit quality and its reserve protection can be summarized by
+    \[
+        NPL=\frac{\text{Non-performing Loans}}{\text{Gross Loans}},
+        \qquad
+        \text{NPL Coverage}
+          =\frac{\text{Loan-loss Reserves}}{\text{Non-performing Loans}}.
+    \]
+    A lower NPL ratio generally indicates better loan quality, while higher coverage provides a stronger reserve buffer. Loans-to-equity, ROA, reserves-to-loans, provision expense, and credit growth add context.
+
+    \item[\textbf{Management efficiency.}]
+    The cost-to-income ratio is
+    \[
+        CIR=\frac{\text{Operating Expenses}}{\text{Operating Income}}.
+    \]
+    A lower CIR generally reflects better cost control. Stockrium supplements it with asset turnover, ROIC, and non-interest income relative to interest income.
+
+    \item[\textbf{Earnings.}]
+    Net interest margin is conventionally
+    \[
+        NIM=\frac{\text{Net Interest Income}}{\text{Average Earning Assets}},
+    \]
+    where net interest income equals interest income minus interest expense. ROE, ROA, net margin, EPS, yield on earning assets, cost of funds, and the current-and-savings-account (CASA) deposit ratio provide additional profitability and funding context.
+
+    \item[\textbf{Liquidity.}]
+    The loan-to-deposit ratio is
+    \[
+        LDR=\frac{\text{Gross Customer Loans}}{\text{Customer Deposits}}.
+    \]
+    A very high value may indicate a narrow funding-liquidity buffer, whereas a very low value can indicate underused funding. Deposit growth and available cash, quick, and current ratios provide supplementary evidence.
+
+    \item[\textbf{Sensitivity to market risk.}]
+    This category concerns exposure to interest-rate, exchange-rate, and other market changes. The current dataset has no dedicated quantitative sensitivity field, so Stockrium reports the limitation rather than inferring a measure.
+\end{description}
+
+For financial-sector valuation, Stockrium uses P/B because book equity is particularly relevant to balance-sheet-driven businesses and excludes P/E and EV/EBITDA from this analytical output. P/B must nevertheless be read with profitability, asset quality, growth, and comparable institutions; a low P/B alone does not establish undervaluation.
+
+\paragraph{Trend and industry context.}
+
+One annual observation is only a snapshot. Stockrium retains up to the five latest annual observations and orders them chronologically. When both endpoints are positive, it summarizes their change using compound annual growth rate:
+
+\begin{equation}
+    \operatorname{CAGR}(x)
+      =\left(\frac{x_n}{x_0}\right)^{\frac{1}{y_n-y_0}}-1,
+    \label{eq:fundamental-cagr-foundation}
+\end{equation}
+
+where $x_0$ and $x_n$ are the earliest and latest valid observations and $y_n-y_0$ is the number of elapsed years. CAGR is omitted when fewer than two observations exist, the period is non-positive, or either endpoint is non-positive. It smooths the path between two endpoints and should be read alongside the annual sequence. For measures expressed in days, a negative CAGR can be favorable because inventory or collection periods have shortened.
+
+The system also compares a company with annual medians for its ICB industry. A median is less sensitive than a mean to extreme values and is shown only when the industry data contain at least three peers. For non-financial firms, the comparison includes profitability, margins, asset turnover, leverage, P/E, and P/B. For financial-sector firms, it includes available profitability, leverage, liquidity, P/B, CAR, NIM, LDR, and NPL measures. The comparison gives a ratio meaning only in relation to the economics and normal capital structure of similar firms.
+
+The five-year fundamental window is independent of the user's selected investment horizon. The horizon changes the relative influence of fundamental evidence during final synthesis: its default weight is 0.10 for short-term, 0.40 for medium-term, and 0.70 for long-term analysis. This preserves multi-year evidence while acknowledging that business performance and valuation generally matter more to a longer holding period.
+
+Fundamental ratios remain historical, accounting-based measures. They can be affected by accounting policy, exceptional items, restatements, stale market prices, missing observations, and differences in fiscal-year timing. A financial-year end is also not the date on which the report became public; a point-in-time historical evaluation must use actual availability rather than assume immediate knowledge. Fundamental analysis is consequently structured supporting evidence, not a guarantee of future earnings or returns.
+
+\subsection{Financial News Analysis}
+\label{subsec:financial-news-analysis-foundations}
+
+Financial news is time-stamped qualitative evidence about events and expectations that may affect a security before their full consequences appear in financial statements. Company-level news includes earnings announcements, investment and financing decisions, management changes, contracts, litigation, and regulatory disclosures. Industry and macroeconomic news includes sector demand, interest rates, exchange rates, inflation, and government policy. Relevance is more specific than the presence of a company name or symbol: the analyst must identify the affected entity, the event, the mechanism through which it may alter revenue, costs, financing, risk, or valuation, and the horizon over which that effect may occur. Source provenance should also be retained because an official disclosure, a reported fact, an analyst opinion, and an unverified claim do not provide equivalent evidence.
+
+\paragraph{Summarization.}
+
+News summarization reduces a long article to the information needed for analysis. A useful financial summary should preserve the affected company or industry, the principal event, material figures and dates, the expected transmission mechanism, and important uncertainty. It should distinguish completed events from forecasts or proposals and facts from the author's interpretation. Abstractive summaries are more readable than copied excerpts, but they can omit qualifications or introduce unsupported relationships. A generated summary should therefore remain traceable to the original article rather than replace it as the authoritative source.
+
+\paragraph{Sentiment analysis.}
+
+Financial sentiment analysis assigns a directional interpretation such as positive, neutral, or negative. In this setting, sentiment represents the expected implication for a specified company or market, not merely the emotional tone of the words. The same event can benefit one company, harm a competitor, and have an uncertain sector-wide effect; apparently positive language may also describe a result below market expectations. Domain-specific work such as FinBERT and Vietnamese stock-title classification demonstrates why financial vocabulary and local-language context matter \cite{araci2019finbert,tung2021phobert}. Mixed, conditional, or immaterial information should remain neutral instead of being forced into a directional trading signal.
+
+\paragraph{Temporal and contextual limitations.}
+
+Publication time is not necessarily the time at which an event occurred or first became known. Reposts and near-duplicate articles should not be counted as independent confirmation, and an apparently important event may already be incorporated into market prices. A point-in-time analysis must exclude articles published after the decision time and interpret older news according to both continuing materiality and the investor's horizon. Source credibility, conflicting reports, market conditions, and later corrections can also change an article's meaning. Evidence from the Vietnamese market indicates that news sentiment can be associated with changes in return variability without establishing a dependable change in mean return \cite{vu2023sentiments}. Sentiment is therefore contextual evidence, not a probability of profit or a stand-alone buy or sell rule.
+
+\paragraph{Use in Stockrium.}
+
+Stockrium's collection pipeline discovers Vietnamese financial-news pages through Serper, extracts their text and metadata with Newspaper3k, and uses \texttt{gpt-4o-mini} to produce a one-to-three-sentence Vietnamese summary and a positive, neutral, or negative label from the perspective of the relevant stock, industry, or market. The database retains the original link, content, source, and publication time together with these generated fields. The executable scheduler currently performs this collection weekly and restricts search results to the preceding week.
+
+During stock analysis, the article specialist selects stock-linked records within the planned date interval and uses their dates, titles, stored summaries, and sentiment labels to identify the principal information, positive implications, and risks. The aggregator then interprets the combined news evidence as positive, neutral, or negative. Missing news is excluded from the confidence calculation. When news is available, its sentiment contributes to confidence and a negative classification can veto a proposed Buy; it is normally interpreted alongside technical and fundamental evidence rather than treated as a stand-alone trading rule.
+
+The current article specialist does not receive the source domain, original link, or full article text at analysis time. It therefore cannot independently reassess publisher credibility or recover context omitted by the stored summary. This is an implementation limitation: provenance-aware filtering, duplicate detection, and direct traceability from a generated claim to its source article remain important improvements for reliable news analysis.
