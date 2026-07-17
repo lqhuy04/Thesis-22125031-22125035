@@ -4,3 +4,5 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+*_checkpoint.json
+*_checkpoint.json.tmp

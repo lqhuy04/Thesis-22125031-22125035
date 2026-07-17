@@ -5,3 +5,4 @@ requests
 newspaper3k
 openai
 lxml[html-clean]
+beautifulsoup4
