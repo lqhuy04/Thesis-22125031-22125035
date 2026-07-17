@@ -1,7 +1,7 @@
 \section{Key Features}
 \label{sec:key-features}
 
-Stockrium provides a connected set of features for exploring the Vietnamese stock market, examining financial evidence, and obtaining AI-assisted analysis. The mobile application is intended for individual investors, while a separate administrative web interface supports controlled analysis and historical backtesting. This section summarizes the main user-visible capabilities; their architecture and implementation are presented in Chapter 4.
+Stockrium provides a connected set of features for exploring the Vietnamese stock market, examining financial evidence, and obtaining AI-assisted analysis. The mobile application is intended for individual investors, while a separate experimentation and backtesting web interface supports controlled analysis and historical evaluation. This section summarizes the main user-visible capabilities; their architecture and implementation are presented in Chapter 4.
 
 \subsection{Authentication and Account Management}
 \label{subsec:authentication-account-management}
@@ -186,37 +186,37 @@ The conversational assistant allows users to ask natural-language questions abou
 \label{fig:stockrium-captures7}
 \end{figure}
 
-\subsection{Administrative Analysis and Backtesting}
-\label{subsec:administrative-analysis-backtesting}
+\subsection{Experimentation and Backtesting}
+\label{subsec:experimentation-backtesting}
 
-The administrative web interface provides protected tools for running stock analysis and historical backtests. An administrator can request AI-assisted analysis for an individual stock or the VN30 or VN100 index basket. Backtesting can be configured for an individual stock or executed sequentially across VN30 using the supported inputs and analytical selections. The administrator can monitor batch progress and inspect or export the resulting reports. Backtesting summarizes historical behavior through measures such as total return, win rate, Sharpe ratio, maximum drawdown, and trade history, with visualizations linking generated signals to price data. This interface is an internal evaluation and operational tool; it is not publicly deployed and does not execute live securities transactions.
+The internal experimentation and backtesting web interface provides protected tools for running stock analysis and historical backtests. An authorized evaluator can request AI-assisted analysis for an individual stock or the VN30 or VN100 index basket. Backtesting can be configured for an individual stock or executed sequentially across VN30 using the supported inputs and analytical selections. The evaluator can monitor batch progress and inspect or export the resulting reports. Backtesting summarizes historical behavior through measures such as total return, win rate, Sharpe ratio, maximum drawdown, and trade history, with visualizations linking generated signals to price data. This interface is an internal experimentation and evaluation tool; it is not publicly deployed and does not execute live securities transactions.
 
 Together, these features form a decision-support environment that connects market discovery, evidence inspection, AI-assisted synthesis, explanation, and conversational follow-up. Stockrium helps users organize and interpret Vietnamese market information while keeping investment decisions and any subsequent transactions under the user's responsibility.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{screenshots/web1.png}\\[2pt]
-\caption{Admin Backtest Screen}
+\caption{Backtest Experiment Screen}
 \label{fig:stockrium-captures8}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{screenshots/web2.png}\\[2pt]
-\caption{Admin Backtest Result Screen}
+\caption{Backtest Experiment Result Screen}
 \label{fig:stockrium-captures9}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{screenshots/web3.png}\\[2pt]
-\caption{Admin Analyze Screen}
+\caption{Analysis Experiment Screen}
 \label{fig:stockrium-captures10}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{screenshots/web4.png}\\[2pt]
-\caption{Admin Analyzer Result Screen}
+\caption{Analysis Experiment Result Screen}
 \label{fig:stockrium-captures11}
 \end{figure}

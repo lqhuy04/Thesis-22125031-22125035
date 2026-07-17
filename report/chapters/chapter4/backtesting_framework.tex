@@ -1,14 +1,14 @@
 \section{Backtesting Framework}
 \label{sec:backtesting-framework}
 
-Stockrium includes a historical simulation subsystem for evaluating whether the analytical pipeline behaves consistently with its intended decision rules. The subsystem is designed as an engineering and research tool rather than an automated trading facility. It reuses the production technical-analysis and agentic components, applies explicit execution assumptions, and produces machine-readable artifacts for later evaluation. Experimental results obtained from this framework are reported in Chapter~6.
+Stockrium includes a historical simulation subsystem for evaluating whether the analytical pipeline behaves consistently with its intended decision rules. The subsystem is designed as an engineering and research tool rather than an automated trading facility. It reuses the production technical-analysis and multi-agent components, applies explicit execution assumptions, and produces machine-readable artifacts for later evaluation. Experimental results obtained from this framework are reported in Chapter~6.
 
 The implementation is exposed through the administrator-protected \texttt{POST} \path{/api/agentic/backtest} endpoint. A request specifies the stock symbol, historical boundaries, minimum technical score, maximum holding period, optional score-based exit, and automatic or manual evidence selection. Historical OHLCV data are loaded through the market service, while VN-Index candles provide the reference series for regime analysis. Each completed run returns parity results, model decisions, simulated trades, metrics, benchmark comparisons, statistical tests, and visualization data.
 
 \subsection{Evaluation Architecture}
 \label{subsec:backtest-evaluation-architecture}
 
-The backtest reuses the production indicator, specialist-agent, and aggregator implementations rather than maintaining a separate research-only prediction model. Figure~\ref{fig:backtest-execution-flow} shows the execution path. Daily candles first pass through deterministic indicator and scoring engines. Only dates on which the combined score crosses the configured threshold become candidates for agentic analysis. A candidate is admitted as a trade only when the final structured recommendation is \textit{Mua} (Buy). The engine-only baseline retains all technical candidates, allowing the filtering effect of the complete agentic pipeline to be isolated.
+The backtest reuses the production indicator, specialist-agent, and aggregator implementations rather than maintaining a separate research-only prediction model. Figure~\ref{fig:backtest-execution-flow} shows the execution path. Daily candles first pass through deterministic indicator and scoring engines. Only dates on which the combined score crosses the configured threshold become candidates for multi-agent analysis. A candidate is admitted as a trade only when the final structured recommendation is \textit{Mua} (Buy). The engine-only baseline retains all technical candidates, allowing the filtering effect of the complete multi-agent pipeline to be isolated.
 
 \begin{figure}[H]
     \centering

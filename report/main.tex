@@ -3,6 +3,8 @@
 
 \documentclass[12pt,a4paper,oneside]{report}
 
+\newcommand{\thesistitle}{MULTI-AGENT SYSTEM FOR VIETNAMESE FINANCIAL MARKET DATA ANALYSIS AND SUMMARIZATION}
+
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[english]{babel}
@@ -23,6 +25,7 @@
 \usepackage{tocloft}
 \usepackage{hyperref}
 \hypersetup{
+    pdftitle={\thesistitle},
     colorlinks=true,
     linkcolor=blue,
     citecolor=blue,
@@ -113,7 +116,7 @@
     {\large LE QUOC HUY\par}
     {\large NGUYEN VINH KHANG\par}
     \vspace{1.7cm}
-    {\LARGE\bfseries AGENTIC AI-BASED VIETNAMESE FINANCIAL MARKET DATA ANALYSIS AND SUMMARIZATION SYSTEM\par}
+    {\LARGE\bfseries \thesistitle\par}
     \vfill
     {\large\textbf{BACHELOR OF SCIENCE IN COMPUTER SCIENCE}\par}
     \vspace{0.9cm}
@@ -141,7 +144,7 @@
     {\large LE QUOC HUY -- 22125031\par}
     {\large NGUYEN VINH KHANG -- 22125035\par}
     \vspace{1.7cm}
-    {\LARGE\bfseries AGENTIC AI-BASED VIETNAMESE FINANCIAL MARKET DATA ANALYSIS AND SUMMARIZATION SYSTEM\par}
+    {\LARGE\bfseries \thesistitle\par}
     \vfill
     {\large\textbf{BACHELOR OF SCIENCE IN COMPUTER SCIENCE}\par}
     \vspace{0.45cm}
@@ -191,11 +194,11 @@ Le Quoc Huy \& Nguyen Vinh Khang
 
 Vietnamese retail investors must often combine fragmented market prices, company fundamentals, technical indicators, and financial news before making an informed investment decision. This process requires both financial knowledge and substantial time, while existing tools commonly present only one analytical perspective or provide recommendations whose supporting evidence is difficult to inspect. This thesis presents \textit{Stockrium}, an integrated Vietnamese equity-market decision-support and research platform designed to organize heterogeneous financial information and produce explainable, user-configurable analysis.
 
-Stockrium consists of a React Native/Expo mobile application, a FastAPI backend, an administrative dashboard, data-acquisition pipelines, and a LangGraph-based multi-agent workflow. The platform supports market exploration, stock search, interactive price and technical-indicator charts, company and fundamental information, financial news, watchlists, investment-horizon preferences, AI-assisted analysis, and conversational follow-up. Technical, fundamental, and article specialists analyze their respective evidence domains in parallel. An aggregator combines their outputs into a structured recommendation containing component scores, confidence, explanations, and risk-related information, while deterministic validation and decision controls constrain unsupported outputs. Crawling and scheduled collection processes acquire and normalize market, company, financial-statement, and news data for application use and historical evaluation.
+Stockrium consists of a React Native/Expo mobile application, a FastAPI backend, an internal experimentation and backtesting web interface, data-acquisition pipelines, and a LangGraph-based multi-agent workflow. The platform supports market exploration, stock search, interactive price and technical-indicator charts, company and fundamental information, financial news, watchlists, investment-horizon preferences, AI-assisted analysis, and conversational follow-up. Technical, fundamental, and article specialists analyze their respective evidence domains in parallel. An aggregator combines their outputs into a structured recommendation containing component scores, confidence, explanations, and risk-related information, while deterministic validation and decision controls constrain unsupported outputs. Crawling and scheduled collection processes acquire and normalize market, company, financial-statement, and news data for application use and historical evaluation.
 
-System testing covered functional behavior, API and external-service integration, security, reliability, performance, usability, and Android/iOS compatibility. The tested workflows produced their expected results, and a complete agentic analysis was generated within seconds, demonstrating the platform's potential to reduce the time required for preliminary financial research and synthesis. Historical evaluation was conducted on 30 large-cap Vietnamese securities using engine-only, buy-and-hold, random-entry, and single-indicator comparisons. The agentic layer reduced executed trades by 41.6\% and lowered mean maximum drawdown from 25.69\% to 16.66\%, but it also achieved lower mean return than the engine-only baseline and outperformed buy-and-hold for only 4 of 30 securities. Statistical and robustness evidence remained limited. Therefore, Stockrium's principal contribution is an integrated, inspectable, and time-efficient environment for Vietnamese-market decision support and experimentation, rather than evidence of guaranteed profitability or a replacement for professional judgment.
+System testing covered functional behavior, API and external-service integration, security, reliability, performance, usability, and Android/iOS compatibility. The tested workflows produced their expected results, and a complete multi-agent analysis was generated within seconds, demonstrating the platform's potential to reduce the time required for preliminary financial research and synthesis. Historical evaluation was conducted on 30 large-cap Vietnamese securities using engine-only, buy-and-hold, random-entry, and single-indicator comparisons. The multi-agent coordination layer reduced executed trades by 41.6\% and lowered mean maximum drawdown from 25.69\% to 16.66\%, but it also achieved lower mean return than the engine-only baseline and outperformed buy-and-hold for only 4 of 30 securities. Statistical and robustness evidence remained limited. Therefore, Stockrium's principal contribution is an integrated, inspectable, and time-efficient environment for Vietnamese-market decision support and experimentation, rather than evidence of guaranteed profitability or a replacement for professional judgment.
 
-\textbf{Keywords:} Vietnamese stock market, decision support, agentic AI, multi-agent systems, financial analysis, financial news, backtesting.
+\textbf{Keywords:} Vietnamese stock market, decision support, multi-agent systems, large language models, financial analysis, financial news, backtesting.
 
 
 \clearpage
@@ -253,7 +256,7 @@ System testing covered functional behavior, API and external-service integration
 \clearpage
 \chapter{System Design and Implementation}
 
-\textit{This chapter describes the architecture and implementation of Stockrium. It explains how the mobile client, administrative dashboard, backend services, persistent data stores, external data pipelines, agentic analysis workflow, conversational assistant, backtesting framework, security mechanisms, and deployment environment cooperate to realize the proposed application.}
+\textit{This chapter describes the architecture and implementation of Stockrium. It explains how the mobile client, experimentation and backtesting web interface, backend services, persistent data stores, external data pipelines, multi-agent analysis workflow, conversational assistant, backtesting framework, security mechanisms, and deployment environment cooperate to realize the proposed application.}
 
 % ============================================================
 \input{chapters/chapter4/system_architecture}
@@ -272,7 +275,7 @@ System testing covered functional behavior, API and external-service integration
 % ============================================================
 
 % ============================================================
-\input{chapters/chapter4/agentic_analysis_workflow}
+\input{chapters/chapter4/multi_agent_analysis_workflow}
 % ============================================================
 
 % ============================================================
