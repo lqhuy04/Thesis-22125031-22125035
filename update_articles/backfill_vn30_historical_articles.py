@@ -15,12 +15,14 @@ Examples (run from the repository root):
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import logging
 import os
 import random
 import re
 import signal
+import threading
 import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
@@ -66,7 +68,14 @@ TRACKING_QUERY_KEYS = {
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("vn30_historical_news")
-STAT_KEYS = ("discovered", "inserted", "existing", "failed", "pages_completed")
+STAT_KEYS = (
+    "discovered",
+    "inserted",
+    "existing",
+    "monthly_skipped",
+    "failed",
+    "pages_completed",
+)
 
 
 @dataclass(frozen=True)
@@ -123,16 +132,20 @@ def empty_stats() -> dict[str, int]:
     return {key: 0 for key in STAT_KEYS}
 
 
-def new_checkpoint(start: date, end: date, symbols: list[str]) -> dict[str, Any]:
+def new_checkpoint(
+    start: date, end: date, symbols: list[str], monthly_limit: int = 10
+) -> dict[str, Any]:
     return {
         "version": 2,
         "status": "running",
         "start_date": start.isoformat(),
         "end_date": end.isoformat(),
         "symbols": symbols,
+        "monthly_limit": monthly_limit,
         "completed_symbols": [],
         "pages": {},
         "stats": {},
+        "monthly_counts": {},
         "current": None,
         "updated_at": datetime.now(VIETNAM_TZ).isoformat(),
     }
@@ -291,6 +304,40 @@ class CafeFClient:
         )
 
 
+class ArticleFetcher:
+    """Fetch article bodies concurrently, with one rate-limited session per worker."""
+
+    def __init__(self, workers: int, delay_seconds: float):
+        self.workers = max(1, workers)
+        self.delay_seconds = delay_seconds
+        self._local = threading.local()
+        self._executor = ThreadPoolExecutor(max_workers=self.workers, thread_name_prefix="cafef")
+
+    def _client(self) -> CafeFClient:
+        client = getattr(self._local, "client", None)
+        if client is None:
+            client = CafeFClient(delay_seconds=self.delay_seconds)
+            self._local.client = client
+        return client
+
+    def _fetch_one(self, item: ArchiveItem) -> ArticlePayload:
+        return self._client().article(item)
+
+    def fetch_many(self, items: list[ArchiveItem]) -> dict[str, ArticlePayload]:
+        futures = {self._executor.submit(self._fetch_one, item): item for item in items}
+        payloads: dict[str, ArticlePayload] = {}
+        for future in as_completed(futures):
+            item = futures[future]
+            try:
+                payloads[normalize_url(item.url)] = future.result()
+            except Exception as exc:
+                logger.warning("Article body unavailable for %s: %s", item.url, exc)
+        return payloads
+
+    def close(self) -> None:
+        self._executor.shutdown(wait=True, cancel_futures=False)
+
+
 def paginated_rows(client: Client, table: str, columns: str, page_size: int = 1000) -> Iterable[dict]:
     offset = 0
     while True:
@@ -307,53 +354,107 @@ class ArticleRepository:
         self.client = client
         self.dry_run = dry_run
         self.article_by_url: dict[str, Any] = {}
+        self.article_month_by_id: dict[str, str] = {}
         self.links: set[tuple[str, str]] = set()
 
     def warm_cache(self) -> None:
         logger.info("Loading existing article URLs and stock links from Supabase...")
-        for row in paginated_rows(self.client, "Article", "id, link"):
+        for row in paginated_rows(self.client, "Article", "id, link, time"):
             if row.get("id") is not None and row.get("link"):
                 self.article_by_url[normalize_url(str(row["link"]))] = row["id"]
+            if row.get("id") is not None and row.get("time"):
+                match = re.match(r"^(\d{4})-(\d{2})", str(row["time"]))
+                if match:
+                    self.article_month_by_id[str(row["id"])] = f"{match.group(1)}-{match.group(2)}"
         for row in paginated_rows(self.client, "Article_Stock", "article_id, stock_id"):
             if row.get("article_id") is not None and row.get("stock_id") is not None:
                 self.links.add((str(row["article_id"]), str(row["stock_id"])))
         logger.info("Cache: %d articles, %d article-stock links", len(self.article_by_url), len(self.links))
 
+    def is_linked(self, url: str, stock_id: Any) -> bool:
+        article_id = self.article_by_url.get(normalize_url(url))
+        return article_id is not None and (str(article_id), str(stock_id)) in self.links
+
+    def monthly_counts(self, stock_id: Any, start: date, end: date) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        first_month = start.strftime("%Y-%m")
+        last_month = end.strftime("%Y-%m")
+        wanted_stock = str(stock_id)
+        for article_id, linked_stock_id in self.links:
+            if linked_stock_id != wanted_stock:
+                continue
+            month = self.article_month_by_id.get(article_id)
+            if month and first_month <= month <= last_month:
+                counts[month] = counts.get(month, 0) + 1
+        return counts
+
+    @staticmethod
+    def _article_row(payload: ArticlePayload) -> dict[str, Any]:
+        return {
+            "title": payload.title,
+            "link": normalize_url(payload.link),
+            "description": payload.description,
+            "time": payload.published_at.isoformat(),
+            "thumbnail": payload.thumbnail,
+            "source": payload.source,
+            "content": payload.content,
+            "sentiment": payload.sentiment,
+            "summary": payload.summary,
+            "article_type": "stock",
+        }
+
+    def save_batch(self, entries: list[tuple[ArticlePayload, Any]]) -> list[tuple[str, bool]]:
+        """Bulk insert missing articles, then bulk insert missing stock links."""
+        if not entries:
+            return []
+
+        keys = [normalize_url(payload.link) for payload, _ in entries]
+        missing: dict[str, ArticlePayload] = {}
+        for key, (payload, _) in zip(keys, entries):
+            if key not in self.article_by_url:
+                missing.setdefault(key, payload)
+
+        inserted_keys: set[str] = set(missing)
+        if self.dry_run:
+            base = len(self.article_by_url)
+            for index, key in enumerate(missing, 1):
+                self.article_by_url[key] = f"dry-run-{base + index}"
+        elif missing:
+            rows = [self._article_row(payload) for payload in missing.values()]
+            result = self.client.table("Article").insert(rows).execute()
+            returned = result.data or []
+            if len(returned) != len(rows):
+                raise RuntimeError(
+                    f"Supabase returned {len(returned)}/{len(rows)} inserted Article rows"
+                )
+            for input_key, row in zip(missing, returned):
+                article_id = row.get("id")
+                returned_key = normalize_url(str(row.get("link") or input_key))
+                if article_id is None:
+                    raise RuntimeError(f"Inserted Article has no id for {input_key}")
+                self.article_by_url[returned_key] = article_id
+                self.article_by_url[input_key] = article_id
+                input_payload = missing[input_key]
+                self.article_month_by_id[str(article_id)] = input_payload.published_at.strftime("%Y-%m")
+
+        results: list[tuple[str, bool]] = []
+        join_rows: list[dict[str, Any]] = []
+        join_pairs: set[tuple[str, str]] = set()
+        for key, (_, stock_id) in zip(keys, entries):
+            article_id = self.article_by_url[key]
+            pair = (str(article_id), str(stock_id))
+            results.append((str(article_id), key in inserted_keys))
+            if pair not in self.links and pair not in join_pairs:
+                join_pairs.add(pair)
+                join_rows.append({"article_id": article_id, "stock_id": stock_id})
+
+        if join_rows and not self.dry_run:
+            self.client.table("Article_Stock").insert(join_rows).execute()
+        self.links.update(join_pairs)
+        return results
+
     def save(self, payload: ArticlePayload, stock_id: Any) -> tuple[str, bool]:
-        key = normalize_url(payload.link)
-        article_id = self.article_by_url.get(key)
-        inserted = False
-
-        if article_id is None:
-            if self.dry_run:
-                return "dry-run", True
-            result = self.client.table("Article").insert(
-                {
-                    "title": payload.title,
-                    "link": key,
-                    "description": payload.description,
-                    "time": payload.published_at.isoformat(),
-                    "thumbnail": payload.thumbnail,
-                    "source": payload.source,
-                    "content": payload.content,
-                    "sentiment": payload.sentiment,
-                    "summary": payload.summary,
-                    "article_type": "stock",
-                }
-            ).execute()
-            if not result.data:
-                raise RuntimeError(f"Supabase did not return the inserted Article for {key}")
-            article_id = result.data[0]["id"]
-            self.article_by_url[key] = article_id
-            inserted = True
-
-        pair = (str(article_id), str(stock_id))
-        if pair not in self.links and not self.dry_run:
-            self.client.table("Article_Stock").insert(
-                {"article_id": article_id, "stock_id": stock_id}
-            ).execute()
-            self.links.add(pair)
-        return str(article_id), inserted
+        return self.save_batch([(payload, stock_id)])[0]
 
 
 class Enricher:
@@ -397,24 +498,36 @@ class Enricher:
         return payload
 
 
-def load_checkpoint(path: Path, start: date, end: date, symbols: list[str]) -> dict[str, Any]:
+def load_checkpoint(
+    path: Path, start: date, end: date, symbols: list[str], monthly_limit: int = 10
+) -> dict[str, Any]:
     expected = {"start_date": start.isoformat(), "end_date": end.isoformat(), "symbols": symbols}
     if path.exists():
         try:
             state = json.loads(path.read_text(encoding="utf-8"))
             if all(state.get(key) == value for key, value in expected.items()):
+                saved_limit = state.get("monthly_limit")
+                if saved_limit is not None and int(saved_limit) != monthly_limit:
+                    logger.warning(
+                        "Ignoring checkpoint because monthly limit changed from %s to %s",
+                        saved_limit,
+                        monthly_limit,
+                    )
+                    return new_checkpoint(start, end, symbols, monthly_limit)
                 # Migrate page-only v1 checkpoints without losing their work.
                 state.setdefault("version", 2)
                 state.setdefault("status", "running")
                 state.setdefault("completed_symbols", [])
                 state.setdefault("pages", {})
                 state.setdefault("stats", {})
+                state.setdefault("monthly_limit", monthly_limit)
+                state.setdefault("monthly_counts", {})
                 state.setdefault("current", None)
                 return state
             logger.warning("Ignoring checkpoint because its date range or symbol list differs")
         except (OSError, json.JSONDecodeError) as exc:
             logger.warning("Ignoring unreadable checkpoint %s: %s", path, exc)
-    return new_checkpoint(start, end, symbols)
+    return new_checkpoint(start, end, symbols, monthly_limit)
 
 
 def save_checkpoint(path: Path, state: dict[str, Any]) -> None:
@@ -447,8 +560,12 @@ def show_checkpoint_status(path: Path) -> int:
         "date_range": [state.get("start_date"), state.get("end_date")],
         "symbols_completed": len(state.get("completed_symbols", [])),
         "symbols_total": len(state.get("symbols", [])),
+        "monthly_limit": state.get("monthly_limit"),
         "completed_symbols": state.get("completed_symbols", []),
         "current": state.get("current"),
+        "current_monthly_counts": (
+            state.get("monthly_counts", {}).get((state.get("current") or {}).get("symbol"), {})
+        ),
         "totals": checkpoint_totals(state),
         "updated_at": state.get("updated_at"),
     }
@@ -497,7 +614,7 @@ def log_progress(checkpoint: dict[str, Any], stats: dict[str, int]) -> None:
     current = checkpoint.get("current") or {}
     logger.info(
         "PROGRESS symbol %s (%s/%s) | page %s | item %s/%s | date %s | "
-        "inserted %d | existing %d | completed symbols %d/%d",
+        "inserted %d | existing %d | monthly skipped %d | completed symbols %d/%d",
         current.get("symbol", "-"),
         current.get("symbol_position", "-"),
         current.get("symbols_total", "-"),
@@ -507,6 +624,7 @@ def log_progress(checkpoint: dict[str, Any], stats: dict[str, int]) -> None:
         current.get("last_article_date", "-"),
         stats.get("inserted", 0),
         stats.get("existing", 0),
+        stats.get("monthly_skipped", 0),
         len(checkpoint.get("completed_symbols", [])),
         len(checkpoint.get("symbols", [])),
     )
@@ -545,6 +663,7 @@ def resolve_stocks(client: Client, requested_symbols: Optional[list[str]]) -> li
 
 def backfill_symbol(
     cafef: CafeFClient,
+    fetcher: ArticleFetcher,
     repository: ArticleRepository,
     enricher: Enricher,
     stock: dict[str, Any],
@@ -556,12 +675,16 @@ def backfill_symbol(
     max_pages: Optional[int],
     checkpoint: dict[str, Any],
     checkpoint_path: Path,
+    batch_size: int,
+    monthly_limit: int,
     pause: Optional[PauseController] = None,
 ) -> tuple[dict[str, int], str]:
     symbol = stock["symbol"]
     stats = checkpoint.setdefault("stats", {}).setdefault(symbol, empty_stats())
     for key in STAT_KEYS:
         stats.setdefault(key, 0)
+    monthly_counts = repository.monthly_counts(stock["id"], start, end)
+    checkpoint.setdefault("monthly_counts", {})[symbol] = dict(sorted(monthly_counts.items()))
     page = start_page
     saved_current = checkpoint.get("current") or {}
     processed_urls = (
@@ -594,46 +717,72 @@ def backfill_symbol(
             return stats, "complete"
 
         selected = [item for item in items if in_requested_range(item, start, end)]
+        remaining: list[tuple[int, ArchiveItem]] = []
+        provisional_counts = dict(monthly_counts)
         for index, item in enumerate(selected, 1):
             key = normalize_url(item.url)
             if key in processed_urls:
                 continue
+            if repository.is_linked(key, stock["id"]):
+                processed_urls.add(key)
+                continue
+            month = item.published_at.strftime("%Y-%m")
+            if monthly_limit > 0 and provisional_counts.get(month, 0) >= monthly_limit:
+                processed_urls.add(key)
+                stats["monthly_skipped"] += 1
+                continue
+            remaining.append((index, item))
+            provisional_counts[month] = provisional_counts.get(month, 0) + 1
+        for offset in range(0, len(remaining), batch_size):
+            chunk = remaining[offset : offset + batch_size]
+            stats["discovered"] += len(chunk)
+            new_items = [
+                item for _, item in chunk if normalize_url(item.url) not in repository.article_by_url
+            ]
+            if new_items:
+                logger.info(
+                    "[%s p%d] fetching %d new article bodies with %d worker(s)",
+                    symbol,
+                    page,
+                    len(new_items),
+                    fetcher.workers,
+                )
+            fetched_payloads = fetcher.fetch_many(new_items)
+            entries: list[tuple[ArticlePayload, Any]] = []
+            for _, item in chunk:
+                key = normalize_url(item.url)
+                payload = fetched_payloads.get(key) or ArticlePayload(
+                    title=item.title,
+                    link=key,
+                    description="",
+                    published_at=item.published_at,
+                    thumbnail=None,
+                    content="",
+                )
+                if key not in repository.article_by_url:
+                    try:
+                        payload = enricher.apply(payload, symbol, stock["company_name"])
+                    except Exception as exc:
+                        logger.warning("[%s] enrichment failed for %s: %s", symbol, item.url, exc)
+                entries.append((payload, stock["id"]))
 
-            stats["discovered"] += 1
-            existing_id = repository.article_by_url.get(key)
-            payload = ArticlePayload(
-                title=item.title,
-                link=key,
-                description="",
-                published_at=item.published_at,
-                thumbnail=None,
-                content="",
-            )
-            if existing_id is None:
-                logger.info("[%s p%d %d/%d] %s", symbol, page, index, len(selected), item.title[:90])
-                try:
-                    payload = cafef.article(item)
-                except Exception as exc:
-                    logger.warning("[%s] article body unavailable for %s: %s", symbol, item.url, exc)
-                try:
-                    payload = enricher.apply(payload, symbol, stock["company_name"])
-                except Exception as exc:
-                    logger.warning("[%s] enrichment failed for %s: %s", symbol, item.url, exc)
             try:
-                _, inserted = repository.save(payload, stock["id"])
-                stats["inserted" if inserted else "existing"] += 1
+                batch_results = repository.save_batch(entries)
+                for _, inserted in batch_results:
+                    stats["inserted" if inserted else "existing"] += 1
             except Exception as exc:
-                stats["failed"] += 1
-                logger.exception("[%s] failed article %s: %s", symbol, item.url, exc)
+                stats["failed"] += len(chunk)
+                logger.exception("[%s] failed batch of %d articles: %s", symbol, len(chunk), exc)
+                last_index, last_item = chunk[-1]
                 record_progress(
                     checkpoint,
                     symbol,
                     symbol_position,
                     symbol_total,
                     page,
-                    index,
+                    last_index,
                     len(selected),
-                    item,
+                    last_item,
                     processed_urls,
                 )
                 checkpoint["status"] = "failed"
@@ -641,16 +790,21 @@ def backfill_symbol(
                     save_checkpoint(checkpoint_path, checkpoint)
                 return stats, "failed"
 
-            processed_urls.add(key)
+            processed_urls.update(normalize_url(item.url) for _, item in chunk)
+            for _, item in chunk:
+                month = item.published_at.strftime("%Y-%m")
+                monthly_counts[month] = monthly_counts.get(month, 0) + 1
+            checkpoint["monthly_counts"][symbol] = dict(sorted(monthly_counts.items()))
+            last_index, last_item = chunk[-1]
             record_progress(
                 checkpoint,
                 symbol,
                 symbol_position,
                 symbol_total,
                 page,
-                index,
+                last_index,
                 len(selected),
-                item,
+                last_item,
                 processed_urls,
             )
             if not repository.dry_run:
@@ -683,7 +837,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--start-date", type=parse_iso_date, default=DEFAULT_START)
     parser.add_argument("--end-date", type=parse_iso_date, default=DEFAULT_END)
     parser.add_argument("--symbols", nargs="+", help="Optional current-VN30 subset, e.g. HPG FPT VNM")
-    parser.add_argument("--delay", type=float, default=1.0, help="Minimum seconds between CafeF requests")
+    parser.add_argument(
+        "--delay", type=float, default=1.0, help="Minimum seconds between requests made by each worker"
+    )
+    parser.add_argument("--workers", type=int, default=4, help="Concurrent CafeF article fetch workers")
+    parser.add_argument("--batch-size", type=int, default=20, help="Articles per Supabase bulk insert")
+    parser.add_argument(
+        "--monthly-limit",
+        type=int,
+        default=10,
+        help="Maximum articles per symbol per calendar month; 0 disables the cap",
+    )
     parser.add_argument("--max-pages", type=int, help="Safety/debug limit per symbol")
     parser.add_argument("--dry-run", action="store_true", help="Crawl and report without writing Supabase")
     parser.add_argument("--enrich", action="store_true", help="Generate sentiment/summary with OpenAI")
@@ -702,6 +866,12 @@ def main(argv: Optional[list[str]] = None) -> int:
         raise SystemExit("--start-date must be on or before --end-date")
     if args.delay < 0:
         raise SystemExit("--delay must be >= 0")
+    if args.workers < 1:
+        raise SystemExit("--workers must be >= 1")
+    if args.batch_size < 1:
+        raise SystemExit("--batch-size must be >= 1")
+    if args.monthly_limit < 0:
+        raise SystemExit("--monthly-limit must be >= 0")
     if args.max_pages is not None and args.max_pages < 1:
         raise SystemExit("--max-pages must be >= 1")
 
@@ -714,14 +884,17 @@ def main(argv: Optional[list[str]] = None) -> int:
     stocks = resolve_stocks(client, args.symbols)
     symbols = [stock["symbol"] for stock in stocks]
     checkpoint = (
-        new_checkpoint(args.start_date, args.end_date, symbols)
+        new_checkpoint(args.start_date, args.end_date, symbols, args.monthly_limit)
         if args.no_resume or args.dry_run
-        else load_checkpoint(args.checkpoint, args.start_date, args.end_date, symbols)
+        else load_checkpoint(
+            args.checkpoint, args.start_date, args.end_date, symbols, args.monthly_limit
+        )
     )
 
     repository = ArticleRepository(client, dry_run=args.dry_run)
     repository.warm_cache()
     cafef = CafeFClient(delay_seconds=args.delay)
+    fetcher = ArticleFetcher(workers=args.workers, delay_seconds=args.delay)
     enricher = Enricher(enabled=args.enrich, model=args.model)
     completed = set(checkpoint.get("completed_symbols", []))
     saved_current = checkpoint.get("current") or {}
@@ -761,6 +934,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             logger.info("[%d/%d] Starting %s from page %d", position, len(stocks), symbol, start_page)
             stats, symbol_status = backfill_symbol(
                 cafef,
+                fetcher,
                 repository,
                 enricher,
                 stock,
@@ -772,6 +946,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                 args.max_pages,
                 checkpoint,
                 args.checkpoint,
+                args.batch_size,
+                args.monthly_limit,
                 pause,
             )
             logger.info("[%s] status=%s stats=%s", symbol, symbol_status, stats)
@@ -787,6 +963,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 break
     finally:
         pause.restore()
+        fetcher.close()
 
     totals = checkpoint_totals(checkpoint)
     if len(completed) == len(stocks):
