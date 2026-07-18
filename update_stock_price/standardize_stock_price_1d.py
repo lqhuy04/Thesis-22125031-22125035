@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
 
+from stock_price_validation import normalize_ohlcv
 from vnindex_symbols import get_vnindex_symbols
 
 load_dotenv()
@@ -80,12 +81,14 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
         return []
 
     result = []
+    rejected = 0
     for r in rows:
         trading_date = (
             r.get("TradingDate") or r.get("tradingdate") or
             r.get("Tradingdate") or ""
         )
         if not trading_date:
+            rejected += 1
             continue
 
         parts = trading_date.split("/")
@@ -93,31 +96,40 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
             dd, mm, yyyy = parts
             iso_date = f"{yyyy}-{mm}-{dd}"
         else:
+            rejected += 1
             logger.warning(f"[{symbol}] Cannot parse date: {trading_date!r}, skipping")
             continue
-
-        def _float(key_variants: list[str]) -> float:
-            for k in key_variants:
-                v = r.get(k)
-                if v is not None and v != "":
-                    try:
-                        return float(v)
-                    except (ValueError, TypeError):
-                        pass
-            return 0.0
 
         # Indices remain the same, divide by 1000 for HOSE stocks
         multiplier = 1 if symbol in ALLOWED_INDICES else 1/1000
 
+        ohlcv, rejection_reason = normalize_ohlcv(
+            r.get("Open"),
+            r.get("High"),
+            r.get("Low"),
+            r.get("Close"),
+            r.get("Volume"),
+            price_multiplier=multiplier,
+            allow_zero_volume=symbol in ALLOWED_INDICES,
+        )
+        if ohlcv is None:
+            rejected += 1
+            logger.debug(
+                "[%s] Skipping invalid standardized OHLCV on %s: %s",
+                symbol,
+                iso_date,
+                rejection_reason,
+            )
+            continue
+
         result.append({
             "symbol":       symbol,
             "trading_time": f"{iso_date}T14:45:00",
-            "open":         _float(["Open"])   * multiplier,
-            "high":         _float(["High"])   * multiplier,
-            "low":          _float(["Low"])    * multiplier,
-            "close":        _float(["Close"])  * multiplier,
-            "volume":       _float(["Volume"]),
+            **ohlcv,
         })
+
+    if rejected:
+        logger.warning("[%s] Skipped %d/%d invalid daily rows", symbol, rejected, len(rows))
 
     return result
 

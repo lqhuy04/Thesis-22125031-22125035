@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
 
+from stock_price_validation import normalize_ohlcv
 from vnindex_symbols import get_vnindex_symbols
 
 load_dotenv()
@@ -71,26 +72,52 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]
         return []
 
     result = []
+    rejected = 0
     for r in rows:
         trading_date = r.get("TradingDate") or r.get("tradingdate") or ""
         raw_time     = r.get("Time")        or r.get("time")        or ""
         if not trading_date or not raw_time:
+            rejected += 1
             continue
 
-        parts           = raw_time.split(":")
+        parts = raw_time.split(":")
+        date_parts = trading_date.split("/")
+        if len(parts) < 2 or len(date_parts) != 3:
+            rejected += 1
+            logger.debug("[%s] Skipping malformed timestamp: %r %r", symbol, trading_date, raw_time)
+            continue
+
         normalized_time = f"{parts[0]}:{parts[1]}:00"
-        dd, mm, yyyy    = trading_date.split("/")
+        dd, mm, yyyy    = date_parts
         trading_time    = f"{yyyy}-{mm}-{dd}T{normalized_time}"
+
+        ohlcv, rejection_reason = normalize_ohlcv(
+            r.get("Open"),
+            r.get("High"),
+            r.get("Low"),
+            r.get("Close"),
+            r.get("Volume"),
+            price_multiplier=1 if symbol in ALLOWED_INDICES else 1 / 1000,
+            allow_zero_volume=symbol in ALLOWED_INDICES,
+        )
+        if ohlcv is None:
+            rejected += 1
+            logger.debug(
+                "[%s] Skipping invalid standardized OHLCV at %s: %s",
+                symbol,
+                trading_time,
+                rejection_reason,
+            )
+            continue
 
         result.append({
             "symbol":       symbol,
             "trading_time": trading_time,
-            "open":         float(r.get("Open")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "high":         float(r.get("High")   or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "low":          float(r.get("Low")    or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "close":        float(r.get("Close")  or 0) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "volume":       float(r.get("Volume") or 0),
+            **ohlcv,
         })
+
+    if rejected:
+        logger.warning("[%s] Skipped %d/%d invalid intraday rows", symbol, rejected, len(rows))
 
     return result
 

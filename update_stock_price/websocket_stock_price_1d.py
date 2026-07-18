@@ -12,6 +12,7 @@ from typing import Optional
 from dotenv import load_dotenv
 from supabase import create_client
 
+from stock_price_validation import normalize_ohlcv
 from vnindex_symbols import get_vnindex_symbols
 
 load_dotenv()
@@ -53,15 +54,6 @@ def get_target_symbols() -> set[str]:
     """Toàn bộ mã cổ phiếu thuộc VNINDEX (từ DB) ∪ các chỉ số cần giữ. Lỗi DB → chỉ còn các chỉ số."""
     vnindex_stocks = get_vnindex_symbols(supabase)
     return vnindex_stocks | ALLOWED_INDICES
-
-
-def _to_float(value) -> float:
-    try:
-        if value in (None, ""):
-            return 0.0
-        return float(value)
-    except (TypeError, ValueError):
-        return 0.0
 
 
 def _get_field(payload: dict, *keys: str, default=None):
@@ -250,14 +242,28 @@ def parse_tick(message) -> Optional[dict]:
         if not trading_time:
             return None
 
+        ohlcv, rejection_reason = normalize_ohlcv(
+            _get_field(bar, "Open", "open"),
+            _get_field(bar, "High", "high"),
+            _get_field(bar, "Low", "low"),
+            _get_field(bar, "Close", "close"),
+            _get_field(bar, "Volume", "volume"),
+            price_multiplier=1 if symbol in ALLOWED_INDICES else 1 / 1000,
+            allow_zero_volume=symbol in ALLOWED_INDICES,
+        )
+        if ohlcv is None:
+            logger.debug(
+                "[%s] Dropping invalid realtime OHLCV at %s: %s",
+                symbol,
+                trading_time,
+                rejection_reason,
+            )
+            return None
+
         return {
             "symbol":       symbol,
             "trading_time": trading_time,
-            "open":         _to_float(_get_field(bar, "Open", "open", default=0)) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "high":         _to_float(_get_field(bar, "High", "high", default=0)) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "low":          _to_float(_get_field(bar, "Low", "low", default=0)) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "close":        _to_float(_get_field(bar, "Close", "close", default=0)) * (1 if symbol in ALLOWED_INDICES else 1/1000),
-            "volume":       _to_float(_get_field(bar, "Volume", "volume", default=0)),
+            **ohlcv,
         }
     except Exception as e:
         logger.warning(f"Parse error: {e}")
