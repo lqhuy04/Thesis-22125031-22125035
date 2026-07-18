@@ -8,6 +8,8 @@ Stock analysis combines several forms of evidence that answer different question
 
 Technical analysis studies historical price and trading-volume behavior to describe trend, momentum, volatility, and possible turning-point conditions \cite{murphy1999technical}. It helps a trader organize market behavior into observable signals, compare the current state with recent history, and choose when a fundamentally or news-supported view may be timely. It does not determine intrinsic value, and a familiar chart pattern or indicator condition does not guarantee that the subsequent price movement will repeat.
 
+Unless a formula is explicitly identified as Stockrium-specific, the OHLCV and technical-indicator equations in this subsection are conventional definitions summarized from the cited technical-analysis literature. Implementation choices such as initialization, population versus sample deviation, and threshold values are stated separately because they can differ among software libraries.
+
 \paragraph{OHLCV market data.}
 
 A price series is divided into fixed intervals, or \textit{bars}. Let $p_{t,j}$ and $q_{t,j}$ denote the price and traded quantity of transaction $j$ during interval $t$. The five basic values of a bar are
@@ -165,12 +167,14 @@ The current technical component requires at least 50 complete OHLCV bars and eva
 
 where $m$ is the number of selected perspectives. A candidate positive technical condition requires at least $\lceil0.60m\rceil$ points. When available, the latest one-minute price is used in the current-price comparisons for SMA and Bollinger Bands; RSI, MACD, and KDJ remain based on the daily, weekly, or monthly bars selected for the investment horizon. A zero for one perspective means only that its bullish condition was not satisfied; it is not an independent sell signal. Moreover, all five perspectives are derived from the same OHLCV series, so the total should not be interpreted as five statistically independent sources of evidence.
 
+Equation~\ref{eq:technical-score}, its binary point assignment, and the 60\% qualification threshold are author-defined Stockrium rules. They combine conventional indicators into an inspectable prototype score; they are not a published forecasting model or an empirically calibrated probability.
+
 The formulas above describe the service used for current application analysis and chart data, implemented with NumPy and pandas. The historical backtesting engine presently uses the same indicator periods and scoring concepts but different numerical conventions for EMA/RSI initialization, Bollinger standard deviation, and KDJ smoothing. Exact live and backtest values can therefore differ near a threshold; the implementations must be standardized before strict indicator-parity claims are made. The available indicator set and conventional function families are also documented by TA-Lib \cite{talibFunctions2026}, but the active Stockrium service does not depend on the TA-Lib package.
 
 \subsection{Fundamental Analysis}
 \label{subsec:fundamental-analysis-foundations}
 
-Fundamental analysis examines whether a company's operating performance, financial position, and valuation support its market price and longer-term prospects \cite{penman2013financial}. Its principal inputs are the balance sheet, income statement, and cash-flow statement. The balance sheet reports assets, liabilities, and shareholders' equity at a point in time; the income statement explains how revenue and expenses produce profit over a period; and the cash-flow statement separates operating, investing, and financing cash flows. Because absolute values are affected by company size, analysts commonly convert statement items into ratios and compare them across time and with similar firms.
+Fundamental analysis examines whether a company's operating performance, financial position, and valuation support its market price and longer-term prospects \cite{penman2013financial}. Its principal inputs are the balance sheet, income statement, and cash-flow statement. The balance sheet reports assets, liabilities, and shareholders' equity at a point in time; the income statement explains how revenue and expenses produce profit over a period; and the cash-flow statement separates operating, investing, and financing cash flows. Because absolute values are affected by company size, analysts commonly convert statement items into ratios and compare them across time and with similar firms. Unless otherwise stated, the ratio equations below are conventional financial-statement definitions summarized from this source rather than formulas created by Stockrium.
 
 Stockrium stores annual statements together with provider-supplied ratios. The formulas below explain the conventional financial meaning of the fields used by the system; they do not imply that every ratio is recomputed from raw statements during an analysis request. Provider definitions may differ slightly, particularly in their use of average or year-end balances and in what they classify as debt.
 
@@ -252,7 +256,7 @@ Gross margin reflects pricing and direct production or service-delivery cost, wh
     \label{eq:fundamental-dupont}
 \end{equation}
 
-This decomposition reveals whether returns are supported mainly by margin, efficient asset use, or leverage. The direction of each component over several years is more informative than one isolated ROE value.
+This standard DuPont decomposition \cite{openstaxDupont2022} reveals whether returns are supported mainly by margin, efficient asset use, or leverage. The direction of each component over several years is more informative than one isolated ROE value.
 
 Valuation ratios compare the market value assigned to the company with earnings, book value, or operating cash-generating capacity:
 
@@ -319,7 +323,7 @@ For financial-sector valuation, Stockrium uses P/B because book equity is partic
 
 \paragraph{Trend and industry context.}
 
-One annual observation is only a snapshot. Stockrium retains up to the five latest annual observations and orders them chronologically. When both endpoints are positive, it summarizes their change using compound annual growth rate:
+One annual observation is only a snapshot. Stockrium retains up to the five latest annual observations and orders them chronologically. When both endpoints are positive, it summarizes their change using the standard compound annual growth rate definition \cite{damodaranHistoricalGrowth2026}:
 
 \begin{equation}
     \operatorname{CAGR}(x)

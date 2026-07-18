@@ -3,6 +3,10 @@
 
 Stockrium includes a historical simulation subsystem for evaluating whether the analytical pipeline behaves consistently with its intended decision rules. The subsystem is designed as an engineering and research tool rather than an automated trading facility. It reuses the production multi-agent components and mirrors the technical scoring conditions in a vectorized historical engine, applies explicit execution assumptions, and produces machine-readable artifacts for later evaluation. Experimental results obtained from this framework are reported in Chapter~6.
 
+Established Python frameworks already provide reusable data feeds, strategy lifecycles, order simulation, indicators, portfolio accounting, and fast parameter exploration. For example, Backtrader provides an event-driven strategy and broker abstraction \cite{backtraderDocs2026}, while VectorBT emphasizes vectorized analysis over pandas and NumPy objects \cite{vectorbtDocs2026}. Stockrium nevertheless implements a focused simulator because the object being evaluated is not only a conventional deterministic trading strategy. Each historical candidate must reconstruct a date-bounded production request, invoke the same specialist agents and structured aggregator used by the application, enforce Stockrium-specific confidence and veto rules, compare the agent-filtered result with an engine-only branch, and return artifacts through the existing FastAPI and Supabase workflow.
+
+Adapting a general framework would still require custom adapters for historical agent state, language-model outputs, source-availability markers, the scoring-parity gate, and Stockrium's stored result schema. A compact in-project framework makes these assumptions visible and allows exact correspondence with the production decision path to be tested. The trade-off is that mature frameworks provide broader execution, portfolio, optimization, and broker features that the current simulator does not reproduce. Thus, the custom implementation is justified by production-path fidelity and experimental traceability, not by a claim that general frameworks are inadequate; cross-checking future deterministic results with an established engine remains desirable.
+
 The implementation is exposed through the access-controlled internal \texttt{POST} \path{/api/agentic/backtest} endpoint. A request specifies the stock symbol, historical boundaries, minimum technical score, maximum holding period, optional score-based exit, and automatic or manual evidence selection. Historical OHLCV data are loaded through the market service, while VN-Index candles provide the reference series for regime analysis. Each completed run returns parity results, model decisions, simulated trades, metrics, benchmark comparisons, statistical tests, and visualization data.
 
 \subsection{Evaluation Architecture}
@@ -34,6 +38,8 @@ The first 50 observations form the warm-up interval because SMA50 is the longest
 
 The crossing rule avoids opening a new candidate on every day of a persistent high-score interval. The last candle is never signaled because no next-candle execution price exists. Model-backed analysis is invoked only on candidate dates, reducing the number of language-model calls. Technical and article plans use the candidate date as their upper boundary and a 252-day lookback in the main daily experiment.
 
+Equation~\ref{eq:backtest-threshold-crossing} is an author-defined Stockrium event rule rather than a signal formula taken from an external strategy. It converts the implemented binary technical score into one candidate only when the score newly enters the qualified region; the threshold is an exposed experiment parameter.
+
 \subsection{Trade Simulation and Cost Model}
 \label{subsec:backtest-trade-simulation}
 
@@ -49,6 +55,8 @@ The default transaction cost is $c=0.0015$, or 0.15\% per side. For entry price 
 \end{equation}
 
 The default round-trip deduction is therefore 0.30\%. The simulation does not separately model bid--ask spread, market impact, partial fills, taxes, price-limit queues, or gap slippage. These assumptions are considered when interpreting the experimental results.
+
+Equation~\ref{eq:backtest-net-trade-return} is the framework's accounting definition of simulated net trade return. The value $c=0.0015$ is a configurable modeling assumption per side, not a claim that every Vietnamese investor incurs one universal statutory fee. Keeping it explicit allows later experiments to replace it with broker-, tax-, liquidity-, or period-specific costs.
 
 \subsection{Measures, Benchmarks, and Artifacts}
 \label{subsec:backtest-metrics-tests}
@@ -70,6 +78,8 @@ Let $H_k=\max_{j\leq k}E_j$ denote the running peak. Maximum drawdown is the min
 \end{equation}
 
 where $s_r$ is the sample standard deviation of trade returns. It follows the risk-adjusted comparison principle of the Sharpe ratio \cite{sharpe1994ratio}, but is scaled by trade count rather than a fixed annual frequency. It is therefore an internal comparison statistic rather than a conventional annualized portfolio Sharpe ratio.
+
+Equation~\ref{eq:backtest-total-return} and the stated maximum-drawdown calculation are implementation definitions based on geometric compounding of sequential trade returns and decline from the running equity peak. Equation~\ref{eq:backtest-sharpe} is explicitly adapted from Sharpe's risk-adjusted comparison principle, with the nonstandard $\sqrt{K}$ trade-count scaling identified above. Stating these origins separates standard financial concepts from Stockrium-specific event, cost, and scaling choices.
 
 The evaluation suite compares the full pipeline with the engine-only strategy, buy-and-hold exposure, and 1,000 random-entry simulations. It also provides a one-sample $t$-test, sign-permutation test, score--return information coefficient, confidence grouping, rolling walk-forward windows, and VN-Index regime analysis. Because repeated strategy comparisons can overfit historical data \cite{bailey2017pbo}, the framework retains negative and non-significant results instead of reporting only successful securities.
 

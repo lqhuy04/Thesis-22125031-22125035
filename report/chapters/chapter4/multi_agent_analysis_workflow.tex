@@ -12,10 +12,12 @@ The compiled analysis graph contains five nodes: an orchestrator, three speciali
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth,keepaspectratio]{diagrams/chapter4/stockrium_agent_topology.png}
+    \includegraphics[height=0.76\textheight,keepaspectratio]{diagrams/chapter4/stockrium_agent_topology_portrait.png}
     \caption{Execution topology of the Stockrium analysis graph}
     \label{fig:analysis-graph-topology}
 \end{figure}
+
+The vertical layout in Figure~\ref{fig:analysis-graph-topology} follows the top-to-bottom execution order and uses enlarged labels that remain legible at report size. The three specialist nodes remain on the same level to show that they can execute in parallel, while the dashed paths distinguish shared-state updates from the main control flow.
 
 The shared \texttt{AgentState} is a typed dictionary containing the fields summarized in Table~\ref{tab:analysis-agent-state}. State is the contract between graph nodes: a node reads only the context it requires and returns only the fields it changes. The graph can consequently add or replace a specialist without redesigning the public HTTP request.
 
@@ -109,7 +111,7 @@ For every enabled indicator, the output contains current and previous values, a 
 \subsubsection{Fundamental-Analysis Agent}
 \label{subsubsec:fundamental-analysis-agent}
 
-The fundamental agent loads financial indicators, income statements, cash flows, a stored summary, and company-profile metadata. It retains up to five most recent annual records and orders them chronologically. For applicable values it computes compound annual growth rate as
+The fundamental agent loads financial indicators, income statements, cash flows, a stored summary, and company-profile metadata. It retains up to five most recent annual records and orders them chronologically. For applicable values it computes compound annual growth rate (CAGR) using the standard geometric endpoint-growth definition used for historical financial growth rates \cite{damodaranHistoricalGrowth2026}:
 
 \begin{equation}
     \operatorname{CAGR}(x) = \left(\frac{x_{n}}{x_{0}}\right)^{\frac{1}{y_{n}-y_{0}}} - 1,
@@ -118,7 +120,7 @@ The fundamental agent loads financial indicators, income statements, cash flows,
 
 where $x_{0}$ and $x_{n}$ are the earliest and latest positive observations and $y_{n}-y_{0}$ is the elapsed number of years. CAGR is omitted when fewer than two valid points exist, the elapsed period is nonpositive, or either endpoint is nonpositive. This restriction avoids producing a misleading growth percentage for a series that changes sign.
 
-For nonfinancial firms, selected evidence is organized into liquidity, leverage, efficiency, profitability, and valuation. The leverage or profitability preparation can include a DuPont decomposition,
+For nonfinancial firms, selected evidence is organized into liquidity, leverage, efficiency, profitability, and valuation. The leverage or profitability preparation can include the three-factor DuPont decomposition \cite{openstaxDupont2022},
 
 \begin{equation}
     ROE = \text{Net Margin} \times \text{Asset Turnover} \times \text{Financial Leverage},
@@ -161,11 +163,13 @@ Confidence is calculated after structured parsing and must not be interpreted as
 
 where fundamental labels \texttt{strong}, \texttt{neutral}, and \texttt{weak} map respectively to $1$, $0.5$, and $0$, while article labels \texttt{positive}, \texttt{neutral}, and \texttt{negative} use the same mapping. If no technical indicator is enabled, the technical component is set to $0$; in that configuration the technical source is inactive and is removed by the effective-weight renormalization in Equation~\ref{eq:effective-confidence}, so this value does not affect the final confidence.
 
-Default weights vary by horizon as shown in Table~\ref{tab:confidence-horizon-weights}. The short-term profile emphasizes price signals, while the long-term profile emphasizes company fundamentals. Manual weights replace this table after API validation has established that the three values are within $[0,1]$ and total one.
+Equation~\ref{eq:confidence-components} is a Stockrium-specific normalization designed by the authors; it is not a published financial probability model. The technical component is the observed proportion of enabled binary rules that are positive. The values $1$, $0.5$, and $0$ encode ordered positive, neutral, and negative qualitative labels on a common internal scale. Consequently, the result measures agreement among the system's evidence sources and must not be interpreted as an empirically calibrated probability of profit.
+
+Default weights vary by horizon as shown in Table~\ref{tab:confidence-horizon-weights}. The allocation was defined for Stockrium after domain consultation with Ms.~Trinh, Securities Analyst at FPT Securities Joint Stock Company \cite{trinh2026weights}. The short-term profile emphasizes price behavior and recent news, whereas the long-term profile emphasizes company fundamentals. Manual weights replace this table after API validation has established that the three values are within $[0,1]$ and total one.
 
 \begin{table}[H]
     \centering
-    \caption{Default confidence weights by investment horizon}
+    \caption{Default confidence weights by investment horizon, based on expert consultation \protect\cite{trinh2026weights}}
     \label{tab:confidence-horizon-weights}
     \small
     \renewcommand{\arraystretch}{1.2}
@@ -179,6 +183,8 @@ Default weights vary by horizon as shown in Table~\ref{tab:confidence-horizon-we
         \bottomrule
     \end{tabular}
 \end{table}
+
+These weights are expert-informed prototype settings rather than coefficients estimated from historical returns. Their role is to encode the intended analytical emphasis of each horizon while retaining a transparent configuration that users can override in manual mode. Chapter~6 therefore evaluates the behavior produced by the settings but does not claim that the allocation is statistically optimal.
 
 An unavailable or disabled source is removed before aggregation. If $A$ is the set of active sources and $w_i$ is the default or manual base weight, the effective weight is
 
@@ -195,6 +201,8 @@ An unavailable or disabled source is removed before aggregation. If $A$ is the s
 
 Thus, disabling news does not leave its original weight as an invisible neutral contribution. The remaining evidence is renormalized to sum to one. The response exposes the component scores, effective weights, raw technical score, qualitative labels, final confidence, and the fixed acceptance threshold of $0.55$, making the calculation inspectable.
 
+Equation~\ref{eq:effective-confidence}, including inactive-source renormalization and the $0.55$ acceptance threshold, is also an author-defined Stockrium decision rule. It was introduced to make missing-source behavior deterministic and to prevent an unavailable source from contributing an implicit neutral score. The threshold is a conservative prototype control and not an externally validated market cutoff.
+
 The decision layer acts conservatively as a veto system. The model is first instructed to apply the same rules and generates a candidate recommendation. Python never promotes a model-generated Wait to Buy; it can only preserve a candidate Buy or downgrade it. A candidate Buy is changed to Wait when any applicable condition holds:
 
 \begin{itemize}
@@ -204,13 +212,15 @@ The decision layer acts conservatively as a veto system. The model is first inst
     \item deterministic confidence is below $0.55$.
 \end{itemize}
 
+The veto structure and its 60\% technical agreement requirement are author-defined safeguards in Stockrium. They formalize a conservative minimum-evidence policy for this prototype and are not presented as thresholds established by prior empirical finance research.
+
 If fundamental or news evidence is absent, its veto is skipped rather than treated as a negative signal. If the final result is Wait, all trading-plan values are set to \texttt{null}. This long-only design prevents the result from resembling a short-sale or execution instruction and is consistent with the application scope.
 
 For a surviving Buy result, the current technical price is used when the model does not supply an entry price. Python then constrains take-profit distance, stop-loss distance, and maximum holding count according to Table~\ref{tab:horizon-price-boundaries}. An out-of-range value is clamped to the nearest boundary; a missing or invalid value is replaced by the midpoint of the permitted range. Final prices are recalculated from the bounded percentages and appended to the narrative summary only after enforcement, preventing the displayed text from disagreeing with the structured numerical fields.
 
 \begin{table}[H]
     \centering
-    \caption{Implemented horizon-specific trading-plan boundaries}
+    \caption{Stockrium-defined horizon-specific trading-plan boundaries}
     \label{tab:horizon-price-boundaries}
     \small
     \setlength{\tabcolsep}{7pt}
@@ -225,6 +235,10 @@ For a surviving Buy result, the current technical price is used when the model d
         \bottomrule
     \end{tabular}
 \end{table}
+
+The boundaries in Table~\ref{tab:horizon-price-boundaries} are author-defined safety and consistency constraints for generated plans; they are not copied from an exchange rule or claimed as empirically optimal trading parameters. Short-term plans use the narrowest take-profit, stop-loss, and holding ranges because they are intended to react to near-term price behavior and limit exposure when the premise changes quickly. Medium-term plans permit wider movement and a longer holding window so that intermediate trends and financial developments have time to emerge. Long-term plans use the broadest price distances and holding range because normal multi-period volatility should not trigger the same tight exit used for a short-term position. The asymmetric take-profit and stop-loss ranges also aim to preserve a positive prospective reward relative to accepted loss, although the implementation qualification below means that a final reward-to-risk ratio is not yet guaranteed after clamping.
+
+The purpose of these ranges is therefore to bound language-model output, prevent implausibly narrow or unbounded values, and keep recommendations consistent with the selected horizon. They should be calibrated in future work using point-in-time data, realistic transaction assumptions, and out-of-sample experiments before being interpreted as operational trading rules.
 
 Two implementation qualifications are necessary for an accurate description. First, the prompt asks the model to maintain a reward-to-risk ratio of at least 1.5, but the current Python post-processing does not recalculate this condition as a final veto after clamping. The ratio displayed in the result is therefore informative rather than a deterministically guaranteed constraint. Second, the boundary configuration describes maximum hold in daily-candle terms, while live technical analysis maps medium- and long-term horizons to weekly and monthly candles and the mobile interface labels the field as a number of candles. The present code does not convert the bounded count between these time scales. Consequently, the values in Table~\ref{tab:horizon-price-boundaries} document the implementation but should not be reinterpreted as a universally consistent calendar duration. Aligning interval semantics and adding a final reward-to-risk assertion are appropriate hardening tasks for future work.
 
