@@ -14,7 +14,8 @@ python update_articles/backfill_vn30_historical_articles.py --dry-run --symbols 
 ```
 
 The dry run makes CafeF requests and reports what it finds, but does not write
-to Supabase and does not create a checkpoint.
+to Supabase and does not create a checkpoint. It still calls OpenAI to exercise
+the full analysis pipeline, so `OPENAI_API_KEY` is required for dry runs too.
 
 ## Import all 30 symbols
 
@@ -79,12 +80,11 @@ which prevents gaps if CafeF pagination shifts while paused. The progress file
 is retained with `status: completed` after the backfill finishes. Use
 `--no-resume` only when intentionally starting a fresh pass.
 
-By default, `sentiment` is `neutral` and `summary` uses the article description.
-To generate both fields with the configured `OPENAI_API_KEY`:
-
-```powershell
-python update_articles/backfill_vn30_historical_articles.py --enrich
-```
+Every newly inserted article is analyzed with OpenAI using the configured
+`OPENAI_API_KEY`. The model assigns `sentiment` (`positive`, `neutral`, or
+`negative`) based on the impact on that stock and generates a 1-3 sentence
+Vietnamese `summary`. If OpenAI fails or returns an empty summary, that article
+is skipped instead of being stored with fallback analysis.
 
 Run only one copy of the importer at a time. Deduplication is cached at startup;
 concurrent copies could both observe the same URL as missing before either one
@@ -100,6 +100,7 @@ Useful options:
 --workers 4             concurrent article-body requests
 --batch-size 20         articles per Supabase bulk insert
 --monthly-limit 10      maximum articles per month per symbol (0 = unlimited)
+--model gpt-4o-mini     OpenAI model for sentiment and summary
 --no-resume             ignore an existing matching checkpoint
 --status                display saved progress without network or DB access
 --dry-run               never write to Supabase
@@ -112,8 +113,8 @@ below, but it creates more load on CafeF:
 python update_articles/backfill_vn30_historical_articles.py --workers 6 --delay 0.75 --batch-size 30
 ```
 
-When `--enrich` is enabled, sequential OpenAI calls may become the main
-bottleneck instead of crawling or Supabase.
+Sequential OpenAI calls may become the main bottleneck instead of crawling or
+Supabase.
 
 This uses the *current* VN30 mapping in the database. If the research requires
 point-in-time index membership, first load a dated constituent list and pass

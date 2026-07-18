@@ -9,7 +9,10 @@ Examples (run from the repository root):
 
     python update_articles/backfill_vn30_historical_articles.py --dry-run --symbols HPG
     python update_articles/backfill_vn30_historical_articles.py
-    python update_articles/backfill_vn30_historical_articles.py --enrich
+
+Every new article is analyzed by OpenAI before it is inserted. Articles whose
+AI analysis fails are skipped, so stored historical news always has an
+AI-generated sentiment and summary.
 """
 
 from __future__ import annotations
@@ -458,21 +461,16 @@ class ArticleRepository:
 
 
 class Enricher:
-    def __init__(self, enabled: bool, model: str):
-        self.enabled = enabled
+    def __init__(self, model: str):
         self.model = model
-        self._client: Any = None
-        if enabled:
-            api_key = os.getenv("OPENAI_API_KEY", "")
-            if not api_key:
-                raise RuntimeError("--enrich requires OPENAI_API_KEY")
-            from openai import OpenAI
+        api_key = os.getenv("OPENAI_API_KEY", "")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is required to analyze historical articles")
+        from openai import OpenAI
 
-            self._client = OpenAI(api_key=api_key)
+        self._client = OpenAI(api_key=api_key)
 
     def apply(self, payload: ArticlePayload, symbol: str, company_name: str) -> ArticlePayload:
-        if not self.enabled:
-            return payload
         text = payload.content[:12000] or payload.description
         response = self._client.beta.chat.completions.parse(
             model=self.model,
@@ -491,10 +489,14 @@ class Enricher:
             ],
         )
         parsed = response.choices[0].message.parsed
-        if parsed:
-            sentiment = (parsed.sentiment or "neutral").strip().lower()
-            payload.sentiment = sentiment if sentiment in {"positive", "neutral", "negative"} else "neutral"
-            payload.summary = (parsed.summary or payload.description).strip()
+        if not parsed:
+            raise RuntimeError("OpenAI returned no structured sentiment/summary")
+
+        sentiment = (parsed.sentiment or "neutral").strip().lower()
+        payload.sentiment = sentiment if sentiment in {"positive", "neutral", "negative"} else "neutral"
+        payload.summary = (parsed.summary or "").strip()
+        if not payload.summary:
+            raise RuntimeError("OpenAI returned an empty summary")
         return payload
 
 
@@ -749,6 +751,7 @@ def backfill_symbol(
                 )
             fetched_payloads = fetcher.fetch_many(new_items)
             entries: list[tuple[ArticlePayload, Any]] = []
+            entry_items: list[ArchiveItem] = []
             for _, item in chunk:
                 key = normalize_url(item.url)
                 payload = fetched_payloads.get(key) or ArticlePayload(
@@ -763,16 +766,27 @@ def backfill_symbol(
                     try:
                         payload = enricher.apply(payload, symbol, stock["company_name"])
                     except Exception as exc:
-                        logger.warning("[%s] enrichment failed for %s: %s", symbol, item.url, exc)
+                        # Match the init-articles flow: never insert a new article
+                        # unless OpenAI produced both sentiment and summary.
+                        stats["failed"] += 1
+                        processed_urls.add(key)
+                        logger.warning(
+                            "[%s] skipping article because AI analysis failed for %s: %s",
+                            symbol,
+                            item.url,
+                            exc,
+                        )
+                        continue
                 entries.append((payload, stock["id"]))
+                entry_items.append(item)
 
             try:
                 batch_results = repository.save_batch(entries)
                 for _, inserted in batch_results:
                     stats["inserted" if inserted else "existing"] += 1
             except Exception as exc:
-                stats["failed"] += len(chunk)
-                logger.exception("[%s] failed batch of %d articles: %s", symbol, len(chunk), exc)
+                stats["failed"] += len(entries)
+                logger.exception("[%s] failed batch of %d articles: %s", symbol, len(entries), exc)
                 last_index, last_item = chunk[-1]
                 record_progress(
                     checkpoint,
@@ -790,8 +804,8 @@ def backfill_symbol(
                     save_checkpoint(checkpoint_path, checkpoint)
                 return stats, "failed"
 
-            processed_urls.update(normalize_url(item.url) for _, item in chunk)
-            for _, item in chunk:
+            processed_urls.update(normalize_url(item.url) for item in entry_items)
+            for item in entry_items:
                 month = item.published_at.strftime("%Y-%m")
                 monthly_counts[month] = monthly_counts.get(month, 0) + 1
             checkpoint["monthly_counts"][symbol] = dict(sorted(monthly_counts.items()))
@@ -850,8 +864,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--max-pages", type=int, help="Safety/debug limit per symbol")
     parser.add_argument("--dry-run", action="store_true", help="Crawl and report without writing Supabase")
-    parser.add_argument("--enrich", action="store_true", help="Generate sentiment/summary with OpenAI")
-    parser.add_argument("--model", default="gpt-4o-mini", help="OpenAI model used with --enrich")
+    parser.add_argument(
+        "--model", default="gpt-4o-mini", help="OpenAI model used for sentiment and summary"
+    )
     parser.add_argument("--checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument("--no-resume", action="store_true", help="Ignore a matching checkpoint")
     parser.add_argument("--status", action="store_true", help="Show saved progress without crawling or DB access")
@@ -875,6 +890,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.max_pages is not None and args.max_pages < 1:
         raise SystemExit("--max-pages must be >= 1")
 
+    try:
+        enricher = Enricher(model=args.model)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from exc
+
     supabase_url = os.getenv("SUPABASE_URL", "").strip()
     supabase_key = os.getenv("SUPABASE_KEY", "").strip()
     if not supabase_url or not supabase_key:
@@ -895,7 +915,6 @@ def main(argv: Optional[list[str]] = None) -> int:
     repository.warm_cache()
     cafef = CafeFClient(delay_seconds=args.delay)
     fetcher = ArticleFetcher(workers=args.workers, delay_seconds=args.delay)
-    enricher = Enricher(enabled=args.enrich, model=args.model)
     completed = set(checkpoint.get("completed_symbols", []))
     saved_current = checkpoint.get("current") or {}
     if saved_current:

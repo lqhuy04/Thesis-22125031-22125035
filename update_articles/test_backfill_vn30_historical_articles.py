@@ -7,6 +7,7 @@ from backfill_vn30_historical_articles import (
     ArticlePayload,
     ArticleRepository,
     backfill_symbol,
+    build_parser,
     in_requested_range,
     normalize_url,
     new_checkpoint,
@@ -25,6 +26,67 @@ class FakeFetcher:
 
 
 class HistoricalArticleCrawlerTests(unittest.TestCase):
+    def test_ai_analysis_is_configured_by_default(self):
+        args = build_parser().parse_args([])
+        self.assertEqual(args.model, "gpt-4o-mini")
+        self.assertFalse(hasattr(args, "enrich"))
+
+    def test_failed_ai_analysis_is_not_inserted(self):
+        item = ArchiveItem(
+            "historical",
+            "https://cafef.vn/historical.chn",
+            datetime(2025, 6, 1, 9, 30, tzinfo=timezone.utc),
+        )
+
+        class FakeCafeF:
+            def archive_page(self, symbol, page):
+                return [item]
+
+        class ReturningFetcher:
+            workers = 1
+
+            def fetch_many(self, requested):
+                return {
+                    item.url: ArticlePayload(
+                        item.title,
+                        item.url,
+                        "description",
+                        item.published_at,
+                        None,
+                        "article content",
+                    )
+                    for item in requested
+                }
+
+        class FailingEnricher:
+            def apply(self, payload, symbol, company_name):
+                raise RuntimeError("OpenAI unavailable")
+
+        repository = ArticleRepository(client=None, dry_run=True)
+        checkpoint = new_checkpoint(date(2023, 1, 1), date(2025, 12, 31), ["HPG"])
+        stats, status = backfill_symbol(
+            FakeCafeF(),
+            ReturningFetcher(),
+            repository,
+            FailingEnricher(),
+            {"id": "stock-id", "symbol": "HPG", "company_name": "Hoa Phat"},
+            1,
+            1,
+            date(2023, 1, 1),
+            date(2025, 12, 31),
+            1,
+            1,
+            checkpoint,
+            Path("unused.json"),
+            20,
+            10,
+        )
+
+        self.assertEqual(status, "limited")
+        self.assertEqual(stats["inserted"], 0)
+        self.assertEqual(stats["failed"], 1)
+        self.assertNotIn(item.url, repository.article_by_url)
+
     def test_monthly_limit_keeps_only_ten_newest_items(self):
         items = [
             ArchiveItem(
