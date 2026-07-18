@@ -1,128 +1,95 @@
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<mxfile host="app.diagrams.net" modified="2026-07-14T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
-  <diagram id="stockrium-client-server" name="Client-Server Architecture">
-    <mxGraphModel dx="1800" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
-      <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-
-        <!-- Architectural boundaries -->
-        <mxCell id="clients-boundary" value="Clients" style="swimlane;html=1;rounded=1;startSize=44;horizontal=1;fillColor=#f5f9ff;strokeColor=#6c8ebf;fontStyle=1;fontSize=17;" vertex="1" parent="1">
-          <mxGeometry x="30" y="70" width="320" height="540" as="geometry"/>
-        </mxCell>
-        <mxCell id="server-boundary" value="Server Side" style="swimlane;html=1;rounded=1;startSize=44;horizontal=1;fillColor=#f6fbf6;strokeColor=#82b366;fontStyle=1;fontSize=17;" vertex="1" parent="1">
-          <mxGeometry x="430" y="70" width="650" height="690" as="geometry"/>
-        </mxCell>
-        <mxCell id="storage-boundary" value="Data Stores" style="swimlane;html=1;rounded=1;startSize=44;horizontal=1;fillColor=#fffaf0;strokeColor=#d6b656;fontStyle=1;fontSize=17;" vertex="1" parent="1">
-          <mxGeometry x="1160" y="70" width="410" height="570" as="geometry"/>
-        </mxCell>
-
-        <!-- Client applications -->
-        <mxCell id="mobile-client" value="&lt;b&gt;Mobile Application&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="70" y="180" width="240" height="90" as="geometry"/>
-        </mxCell>
-        <mxCell id="web-client" value="&lt;b&gt;Administrative Web Application&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="70" y="400" width="240" height="90" as="geometry"/>
-        </mxCell>
-
-        <!-- Server-side request processing -->
-        <mxCell id="fastapi-backend" value="&lt;b&gt;FastAPI Backend&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="480" y="180" width="550" height="110" as="geometry"/>
-        </mxCell>
-
-        <!-- Server-side background processing -->
-        <mxCell id="background-workers" value="&lt;b&gt;Background Data Workers and Offline Pipelines&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=16;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="480" y="500" width="550" height="110" as="geometry"/>
-        </mxCell>
-
-        <!-- Data stores -->
-        <mxCell id="postgres-store" value="&lt;b&gt;Supabase PostgreSQL&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=15;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="165" width="330" height="90" as="geometry"/>
-        </mxCell>
-        <mxCell id="storage-store" value="&lt;b&gt;Supabase Storage&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=15;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="340" width="330" height="80" as="geometry"/>
-        </mxCell>
-        <mxCell id="redis-store" value="&lt;b&gt;Redis&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=15;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="500" width="330" height="80" as="geometry"/>
-        </mxCell>
-
-        <!-- External providers -->
-        <mxCell id="external-data" value="&lt;b&gt;External Data Sources&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce5cd;strokeColor=#d79b00;fontSize=16;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="480" y="840" width="550" height="90" as="geometry"/>
-        </mxCell>
-        <mxCell id="external-services" value="&lt;b&gt;External Application Services&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;spacing=8;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="840" width="330" height="90" as="geometry"/>
-        </mxCell>
-
-        <!-- Bidirectional client/backend interactions -->
-        <mxCell id="edge-mobile-backend" value="HTTPS API&lt;br&gt;request / response" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.45;entryX=0;entryY=0.35;" edge="1" parent="1" source="mobile-client" target="fastapi-backend">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="edge-web-backend" value="HTTPS API&lt;br&gt;request / response" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.8;" edge="1" parent="1" source="web-client" target="fastapi-backend">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- Backend/data-store read-write interactions -->
-        <mxCell id="edge-backend-postgres" value="queries / results" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.32;entryX=0;entryY=0.45;" edge="1" parent="1" source="fastapi-backend" target="postgres-store">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="edge-backend-storage" value="backtest artifact access" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.62;entryX=0;entryY=0.5;" edge="1" parent="1" source="fastapi-backend" target="storage-store">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="edge-backend-redis" value="session-state read / write" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.88;entryX=0;entryY=0.5;" edge="1" parent="1" source="fastapi-backend" target="redis-store">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- Worker ingestion and persistence -->
-        <mxCell id="edge-sources-workers" value="scheduled collection" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=none;endArrow=block;endFill=1;strokeColor=#7b3f98;strokeWidth=2;fontSize=12;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="external-data" target="background-workers">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-        <mxCell id="edge-workers-postgres" value="metadata lookup / normalized upsert" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.45;entryX=0;entryY=1;" edge="1" parent="1" source="background-workers" target="postgres-store">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1110" y="585"/>
-              <mxPoint x="1110" y="350"/>
-            </Array>
-          </mxGeometry>
-        </mxCell>
-
-        <!-- External service request-response paths -->
-        <mxCell id="edge-backend-services" value="model, identity, and email&lt;br&gt;request / response" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=1;entryX=0;entryY=0.35;" edge="1" parent="1" source="fastapi-backend" target="external-services">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1135" y="430"/>
-              <mxPoint x="1135" y="870"/>
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="edge-workers-services" value="AI enrichment&lt;br&gt;request / response" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=12;labelBackgroundColor=#ffffff;exitX=1;exitY=0.85;entryX=0;entryY=0.75;" edge="1" parent="1" source="background-workers" target="external-services">
-          <mxGeometry relative="1" as="geometry"/>
-        </mxCell>
-
-        <!-- Legend -->
-        <mxCell id="legend" value="&lt;b&gt;Arrow convention:&lt;/b&gt; two-way = request/response or read/write; one-way = scheduled ingestion." style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontColor=#444444;" vertex="1" parent="1">
-          <mxGeometry x="30" y="970" width="1080" height="25" as="geometry"/>
-        </mxCell>
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
 <mxfile host="app.diagrams.net" agent="Codex">
   <diagram id="stockrium-client-server" name="Client-Server Architecture">
-    <mxGraphModel dx="1664" dy="941" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
+    <mxGraphModel dx="2175" dy="1143" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
+        <mxCell id="clients-boundary" parent="1" style="swimlane;html=1;rounded=1;startSize=44;horizontal=1;fillColor=#f5f9ff;strokeColor=#6c8ebf;fontStyle=1;fontSize=20;" value="Clients" vertex="1">
+          <mxGeometry height="540" width="320" x="30" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="server-boundary" parent="1" style="swimlane;html=1;rounded=1;startSize=44;horizontal=1;fillColor=#f6fbf6;strokeColor=#82b366;fontStyle=1;fontSize=20;" value="Server Side" vertex="1">
+          <mxGeometry height="690" width="650" x="430" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="storage-boundary" parent="1" style="swimlane;html=1;rounded=1;startSize=44;horizontal=1;fillColor=#fffaf0;strokeColor=#d6b656;fontStyle=1;fontSize=20;" value="Data Stores" vertex="1">
+          <mxGeometry height="570" width="410" x="1270" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="mobile-client" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=20;spacing=8;fontStyle=1" value="&lt;span&gt;Mobile Application&lt;/span&gt;" vertex="1">
+          <mxGeometry height="90" width="240" x="70" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="web-client" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=20;spacing=8;fontStyle=1" value="&lt;span&gt;Experiment Web Application&lt;/span&gt;" vertex="1">
+          <mxGeometry height="90" width="240" x="70" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="fastapi-backend" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=20;spacing=10;fontStyle=1" value="&lt;span&gt;FastAPI Backend&lt;/span&gt;" vertex="1">
+          <mxGeometry height="110" width="550" x="480" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="background-workers" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=20;spacing=10;fontStyle=1" value="&lt;span&gt;Background Data Workers and Offline Pipelines&lt;/span&gt;" vertex="1">
+          <mxGeometry height="110" width="550" x="480" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="postgres-store" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=20;spacing=8;fontStyle=1" value="&lt;span&gt;Supabase PostgreSQL&lt;/span&gt;" vertex="1">
+          <mxGeometry height="90" width="330" x="1310" y="175" as="geometry" />
+        </mxCell>
+        <mxCell id="storage-store" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=20;spacing=8;fontStyle=1" value="&lt;span&gt;Supabase Storage&lt;/span&gt;" vertex="1">
+          <mxGeometry height="80" width="330" x="1310" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="redis-store" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=20;spacing=8;fontStyle=1" value="&lt;span&gt;Redis&lt;/span&gt;" vertex="1">
+          <mxGeometry height="80" width="330" x="1310" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="external-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce5cd;strokeColor=#d79b00;fontSize=20;spacing=8;fontStyle=1" value="&lt;span&gt;External Data Sources&lt;/span&gt;" vertex="1">
+          <mxGeometry height="90" width="550" x="480" y="840" as="geometry" />
+        </mxCell>
+        <mxCell id="external-services" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=20;spacing=8;fontStyle=1" value="&lt;span&gt;External Application Services&lt;/span&gt;" vertex="1">
+          <mxGeometry height="90" width="330" x="1310" y="730" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-mobile-backend" edge="1" parent="1" source="mobile-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=1;exitY=0.45;entryX=0;entryY=0.35;fontStyle=1" target="fastapi-backend" value="HTTPS API&lt;br&gt;request / response">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-web-backend" edge="1" parent="1" source="web-client" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.8;fontStyle=1" target="fastapi-backend" value="HTTPS API&lt;br&gt;request / response">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-backend-postgres" edge="1" parent="1" source="fastapi-backend" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=1;exitY=0.32;entryX=0;entryY=0.45;fontStyle=1" target="postgres-store" value="queries / results">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-backend-storage" edge="1" parent="1" source="fastapi-backend" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=1;exitY=0.62;entryX=0;entryY=0.5;fontStyle=1" target="storage-store" value="backtest artifact access">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1220" y="248.25" />
+              <mxPoint x="1220" y="390" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-backend-redis" edge="1" parent="1" source="fastapi-backend" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=1;exitY=0.88;entryX=0;entryY=0.5;fontStyle=1" target="redis-store" value="session-state read / write">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-sources-workers" edge="1" parent="1" source="external-data" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=none;endArrow=block;endFill=1;strokeColor=#7b3f98;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;entryX=0.5;entryY=1;fontStyle=1" target="background-workers" value="scheduled collection">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-workers-postgres" edge="1" parent="1" source="background-workers" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=1;exitY=0.25;entryX=0.5;entryY=1;fontStyle=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="postgres-store" value="metadata lookup / upsert">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1110" y="527.5" />
+              <mxPoint x="1110" y="320" />
+              <mxPoint x="1475" y="320" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-backend-services" edge="1" parent="1" source="fastapi-backend" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=1;exitY=1;fontStyle=1;entryX=0.578;entryY=0.997;entryDx=0;entryDy=0;entryPerimeter=0;" target="external-services" value="model, identity, and email&lt;br&gt;request / response">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1060" y="290" />
+              <mxPoint x="1060" y="870" />
+              <mxPoint x="1500.75" y="870" />
+            </Array>
+            <mxPoint x="1500" y="880" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-workers-services" edge="1" parent="1" source="background-workers" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;fontSize=20;labelBackgroundColor=#ffffff;exitX=1;exitY=0.85;entryX=0;entryY=0.75;fontStyle=1" target="external-services" value="AI enrichment&lt;br&gt;request / response">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="593.5" />
+              <mxPoint x="1200" y="797.5" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>

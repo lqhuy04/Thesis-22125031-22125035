@@ -1,222 +1,211 @@
 \section{Key Features}
 \label{sec:key-features}
 
-Stockrium provides a connected set of features for exploring the Vietnamese stock market, examining financial evidence, and obtaining AI-assisted analysis. The mobile application is intended for individual investors, while a separate experimentation and backtesting web interface supports controlled analysis and historical evaluation. This section summarizes the main user-visible capabilities; their architecture and implementation are presented in Chapter 4.
+Stockrium provides a connected set of features for exploring the Vietnamese stock market, examining financial evidence, obtaining multi-agent analysis, and evaluating the analytical pipeline historically. The following subsections specify the principal user-visible capabilities using a consistent use-case format. Chapter~4 presents their architecture and implementation, while Chapter~7 demonstrates the implemented interfaces.
 
 \subsection{Authentication and Account Management}
 \label{subsec:authentication-account-management}
 
-Users can create an account with an email address, verify it through a one-time password, and sign in using either a password or Google Sign-In. The application also supports password recovery, session persistence, and secure sign-out. After authentication, users can manage their investment horizon, conversation history, theme, and language preferences. They can also add or remove stocks from a personal watchlist for later monitoring. This watchlist stores only selected symbols and does not manage quantities, purchase prices, profit and loss, or capital allocation. The security mechanisms used to protect credentials and sessions are discussed in Chapter 4.
+\noindent\textbf{Use Case Name:} Manage Account, Session, and Personal Preferences
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/account1.png}\\[2pt]
-\footnotesize (a) Authentication Screen
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/account2.png}\\[2pt]
-\footnotesize (b) Watchlist Screen
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/account3.png}\\[2pt]
-\footnotesize (c) Profile Screen
-\end{minipage}
-\caption{Authentication and Account Management}
-\label{fig:stockrium-captures1}
-\end{figure}
+\noindent\textbf{Actor:} Guest; Authenticated Investor
 
+\noindent\textbf{Pre-Condition(s):} The mobile application can reach the backend. Registration requires an email address that is not already assigned to another account.
 
+\noindent\textbf{Post-Condition(s):} A verified account and authenticated session are created, or the investor's selected profile, investment horizon, language, theme, or watchlist changes are persisted. Signing out invalidates the active session and removes the locally stored tokens.
+
+\noindent\textbf{Basic Path:}
+\begin{enumerate}[leftmargin=*, nosep]
+    \item The guest opens the application and selects account registration.
+    \item The guest enters the required account information and receives an email verification OTP.
+    \item The guest submits the valid OTP and completes account verification.
+    \item The investor signs in with the registered email and password.
+    \item The system creates a session and opens the authenticated application.
+    \item The investor reviews or updates personal preferences and watchlist symbols.
+    \item The system validates and persists each authorized change.
+\end{enumerate}
+
+\noindent\textbf{Alternative Paths:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item An existing user signs in directly with a password or Google Sign-In.
+    \item A forgotten password is reset after successful OTP verification.
+    \item An invalid, expired, or repeatedly incorrect OTP is rejected; the user may request a new code subject to the resend policy.
+    \item An expired access token is renewed through the valid refresh session; otherwise, the user returns to sign-in.
+    \item Duplicate watchlist operations are handled without creating duplicate records.
+\end{itemize}
 
 \subsection{Market Overview and Stock Discovery}
 \label{subsec:market-overview-discovery}
 
-The Overview and Market tabs provide a concise view of current Vietnamese market conditions. Users can inspect major indices, industry movements, financial news, and stock collections such as top gainers, top decliners, highly traded stocks, and frequently followed symbols. The search function allows users to locate listed companies by stock symbol or company name and revisit previous queries through their search history. These discovery features support navigation rather than constitute investment recommendations. A selected index, industry, stock, or article can be opened for further examination.
+\noindent\textbf{Use Case Name:} Explore the Market and Discover a Stock
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/market1.png}\\[2pt]
-\footnotesize (a) Home Screen
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/market2.png}\\[2pt]
-\footnotesize (b) Market Screen
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/market3.png}\\[2pt]
-\footnotesize (c) Search Screen
-\end{minipage}
-\caption{Market Overview and Stock Discovery}
-\label{fig:stockrium-captures2}
-\end{figure}
+\noindent\textbf{Actor:} Authenticated Investor
 
+\noindent\textbf{Pre-Condition(s):} The investor is authenticated and prepared market, industry, and current-price records are available to the backend.
+
+\noindent\textbf{Post-Condition(s):} Market information is displayed. When the investor selects a stock, its symbol becomes the active stock context and a successful search is recorded in the user's recent history.
+
+\noindent\textbf{Basic Path:}
+\begin{enumerate}[leftmargin=*, nosep]
+    \item The investor opens the Overview or Market tab.
+    \item The system displays principal indices, market movement, industry information, and available stock collections.
+    \item The investor browses a collection or searches by stock symbol or company name.
+    \item The system returns the matching securities and recent search entries.
+    \item The investor selects a security.
+    \item The system records the search when applicable and opens the corresponding stock context.
+\end{enumerate}
+
+\noindent\textbf{Alternative Paths:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item The investor enters a stock context from the watchlist, a news article, an industry view, or a market-highlight collection.
+    \item An unknown query produces a controlled empty state instead of an invalid navigation target.
+    \item If part of the market response is unavailable, the interface presents the available sections and an appropriate loading, empty, or retry state.
+\end{itemize}
 
 \subsection{Stock Details and Interactive Technical Charts}
 \label{subsec:stock-details-charts}
 
-The stock-detail screen combines current and historical market data with company information, fundamental indicators, related news, and similar securities. Interactive area and candlestick charts allow users to examine price, volume, and selected technical indicators over different periods. The same screen also presents the company's business profile, leadership information, historical financial performance, financial statements, and representative measures of valuation, profitability, liquidity, and financial strength. Together, these features help users compare market behavior with the company's operating condition. The displayed information supports independent inspection but does not place orders or initiate financial transactions; AI-assisted analysis is requested separately.
+\noindent\textbf{Use Case Name:} Inspect Stock Information and Technical Charts
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/detail1.png}\\[2pt]
-\footnotesize (a) Stock Details 1
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/detail2.png}\\[2pt]
-\footnotesize (b) Stock Details 2
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/detail3.png}\\[2pt]
-\footnotesize (c) Stock Details 3
-\end{minipage}
-\caption{Stock Details and Interactive Technical Charts}
-\label{fig:stockrium-captures3}
-\end{figure}
+\noindent\textbf{Actor:} Authenticated Investor
 
+\noindent\textbf{Pre-Condition(s):} The investor has selected a supported stock symbol and the backend contains at least one applicable market or company record.
+
+\noindent\textbf{Post-Condition(s):} The selected stock's available price, company, fundamental, technical, and news evidence is presented. No market or user-owned financial record is modified.
+
+\noindent\textbf{Basic Path:}
+\begin{enumerate}[leftmargin=*, nosep]
+    \item The investor opens a stock from search, market discovery, news, or the watchlist.
+    \item The system loads the current quote, historical OHLCV series, and company profile for the selected symbol.
+    \item The investor selects a chart type and time period.
+    \item The system renders the price and volume series and the selected technical indicators.
+    \item The investor reviews company information, financial statements, fundamental measures, related news, and similar securities.
+    \item The investor may proceed to the analysis configuration while retaining the same stock context.
+\end{enumerate}
+
+\noindent\textbf{Alternative Paths:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item The investor switches between area and candlestick charts or enables different technical indicators.
+    \item The investor selects a related security and the page reloads using the new symbol.
+    \item A missing company, financial, indicator, or news section is shown as unavailable without preventing the remaining sections from being inspected.
+\end{itemize}
 
 \subsection{Financial News Exploration}
 \label{subsec:financial-news-exploration}
 
-The News tab organizes financial articles into business, macroeconomic, and topic-based views. Stock-specific articles are also accessible from the corresponding stock-detail screen, allowing users to relate company events and market sentiment to price and fundamental data. The collection pipeline enriches stored articles with short summaries and positive, neutral, or negative sentiment labels. The mobile application presents article content and surfaces sentiment in selected news views, while the processed fields also provide evidence for subsequent analysis. News collection and processing occur in a separate scheduled pipeline described in Chapter 4.
+\noindent\textbf{Use Case Name:} Explore Financial News
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/news1.png}\\[2pt]
-\footnotesize (a) News Screen 1
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/news2.png}\\[2pt]
-\footnotesize (b) News Screen 2
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/news3.png}\\[2pt]
-\footnotesize (c) News Screen 3
-\end{minipage}
-\caption{Financial News Explorations}
-\label{fig:stockrium-captures4}
-\end{figure}
+\noindent\textbf{Actor:} Authenticated Investor
+
+\noindent\textbf{Pre-Condition(s):} The investor is authenticated and the scheduled news pipeline has stored one or more processed article records.
+
+\noindent\textbf{Post-Condition(s):} The selected article, its available metadata, summary, sentiment, and related stock or category links are displayed. The investor may open a related stock context.
+
+\noindent\textbf{Basic Path:}
+\begin{enumerate}[leftmargin=*, nosep]
+    \item The investor opens the News tab.
+    \item The system displays available business, macroeconomic, and topic-based article collections.
+    \item The investor selects a category or article.
+    \item The system presents the article content and its available summary, publication information, image, and sentiment label.
+    \item The investor reviews related securities or returns to the article collection.
+\end{enumerate}
+
+\noindent\textbf{Alternative Paths:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item The investor opens a stock-specific article from the corresponding stock-detail screen.
+    \item A macroeconomic article may be displayed without an individual-stock association.
+    \item A missing image, summary, or association is omitted while the remaining stored content remains accessible.
+\end{itemize}
 
 \subsection{Investment-Horizon Profile and Configurable AI Analysis}
 \label{subsec:configurable-ai-analysis}
 
-Users can save an intended investment horizon as short term (under three months), medium term (three to twelve months), or long term (over one year). Stockrium provides automatic and manual modes for AI-assisted stock analysis. Automatic mode uses all available analytical perspectives with default weights determined by the saved investment horizon, which the system also maps to a daily, weekly, or monthly technical-analysis interval. Manual mode allows the user to enable or disable news, individual technical indicators, and fundamental-indicator categories, and to adjust the relative weights of the technical, fundamental, and news perspectives. The multi-agent system coordinates the enabled components and returns a \textit{Buy} or \textit{Wait} assessment with a normalized confidence score, technical, fundamental, and news scores, and written explanations. Confidence represents the system's internal strength of evidence and is not a probability of future profit. For an accepted \textit{Buy} assessment, the saved investment horizon determines the permitted ranges for the proposed entry price, take-profit price, stop-loss price, and maximum holding period. Within the current application scope, the investment-horizon profile considers only time horizon and is not a comprehensive assessment of financial capacity or psychological risk tolerance. The feature provides a simple default path for beginners and greater control for experienced users, while its outputs remain decision-support information rather than guaranteed returns or executable orders.
+\noindent\textbf{Use Case Name:} Configure and Request Multi-Agent Stock Analysis
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.45\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/AI1.png}\\[2pt]
-\footnotesize (a) Risk appetite
-\end{minipage}%
-\hspace{1cm}%
-\begin{minipage}{0.45\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/AI2.png}\\[2pt]
-\footnotesize (b) Manual configs
-\end{minipage}
-\caption{Initial input for Agents}
-\label{fig:stockrium-captures5}
-\end{figure}
+\noindent\textbf{Actor:} Authenticated Investor
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.45\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/AI3.png}\\[2pt]
-\footnotesize (a) Analysis result 1
-\end{minipage}%
-\hspace{1cm}%
-\begin{minipage}{0.45\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/AI4.png}\\[2pt]
-\footnotesize (b) Analysis result 2
-\end{minipage}
-\caption{Agents' analysis results}
-\label{fig:stockrium-captures6}
-\end{figure}
+\noindent\textbf{Pre-Condition(s):} The investor is authenticated, a supported stock is selected, and at least one analytical evidence source is usable. Automatic mode additionally requires a saved investment horizon.
+
+\noindent\textbf{Post-Condition(s):} A structured \textit{Buy} or \textit{Wait} assessment is displayed with confidence, component scores, and explanations. An accepted \textit{Buy} may also include entry, take-profit, stop-loss, and maximum-holding information. No order is created or executed.
+
+\noindent\textbf{Basic Path:}
+\begin{enumerate}[leftmargin=*, nosep]
+    \item The investor opens analysis configuration for the selected stock.
+    \item The investor selects automatic or manual mode.
+    \item In automatic mode, the system derives the analytical configuration from the saved investment horizon; in manual mode, the investor selects evidence sources, subcategories, and weights.
+    \item The client and backend validate the completed configuration.
+    \item The investor submits the analysis request.
+    \item The multi-agent workflow prepares and analyzes the enabled technical, fundamental, and news evidence.
+    \item The aggregator produces a candidate assessment, after which deterministic code calculates confidence and enforces the decision constraints.
+    \item The application presents the action, confidence, component evidence, explanations, and any applicable risk-related values.
+\end{enumerate}
+
+\noindent\textbf{Alternative Paths:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item Invalid manual weights, empty enabled categories, or a configuration with no usable source are blocked before execution.
+    \item Unavailable evidence is marked missing and excluded from the applicable normalized confidence calculation.
+    \item A candidate \textit{Buy} that violates a technical, fundamental, news, or confidence condition is downgraded to \textit{Wait}.
+    \item A provider, validation, or data error produces controlled feedback and does not create a partial recommendation object.
+\end{itemize}
 
 \subsection{Conversational Financial Assistant}
 \label{subsec:conversational-financial-assistant}
 
-The conversational assistant allows users to ask natural-language questions about the financial and market information available in Stockrium. Conversations are stored as sessions so that users can create, reopen, continue, or delete previous discussions. A conversation may begin as a general inquiry or from an AI-analysis result, enabling follow-up questions about the recommendation and its supporting evidence. The assistant explains and summarizes available information but does not act as a brokerage service or licensed financial adviser.
+\noindent\textbf{Use Case Name:} Ask and Continue a Financial Question
 
-\begin{figure}[H]
-\centering
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/chatbot1.png}\\[2pt]
-\footnotesize (a) Chatbot Screen
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/chatbot2.png}\\[2pt]
-\footnotesize (b) Chat History
-\end{minipage}%
-\hfill
-\begin{minipage}{0.32\textwidth}
-\centering
-\includegraphics[width=\linewidth]{screenshots/chatbot3.png}\\[2pt]
-\footnotesize (c) Conversation Screen
-\end{minipage}
-\caption{Conversational Financial Assistant}
-\label{fig:stockrium-captures7}
-\end{figure}
+\noindent\textbf{Actor:} Authenticated Investor
+
+\noindent\textbf{Pre-Condition(s):} The investor has a valid session. The backend, conversation store, and required model or financial-data services are available.
+
+\noindent\textbf{Post-Condition(s):} The question and generated answer are appended to the investor's conversation, and the updated conversational state is checkpointed for later continuation.
+
+\noindent\textbf{Basic Path:}
+\begin{enumerate}[leftmargin=*, nosep]
+    \item The investor opens the conversational assistant.
+    \item The investor creates a conversation or selects an existing session.
+    \item The investor enters and submits a natural-language financial question.
+    \item The system loads the applicable conversation state and selects the required financial information or tools.
+    \item The assistant generates an answer based on the available context.
+    \item The backend stores the updated checkpoint and the application displays the answer.
+    \item The investor may continue with additional turns.
+\end{enumerate}
+
+\noindent\textbf{Alternative Paths:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item The conversation starts from an analysis result and includes that result as follow-up context.
+    \item The investor reopens a previous session from conversation history or deletes a session that is no longer needed.
+    \item An empty or invalid question is blocked before submission.
+    \item Missing data or an unavailable provider produces a bounded explanation or controlled error rather than an unsupported fabricated record.
+\end{itemize}
 
 \subsection{Experimentation and Backtesting}
 \label{subsec:experimentation-backtesting}
 
-The internal experimentation and backtesting web interface provides protected tools for running stock analysis and historical backtests. An authorized evaluator can request AI-assisted analysis for an individual stock or the VN30 or VN100 index basket. Backtesting can be configured for an individual stock or executed sequentially across VN30 using the supported inputs and analytical selections. The evaluator can monitor batch progress and inspect or export the resulting reports. Backtesting summarizes historical behavior through measures such as total return, win rate, Sharpe ratio, maximum drawdown, and trade history, with visualizations linking generated signals to price data. This interface is an internal experimentation and evaluation tool; it is not publicly deployed and does not execute live securities transactions.
+\noindent\textbf{Use Case Name:} Run a Controlled Analysis or Backtesting Experiment
 
-Together, these features form a decision-support environment that connects market discovery, evidence inspection, AI-assisted synthesis, explanation, and conversational follow-up. Stockrium helps users organize and interpret Vietnamese market information while keeping investment decisions and any subsequent transactions under the user's responsibility.
+\noindent\textbf{Actor:} Authorized Evaluator
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{screenshots/web1.png}\\[2pt]
-\caption{Backtest Experiment Screen}
-\label{fig:stockrium-captures8}
-\end{figure}
+\noindent\textbf{Pre-Condition(s):} The evaluator is authenticated with the required authorization. The protected backend, historical data, and selected analytical services are available, and the requested configuration is within the supported scope.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{screenshots/web2.png}\\[2pt]
-\caption{Backtest Experiment Result Screen}
-\label{fig:stockrium-captures9}
-\end{figure}
+\noindent\textbf{Post-Condition(s):} An individual or batch analysis result, or a historical backtesting report, is produced for inspection or export. A separately uploaded artifact may be available for later review. No live-market order or portfolio transaction is performed.
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{screenshots/web3.png}\\[2pt]
-\caption{Analysis Experiment Screen}
-\label{fig:stockrium-captures10}
-\end{figure}
+\noindent\textbf{Basic Path:}
+\begin{enumerate}[leftmargin=*, nosep]
+    \item The evaluator authenticates and opens the experimentation dashboard.
+    \item The evaluator selects individual analysis, batch analysis, backtesting, or a stored result.
+    \item For analysis, the evaluator selects one stock, VN30, or VN100 and the supported analytical inputs; for backtesting, the evaluator selects one stock or VN30, the historical period, and supported simulation parameters.
+    \item The interface validates and submits the protected request.
+    \item The evaluator monitors the execution or batch progress.
+    \item The system returns the applicable structured analyses, simulated trades, measures, benchmarks, and visualization data.
+    \item The evaluator inspects or exports the report and returns to the experimentation dashboard.
+\end{enumerate}
 
-\begin{figure}[H]
-\centering
-\includegraphics[width=\textwidth]{screenshots/web4.png}\\[2pt]
-\caption{Analysis Experiment Result Screen}
-\label{fig:stockrium-captures11}
-\end{figure}
+\noindent\textbf{Alternative Paths:}
+\begin{itemize}[leftmargin=*, nosep]
+    \item The evaluator loads an available stored experiment artifact instead of starting a new run.
+    \item Invalid dates, thresholds, holding limits, analytical selections, or unauthorized requests are rejected before execution.
+    \item A batch run records a symbol-level failure without presenting the failed symbol as a successful result.
+    \item A generated JSON result may be exported directly; persistence in Supabase Storage requires the separate artifact-upload operation.
+\end{itemize}
+
+Together, these use cases define Stockrium as a configurable and explainable decision-support environment. They connect market discovery, evidence inspection, multi-agent synthesis, conversational follow-up, and controlled historical evaluation while keeping investment decisions and any subsequent transactions under the user's responsibility.

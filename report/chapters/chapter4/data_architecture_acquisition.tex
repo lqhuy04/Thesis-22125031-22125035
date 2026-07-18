@@ -142,31 +142,14 @@ The article updater is deployed as a separate Railway service rather than as an 
 \subsection{Storage Responsibilities}
 \label{subsec:storage-responsibilities}
 
-Not every value belongs in the relational database. Table~\ref{tab:storage-responsibility-boundaries} distinguishes the four storage mechanisms used by Stockrium and clarifies which copy is authoritative.
+Not every value belongs in the same storage mechanism. Stockrium separates durable relational records, file-based experiment artifacts, temporary server-side security state, and device-local secrets according to their lifecycle and access requirements.
 
-\begin{table}[H]
-    \centering
-    \caption{Storage responsibility boundaries}
-    \label{tab:storage-responsibility-boundaries}
-    \footnotesize
-    \setlength{\tabcolsep}{5pt}
-    \renewcommand{\arraystretch}{1.2}
-    \begin{tabular}{p{2.8cm} p{5.1cm} p{5.0cm}}
-        \toprule
-        \textbf{Storage} & \textbf{Stored information} & \textbf{Responsibility and lifecycle} \\
-        \midrule
-        Supabase PostgreSQL & Accounts, personalization, security directory, market candles and snapshots, company profiles, financial records, industry aggregates, articles, classifications, chat-session metadata, and LangGraph checkpoints & Authoritative durable relational data. Accessed through Supabase PostgREST for domain services and through pooled PostgreSQL connections for checkpointing and controlled chatbot queries. \\
-        Supabase Storage & Manually uploaded JSON backtest reports in the \texttt{backtests} bucket & Durable object artifacts that are listed by the backend and opened by the experiment dashboard. The storage helper supports replacement upload and public-URL generation, but the current backtest execution route does not upload automatically. \\
-        Redis & Access token, refresh token, verification or reset OTP, attempt counter, resend cooldown state, and one-time reset-session mappings & Expiring server-side security state. Enables token revocation and automatic removal through TTL; it is not a source of permanent user or financial records \cite{redisDataTypes2026}. \\
-        Expo SecureStore & Mobile access token and refresh token; also small local preferences such as onboarding completion, theme, language, and saved analysis configuration & Device-local encrypted key--value state. Tokens are removed when refresh fails or the user signs out. The backend remains authoritative for accounts and sessions \cite{expoSecureStore2026}. \\
-        \bottomrule
-    \end{tabular}
-\end{table}
+\textbf{Supabase PostgreSQL.} Supabase PostgreSQL is the authoritative store for durable relational data, including accounts, personalization records, the security directory, market candles and snapshots, company profiles, financial records, industry aggregates, articles, classifications, chat-session metadata, and LangGraph checkpoints. Domain services access ordinary application records through Supabase PostgREST, while pooled PostgreSQL connections support checkpoint persistence and controlled chatbot queries. Clients do not maintain authoritative copies of these records.
 
-Backtest execution returns its result to the experimentation workflow, where the JSON artifact can be inspected or exported. Upload to the \texttt{backtests} bucket is a separate manual artifact-upload step. Once an artifact has been uploaded, the backend storage helper lists the available JSON files and produces the public URLs used by the experiment dashboard. This distinction prevents the presence of an upload helper from being mistaken for an automatic persistence step in every backtest request.
+\textbf{Supabase Storage.} The \texttt{backtests} bucket stores JSON backtest reports that have been uploaded as durable object artifacts. Backtest execution first returns its result to the experimentation workflow, where the JSON can be inspected or exported. Upload is a separate manual step rather than an automatic part of every backtest request. After an artifact is uploaded, the backend helper can replace the stored file, list available reports, and generate the public URL used by the experimentation dashboard.
 
-Redis key namespaces reflect these responsibilities. Access and refresh sessions use \texttt{session:access:\{user\_id\}} and \texttt{session:refresh:\{user\_id\}} with configurable token lifetimes. OTP values use \texttt{otp:\{purpose\}:\{email\}}, while \texttt{otp:attempts:\{purpose\}:\{email\}} counts failed verification attempts under the same expiry. The default OTP validity is ten minutes with a maximum of five attempts. A successful password-reset verification produces a five-minute one-time reset session and an email-to-session reverse mapping so an older session can be invalidated.
+\textbf{Redis.} Redis stores temporary server-side authentication and verification state, including access and refresh sessions, verification or reset OTPs, failed-attempt counters, resend cooldowns, and one-time reset-session mappings. Time-to-live (TTL) expiration removes these values automatically, and server-side session records allow issued tokens to be revoked; Redis is not a source of permanent user or financial data \cite{redisDataTypes2026}. Access and refresh sessions use \texttt{session:access:\{user\_id\}} and \texttt{session:refresh:\{user\_id\}}, while OTPs and failed-attempt counters use \texttt{otp:\{purpose\}:\{email\}} and \texttt{otp:attempts:\{purpose\}:\{email\}}. An OTP is valid for ten minutes with at most five failed attempts. Successful password-reset verification creates a five-minute one-time reset session and invalidates an older session through the reverse mapping.
 
-The mobile application stores the access and refresh tokens under \texttt{access\_token} and \texttt{refresh\_token} in SecureStore. It does not store a durable copy of favorites, risk horizon, chat history, or financial records as an authoritative local database. Those values are requested from the backend. This boundary prevents a device preference or stale cache from being mistaken for a confirmed server-side state.
+\textbf{Expo SecureStore.} On the mobile device, Expo SecureStore protects the access and refresh tokens under \texttt{access\_token} and \texttt{refresh\_token}. It also holds small device-local preferences such as onboarding completion, theme, language, and the saved analysis configuration \cite{expoSecureStore2026}. Tokens are removed when refresh fails or the user signs out. Favorites, investment horizon, chat history, and financial records are requested from the backend rather than stored as an authoritative local database, preventing a stale device value from being treated as confirmed server state.
 
 The acquisition pipelines and storage boundaries together provide a stable evidence layer for the analytical components. Live and offline processes normalize heterogeneous sources before they reach application services; relational links preserve stock, industry, article, and user context; and short-lived secrets remain outside durable business tables. The next section builds the multi-agent stock-analysis design on top of these prepared data products.

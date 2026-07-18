@@ -3,6 +3,13 @@
 
 Stockrium consists of mobile and web interfaces, a backend application programming interface (API), data pipelines, persistent storage, and multi-agent analysis workflows. This section introduces the principal technologies used in these components and the responsibility of each technology within the system.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{figures/chapter2/stockrium_technology_stack.png}
+    \caption{System technology stack}
+    \label{fig:technology-stack}
+\end{figure}
+
 \subsection{Frontend Technologies}
 
 \textbf{Mobile application.} The mobile client for individual investors is developed with React Native, React, and TypeScript. React supplies the component model, React Native maps components to native mobile user-interface (UI) elements \cite{reactnative2026}, and TypeScript adds static types for market data, financial information, and analytical results. Expo supplies the development runtime and device services, while Expo Router maps files to application routes and navigation paths \cite{expoRouter2026}. Reanimated and Gesture Handler support responsive animation and touch interaction.

@@ -40,46 +40,36 @@ A multi-agent analysis request follows the same outer structure but changes at t
 \subsection{Domain API Modules}
 \label{subsec:backend-domain-api-modules}
 
-Routers are divided by application domain instead of by screen. A stock-detail screen can therefore compose calls from the market, company, article, fundamental, and technical modules, while the same modules can be reused by other screens and analytical workflows. Tables~\ref{tab:backend-domain-modules} and~\ref{tab:backend-domain-modules-operational} summarize the modules that belong to the current application.
+Routers are divided by application domain instead of by screen. A stock-detail screen can therefore compose calls from the market, company, article, fundamental, and technical modules, while the same modules can be reused by other screens and analytical workflows. Table~\ref{tab:backend-domain-modules} summarizes the modules that belong to the current application.
 
-\begin{table}[htbp]
-    \centering
-    \caption{Active backend API modules and responsibilities: core data services}
-    \label{tab:backend-domain-modules}
-    \small
-    \setlength{\tabcolsep}{4pt}
-    \renewcommand{\arraystretch}{1.22}
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.25cm} >{\raggedright\arraybackslash}p{3.35cm} X >{\raggedright\arraybackslash}p{2.45cm}}
-        \toprule
-        \textbf{Module} & \textbf{Representative interface} & \textbf{Principal responsibility} & \textbf{Main dependency} \\
-        \midrule
-        Authentication & \texttt{/api/auth/*} & Account creation, email verification, password or Google sign-in, token refresh and revocation, password recovery, and current-user retrieval & Supabase, Redis, Google, Resend \\
-        Market and discovery & \texttt{/api/all-stocks}\newline \texttt{/api/price/}\newline \texttt{\{symbol\}}\newline \texttt{/api/market-index}\newline \texttt{/api/investing- idea} & Symbol discovery, current and historical prices, industry movement, index summaries, impact stocks, and deterministic investment-idea lists & Supabase and SSI \\
-        Company and fundamentals & \texttt{/api/company/*}\newline \texttt{/api/fundamental-}\newline \texttt{analysis/*} & Company profile, leaders, subsidiaries, financial statements, ratios, stored summaries, and industry aggregates & Supabase \\
-        Technical analysis & \texttt{/api/technical-}\newline \texttt{indicators/}\newline \texttt{\{symbol\}} & Load price candles, calculate supported technical-indicator series, align timestamps, and serialize chart-ready values & Market service, pandas, and NumPy \\
-        Articles & \texttt{/api/articles/*} & Latest, macroeconomic, business, highlighted, category-specific, and stock-specific news retrieval & Supabase \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-\begin{table}[htbp]
-    \centering
-    \caption{Active backend API modules and responsibilities: user and operational services}
-    \label{tab:backend-domain-modules-operational}
-    \small
-    \setlength{\tabcolsep}{4pt}
-    \renewcommand{\arraystretch}{1.22}
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.25cm} >{\raggedright\arraybackslash}p{3.35cm} X >{\raggedright\arraybackslash}p{2.45cm}}
-        \toprule
-        \textbf{Module} & \textbf{Representative interface} & \textbf{Principal responsibility} & \textbf{Main dependency} \\
-        \midrule
-        Personalization & \texttt{/api/favorite}\newline \texttt{/api/search- history}\newline \texttt{/api/risk- appetite} & User-owned watchlist entries, recent search records, and the selected investment horizon & Supabase and user dependency \\
-        Analysis and chat & \texttt{/api/agentic/ analyze}\newline \texttt{/api/agentic/chat}\newline \texttt{/api/agentic/chat/}\newline \texttt{sessions} & Structured stock analysis, stateful conversation, session seeding, history retrieval, and session deletion & LangGraph, model providers, PostgreSQL \\
-        Experimentation and evaluation & \texttt{/api/agentic/}\newline \texttt{admin-analyze}\newline \texttt{/api/agentic/}\newline \texttt{admin-universe/*}\newline \texttt{/api/agentic/ backtest}\newline \texttt{/api/agentic/ backtests} & Role-protected single-symbol or universe analysis, historical pipeline evaluation, and result-artifact listing & Multi-agent graph, backtest services, Supabase Storage \\
-        Operations & \texttt{/health}\newline \texttt{/visualizations/*} & Basic process health reporting and delivery of generated backtest visualizations & FastAPI and local artifact directory \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
+{\small
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.22}
+\begin{longtable}{>{\raggedright\arraybackslash}p{2.25cm} >{\raggedright\arraybackslash}p{3.35cm} >{\raggedright\arraybackslash}p{5.05cm} >{\raggedright\arraybackslash}p{2.45cm}}
+    \caption{Active backend API modules and responsibilities}
+    \label{tab:backend-domain-modules} \\
+    \toprule
+    \textbf{Module} & \textbf{Representative interface} & \textbf{Principal responsibility} & \textbf{Main dependency} \\
+    \midrule
+    \endfirsthead
+    \multicolumn{4}{l}{\small\itshape Table~\ref{tab:backend-domain-modules} continued} \\
+    \toprule
+    \textbf{Module} & \textbf{Representative interface} & \textbf{Principal responsibility} & \textbf{Main dependency} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endfoot
+    Authentication & \texttt{/api/auth/*} & Account access, verification, sessions, and password recovery & Supabase, Redis, Google, Resend \\
+    Market and discovery & \texttt{/api/all-stocks}\newline \texttt{/api/price/}\newline \texttt{\{symbol\}}\newline \texttt{/api/market-index}\newline \texttt{/api/investing- idea} & Stock discovery, prices, indices, industries, and market lists & Supabase and SSI \\
+    Company and fundamentals & \texttt{/api/company/*}\newline \texttt{/api/fundamental-}\newline \texttt{analysis/*} & Company profiles, financial statements, ratios, and industry comparisons & Supabase \\
+    Technical analysis & \texttt{/api/technical-}\newline \texttt{indicators/}\newline \texttt{\{symbol\}} & Candle retrieval and supported indicator calculation & Market service, pandas, and NumPy \\
+    Articles & \texttt{/api/articles/*} & Financial-news retrieval by type, category, or stock & Supabase \\
+    Personalization & \texttt{/api/favorite}\newline \texttt{/api/search- history}\newline \texttt{/api/risk- appetite} & Watchlist, search history, and investment horizon & Supabase and user dependency \\
+    Analysis and chat & \texttt{/api/agentic/ analyze}\newline \texttt{/api/agentic/chat}\newline \texttt{/api/agentic/chat/}\newline \texttt{sessions} & Multi-agent analysis and persistent chat sessions & LangGraph, model providers, PostgreSQL \\
+    Experimentation and evaluation & \texttt{/api/agentic/}\newline \texttt{admin-analyze}\newline \texttt{/api/agentic/}\newline \texttt{admin-universe/*}\newline \texttt{/api/agentic/ backtest}\newline \texttt{/api/agentic/ backtests} & Protected analysis, backtesting, and artifact access & Multi-agent graph, backtest services, Supabase Storage \\
+    Operations & \texttt{/health}\newline \texttt{/visualizations/*} & Health checks and backtest visualization delivery & FastAPI and local artifact directory \\
+\end{longtable}
+}
 
 \FloatBarrier
 
