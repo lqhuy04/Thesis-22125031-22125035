@@ -627,6 +627,7 @@ def aggregator_agent(state: AgentState) -> AgentState:
     client     = _get_openai_client()
     results    = state.get("agent_results", {})
     user_input = state.get("user_input", "")
+    is_backtest = user_input.startswith("Backtest pipeline for ")
 
     technical       = results.get("technical_analysis_agent", {})
     fundamental     = results.get("fundamental_analysis_agent", "")
@@ -715,6 +716,10 @@ YÊU CẦU:
         try:
             response = _parse()
         except _LengthError:
+            if is_backtest:
+                # A backtest can contain dozens of signals. Never double its API
+                # calls/cost by retrying the same signal after a length failure.
+                raise
             # Bị cắt do vượt giới hạn token (thường do model lặp). Thử lại 1 lần
             # với yêu cầu viết cực ngắn để vừa trong giới hạn.
             print("[Aggregator] Vượt giới hạn token → thử lại với analysis cực ngắn.")
