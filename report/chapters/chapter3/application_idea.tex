@@ -15,14 +15,14 @@ The proposed system considers four principal stakeholder categories. Individual 
     \caption{Principal stakeholders of Stockrium}
     \label{tab:stockrium-stakeholders}
     \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.5cm} X X}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.8cm} X}
         \toprule
-        \textbf{Stakeholder} & \textbf{Primary interest} & \textbf{Relationship with Stockrium} \\
+        \textbf{Stakeholder} & \textbf{Description} \\
         \midrule
-        Individual investors & Accessible and explainable analysis of Vietnamese stocks & Use the mobile application to explore stocks, configure analysis, review recommendations, and ask follow-up questions \\
-        Authorized evaluator & Controlled analysis and repeatable experimentation & Uses the experimentation web interface for individual or batch analysis, backtesting, progress monitoring, and result inspection \\
-        Securities analyst & Practical usefulness, clarity, and analytical transparency & Experiences the application and provides qualitative feedback for the evaluation \\
-        Technical teams and service providers & Reliable software, data, infrastructure, and external services & Develop and operate Stockrium or supply market data, news discovery, storage, and language-model capabilities \\
+        Individual investors & Explore Vietnamese stocks and receive configurable, explainable analysis through the mobile application. \\
+        Authorized evaluator & Runs controlled analyses and backtests through the internal experimentation interface. \\
+        Securities analyst & Assesses the system's practical usefulness and provides professional feedback. \\
+        Technical teams and service providers & Develop and operate the platform or supply its data and infrastructure services. \\
         \bottomrule
     \end{tabularx}
 \end{table}
@@ -32,36 +32,78 @@ Beginner and experienced investors are treated as profiles within the same stake
 \subsection{Use Case Model}
 \label{subsec:application-use-cases}
 
-Stockrium has three direct actors. A guest accesses onboarding and account functions, an authenticated investor uses the personalized mobile features, and an authorized evaluator accesses restricted experimentation and backtesting functions. Figure~\ref{fig:stockrium-use-case-overview} presents these actors and their principal use cases.
+Stockrium has three direct actors. A guest accesses onboarding and account functions, an authenticated investor uses the personalized mobile features, and an authorized evaluator accesses restricted experimentation and backtesting functions. Figure~\ref{fig:stockrium-mobile-use-case-model} presents the guest and authenticated-investor use cases in the mobile application, while Figure~\ref{fig:stockrium-web-use-case-model} presents the evaluator use cases in the experimentation and backtesting web interface.
 
 \begin{figure}[H]
     \centering
-    \IfFileExists{figures/chapter3/stockrium_use_case_model.png}{%
-        \includegraphics[width=\textwidth,height=\textheight,keepaspectratio]{figures/chapter3/stockrium_use_case_model.png}%
+    \IfFileExists{figures/chapter3/stockrium_use_case_model_stockrium.png}{%
+        \includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{figures/chapter3/stockrium_use_case_model_stockrium.png}%
     }{%
         \fbox{\parbox[c][4.5cm][c]{0.92\textwidth}{\centering
-        Export the Mermaid diagram as\\
-        \texttt{figures/chapter3/stockrium\_use\_case\_model.png}}}%
+        Missing figure:\\
+        \texttt{figures/chapter3/stockrium\_use\_case\_model\_stockrium.png}}}%
     }
-    \caption{Stockrium actors and principal use cases}
-    \label{fig:stockrium-use-case-overview}
+    \caption{Use-case model of the Stockrium mobile application}
+    \label{fig:stockrium-mobile-use-case-model}
 \end{figure}
 
-\begin{table}[H]
+\begin{figure}[H]
     \centering
-    \caption{Use-case groups by actor}
-    \label{tab:stockrium-use-cases}
-    \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.2cm} X}
-        \toprule
-        \textbf{Actor} & \textbf{Principal use cases} \\
-        \midrule
-        Guest & Complete onboarding; register and verify an account; sign in with a password or Google; recover account access \\
-        Authenticated investor & Explore the market and news; search and inspect stocks; manage watchlist and preferences; configure and request AI analysis; review recommendations; use the conversational assistant \\
-        Authorized evaluator & Run individual or batch analysis; configure and execute backtests; monitor progress; review stored results \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
+    \IfFileExists{figures/chapter3/stockrium_use_case_model_web.png}{%
+        \includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{figures/chapter3/stockrium_use_case_model_web.png}%
+    }{%
+        \fbox{\parbox[c][4.5cm][c]{0.92\textwidth}{\centering
+        Missing figure:\\
+        \texttt{figures/chapter3/stockrium\_use\_case\_model\_web.png}}}%
+    }
+    \caption{Use-case model of the experimentation and backtesting web interface}
+    \label{fig:stockrium-web-use-case-model}
+\end{figure}
+
+{\small
+\begin{longtable}{p{5.1cm} p{8.7cm}}
+    \caption{Use cases in the Stockrium mobile and experimentation interfaces}
+    \label{tab:stockrium-use-cases} \\
+    \toprule
+    \textbf{Use case} & \textbf{Description} \\
+    \midrule
+    \endfirsthead
+    \multicolumn{2}{l}{\small\itshape Table~\ref{tab:stockrium-use-cases} continued} \\
+    \toprule
+    \textbf{Use case} & \textbf{Description} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endfoot
+    \multicolumn{2}{l}{\textbf{Mobile application}} \\
+    Complete onboarding & Introduces the application's main features and initial guidance. \\
+    Register account & Creates a new investor account. \\
+    Verify email & Confirms ownership of the registered email address. \\
+    Sign in with password or Google & Authenticates the user through a supported sign-in method. \\
+    Recover password & Restores access to an account with a forgotten password. \\
+    Set investment horizon & Saves the user's preferred investment time horizon. \\
+    Log out & Ends the current authenticated session. \\
+    Change language & Changes the application's display language. \\
+    Change theme & Switches the application's visual theme. \\
+    Explore financial news & Browses available financial articles. \\
+    View news details & Displays the content and metadata of a selected article. \\
+    Search for a stock & Finds a security by its symbol or company information. \\
+    Explore market and industries & Reviews market conditions and industry groups. \\
+    View stock details & Displays market, company, fundamental, technical, and news information. \\
+    Configure analytical sources and weights & Selects evidence sources and adjusts their contribution weights. \\
+    Request AI-assisted analysis & Runs the multi-agent assessment for a selected stock. \\
+    Review action, confidence, and evidence & Presents the assessment, confidence, and supporting evidence. \\
+    Start conversation with chatbot & Begins a conversational financial-support session. \\
+    Review conversation history & Reopens previous chatbot sessions and messages. \\
+    \midrule
+    \multicolumn{2}{l}{\textbf{Experimentation and backtesting web interface}} \\
+    Run individual stock analysis & Executes a controlled analysis for one stock. \\
+    Run VN30 or VN100 batch analysis & Executes analysis across the selected index basket. \\
+    Monitor execution progress & Tracks the status of an ongoing analysis or backtest. \\
+    Configure and execute backtest & Sets supported inputs and runs a historical simulation. \\
+    Review stored experiment results & Opens previously stored analysis and backtesting results. \\
+\end{longtable}
+}
 
 Market-data providers, news services, and language-model services are supporting dependencies rather than direct actors because they do not initiate the user goals shown in the model. Their interactions with Stockrium are described in the system architecture and data-pipeline sections of Chapter 4.
 
