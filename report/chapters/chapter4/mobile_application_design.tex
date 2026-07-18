@@ -1,9 +1,35 @@
-\section{Mobile Application Design}
-\label{sec:mobile-application-design}
+\section{Mobile Application Architecture}
+\label{sec:mobile-application-architecture}
 
-The Stockrium mobile application is implemented with React Native, Expo, TypeScript, and Expo Router. Its design follows a screen-oriented structure in which every route represents a user-visible task and reusable components encapsulate market cards, charts, forms, bottom sheets, and financial sections. The client is intentionally responsible for interaction, presentation, lightweight input validation, and local preferences. Authentication decisions, authoritative financial data, technical calculations, and AI execution remain behind the backend API.
+The Stockrium mobile application is implemented with React Native, Expo, TypeScript, and Expo Router. Its architecture follows a layered, screen-oriented structure in which every route represents a user-visible task and reusable components encapsulate market cards, charts, forms, bottom sheets, and financial sections. The client is intentionally responsible for interaction, presentation, lightweight input validation, and local preferences. Authentication decisions, authoritative financial data, technical calculations, and AI execution remain behind the backend API.
 
 The application combines Expo Router's file-based stack navigation with a custom five-tab interface. File-based routes manage transitions between major screens, while the main application shell uses a pager to support horizontal tab movement and preserve the distinctive central Chatbot control. This hybrid navigation model provides conventional stack behavior for detailed tasks without restricting the visual and interaction design of the primary tabs.
+
+\subsection{Layered Mobile Architecture}
+\label{subsec:layered-mobile-architecture}
+
+Figure~\ref{fig:stockrium-mobile-architecture} presents the mobile client as a layered architecture. The layers separate application-wide composition, user-facing presentation, state ownership, API access, and persistent device storage. The arrows represent the principal dependencies and data exchanges rather than a strict invocation sequence.
+
+\begin{figure}[H]
+    \centering
+    \IfFileExists{figures/chapter4/stockrium_mobile_architecture.png}{%
+        \includegraphics[width=0.72\textwidth,height=0.82\textheight,keepaspectratio]{figures/chapter4/stockrium_mobile_architecture.png}%
+    }{%
+        \fbox{\parbox[c][6.0cm][c]{0.88\textwidth}{\centering
+        Expected architecture diagram:\\
+        \texttt{figures/chapter4/stockrium\_mobile\_architecture.png}}}%
+    }
+    \caption{Layered architecture of the Stockrium mobile application}
+    \label{fig:stockrium-mobile-architecture}
+\end{figure}
+
+The application shell and navigation layer establishes the client-wide execution environment. Expo Router maps files to stack destinations, the root providers supply safe-area, gesture, localization, and theme facilities, and the custom main tabs coordinate the five primary application areas. This layer determines which screen is active and ensures that shared infrastructure is available before feature content is rendered.
+
+The presentation layer contains route-level screens and reusable feature and UI components. Screens coordinate a user task, receive route parameters, and compose the required feature components. Reusable components encapsulate domain-specific sections and common interface elements so that market data, stock details, authentication controls, news content, and analysis results can be presented consistently without duplicating implementation across routes.
+
+State is kept close to the scope in which it is needed. React Hooks manage transient screen or component state, including loading indicators, selections, form values, and fetched results. React Context distributes the smaller set of cross-cutting presentation preferences, particularly theme and language. Values that must survive application restarts, such as session tokens and selected local preferences, are stored through Expo SecureStore instead of remaining only in memory.
+
+The client service layer separates UI code from transport details. Feature-oriented domain helpers translate screen operations into typed application requests and delegate them to the centralized HTTP client. The HTTP client constructs HTTPS requests to the FastAPI backend, attaches stored credentials, coordinates token refresh, and returns parsed responses to the calling helper. It also exchanges session data with SecureStore, while providers restore persisted preferences into React Context. This separation allows screens and components to focus on interaction and presentation, while authentication recovery, endpoint construction, and secure persistence remain centralized.
 
 \subsection{Navigation Structure}
 \label{subsec:mobile-navigation-structure}
@@ -34,96 +60,6 @@ Figure~\ref{fig:mobile-navigation-structure} summarizes the principal route rela
 The Stock Detail route is a particularly important navigation hub. It can be opened from search results, watchlist entries, investment-idea lists, industry visualizations, market highlights, and related-stock cards. It receives the stock symbol as a route parameter and passes the same symbol to its child sections. A floating AI button opens the configuration route with that symbol, after which the result route receives the analysis mode and serialized manual selection. This parameterized navigation keeps the user focused on one company across data inspection and AI analysis.
 
 News and chatbot routes follow a similar pattern. General or categorized lists open a shared article-detail route using article parameters. The Chatbot tab displays available sessions; composing or selecting a session opens Chat Detail with a session identifier. An AI result can create and seed a new session before navigating to that same Chat Detail route, allowing ordinary conversations and analysis follow-ups to reuse one interface.
-
-\subsection{Screen and Component Organization}
-\label{subsec:screen-component-organization}
-
-The source tree separates route-level orchestration from reusable presentation and API access. Table~\ref{tab:mobile-source-organization} shows the principal frontend directories and their responsibilities.
-
-\begin{table}[H]
-    \centering
-    \caption{Organization of the mobile application source code}
-    \label{tab:mobile-source-organization}
-    \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{2.5cm} >{\raggedright\arraybackslash}p{5.0cm} X}
-        \toprule
-        \textbf{Directory} & \textbf{Responsibility} & \textbf{Representative contents} \\
-        \midrule
-        \texttt{app/} & Route-level screens and navigation parameters. Screens compose domain components and manage task-specific state. & Home, Market, Detail, Search, Investment Ideas, AI Analysis, Chatbot, News, Profile, authentication, and password-recovery routes. \\
-        \addlinespace
-        \texttt{components/} & Reusable domain and visual components that can be embedded in multiple screens. & Authentication forms, market sections, stock-detail sections, chatbot bottom sheets, chart wrappers, shared inputs, text, headers, cards, and loading states. \\
-        \addlinespace
-        \texttt{helpers/} & Typed feature-oriented functions that translate screen requests into API calls or local utility operations. & Authentication, market, stock detail, fundamental analysis, company profile, search, profile, and multi-agent analysis helpers. \\
-        \addlinespace
-        \texttt{helpers/api/} & Shared network and session infrastructure used by every feature helper. & Base-URL selection, bearer-token injection, refresh coordination, secure token persistence, authentication events, and tab events. \\
-        \addlinespace
-        \texttt{hooks/} & Cross-screen providers and reusable interaction hooks. & Theme and localization contexts, together with a keyboard-visibility hook. \\
-        \addlinespace
-        \texttt{constants/} & Centralized design tokens and bilingual content. & Theme colors, typography, font names, image references, and Vietnamese and English translation dictionaries. \\
-        \addlinespace
-        \texttt{assets/} & Static resources packaged with the application. & Application icons, splash images, fonts, and graphical resources. \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-Route-level screens are responsible for composition rather than implementing every visual element directly. For example, the Detail route arranges a price-chart component, stock-related news, financial indicators, income-statement visualization, company introduction, and related stocks. Each child receives the stock symbol and, where appropriate, a callback through which it registers its refresh operation. The parent's pull-to-refresh handler executes the registered functions concurrently with \texttt{Promise.all}. This refresh-registry pattern preserves section ownership of data-fetching logic while providing one coherent gesture at screen level.
-
-The same approach is used on the Overview, Market, and News screens. Their child sections load different endpoints but register with the visible parent. The Market screen keeps separate registries for its Market and Watchlist pages so that refreshing one page does not unnecessarily reload the other. This design avoids a single large screen component with detailed knowledge of every endpoint.
-
-Reusable domain components are grouped by business context. The \texttt{market} group contains index, industry, watchlist, and news-list sections. The \texttt{detail} group contains chart controls, financial sections, company information, related-stock cards, and educational bottom sheets. The \texttt{chatbot} group manages history and conversation options. The \texttt{authentication} group contains sign-in, sign-up, social login, and session-expiration presentation. Components that are independent of a specific feature---such as the typographic Text wrapper, screen header, search bar, dropdown, news item, and visual charts---are placed under \texttt{ui}.
-
-The custom Text component and centralized typography constants give visual consistency to headings, labels, body text, and captions. Theme colors are obtained from context rather than duplicated as literal values in every screen. Safe-area insets are included in layouts that touch device boundaries, and gesture handling is established at the root so that pagers, charts, bottom sheets, and press interactions can coexist.
-
-Loading behavior is designed to preserve context. Data-heavy screens use skeleton components on the first request instead of showing an empty layout. Subsequent chart time-frame changes use a lighter loading state and reduce chart opacity, allowing the user to understand that the same view is being updated rather than replaced. Errors generally preserve the surrounding screen and omit or reset only the unavailable section. Backend error semantics and comprehensive error testing are discussed in later sections.
-
-\subsection{Financial Data Visualization}
-\label{subsec:mobile-financial-visualization}
-
-Financial information contains temporal, categorical, and multi-dimensional relationships that are difficult to understand as unformatted text. Stockrium therefore uses several visualization strategies rather than one general chart component. Table~\ref{tab:mobile-visualizations} summarizes the main visualizations and their roles.
-
-\begin{table}[H]
-    \centering
-    \caption{Principal financial visualizations in the mobile application}
-    \label{tab:mobile-visualizations}
-    \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.2cm} >{\raggedright\arraybackslash}p{4.1cm} X}
-        \toprule
-        \textbf{Visualization} & \textbf{Implementation approach} & \textbf{Purpose and interaction} \\
-        \midrule
-        Price and candlestick chart & TradingView Lightweight Charts executed inside a React Native WebView. TypeScript converts API records into serializable open, high, low, and close (OHLC) series and injects them into the chart runtime. & Displays historical area or candlestick prices, supports time navigation, and provides a detailed stock-centered view. \\
-        \addlinespace
-        Volume and technical indicators & Volume, moving average (MA), Bollinger Bands, RSI, MACD, and KDJ series are prepared with memoized transformations and passed to the same chart runtime. & Lets the user combine one main-chart overlay, one oscillator-style subchart, and optional volume without permanently overcrowding the price view. \\
-        \addlinespace
-        AI radar chart & React Native SVG with Reanimated paths and points. & Compares normalized technical, fundamental, and news scores; pressing an axis selects and reveals the corresponding written explanation. \\
-        \addlinespace
-        Industry tree map & D3 hierarchy computes a squarified rectangle layout, while React Native SVG draws the result. & Encodes trading value through rectangle area and price movement through color, with a distinct highlight for large positive changes; selecting a rectangle opens stock information and navigation. \\
-        \addlinespace
-        Financial bar charts & Victory Native and Shopify Skia render historical revenue and profit series. & Makes changes across reporting periods easier to compare than a list of yearly values. \\
-        \addlinespace
-        Progress and confidence indicators & Native views and animations render percentages, loading progress, and selection state. & Communicates AI confidence, active configuration, loading state, and completion without requiring a separate charting runtime. \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-\subsubsection{Interactive Price-Chart Architecture}
-
-The main price visualization uses a WebView because the Lightweight Charts runtime is browser-oriented and provides efficient financial time-series behavior. The React Native wrapper creates the local HTML and JavaScript source once, retains a reference to the WebView, and waits for a \texttt{chart-ready} message. Once ready, the wrapper injects serialized price, volume, moving-average, Bollinger, MACD, RSI, and KDJ arrays. Later changes update data or chart options without recreating the entire screen.
-
-The Price Chart component keeps UI state for chart type, time frame, overlay indicator, subchart indicator, volume visibility, guide visibility, and loading status. Eight user-selectable time frames are mapped to backend intervals: one minute, five minutes, fifteen minutes, thirty minutes, one hour, one day, one week, and one month. Price and indicator requests are performed concurrently for the selected interval. The returned data are converted into the timestamp and field structure required by the chart.
-
-Memoization is used for these transformations because the same price series contributes to several visual layers. OHLC values form the primary series; the close--open relationship determines volume color; indicator records become MA, Bollinger, RSI, MACD, KDJ, and volume-moving-average series. Recalculation occurs only when the relevant backend data or theme colors change.
-
-Chart options are sent through small injected functions. The native side can switch between area and candlestick series, update the theme, show or hide volume, and select technical modes. The WebView posts readiness events back to React Native. This two-way boundary isolates browser chart code from the screen while preserving native controls and theme integration.
-
-On the Stock Detail route, one bottom sheet provides time-frame selection, another controls indicators, and a multi-step guide explains chart structure, volume, controls, and representative candlestick patterns. These educational controls make the local Lightweight Charts visualization usable for both experienced investors and users who are still learning financial charts. A separate TradingView route embeds the external TradingView chart page in a WebView and provides additional viewing space with portrait and rotated landscape modes; it is distinct from the locally constructed chart and its bottom-sheet controls.
-
-\subsubsection{Native Analytical Visualizations}
-
-The AI radar chart remains native because its data contain only three normalized values and benefit from direct interaction with result-screen state. Concentric SVG polygons and axes form the grid; the data polygon animates from the center when values arrive. Each axis label displays a percentage and can be pressed. The selected index controls which source explanation is visible below the chart.
-
-The industry tree map combines D3 layout computation with native SVG rendering. Each stock becomes a leaf whose area is proportional to trading value. Color distinguishes positive, negative, and unchanged movement, with a separate highlight for changes above the application's large-increase threshold. Selecting a rectangle opens a detail modal and allows navigation to the stock. This visualization makes it possible to see both market direction and relative activity across many stocks without requiring a long sorted list.
-
-Historical revenue and profit are displayed with bar-chart primitives suited to periodic categorical comparison. These charts are intentionally separate from the market-price runtime because annual financial statements have a different scale and interaction model. Across all visualizations, colors are read from the theme when possible so that success, error, neutral, background, and text semantics remain consistent in light and dark modes.
 
 \subsection{API Integration and Client State}
 \label{subsec:api-integration-client-state}
