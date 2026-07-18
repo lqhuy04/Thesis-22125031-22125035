@@ -1,5 +1,5 @@
-\section{Development Technologies}
-\label{sec:development-technologies}
+\section{Development Technology Foundations}
+\label{sec:development-technology-foundations}
 
 Stockrium consists of mobile and web interfaces, a backend application programming interface (API), data pipelines, persistent storage, and multi-agent analysis workflows. This section introduces the principal technologies used in these components and the responsibility of each technology within the system.
 
@@ -21,7 +21,7 @@ Authentication uses bcrypt, an adaptive one-way password-hashing algorithm, so p
 
 SSI Securities Corporation's FastConnect (FC) Data services provide Vietnamese security, price, and market-index data through historical APIs and real-time WebSocket streams. A WebSocket maintains a persistent connection for receiving continuous market updates, unlike repeated request--response polling. Offline utilities use Selenium WebDriver to automate the dynamically rendered SSI iBoard interface and collect company profiles and financial reports \cite{seleniumWebDriver2025}. The news pipeline uses Serper to discover relevant pages and Newspaper3k to extract article text before OpenAI-based summarization and sentiment labeling.
 
-pandas represents and transforms tabular data, NumPy provides numerical arrays and calculations, and OpenPyXL allows pandas to read downloaded Microsoft Excel workbooks. The Technical Analysis Library (TA-Lib) calculates technical indicators such as moving averages, RSI, MACD, Bollinger Bands, and KDJ, while SciPy supplies statistical functions for backtest evaluation \cite{pandasIO2026,talibFunctions2026}. These acquisition and preparation pipelines populate the database independently of ordinary mobile requests; they are not executed synchronously when a user opens a screen.
+pandas represents and transforms tabular data, NumPy provides numerical arrays and calculations, and OpenPyXL allows pandas to read downloaded Microsoft Excel workbooks. Stockrium's active technical-indicator service implements moving averages, RSI, MACD, Bollinger Bands, KDJ, and volume averages directly with pandas and NumPy, while SciPy supplies statistical functions for backtest evaluation \cite{pandasIO2026}. These acquisition and preparation pipelines populate the database independently of ordinary mobile requests; they are not executed synchronously when a user opens a screen.
 
 Supabase provides the principal PostgreSQL relational database for account, market, company, fundamental, news, and chatbot data \cite{supabaseDatabase2026}. PostgreSQL uses Structured Query Language (SQL) for relational data operations. The Supabase client supports ordinary table access, whereas Psycopg provides direct PostgreSQL connections for LangGraph checkpoint persistence and related chat operations. Supabase Storage stores exported JavaScript Object Notation (JSON) backtest artifacts when they are uploaded. Redis supplies expiring key--value storage for short-lived authentication data, including token sessions, OTPs, attempt counters, and password-reset sessions \cite{redisDataTypes2026}; it is not the primary store for market or financial records.
 
