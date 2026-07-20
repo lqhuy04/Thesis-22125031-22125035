@@ -1,7 +1,7 @@
 \section{Key Features}
 \label{sec:key-features}
 
-Stockrium provides a connected set of features for exploring the Vietnamese stock market, examining financial evidence, obtaining multi-agent analysis, and evaluating the analytical pipeline historically. The following subsections specify the principal user-visible capabilities using a consistent use-case format. Chapter~4 presents their architecture and implementation, while Chapter~7 demonstrates the implemented interfaces.
+Stockrium provides a connected set of features for exploring the Vietnamese stock market, examining financial evidence, obtaining agentic AI analysis, and evaluating the analytical pipeline historically. The following subsections specify the principal user-visible capabilities using a consistent use-case format. Chapter~4 presents their architecture and implementation, while Chapter~7 demonstrates the implemented interfaces.
 
 \subsection{Authentication and Account Management}
 \label{subsec:authentication-account-management}
@@ -120,7 +120,7 @@ Stockrium provides a connected set of features for exploring the Vietnamese stoc
 \subsection{Investment-Horizon Profile and Configurable AI Analysis}
 \label{subsec:configurable-ai-analysis}
 
-\noindent\textbf{Use Case Name:} Configure and Request Multi-Agent Stock Analysis
+\noindent\textbf{Use Case Name:} Configure and Request Agentic AI Stock Analysis
 
 \noindent\textbf{Actor:} Authenticated Investor
 
@@ -135,7 +135,7 @@ Stockrium provides a connected set of features for exploring the Vietnamese stoc
     \item In automatic mode, the system derives the analytical configuration from the saved investment horizon; in manual mode, the investor selects evidence sources, subcategories, and weights.
     \item The client and backend validate the completed configuration.
     \item The investor submits the analysis request.
-    \item The multi-agent workflow prepares and analyzes the enabled technical, fundamental, and news evidence.
+    \item The agentic AI workflow prepares and analyzes the enabled technical, fundamental, and news evidence.
     \item The aggregator produces a candidate assessment, after which deterministic code calculates confidence and enforces the decision constraints.
     \item The application presents the action, confidence, component evidence, explanations, and any applicable risk-related values.
 \end{enumerate}
@@ -208,4 +208,4 @@ Stockrium provides a connected set of features for exploring the Vietnamese stoc
     \item A generated JSON result may be exported directly; persistence in Supabase Storage requires the separate artifact-upload operation.
 \end{itemize}
 
-Together, these use cases define Stockrium as a configurable and explainable decision-support environment. They connect market discovery, evidence inspection, multi-agent synthesis, conversational follow-up, and controlled historical evaluation while keeping investment decisions and any subsequent transactions under the user's responsibility.
+Together, these use cases define Stockrium as a configurable and explainable decision-support environment. They connect market discovery, evidence inspection, agentic AI synthesis, conversational follow-up, and controlled historical evaluation while keeping investment decisions and any subsequent transactions under the user's responsibility.

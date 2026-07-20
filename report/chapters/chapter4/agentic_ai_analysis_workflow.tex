@@ -1,5 +1,5 @@
-\section{Multi-Agent Stock Analysis Design}
-\label{sec:multi-agent-stock-analysis-design}
+\section{Agentic AI-Based Stock Analysis Design}
+\label{sec:agentic-ai-stock-analysis-design}
 
 The principal analytical feature of Stockrium is implemented as a stateful directed graph rather than as one monolithic language-model prompt. The graph separates planning, evidence preparation, specialist analysis, synthesis, and deterministic post-processing. This separation is important because the three evidence domains have different structures: price series require numerical calculation, financial statements require multi-year and industry-aware comparison, and articles require relevance filtering and qualitative interpretation. Treating them as independent branches also makes it possible to disable selected evidence, diagnose a weak branch, and reuse the same components in live analysis and historical evaluation.
 
@@ -19,12 +19,12 @@ The compiled analysis graph contains five nodes: an orchestrator, three speciali
 
 The vertical layout in Figure~\ref{fig:analysis-graph-topology} follows the top-to-bottom execution order and uses enlarged labels that remain legible at report size. The three specialist nodes remain on the same level to show that they can execute in parallel, while the dashed paths distinguish shared-state updates from the main control flow.
 
-The shared \texttt{AgentState} is a typed dictionary containing the fields summarized in Table~\ref{tab:analysis-agent-state}. State is the contract between graph nodes: a node reads only the context it requires and returns only the fields it changes. The graph can consequently add or replace a specialist without redesigning the public HTTP request.
+The shared \texttt{AgentState} is a typed dictionary containing the fields summarized in Table~\ref{tab:analysis-workflow-state}. State is the contract between graph nodes: a node reads only the context it requires and returns only the fields it changes. The graph can consequently add or replace a specialist without redesigning the public HTTP request.
 
 \begin{table}[H]
     \centering
     \caption{Principal fields in the analysis graph state}
-    \label{tab:analysis-agent-state}
+    \label{tab:analysis-workflow-state}
     \small
     \setlength{\tabcolsep}{5pt}
     \renewcommand{\arraystretch}{1.18}
@@ -56,15 +56,15 @@ The model does not choose the candle interval. After parsing the generated dates
 
 The fundamental branch is intentionally not given a horizon-specific number of financial years. It examines up to the five latest annual periods regardless of whether the user selected a short-, medium-, or long-term profile. This asymmetry is deliberate: the horizon changes the sensitivity of price signals, but company quality should not be inferred from a single recent accounting period. The aggregator later changes the relative influence of the fundamental evidence according to the horizon.
 
-\subsection{Specialist Evidence Agents}
-\label{subsec:analysis-specialist-agents}
+\subsection{Specialist Evidence Nodes}
+\label{subsec:analysis-specialist-nodes}
 
-The specialist nodes do not all use the language model in the same way. The technical node is primarily deterministic, the fundamental node prepares a structured textual evidence package without making the final recommendation, and the article node uses a model to filter and summarize natural-language news. Table~\ref{tab:specialist-agent-responsibilities} highlights these differences.
+The specialist nodes do not all use the language model in the same way. The technical node is primarily deterministic, the fundamental node prepares a structured textual evidence package without making the final recommendation, and the article node uses a model to filter and summarize natural-language news. Table~\ref{tab:specialist-node-responsibilities} highlights these differences.
 
 \begin{table}[H]
     \centering
     \caption{Responsibilities and outputs of specialist analysis nodes}
-    \label{tab:specialist-agent-responsibilities}
+    \label{tab:specialist-node-responsibilities}
     \small
     \setlength{\tabcolsep}{4pt}
     \renewcommand{\arraystretch}{1.2}
@@ -79,16 +79,16 @@ The specialist nodes do not all use the language model in the same way. The tech
     \end{tabular}
 \end{table}
 
-\subsubsection{Technical-Analysis Agent}
-\label{subsubsec:technical-analysis-agent}
+\subsubsection{Technical-Analysis Node}
+\label{subsubsec:technical-analysis-node}
 
-The technical agent first obtains the most recent one-minute price when live analysis is being performed. It separately loads candles in the horizon-selected interval and date range. Daily records are aggregated by the market service when weekly or monthly analysis is requested. The indicator service calculates moving averages, RSI, Bollinger Bands, MACD, and KDJ. During backtesting, the same node can use a historical indicator source and suppress current-price lookup so that a future price is not introduced into a past decision.
+The technical-analysis node first obtains the most recent one-minute price when live analysis is being performed. It separately loads candles in the horizon-selected interval and date range. Daily records are aggregated by the market service when weekly or monthly analysis is requested. The indicator service calculates moving averages, RSI, Bollinger Bands, MACD, and KDJ. During backtesting, the same node can use a historical indicator source and suppress current-price lookup so that a future price is not introduced into a past decision.
 
 Each enabled indicator contributes at most one point. The scoring rules are shown in Table~\ref{tab:technical-signal-scoring}. They focus on a positive transition or strengthening condition rather than assigning a point whenever an indicator has any valid value. A missing indicator receives zero and an explanatory reason. The denominator is the number of indicators enabled by the user, not a fixed value of five, which keeps the later 60\% threshold meaningful in manual mode.
 
 \begin{table}[H]
     \centering
-    \caption{Deterministic positive-signal conditions in the technical agent}
+    \caption{Deterministic positive-signal conditions in the technical-analysis node}
     \label{tab:technical-signal-scoring}
     \footnotesize
     \setlength{\tabcolsep}{4pt}
@@ -106,12 +106,12 @@ Each enabled indicator contributes at most one point. The scoring rules are show
     \end{tabular}
 \end{table}
 
-For every enabled indicator, the output contains current and previous values, a binary score, and a rule-generated reason. The agent also returns the actual covered dates, number of candles, interval, and display price. The aggregator can therefore ask the language model to explain concrete signals while retaining a score that was produced outside the model. Overbought RSI, price above the upper Bollinger Band, weakening MACD histogram, or overbought KDJ can be described as cautionary evidence even though the system's recommendation vocabulary remains limited to Buy and Wait.
+For every enabled indicator, the output contains current and previous values, a binary score, and a rule-generated reason. The node also returns the actual covered dates, number of candles, interval, and display price. The aggregator can therefore ask the language model to explain concrete signals while retaining a score that was produced outside the model. Overbought RSI, price above the upper Bollinger Band, weakening MACD histogram, or overbought KDJ can be described as cautionary evidence even though the system's recommendation vocabulary remains limited to Buy and Wait.
 
-\subsubsection{Fundamental-Analysis Agent}
-\label{subsubsec:fundamental-analysis-agent}
+\subsubsection{Fundamental-Analysis Node}
+\label{subsubsec:fundamental-analysis-node}
 
-The fundamental agent loads financial indicators, income statements, cash flows, a stored summary, and company-profile metadata. It retains up to five most recent annual records and orders them chronologically. For applicable values it computes compound annual growth rate (CAGR) using the standard geometric endpoint-growth definition used for historical financial growth rates \cite{damodaranHistoricalGrowth2026}:
+The fundamental-analysis node loads financial indicators, income statements, cash flows, a stored summary, and company-profile metadata. It retains up to five most recent annual records and orders them chronologically. For applicable values it computes compound annual growth rate (CAGR) using the standard geometric endpoint-growth definition used for historical financial growth rates \cite{damodaranHistoricalGrowth2026}:
 
 \begin{equation}
     \operatorname{CAGR}(x) = \left(\frac{x_{n}}{x_{0}}\right)^{\frac{1}{y_{n}-y_{0}}} - 1,
@@ -127,16 +127,16 @@ For nonfinancial firms, selected evidence is organized into liquidity, leverage,
     \label{eq:dupont-stockrium}
 \end{equation}
 
-which helps distinguish margin-driven returns from efficient asset use or debt-supported returns. For firms whose ICB code begins with 8, the agent uses a financial-sector presentation based on available CAMELS-related measures. It avoids relying on P/E and EV/EBITDA for financial-sector valuation and instead presents P/B. When specialized measures such as CAR, NPL, NIM, LDR, or CIR are unavailable, the evidence explicitly states the limitation rather than filling it with an inferred value.
+which helps distinguish margin-driven returns from efficient asset use or debt-supported returns. For firms whose ICB code begins with 8, the node uses a financial-sector presentation based on available CAMELS-related measures. It avoids relying on P/E and EV/EBITDA for financial-sector valuation and instead presents P/B. When specialized measures such as CAR, NPL, NIM, LDR, or CIR are unavailable, the evidence explicitly states the limitation rather than filling it with an inferred value.
 
 The company is also compared with precomputed annual medians for the corresponding ICB industry. A comparison table is included only when at least three peers contribute, reducing the risk of treating one or two companies as a representative benchmark. The evidence includes the latest company value, latest industry median, company CAGR, and industry CAGR for selected measures. These deterministic preparations give the aggregator concrete relative context rather than asking it to decide what constitutes the industry from an unrestricted prompt.
 
 Disabling every fundamental category causes the branch to return an explicit disabled marker. Data-access failures and completely missing financial records are converted to a no-data marker and do not terminate the other branches. This is important for newly listed companies and for batch analysis, where one incomplete company should not cancel an entire universe.
 
-\subsubsection{Article-Analysis Agent}
-\label{subsubsec:article-analysis-agent}
+\subsubsection{Article-Analysis Node}
+\label{subsubsec:article-analysis-node}
 
-The article agent retrieves records already associated with the selected stock and filters them to the orchestrator's date interval. Its input to the model contains each article's date, title, available summary, and stored sentiment. The model is instructed to retain useful and relevant content and return a Vietnamese structure containing the main information, positive points, and negative points or risks. This branch uses a low but nonzero temperature of 0.2 because limited linguistic variation is acceptable in a summary, while highly variable creative output is undesirable in financial analysis.
+The article-analysis node retrieves records already associated with the selected stock and filters them to the orchestrator's date interval. Its input to the model contains each article's date, title, available summary, and stored sentiment. The model is instructed to retain useful and relevant content and return a Vietnamese structure containing the main information, positive points, and negative points or risks. This branch uses a low but nonzero temperature of 0.2 because limited linguistic variation is acceptable in a summary, while highly variable creative output is undesirable in financial analysis.
 
 If the user disables news, no article falls within the planned period, or the branch cannot provide usable content, it returns a recognizable marker. The aggregator detects these markers in Python. Missing news is therefore treated as absent evidence rather than silently converted into neutral evidence that would still affect confidence.
 
@@ -242,4 +242,4 @@ The purpose of these ranges is therefore to bound language-model output, prevent
 
 Two implementation qualifications are necessary for an accurate description. First, the prompt asks the model to maintain a reward-to-risk ratio of at least 1.5, but the current Python post-processing does not recalculate this condition as a final veto after clamping. The ratio displayed in the result is therefore informative rather than a deterministically guaranteed constraint. Second, the boundary configuration describes maximum hold in daily-candle terms, while live technical analysis maps medium- and long-term horizons to weekly and monthly candles and the mobile interface labels the field as a number of candles. The present code does not convert the bounded count between these time scales. Consequently, the values in Table~\ref{tab:horizon-price-boundaries} document the implementation but should not be reinterpreted as a universally consistent calendar duration. Aligning interval semantics and adding a final reward-to-risk assertion are appropriate hardening tasks for future work.
 
-Overall, the multi-agent workflow separates evidence acquisition and deterministic calculation from semantic synthesis. Parallel specialist nodes make each analytical perspective inspectable; structured models constrain generated objects; and Python checks can reject a candidate Buy that violates measurable rules. The workflow remains an analytical support mechanism rather than an autonomous trading system: it supplies a traceable Buy-or-Wait assessment, but it neither places an order nor guarantees an investment outcome.
+Overall, the agentic AI workflow separates evidence acquisition and deterministic calculation from semantic synthesis. Parallel specialist nodes make each analytical perspective inspectable; structured models constrain generated objects; and Python checks can reject a candidate Buy that violates measurable rules. The workflow remains an analytical support mechanism rather than an autonomous trading system: it supplies a traceable Buy-or-Wait assessment, but it neither places an order nor guarantees an investment outcome.
