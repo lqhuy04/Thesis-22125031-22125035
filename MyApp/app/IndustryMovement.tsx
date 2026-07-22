@@ -1,11 +1,19 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   TouchableOpacity,
   View,
   Image,
   FlatList,
+  ScrollView,
   Animated,
   ActivityIndicator,
+  LayoutChangeEvent,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import ScreenHeader from "@/components/ui/ScreenHeader";
@@ -14,13 +22,14 @@ import { getAllStocks, getIndustryMovement } from "@/helpers/MarketHelpers";
 import { CurrentPriceData } from "@/helpers/DetailHelpers";
 import { router, useLocalSearchParams } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Sentinel value cho tab "Tất cả" (không phải industry id thật)
 export const ALL_VALUE = "__all__";
 const PAGE_SIZE = 20;
 
 // --- Skeleton Item ---
-const SkeletonItem = ({ theme }: { theme: any }) => {
+const SkeletonItem = ({ theme, index }: { theme: any; index: number }) => {
   const opacity = useRef(new Animated.Value(0.3)).current;
 
   useEffect(() => {
@@ -52,7 +61,7 @@ const SkeletonItem = ({ theme }: { theme: any }) => {
         paddingVertical: 16,
         flexDirection: "row",
         alignItems: "center",
-        borderTopWidth: 1,
+        borderTopWidth: index === 0 ? 0 : 1,
         borderTopColor: theme.border.default,
       }}
     >
@@ -111,6 +120,7 @@ const SkeletonItem = ({ theme }: { theme: any }) => {
 // --- Main Screen ---
 const IndustryMovement = () => {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useLocalization();
   const { industryId } = useLocalSearchParams<{ industryId?: string }>();
 
@@ -149,7 +159,12 @@ const IndustryMovement = () => {
   }, [industryId, categories]);
 
   const cache = useRef<Record<string, CurrentPriceData[]>>({});
-  const categoryListRef = useRef<FlatList>(null);
+  const categoryListRef = useRef<ScrollView>(null);
+  const categoryLayoutsRef = useRef<
+    Record<number, { x: number; width: number }>
+  >({});
+  const categoryViewportWidthRef = useRef(0);
+  const initialCategoryScrolledRef = useRef(false);
 
   // Trạng thái phân trang riêng cho tab "Tất cả"
   const allPageRef = useRef<number>(1);
@@ -160,18 +175,35 @@ const IndustryMovement = () => {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [chosenIndex, setChosenIndex] = useState<number>(initialIndex);
 
+  const scrollToCategory = useCallback((index: number, animated: boolean) => {
+    if (index <= 0) return true;
+
+    const layout = categoryLayoutsRef.current[index];
+    const viewportWidth = categoryViewportWidthRef.current;
+
+    if (!layout || viewportWidth === 0) return false;
+
+    categoryListRef.current?.scrollTo({
+      x: Math.max(0, layout.x - (viewportWidth - layout.width) / 2),
+      y: 0,
+      animated,
+    });
+    return true;
+  }, []);
+
   useEffect(() => {
-    // FlatList chỉ chứa các industry (không có tab "Tất cả") → lệch index 1
-    if (initialIndex > 1) {
-      setTimeout(() => {
-        categoryListRef.current?.scrollToIndex({
-          index: initialIndex - 1,
-          animated: false,
-          viewPosition: 0.5,
-        });
-      }, 100);
-    }
-  }, [initialIndex]);
+    setChosenIndex(initialIndex);
+    initialCategoryScrolledRef.current = false;
+
+    const frame = requestAnimationFrame(() => {
+      initialCategoryScrolledRef.current = scrollToCategory(
+        initialIndex,
+        false,
+      );
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [initialIndex, scrollToCategory]);
 
   useEffect(() => {
     const key = categories[chosenIndex].value;
@@ -234,21 +266,17 @@ const IndustryMovement = () => {
 
   const handleTabPress = (index: number) => {
     setChosenIndex(index);
-    // Chỉ scroll FlatList cho các tab industry (index >= 1); tab "Tất cả" cố định
-    if (index > 0) {
-      categoryListRef.current?.scrollToIndex({
-        index: index - 1,
-        animated: true,
-        viewPosition: 0.5,
-      });
-    }
+    scrollToCategory(index, true);
   };
 
   const renderTabButton = (
     item: { label: string; value: string },
     index: number,
+    onLayout?: (event: LayoutChangeEvent) => void,
   ) => (
     <TouchableOpacity
+      key={item.value}
+      onLayout={onLayout}
       style={{
         backgroundColor:
           chosenIndex === index ? theme.base.primary : theme.border.default,
@@ -304,20 +332,42 @@ const IndustryMovement = () => {
         />
 
         {/* Các tab industry có thể scroll */}
-        <FlatList
+        <ScrollView
           ref={categoryListRef}
-          data={categories.slice(1)}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(_, index) => (index + 1).toString()}
           style={{ flex: 1 }}
-          getItemLayout={(_, index) => ({
-            length: 120,
-            offset: 120 * index,
-            index,
+          contentContainerStyle={{ paddingRight: 12 }}
+          onLayout={(event) => {
+            categoryViewportWidthRef.current = event.nativeEvent.layout.width;
+
+            if (!initialCategoryScrolledRef.current) {
+              initialCategoryScrolledRef.current = scrollToCategory(
+                initialIndex,
+                false,
+              );
+            }
+          }}
+        >
+          {categories.slice(1).map((item, index) => {
+            const categoryIndex = index + 1;
+
+            return renderTabButton(item, categoryIndex, (event) => {
+              const { x, width } = event.nativeEvent.layout;
+              categoryLayoutsRef.current[categoryIndex] = { x, width };
+
+              if (
+                categoryIndex === initialIndex &&
+                !initialCategoryScrolledRef.current
+              ) {
+                initialCategoryScrolledRef.current = scrollToCategory(
+                  initialIndex,
+                  false,
+                );
+              }
+            });
           })}
-          renderItem={({ item, index }) => renderTabButton(item, index + 1)}
-        />
+        </ScrollView>
       </View>
 
       {/* List */}
@@ -330,10 +380,11 @@ const IndustryMovement = () => {
             paddingHorizontal: 12,
             flex: 1,
             overflow: "hidden",
+            marginBottom: insets.bottom + 12,
           }}
         >
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-            <SkeletonItem key={i} theme={theme} />
+            <SkeletonItem key={i} theme={theme} index={i} />
           ))}
         </View>
       ) : (
@@ -345,6 +396,7 @@ const IndustryMovement = () => {
             margin: 12,
             paddingHorizontal: 12,
             flex: 1,
+            marginBottom: insets.bottom + 12,
           }}
           keyExtractor={(_, index) => index.toString()}
           onEndReached={handleLoadMore}
@@ -417,7 +469,10 @@ const IndustryMovement = () => {
 
                   <View style={{ alignItems: "flex-start", marginRight: 4 }}>
                     <Text typography="labelLarge" color={theme.text.primary}>
-                      {currentPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {currentPrice.toLocaleString("vi-VN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </Text>
                     <Text
                       typography="bodySmall"
@@ -432,7 +487,13 @@ const IndustryMovement = () => {
                     >
                       {"("}
                       {priceChange > 0 ? "+" : ""}
-                      {(priceChange >= 0 ? priceChange : priceChange * -1).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {(priceChange >= 0
+                        ? priceChange
+                        : priceChange * -1
+                      ).toLocaleString("vi-VN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                       {")"}
                     </Text>
                   </View>
@@ -479,7 +540,13 @@ const IndustryMovement = () => {
                             ? ""
                             : "▼"}{" "}
                       </Text>
-                      {(perPriceChange >= 0 ? perPriceChange : perPriceChange * -1).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {(perPriceChange >= 0
+                        ? perPriceChange
+                        : perPriceChange * -1
+                      ).toLocaleString("vi-VN", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                       %
                     </Text>
                   </View>

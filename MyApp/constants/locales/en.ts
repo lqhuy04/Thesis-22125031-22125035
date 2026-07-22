@@ -498,6 +498,7 @@ export default {
     shares: "shares",
   },
   profile: {
+    greeting: "Hello!",
     management: "Management",
     assetManagement: "Asset Management",
     riskAppetite: "Risk Appetite",

@@ -1,6 +1,6 @@
 import { Text } from "@/components/ui/Text";
 import React from "react";
-import { ScrollView, View } from "react-native";
+import { Linking, ScrollView, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { New } from "@/helpers/DetailHelpers";
 import ScreenHeader from "@/components/ui/ScreenHeader";
@@ -14,6 +14,18 @@ const NewDetal = () => {
   const item = data ? (JSON.parse(data as string) as New) : null;
 
   const insets = useSafeAreaInsets();
+
+  const handleOpenLink = async () => {
+    const url = item?.link?.trim();
+
+    if (!url) return;
+
+    try {
+      await Linking.openURL(url);
+    } catch (error) {
+      console.error("Failed to open article link:", error);
+    }
+  };
 
   return (
     <View
@@ -70,6 +82,8 @@ const NewDetal = () => {
           <Text
             typography="bodyLarge"
             color={theme.text.primary}
+            accessibilityRole="link"
+            onPress={handleOpenLink}
             style={{
               color: theme.base.primary,
               textDecorationLine: "underline",

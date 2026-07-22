@@ -221,6 +221,7 @@ const PriceChartComponent = ({
   // true on first load until we have price data for the first time
   const isFirstLoad = useRef(true);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshLoading, setRefreshLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [chartType, setChartType] = useState<"candle" | "area">("candle");
@@ -314,7 +315,12 @@ const PriceChartComponent = ({
   // Pull-to-refresh — fetch lại header + dữ liệu chart theo timeframe hiện tại
   useEffect(() => {
     const refreshFn = async () => {
-      await Promise.all([fetchHeaderData(), fetchChartData()]);
+      setRefreshLoading(true);
+      try {
+        await Promise.all([fetchHeaderData(), fetchChartData()]);
+      } finally {
+        setRefreshLoading(false);
+      }
     };
     const unregister = registerRefresh?.(refreshFn);
     return () => unregister?.();
@@ -430,8 +436,8 @@ const PriceChartComponent = ({
     (indicatorState.mode2 ? 1 : 0) +
     (indicatorState.volume ? 1 : 0);
 
-  // ── Skeleton guard — first load only ─────────────────────────────────
-  if (initialLoading) return <PriceChartSkeleton />;
+  // ── Skeleton guard — first load and pull-to-refresh ──────────────────
+  if (initialLoading || refreshLoading) return <PriceChartSkeleton />;
 
   // ── Normal render ─────────────────────────────────────────────────────
   return (

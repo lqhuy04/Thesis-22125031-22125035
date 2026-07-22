@@ -4,6 +4,7 @@ import { getBaseUrl } from "./base";
 
 interface JwtPayload {
   exp: number;
+  email?: string;
 }
 
 export interface Session {
@@ -47,6 +48,20 @@ export const getSession = async (): Promise<Session | null> => {
   if (!token || !refresh_token) return null;
 
   return { token, refresh_token };
+};
+
+export const getSessionEmail = async (): Promise<string | null> => {
+  try {
+    const token = await SecureStore.getItemAsync(SESSION_KEYS.TOKEN);
+
+    if (!token) return null;
+
+    const { email } = jwtDecode<JwtPayload>(token);
+    return email?.trim() || null;
+  } catch (error) {
+    console.error("Error decoding session email:", error);
+    return null;
+  }
 };
 
 export const removeSession = async () => {

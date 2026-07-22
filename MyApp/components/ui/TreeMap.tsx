@@ -1,5 +1,6 @@
 // components/TreeMap.tsx
 import React, { useCallback, useMemo, useState } from "react";
+import type { GestureResponderEvent } from "react-native";
 import {
   View,
   Text,
@@ -198,6 +199,22 @@ export const TreeMap: React.FC<Props> = ({
     [nodes, chartW, chartH],
   );
 
+  const handleTreeMapPress = useCallback(
+    (event: GestureResponderEvent) => {
+      const { locationX, locationY } = event.nativeEvent;
+      const selectedRect = rects.find(
+        (rect) =>
+          locationX >= rect.x + padding &&
+          locationX <= rect.x + rect.width - padding &&
+          locationY >= rect.y + padding &&
+          locationY <= rect.y + rect.height - padding,
+      );
+
+      if (selectedRect) setSelectedItem(selectedRect.raw);
+    },
+    [padding, rects],
+  );
+
   return (
     <View style={{ width, height }}>
       {title && (
@@ -213,71 +230,72 @@ export const TreeMap: React.FC<Props> = ({
         </Text>
       )}
 
-      <Svg width={chartW} height={chartH}>
-        {rects.map((r, i) => {
-          const rw = Math.max(0, r.width - padding * 2);
-          const rh = Math.max(0, r.height - padding * 2);
-          const cx = r.x + r.width / 2;
-          const cy = r.y + r.height / 2;
+      <Pressable
+        onPress={handleTreeMapPress}
+        style={{ width: chartW, height: chartH }}
+      >
+        <Svg width={chartW} height={chartH} pointerEvents="none">
+          {rects.map((r, i) => {
+            const rw = Math.max(0, r.width - padding * 2);
+            const rh = Math.max(0, r.height - padding * 2);
+            const cx = r.x + r.width / 2;
+            const cy = r.y + r.height / 2;
 
-          const labelSize = getFontSize(rw * 0.9, rh * 0.5, r.label);
-          const perStr = perText(r.raw);
-          const valueSize = getFontSize(rw * 0.9, rh * 0.4, perStr, 5, 13);
-          const twoLines = rh >= labelSize + valueSize + 6;
+            const labelSize = getFontSize(rw * 0.9, rh * 0.5, r.label);
+            const perStr = perText(r.raw);
+            const valueSize = getFontSize(rw * 0.9, rh * 0.4, perStr, 5, 13);
+            const twoLines = rh >= labelSize + valueSize + 6;
 
-          return (
-            <React.Fragment key={i}>
-              <Rect
-                x={r.x + padding}
-                y={r.y + padding}
-                width={rw}
-                height={rh}
-                fill={r.color}
-                rx={4}
-                onPress={() => setSelectedItem(r.raw)}
-              />
-              {twoLines ? (
-                <>
+            return (
+              <React.Fragment key={i}>
+                <Rect
+                  x={r.x + padding}
+                  y={r.y + padding}
+                  width={rw}
+                  height={rh}
+                  fill={r.color}
+                  rx={4}
+                />
+                {twoLines ? (
+                  <>
+                    <SvgText
+                      x={cx}
+                      y={cy - valueSize / 2}
+                      textAnchor="middle"
+                      fill="#fff"
+                      fontSize={labelSize}
+                      fontWeight="bold"
+                      dy={-labelSize * 0.2}
+                    >
+                      {r.label}
+                    </SvgText>
+                    <SvgText
+                      x={cx}
+                      y={cy + labelSize / 2}
+                      textAnchor="middle"
+                      fill="#ffffffdd"
+                      fontSize={valueSize}
+                    >
+                      {perStr}
+                    </SvgText>
+                  </>
+                ) : (
                   <SvgText
                     x={cx}
-                    y={cy - valueSize / 2}
+                    y={cy + labelSize * 0.35}
                     textAnchor="middle"
                     fill="#fff"
                     fontSize={labelSize}
                     fontWeight="bold"
-                    dy={-labelSize * 0.2}
-                    onPress={() => setSelectedItem(r.raw)}
                   >
                     {r.label}
                   </SvgText>
-                  <SvgText
-                    x={cx}
-                    y={cy + labelSize / 2}
-                    textAnchor="middle"
-                    fill="#ffffffdd"
-                    fontSize={valueSize}
-                    onPress={() => setSelectedItem(r.raw)}
-                  >
-                    {perStr}
-                  </SvgText>
-                </>
-              ) : (
-                <SvgText
-                  x={cx}
-                  y={cy + labelSize * 0.35}
-                  textAnchor="middle"
-                  fill="#fff"
-                  fontSize={labelSize}
-                  fontWeight="bold"
-                  onPress={() => setSelectedItem(r.raw)}
-                >
-                  {r.label}
-                </SvgText>
-              )}
-            </React.Fragment>
-          );
-        })}
-      </Svg>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </Svg>
+      </Pressable>
 
       {/* Popup */}
       <Modal

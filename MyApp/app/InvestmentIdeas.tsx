@@ -1159,7 +1159,7 @@ const InvestmentIdeas = () => {
           index,
         })}
         renderItem={renderPage}
-        style={{ flex: 1 }}
+        style={{ flex: 1, paddingBottom: 24 }}
       />
 
       <IntervalBottomsheet

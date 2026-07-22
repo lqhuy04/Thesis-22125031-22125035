@@ -16,7 +16,6 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-import FontAwesome6 from "@expo/vector-icons/FontAwesome6";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import {
@@ -24,8 +23,8 @@ import {
   logOut,
   UserProfile,
 } from "@/helpers/AuthenticationHelper";
+import { getSessionEmail } from "@/helpers/api/TokenStorage";
 import { Language, useLocalization } from "@/hooks/LocalizationContext";
-import { resetOnboarding } from "@/helpers/onboarding";
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
@@ -176,15 +175,18 @@ const Profile = () => {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const { toggleTheme, isDark, resetTheme } = useTheme();
+  const { toggleTheme, isDark } = useTheme();
   const { language, setLanguage, t } = useLocalization();
   const [showLangSheet, setShowLangSheet] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
+      getSessionEmail().then(setEmail);
+
       getProfile()
         .then((result) => {
           if (result.status && result.data) {
@@ -302,50 +304,23 @@ const Profile = () => {
           padding: 12,
           marginHorizontal: 12,
           marginTop: 12,
-          flexDirection: "row",
-          alignItems: "center",
         }}
       >
-        <View
-          style={{
-            backgroundColor: theme.background.primarySurface,
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            borderWidth: 1,
-            borderColor: theme.border.default,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
+        <Text
+          typography="titleMedium"
+          color={theme.text.primary}
+          style={{ marginBottom: 4 }}
         >
-          <FontAwesome6 name="user" size={20} color={theme.base.primary} />
-        </View>
+          {t("profile.greeting")}
+        </Text>
 
-        <View style={{ flex: 1, marginLeft: 8 }}>
-          {profile ? (
-            <>
-              <Text
-                typography="titleMedium"
-                color={theme.text.primary}
-                style={{ marginBottom: 4 }}
-              >
-                {profile.email}
-              </Text>
-              <Text typography="bodyMedium" color={theme.text.primary}>
-                {profile.user_id}
-              </Text>
-            </>
-          ) : (
-            <>
-              <SkeletonBox
-                width="75%"
-                height={18}
-                style={{ marginBottom: 8 }}
-              />
-              <SkeletonBox width="55%" height={14} />
-            </>
-          )}
-        </View>
+        {email ? (
+          <Text typography="bodyMedium" color={theme.text.primary}>
+            {email}
+          </Text>
+        ) : (
+          <SkeletonBox width="55%" height={18} />
+        )}
       </View>
 
       {/* Menu sections */}
