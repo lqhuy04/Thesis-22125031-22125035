@@ -7,7 +7,7 @@ from supabase import create_client
 from ssi_fc_data import fc_md_client, model
 
 from stock_price_validation import normalize_ohlcv
-from vnindex_symbols import get_vnindex_symbols
+from vn100_symbols import get_vn100_symbols
 
 load_dotenv()
 
@@ -31,7 +31,6 @@ TABLE         = "Stock_Price_1m"
 KEEP_DAYS     = 30
 LOOKBACK_DAYS  = 2
 SLEEP_SECONDS  = 1.1        # Delay giữa các symbol để tránh rate-limit SSI
-ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -49,11 +48,11 @@ supabase = create_client(
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_target_symbols() -> set[str]:
-    """Toàn bộ mã cổ phiếu thuộc VNINDEX (từ DB) ∪ các chỉ số cần giữ."""
-    vnindex_stocks = get_vnindex_symbols(supabase)
-    if not vnindex_stocks:
-        logger.warning("VNINDEX symbol list is empty (DB issue?); processing indices only")
-    return vnindex_stocks | ALLOWED_INDICES
+    """Trả về toàn bộ mã cổ phiếu thuộc rổ VN100 từ DB."""
+    vn100_stocks = get_vn100_symbols(supabase)
+    if not vn100_stocks:
+        logger.warning("VN100 stock symbol list is empty (DB issue?)")
+    return vn100_stocks
 
 # ═════════════════════════════════════════════════════════════════════════════
 # SSI DATA
@@ -97,8 +96,8 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]
             r.get("Low"),
             r.get("Close"),
             r.get("Volume"),
-            price_multiplier=1 if symbol in ALLOWED_INDICES else 1 / 1000,
-            allow_zero_volume=symbol in ALLOWED_INDICES,
+            price_multiplier=1 / 1000,
+            allow_zero_volume=False,
         )
         if ohlcv is None:
             rejected += 1
@@ -204,7 +203,7 @@ def main():
     logger.info(f"=== Starting intraday sync: {from_date} → {today_str} ===")
 
     symbols = get_target_symbols()
-    logger.info(f"Processing {len(symbols)} symbols (VNINDEX + indices)")
+    logger.info(f"Processing {len(symbols)} VN100 stock symbols")
 
     if not symbols:
         logger.warning("No symbols to process")

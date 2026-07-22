@@ -6,7 +6,7 @@ from datetime import date, datetime, timedelta
 from dotenv import load_dotenv
 from supabase import create_client
 
-from vnindex_symbols import get_vnindex_symbols
+from vn100_symbols import get_vn100_symbols
 
 load_dotenv()
 
@@ -25,6 +25,8 @@ config = Config()
 
 TABLE         = "Stock_Price_1m"
 SLEEP_SECONDS = 1.1
+LOOKBACK_MONTHS = 3
+DAYS_PER_MONTH = 30
 
 logging.basicConfig(
     level=logging.INFO,
@@ -142,11 +144,22 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str, access_token:
                 "volume":       float(r.get("Volume") or 0),
             })
 
-        time.sleep(SLEEP_SECONDS)  # Rate limiting
         return _aggregate_intraday_minutes(result)
     except Exception as e:
         logger.error(f"Failed to fetch intraday data for {symbol}: {e}")
         return []
+
+def build_monthly_date_ranges(reference_date: date) -> list[tuple[str, str]]:
+    """Build three consecutive 30-day SSI query windows, newest first."""
+    date_ranges = []
+    for month_offset in range(LOOKBACK_MONTHS):
+        range_end = reference_date - timedelta(days=DAYS_PER_MONTH * month_offset)
+        range_start = range_end - timedelta(days=DAYS_PER_MONTH)
+        date_ranges.append((
+            range_start.strftime("%d/%m/%Y"),
+            range_end.strftime("%d/%m/%Y"),
+        ))
+    return date_ranges
 
 # ═════════════════════════════════════════════════════════════════════════════
 # SUPABASE
@@ -172,32 +185,39 @@ def main():
         logger.error("No SSI access token found. Exiting.")
         return
 
-    symbols = sorted(get_vnindex_symbols(supabase))
+    symbols = sorted(get_vn100_symbols(supabase))
     if not symbols:
-        logger.error("No VNINDEX symbols found. Exiting.")
+        logger.error("No VN100 symbols found. Exiting.")
         return
-    logger.info(f"Processing {len(symbols)} VNINDEX symbols: {symbols[:5]}...")
+    logger.info(f"Processing {len(symbols)} VN100 symbols: {symbols[:5]}...")
 
-    today     = date.today()
-    to_date   = today.strftime("%d/%m/%Y")
-    from_date = (today - timedelta(days=30)).strftime("%d/%m/%Y")
-
-    logger.info(f"Date range: {from_date} → {to_date}")
+    date_ranges = build_monthly_date_ranges(date.today())
+    logger.info(
+        f"Date range: {date_ranges[-1][0]} → {date_ranges[0][1]} "
+        f"({LOOKBACK_MONTHS} requests per symbol)"
+    )
     
     total_candles_fetched = 0
     total_candles_upserted = 0
     
     for idx, symbol in enumerate(symbols, 1):
         logger.info(f"[{idx}/{len(symbols)}] Fetching 1m data for {symbol}...")
-        
-        candles = fetch_intraday_ohlc(symbol, from_date, to_date, access_token)
-        if candles:
-            total_candles_fetched += len(candles)
-            upsert_candles(candles)
-            total_candles_upserted += len(candles)
-            logger.info(f"  → Upserted {len(candles)} candles")
-        else:
-            logger.info(f"  → No data fetched")
+
+        for month_idx, (from_date, to_date) in enumerate(date_ranges, 1):
+            logger.info(
+                f"  [{month_idx}/{LOOKBACK_MONTHS}] Fetching {from_date} → {to_date}"
+            )
+            try:
+                candles = fetch_intraday_ohlc(symbol, from_date, to_date, access_token)
+                if candles:
+                    total_candles_fetched += len(candles)
+                    upsert_candles(candles)
+                    total_candles_upserted += len(candles)
+                    logger.info(f"    → Upserted {len(candles)} candles")
+                else:
+                    logger.info("    → No data fetched")
+            finally:
+                time.sleep(SLEEP_SECONDS)
     
     logger.info(f"\n✅ Completed!")
     logger.info(f"Total candles fetched: {total_candles_fetched}")

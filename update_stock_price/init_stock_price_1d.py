@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
 
-from vnindex_symbols import get_vnindex_symbols
+from vn100_symbols import get_vn100_symbols
 
 load_dotenv()
 
@@ -137,7 +137,7 @@ def upsert_candles(candles: list[dict]) -> None:
 def resolve_symbols(cli_symbols: list[str] | None = None) -> list[str]:
     if cli_symbols:
         return [symbol.strip().upper() for symbol in cli_symbols if symbol.strip()]
-    return sorted(get_vnindex_symbols(supabase))
+    return sorted(get_vn100_symbols(supabase))
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
@@ -145,7 +145,7 @@ def resolve_symbols(cli_symbols: list[str] | None = None) -> list[str]:
 
 def main(symbols: list[str] | None = None):
     symbols = resolve_symbols(symbols)
-    logger.info(f"Init daily OHLC for {len(symbols)} symbols: {symbols}")
+    logger.info(f"Init daily OHLC for {len(symbols)} VN100 symbols: {symbols}")
 
     today      = date.today()
     start_date = today - timedelta(days=365 * YEARS_BACK)

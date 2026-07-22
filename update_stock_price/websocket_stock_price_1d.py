@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from stock_price_validation import normalize_ohlcv
-from vnindex_symbols import get_vnindex_symbols
+from vn100_symbols import get_vn100_symbols
 
 load_dotenv()
 
@@ -34,7 +34,6 @@ VN_TZ = timezone(timedelta(hours=7))
 
 TABLE        = "Stock_Price_1d"
 SYMBOL_REGEX = re.compile(r'^[A-Z0-9]{3}$')
-ALLOWED_INDICES = {"VNINDEX", "VN30", "VN100", "HNXINDEX", "HNXUpcomIndex"}
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,9 +50,8 @@ allowed_symbols: set[str] = set()
 
 
 def get_target_symbols() -> set[str]:
-    """Toàn bộ mã cổ phiếu thuộc VNINDEX (từ DB) ∪ các chỉ số cần giữ. Lỗi DB → chỉ còn các chỉ số."""
-    vnindex_stocks = get_vnindex_symbols(supabase)
-    return vnindex_stocks | ALLOWED_INDICES
+    """Trả về toàn bộ mã cổ phiếu thuộc rổ VN100 từ DB."""
+    return get_vn100_symbols(supabase)
 
 
 def _get_field(payload: dict, *keys: str, default=None):
@@ -168,7 +166,7 @@ def add_to_batch_flush(candle: dict) -> None:
     callback nhận tick SSI, nên chỉ làm thao tác dict (nhanh, không I/O).
     periodic_flush_thread (luồng riêng, mỗi FLUSH_INTERVAL_SECS giây) là nơi
     duy nhất gọi Supabase, để luồng nhận tick không bao giờ bị block bởi
-    network I/O — quan trọng khi rổ mã mở rộng (vd VNINDEX ~400 mã).
+    network I/O — quan trọng khi rổ mã mở rộng (vd VN100 ~100 mã).
     """
     batch_key = (candle["symbol"], candle["trading_time"])
     with buffer_lock:
@@ -233,9 +231,9 @@ def parse_tick(message) -> Optional[dict]:
             return None
 
         symbol = str(bar.get("Symbol") or "").strip().upper()
-        if not (SYMBOL_REGEX.match(symbol) or symbol in ALLOWED_INDICES):
+        if not SYMBOL_REGEX.match(symbol):
             return None
-        if allowed_symbols and symbol not in allowed_symbols:
+        if symbol not in allowed_symbols:
             return None
 
         trading_time = _normalize_timestamp(bar)
@@ -248,8 +246,8 @@ def parse_tick(message) -> Optional[dict]:
             _get_field(bar, "Low", "low"),
             _get_field(bar, "Close", "close"),
             _get_field(bar, "Volume", "volume"),
-            price_multiplier=1 if symbol in ALLOWED_INDICES else 1 / 1000,
-            allow_zero_volume=symbol in ALLOWED_INDICES,
+            price_multiplier=1 / 1000,
+            allow_zero_volume=False,
         )
         if ohlcv is None:
             logger.debug(
@@ -294,10 +292,10 @@ def main():
 
     global allowed_symbols
     allowed_symbols = get_target_symbols()
-    if not (allowed_symbols - ALLOWED_INDICES):
-        logger.warning("No VNINDEX symbols loaded from DB; stream will accept indices only until next refresh.")
+    if not allowed_symbols:
+        logger.warning("No VN100 stock symbols loaded from DB; all incoming symbols will be rejected.")
     else:
-        logger.info(f"Loaded {len(allowed_symbols)} target symbols (VNINDEX + indices) for websocket filtering.")
+        logger.info(f"Loaded {len(allowed_symbols)} VN100 stock symbols for websocket filtering.")
 
     periodic_flush_stop.clear()
     flush_thread = threading.Thread(target=periodic_flush_thread, daemon=True)
