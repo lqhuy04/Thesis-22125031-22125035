@@ -1,10 +1,14 @@
 """
 scheduler.py
-Chạy liên tục, quản lý 4 tiến trình:
+Chạy liên tục, quản lý các tiến trình cập nhật giá:
   1. WebSocket 1m stream     → mở đầu phiên (9:00), đóng cuối phiên (15:00)
   2. WebSocket 1d stream     → mở đầu phiên (9:00), đóng cuối phiên (15:00)
-  3. Standardize 1m          → chạy 1 lần lúc 15:05 (sau khi stream đóng)
-  4. Standardize 1d          → chạy 1 lần lúc 15:05 (sau standardize 1m)
+  3. MarketIndex 1m poller   → mở đầu phiên (9:00), đóng cuối phiên (15:00)
+  4. MarketIndex 1d poller   → mở đầu phiên (9:00), đóng cuối phiên (15:00)
+  5. Standardize stock 1m    → chạy 1 lần lúc 15:05 (sau khi stream đóng)
+  6. Standardize stock 1d    → chạy tuần tự sau standardize stock 1m
+  7. Standardize index 1m    → chạy tuần tự sau standardize stock 1d
+  8. Standardize index 1d    → chạy tuần tự sau standardize index 1m
 
 Giờ Việt Nam = UTC+7
 """
@@ -37,6 +41,8 @@ TRADING_DAYS = {0, 1, 2, 3, 4}
 
 ws_1m_process:          subprocess.Popen | None = None
 ws_1d_process:          subprocess.Popen | None = None
+ws_market_index_1m_process: subprocess.Popen | None = None
+ws_market_index_1d_process: subprocess.Popen | None = None
 standardize_done_today: str = ""   # "YYYY-MM-DD" của ngày đã chạy standardize
 
 
@@ -58,6 +64,7 @@ def hm(dt: datetime) -> tuple[int, int]:
 
 def start_websockets():
     global ws_1m_process, ws_1d_process
+    global ws_market_index_1m_process, ws_market_index_1d_process
 
     if not ws_1m_process or ws_1m_process.poll() is not None:
         if ws_1m_process and ws_1m_process.poll() is not None:
@@ -81,16 +88,84 @@ def start_websockets():
             bufsize=1,
         )
 
+
+    if (
+        not ws_market_index_1m_process
+        or ws_market_index_1m_process.poll() is not None
+    ):
+        if (
+            ws_market_index_1m_process
+            and ws_market_index_1m_process.poll() is not None
+        ):
+            logger.warning(
+                "⚠ MarketIndex 1m poller crashed with return code "
+                f"{ws_market_index_1m_process.returncode}"
+            )
+        logger.info("▶ Starting websocket_marketIndex_value_1m.py")
+        ws_market_index_1m_process = subprocess.Popen(
+            [
+                sys.executable,
+                "-u",
+                str(
+                    BASE_DIR
+                    / "websocket"
+                    / "websocket_marketIndex_value_1m.py"
+                ),
+            ],
+            cwd=str(BASE_DIR),
+            text=True,
+            bufsize=1,
+        )
+
+    if (
+        not ws_market_index_1d_process
+        or ws_market_index_1d_process.poll() is not None
+    ):
+        if (
+            ws_market_index_1d_process
+            and ws_market_index_1d_process.poll() is not None
+        ):
+            logger.warning(
+                "⚠ MarketIndex 1d poller crashed with return code "
+                f"{ws_market_index_1d_process.returncode}"
+            )
+        logger.info("▶ Starting websocket_marketIndex_value_1d.py")
+        ws_market_index_1d_process = subprocess.Popen(
+            [
+                sys.executable,
+                "-u",
+                str(
+                    BASE_DIR
+                    / "websocket"
+                    / "websocket_marketIndex_value_1d.py"
+                ),
+            ],
+            cwd=str(BASE_DIR),
+            text=True,
+            bufsize=1,
+        )
+
+
 def stop_websockets():
     global ws_1m_process, ws_1d_process
+    global ws_market_index_1m_process, ws_market_index_1d_process
 
-    for name, proc in [("1m", ws_1m_process), ("1d", ws_1d_process)]:
+    processes = [
+        ("stock 1m", ws_1m_process),
+        ("stock 1d", ws_1d_process),
+        ("MarketIndex 1m", ws_market_index_1m_process),
+        ("MarketIndex 1d", ws_market_index_1d_process),
+    ]
+    for name, proc in processes:
         if proc and proc.poll() is None:
-            logger.info(f"⏹ Stopping WebSocket {name} process")
+            logger.info(f"⏹ Stopping {name} process")
             try:
                 proc.send_signal(signal.SIGINT)
             except Exception as e:
-                logger.warning(f"⚠ Failed to send SIGINT to WebSocket {name}: {e}; falling back to terminate()")
+                logger.warning(
+                    f"⚠ Failed to send SIGINT to {name}: {e}; "
+                    "falling back to terminate()"
+                )
                 proc.terminate()
             try:
                 proc.wait(timeout=10)
@@ -99,6 +174,8 @@ def stop_websockets():
 
     ws_1m_process = None
     ws_1d_process = None
+    ws_market_index_1m_process = None
+    ws_market_index_1d_process = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -106,14 +183,16 @@ def stop_websockets():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_standardize():
-    """Chạy tuần tự standardize 1m rồi 1d.
+    """Chạy tuần tự các job standardize stock và MarketIndex.
 
-    Chạy tuần tự thay vì song song để tránh hai script cùng gọi SSI một lúc gây
-    vượt rate-limit khi lặp qua toàn bộ mã VN100 với delay riêng.
+    Chạy tuần tự thay vì song song để tránh các script cùng gọi SSI một lúc gây
+    vượt rate-limit.
     """
     scripts = [
         BASE_DIR / "standardize" / "standardize_stock_price_1m.py",
         BASE_DIR / "standardize" / "standardize_stock_price_1d.py",
+        BASE_DIR / "standardize" / "standardize_marketIndex_value_1m.py",
+        BASE_DIR / "standardize" / "standardize_marketIndex_value_1d.py",
     ]
 
     for script_path in scripts:
