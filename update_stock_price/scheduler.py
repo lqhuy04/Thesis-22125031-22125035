@@ -1,12 +1,10 @@
 """
 scheduler.py
-Chạy liên tục, quản lý 6 tiến trình:
+Chạy liên tục, quản lý 4 tiến trình:
   1. WebSocket 1m stream     → mở đầu phiên (9:00), đóng cuối phiên (15:00)
   2. WebSocket 1d stream     → mở đầu phiên (9:00), đóng cuối phiên (15:00)
-  3. WebSocket market index  → mở đầu phiên (9:00), đóng cuối phiên (15:00)
-  4. Standardize 1m          → chạy 1 lần lúc 15:05 (sau khi stream đóng)
-  5. Standardize 1d          → chạy 1 lần lúc 15:05 (cùng lúc với 1m)
-  6. Standardize index       → chạy 1 lần lúc 15:05 (cùng lúc với 1m/1d)
+  3. Standardize 1m          → chạy 1 lần lúc 15:05 (sau khi stream đóng)
+  4. Standardize 1d          → chạy 1 lần lúc 15:05 (sau standardize 1m)
 
 Giờ Việt Nam = UTC+7
 """
@@ -39,7 +37,6 @@ TRADING_DAYS = {0, 1, 2, 3, 4}
 
 ws_1m_process:          subprocess.Popen | None = None
 ws_1d_process:          subprocess.Popen | None = None
-ws_index_process:       subprocess.Popen | None = None
 standardize_done_today: str = ""   # "YYYY-MM-DD" của ngày đã chạy standardize
 
 
@@ -60,14 +57,14 @@ def hm(dt: datetime) -> tuple[int, int]:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def start_websockets():
-    global ws_1m_process, ws_1d_process, ws_index_process
+    global ws_1m_process, ws_1d_process
 
     if not ws_1m_process or ws_1m_process.poll() is not None:
         if ws_1m_process and ws_1m_process.poll() is not None:
             logger.warning(f"⚠ WebSocket 1m crashed with return code {ws_1m_process.returncode}")
         logger.info("▶ Starting websocket_stock_price_1m.py")
         ws_1m_process = subprocess.Popen(
-            [sys.executable, "-u", str(BASE_DIR / "websocket_stock_price_1m.py")],
+            [sys.executable, "-u", str(BASE_DIR / "websocket" / "websocket_stock_price_1m.py")],
             cwd=str(BASE_DIR),
             text=True,
             bufsize=1,
@@ -78,28 +75,16 @@ def start_websockets():
             logger.warning(f"⚠ WebSocket 1d crashed with return code {ws_1d_process.returncode}")
         logger.info("▶ Starting websocket_stock_price_1d.py")
         ws_1d_process = subprocess.Popen(
-            [sys.executable, "-u", str(BASE_DIR / "websocket_stock_price_1d.py")],
+            [sys.executable, "-u", str(BASE_DIR / "websocket" / "websocket_stock_price_1d.py")],
             cwd=str(BASE_DIR),
             text=True,
             bufsize=1,
         )
-
-    if not ws_index_process or ws_index_process.poll() is not None:
-        if ws_index_process and ws_index_process.poll() is not None:
-            logger.warning(f"⚠ WebSocket index crashed with return code {ws_index_process.returncode}")
-        logger.info("▶ Starting websocket_market_index.py")
-        ws_index_process = subprocess.Popen(
-            [sys.executable, "-u", str(BASE_DIR / "websocket_market_index.py")],
-            cwd=str(BASE_DIR),
-            text=True,
-            bufsize=1,
-        )
-
 
 def stop_websockets():
-    global ws_1m_process, ws_1d_process, ws_index_process
+    global ws_1m_process, ws_1d_process
 
-    for name, proc in [("1m", ws_1m_process), ("1d", ws_1d_process), ("index", ws_index_process)]:
+    for name, proc in [("1m", ws_1m_process), ("1d", ws_1d_process)]:
         if proc and proc.poll() is None:
             logger.info(f"⏹ Stopping WebSocket {name} process")
             try:
@@ -114,7 +99,6 @@ def stop_websockets():
 
     ws_1m_process = None
     ws_1d_process = None
-    ws_index_process = None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -122,31 +106,29 @@ def stop_websockets():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_standardize():
-    """Chạy tuần tự 1m, 1d rồi market index (mỗi script xong mới chạy script kế).
+    """Chạy tuần tự standardize 1m rồi 1d.
 
-    Chạy tuần tự thay vì song song để tránh 3 script cùng gọi SSI một lúc gây
-    vượt rate-limit — quan trọng khi rổ mã mở rộng (VNINDEX ~400 mã, mỗi script
-    lặp qua toàn bộ mã với delay riêng, kéo dài nhiều phút).
+    Chạy tuần tự thay vì song song để tránh hai script cùng gọi SSI một lúc gây
+    vượt rate-limit khi lặp qua toàn bộ mã VN100 với delay riêng.
     """
     scripts = [
-        "standardize_stock_price_1m.py",
-        "standardize_stock_price_1d.py",
-        "standardize_market_index.py",
+        BASE_DIR / "standardize" / "standardize_stock_price_1m.py",
+        BASE_DIR / "standardize" / "standardize_stock_price_1d.py",
     ]
 
-    for script in scripts:
-        logger.info(f"▶ Running {script}")
+    for script_path in scripts:
+        logger.info(f"▶ Running {script_path.name}")
         p = subprocess.Popen(
-            [sys.executable, "-u", str(BASE_DIR / script)],
+            [sys.executable, "-u", str(script_path)],
             cwd=str(BASE_DIR),
             stdout=sys.stdout,
             stderr=sys.stderr,
         )
         p.wait()
         if p.returncode == 0:
-            logger.info(f"✅ {script} done")
+            logger.info(f"✅ {script_path.name} done")
         else:
-            logger.error(f"❌ {script} exited with code {p.returncode}")
+            logger.error(f"❌ {script_path.name} exited with code {p.returncode}")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -170,11 +152,11 @@ def main():
                 )
                 after_close = (h, m) >= (MARKET_CLOSE_H, MARKET_CLOSE_M)
 
-                # 1️⃣  Trong phiên → đảm bảo cả 3 WebSocket đang chạy
+                # 1️⃣  Trong phiên → đảm bảo cả 2 WebSocket đang chạy
                 if in_session:
                     start_websockets()
 
-                # 2️⃣  Hết phiên → tắt cả 3 WebSocket
+                # 2️⃣  Hết phiên → tắt cả 2 WebSocket
                 elif after_close:
                     stop_websockets()
 

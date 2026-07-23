@@ -6,14 +6,20 @@ import json
 import logging
 import sys
 import threading
-from typing import Optional
-from datetime import datetime, timedelta, timezone
 import time
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+from pathlib import Path
+
+UPDATE_STOCK_PRICE_DIR = Path(__file__).resolve().parents[1]
+if str(UPDATE_STOCK_PRICE_DIR) not in sys.path:
+    sys.path.insert(0, str(UPDATE_STOCK_PRICE_DIR))
+
 from dotenv import load_dotenv
 from supabase import create_client
 
-from stock_price_validation import normalize_ohlcv
-from vn100_symbols import get_vn100_symbols
+from utils.stock_price_validation import normalize_ohlcv
+from utils.vn100_symbols import get_vn100_symbols
 
 load_dotenv()
 
@@ -32,7 +38,7 @@ config = Config()
 
 VN_TZ = timezone(timedelta(hours=7))
 
-TABLE        = "Stock_Price_1m"
+TABLE        = "Stock_Price_1d"
 SYMBOL_REGEX = re.compile(r'^[A-Z0-9]{3}$')
 
 logging.basicConfig(
@@ -45,6 +51,13 @@ supabase = create_client(
     os.getenv("SUPABASE_URL", ""),
     os.getenv("SUPABASE_KEY", "")
 )
+
+allowed_symbols: set[str] = set()
+
+
+def get_target_symbols() -> set[str]:
+    """Trả về toàn bộ mã cổ phiếu thuộc rổ VN100 từ DB."""
+    return get_vn100_symbols(supabase)
 
 
 def _get_field(payload: dict, *keys: str, default=None):
@@ -61,7 +74,6 @@ def _normalize_timestamp(bar: dict) -> str | None:
     if not raw_timestamp:
         return None
 
-    # SSI may send either a full timestamp or just a time-of-day field.
     if "T" in raw_timestamp or (" " in raw_timestamp and len(raw_timestamp) >= 19):
         normalized = raw_timestamp.replace(" ", "T")
         return normalized[:19]
@@ -83,7 +95,6 @@ def _normalize_timestamp(bar: dict) -> str | None:
         else:
             return None
     else:
-        # Live bars sometimes omit the date, so fall back to the current trading day.
         today = datetime.now(VN_TZ).date()
         yyyy = today.strftime("%Y")
         mm = today.strftime("%m")
@@ -91,64 +102,37 @@ def _normalize_timestamp(bar: dict) -> str | None:
 
     return f"{yyyy}-{mm}-{dd}T{raw_timestamp[:8]}"
 
-def get_target_symbols() -> set[str]:
-    """Trả về toàn bộ mã cổ phiếu thuộc rổ VN100 từ DB."""
-    return get_vn100_symbols(supabase)
-
 # ═════════════════════════════════════════════════════════════════════════════
 # IN-MEMORY CANDLE BUFFER
-# key: (symbol, "YYYY-MM-DDTHH:MM:00")
-# value: candle dict đang được aggregate
+# key: symbol
+# value: candle dict của ngày hiện tại đang được aggregate
+# trading_time cố định là "YYYY-MM-DDT14:45:00" (khớp với init_stock_price_1d)
 # ═════════════════════════════════════════════════════════════════════════════
 
-candle_buffer: dict[tuple, dict] = {}
-candle_buffer_lock = threading.Lock()
-allowed_symbols: set[str] = set()
+candle_buffer: dict[str, dict] = {}
+batch_flush_buffer: dict[tuple[str, str], dict] = {}
+FLUSH_INTERVAL_SECS = 5
+periodic_flush_stop = threading.Event()
+# Bảo vệ candle_buffer/batch_flush_buffer vì cả luồng callback SSI và
+# periodic_flush_thread đều đọc/ghi 2 dict này đồng thời.
+buffer_lock = threading.Lock()
 
-def get_minute_key(trading_time: str) -> str:
-    """'2026-04-22T10:20:13' → '2026-04-22T10:20:00'"""
-    return trading_time[:16] + ":00"
-
-def flush_stale_candles(current_minute: str) -> None:
-    """Flush every candle whose minute is older than the current minute.
-
-    Có thể được gọi đồng thời từ luồng callback SSI (qua update_buffer) và
-    luồng main loop, nên phần đọc/pop candle_buffer phải nằm trong lock để
-    tránh 2 luồng cùng pop một key (KeyError) hoặc làm mất candle.
-    """
-    with candle_buffer_lock:
-        stale_keys = [
-            key for key in candle_buffer
-            if key[1][:16] < current_minute
-        ]
-        payload = [candle_buffer.pop(key) for key in stale_keys]
-
-    if not payload:
-        return
-
-    try:
-        supabase.table(TABLE).upsert(payload, on_conflict="symbol,trading_time").execute()
-    except Exception as e:
-        logger.error(f"Supabase minute flush error: {e} | batch_size: {len(payload)}")
+def get_day_key(trading_date: str) -> str:
+    """'2026-04-22' → '2026-04-22T14:45:00'"""
+    return f"{trading_date}T14:45:00"
 
 def update_buffer(tick: dict) -> None:
-    """Cập nhật candle trong buffer với tick mới.
-
-    Không gọi flush_stale_candles() ở đây: hàm này chạy trên luồng callback
-    nhận tick từ SSI, nếu upsert Supabase (network I/O) chặn luôn ở đây thì
-    khi rổ mã mở rộng (vd VN100 ~100 mã, payload flush lớn hơn) luồng nhận
-    tick sẽ bị block theo, dễ tụt hậu/rớt tick trong phiên cao điểm. Việc
-    flush candle của phút đã đóng do main loop (luồng riêng) đảm nhiệm mỗi giây.
-    """
+    """Cập nhật candle ngày trong buffer với tick mới, rồi flush ngay."""
     symbol       = tick["symbol"]
-    minute_key   = get_minute_key(tick["trading_time"])
-    key          = (symbol, minute_key)
+    trading_date = tick["trading_time"][:10]   # "YYYY-MM-DD"
+    day_key      = get_day_key(trading_date)
 
-    with candle_buffer_lock:
-        if key not in candle_buffer:
-            candle_buffer[key] = {
+    with buffer_lock:
+        if symbol not in candle_buffer:
+            # Candle đầu tiên trong ngày
+            candle_buffer[symbol] = {
                 "symbol":       symbol,
-                "trading_time": minute_key,
+                "trading_time": day_key,
                 "open":         tick["open"],
                 "high":         tick["high"],
                 "low":          tick["low"],
@@ -156,15 +140,84 @@ def update_buffer(tick: dict) -> None:
                 "volume":       tick["volume"],
             }
         else:
-            candle = candle_buffer[key]
-            candle["high"]   = max(candle["high"], tick["high"])
-            candle["low"]    = min(candle["low"],  tick["low"])
-            candle["close"]  = tick["close"]           # close = giá tick mới nhất
-            candle["volume"] += tick["volume"]          # volume cộng dồn
+            candle = candle_buffer[symbol]
+
+            # Nếu sang ngày mới (hiếm nhưng an toàn), reset candle
+            if candle["trading_time"] != day_key:
+                logger.info(f"[{symbol}] New day detected, resetting daily candle.")
+                candle_buffer[symbol] = {
+                    "symbol":       symbol,
+                    "trading_time": day_key,
+                    "open":         tick["open"],
+                    "high":         tick["high"],
+                    "low":          tick["low"],
+                    "close":        tick["close"],
+                    "volume":       tick["volume"],
+                }
+            else:
+                candle["high"]   = max(candle["high"], tick["high"])
+                candle["low"]    = min(candle["low"],  tick["low"])
+                candle["close"]  = tick["close"]    # close = giá tick mới nhất
+                candle["volume"] += tick["volume"]  # volume cộng dồn
+
+        snapshot = candle_buffer[symbol].copy()
+
+    # Queue for batch flush so active candles are written periodically
+    add_to_batch_flush(snapshot)
+
+def add_to_batch_flush(candle: dict) -> None:
+    """Add a candle to the batch buffer.
+
+    Không tự flush ở đây: hàm này được gọi từ update_buffer trên luồng
+    callback nhận tick SSI, nên chỉ làm thao tác dict (nhanh, không I/O).
+    periodic_flush_thread (luồng riêng, mỗi FLUSH_INTERVAL_SECS giây) là nơi
+    duy nhất gọi Supabase, để luồng nhận tick không bao giờ bị block bởi
+    network I/O — quan trọng khi rổ mã mở rộng (vd VN100 ~100 mã).
+    """
+    batch_key = (candle["symbol"], candle["trading_time"])
+    with buffer_lock:
+        batch_flush_buffer[batch_key] = candle
+
+def flush_batch() -> None:
+    """Batch upsert multiple candles into the DB."""
+    with buffer_lock:
+        if not batch_flush_buffer:
+            return
+        payload = list(batch_flush_buffer.values())
+
+    try:
+        supabase.table(TABLE).upsert(payload, on_conflict="symbol,trading_time").execute()
+        # Chỉ xoá đúng những entry đã flush thành công; nếu trong lúc upsert
+        # có bản cập nhật mới hơn cho cùng key thì giữ lại bản mới đó.
+        with buffer_lock:
+            for candle in payload:
+                batch_key = (candle["symbol"], candle["trading_time"])
+                if batch_flush_buffer.get(batch_key) is candle:
+                    del batch_flush_buffer[batch_key]
+    except Exception as e:
+        logger.error(f"Supabase batch upsert error: {e} | batch_size: {len(payload)}")
 
 def flush_candle(candle: dict) -> None:
-    """Backward-compatible helper that flushes immediately."""
-    supabase.table(TABLE).upsert([candle], on_conflict="symbol,trading_time").execute()
+    """Backward-compatible wrapper that now queues for batch flush."""
+    add_to_batch_flush(candle)
+
+def flush_active_candles() -> None:
+    """Upsert the current in-memory snapshot so the DB stays near real time."""
+    with buffer_lock:
+        candles = list(candle_buffer.values())
+
+    for candle in candles:
+        add_to_batch_flush(candle.copy())
+
+def periodic_flush_thread() -> None:
+    """Periodically flush active candles every FLUSH_INTERVAL_SECS seconds."""
+    try:
+        while not periodic_flush_stop.is_set():
+            time.sleep(FLUSH_INTERVAL_SECS)
+            flush_active_candles()
+            flush_batch()
+    except Exception as e:
+        logger.error(f"❌ Error in periodic_flush_thread: {e}", exc_info=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PARSE
@@ -218,6 +271,7 @@ def parse_tick(message) -> Optional[dict]:
         }
     except Exception as e:
         logger.warning(f"Parse error: {e}")
+        return None
 
 # ═════════════════════════════════════════════════════════════════════════════
 # HANDLERS
@@ -240,7 +294,7 @@ def get_error(error) -> None:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def main():
-    logger.info("Starting SSI WebSocket stream...")
+    logger.info("Starting SSI WebSocket stream (daily candle)...")
 
     global allowed_symbols
     allowed_symbols = get_target_symbols()
@@ -249,45 +303,26 @@ def main():
     else:
         logger.info(f"Loaded {len(allowed_symbols)} VN100 stock symbols for websocket filtering.")
 
+    periodic_flush_stop.clear()
+    flush_thread = threading.Thread(target=periodic_flush_thread, daemon=True)
+    flush_thread.start()
+
     try:
         mm = MarketDataStream(config, MarketDataClient(config))
         mm.start(get_market_data, get_error, "B:ALL")
     except Exception as e:
         logger.error(f"❌ Failed to start MarketDataStream: {e}", exc_info=True)
+        periodic_flush_stop.set()
         return
 
     logger.info("Stream started. Press Ctrl+C to stop.")
     try:
-        # Run a light loop: flush closed minutes periodically
-        last_minute = None
         while True:
-            try:
-                now = datetime.now(VN_TZ)
-                current_minute = now.replace(second=0, microsecond=0).isoformat()[:16]
-
-                # Flush closed minutes once per minute (even if no incoming ticks)
-                if current_minute != last_minute:
-                    try:
-                        flush_stale_candles(current_minute)
-                    except Exception as e:
-                        logger.error(f"❌ Error in flush_stale_candles: {e}", exc_info=True)
-                    last_minute = current_minute
-
-                time.sleep(1)
-            except Exception as e:
-                logger.error(f"❌ Error in main loop: {e}", exc_info=True)
-                time.sleep(5)  # Wait before retrying
+            time.sleep(1)
     except KeyboardInterrupt:
-        if candle_buffer:
-            # Only flush completed minutes (do not write the current open minute)
-            now = datetime.now(VN_TZ).replace(second=0, microsecond=0).isoformat()[:16]
-            with candle_buffer_lock:
-                completed = [c for k, c in candle_buffer.items() if k[1][:16] < now]
-            if completed:
-                try:
-                    supabase.table(TABLE).upsert(completed, on_conflict="symbol,trading_time").execute()
-                except Exception as e:
-                    logger.error(f"Supabase shutdown flush error: {e} | batch_size: {len(completed)}")
+        periodic_flush_stop.set()
+        flush_active_candles()
+        flush_batch()
         logger.info("Stopped.")
 
 if __name__ == "__main__":

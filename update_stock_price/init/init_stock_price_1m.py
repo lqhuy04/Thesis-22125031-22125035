@@ -1,12 +1,19 @@
 import os
+import sys
 import logging
 import requests
 import time
 from datetime import date, datetime, timedelta
+from pathlib import Path
+
+UPDATE_STOCK_PRICE_DIR = Path(__file__).resolve().parents[1]
+if str(UPDATE_STOCK_PRICE_DIR) not in sys.path:
+    sys.path.insert(0, str(UPDATE_STOCK_PRICE_DIR))
+
 from dotenv import load_dotenv
 from supabase import create_client
 
-from vn100_symbols import get_vn100_symbols
+from utils.vn100_symbols import get_vn100_symbols
 
 load_dotenv()
 
