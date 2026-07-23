@@ -13,7 +13,7 @@ if str(UPDATE_STOCK_PRICE_DIR) not in sys.path:
 from dotenv import load_dotenv
 from supabase import create_client
 
-from utils.vn100_symbols import get_vn100_symbols
+from utils.vn100_symbols import get_vn100_stock_ids
 
 load_dotenv()
 
@@ -102,7 +102,7 @@ def _aggregate_intraday_minutes(rows: list[dict]) -> list[dict]:
         return []
 
     rows = sorted(rows, key=lambda row: row["trading_time"])
-    symbol = rows[0]["symbol"]
+    stock_id = rows[0]["stock_id"]
 
     aggregated: dict[datetime, dict] = {}
     for row in rows:
@@ -110,7 +110,7 @@ def _aggregate_intraday_minutes(rows: list[dict]) -> list[dict]:
         candle = aggregated.get(minute_dt)
         if candle is None:
             aggregated[minute_dt] = {
-                "symbol": symbol,
+                "stock_id": stock_id,
                 "trading_time": minute_dt.isoformat(timespec="seconds"),
                 "open": row["open"],
                 "high": row["high"],
@@ -127,7 +127,13 @@ def _aggregate_intraday_minutes(rows: list[dict]) -> list[dict]:
 
     return [aggregated[minute_dt] for minute_dt in sorted(aggregated)]
 
-def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str, access_token: str) -> list[dict]:
+def fetch_intraday_ohlc(
+    symbol: str,
+    stock_id: str,
+    from_date: str,
+    to_date: str,
+    access_token: str,
+) -> list[dict]:
     """Fetch intraday OHLC data for a specific symbol."""
     try:
         rows = fetch_intraday_rows(symbol, from_date, to_date, access_token)
@@ -142,7 +148,7 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str, access_token:
             dd, mm, yyyy    = trading_date.split("/")
 
             result.append({
-                "symbol":       symbol,
+                "stock_id":     stock_id,
                 "trading_time": f"{yyyy}-{mm}-{dd}T{raw_time[:5]}:00",
                 "open":         float(r.get("Open")   or 0) *  1/1000,
                 "high":         float(r.get("High")   or 0) *  1/1000,
@@ -178,7 +184,14 @@ def upsert_candles(candles: list[dict]) -> None:
         return
     
     try:
-        supabase.table(TABLE).upsert(candles, on_conflict="symbol,trading_time").execute()
+        deduped = {
+            (candle["stock_id"], candle["trading_time"]): candle
+            for candle in candles
+        }
+        supabase.table(TABLE).upsert(
+            list(deduped.values()),
+            on_conflict="stock_id,trading_time",
+        ).execute()
     except Exception as e:
         logger.error(f"Error upserting candles: {e}")
 
@@ -192,11 +205,13 @@ def main():
         logger.error("No SSI access token found. Exiting.")
         return
 
-    symbols = sorted(get_vn100_symbols(supabase))
-    if not symbols:
-        logger.error("No VN100 symbols found. Exiting.")
+    stocks = get_vn100_stock_ids(supabase)
+    if not stocks:
+        logger.error("No VN100 stocks with Stock.id found. Exiting.")
         return
-    logger.info(f"Processing {len(symbols)} VN100 symbols: {symbols[:5]}...")
+    logger.info(
+        f"Processing {len(stocks)} VN100 symbols: {sorted(stocks)[:5]}..."
+    )
 
     date_ranges = build_monthly_date_ranges(date.today())
     logger.info(
@@ -207,15 +222,21 @@ def main():
     total_candles_fetched = 0
     total_candles_upserted = 0
     
-    for idx, symbol in enumerate(symbols, 1):
-        logger.info(f"[{idx}/{len(symbols)}] Fetching 1m data for {symbol}...")
+    for idx, (symbol, stock_id) in enumerate(sorted(stocks.items()), 1):
+        logger.info(f"[{idx}/{len(stocks)}] Fetching 1m data for {symbol}...")
 
         for month_idx, (from_date, to_date) in enumerate(date_ranges, 1):
             logger.info(
                 f"  [{month_idx}/{LOOKBACK_MONTHS}] Fetching {from_date} → {to_date}"
             )
             try:
-                candles = fetch_intraday_ohlc(symbol, from_date, to_date, access_token)
+                candles = fetch_intraday_ohlc(
+                    symbol,
+                    stock_id,
+                    from_date,
+                    to_date,
+                    access_token,
+                )
                 if candles:
                     total_candles_fetched += len(candles)
                     upsert_candles(candles)

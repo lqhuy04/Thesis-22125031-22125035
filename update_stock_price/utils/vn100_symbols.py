@@ -29,8 +29,41 @@ def _chunked(seq: list, size: int):
         yield seq[i:i + size]
 
 
-def get_vn100_symbols(supabase) -> set[str]:
-    """Trả về set các mã cổ phiếu (uppercase) thuộc VN100. Lỗi → set rỗng."""
+def get_stock_ids(supabase, symbols) -> dict[str, str]:
+    """Resolve arbitrary stock symbols to Stock.id values."""
+    normalized_symbols = sorted({
+        str(symbol).strip().upper()
+        for symbol in symbols
+        if str(symbol).strip()
+    })
+    stocks: dict[str, str] = {}
+
+    for chunk in _chunked(normalized_symbols, CHUNK_SIZE):
+        response = (
+            supabase.table("Stock")
+            .select("id,stock_symbol")
+            .in_("stock_symbol", chunk)
+            .execute()
+        )
+        rows = getattr(response, "data", None) or []
+        for row in rows:
+            symbol = str(row.get("stock_symbol") or "").strip().upper()
+            stock_id = row.get("id")
+            if not symbol or stock_id is None:
+                continue
+            normalized_id = str(stock_id)
+            previous_id = stocks.get(symbol)
+            if previous_id is not None and previous_id != normalized_id:
+                raise ValueError(
+                    f"Duplicate Stock.stock_symbol '{symbol}' has multiple ids"
+                )
+            stocks[symbol] = normalized_id
+
+    return stocks
+
+
+def get_vn100_stock_ids(supabase) -> dict[str, str]:
+    """Return an uppercase stock_symbol -> Stock.id mapping for VN100 stocks."""
     try:
         idx_resp = (
             supabase.table("MarketIndex")
@@ -42,7 +75,7 @@ def get_vn100_symbols(supabase) -> set[str]:
         idx_rows = getattr(idx_resp, "data", None) or []
         if not idx_rows:
             logger.error(f"MarketIndex '{VN100_INDEX_NAME}' not found")
-            return set()
+            return {}
         market_index_id = idx_rows[0]["id"]
 
         link_resp = (
@@ -52,31 +85,49 @@ def get_vn100_symbols(supabase) -> set[str]:
             .execute()
         )
         link_rows = getattr(link_resp, "data", None) or []
-        stock_ids = [row["stock_id"] for row in link_rows if row.get("stock_id") is not None]
+        stock_ids = list(dict.fromkeys(
+            row["stock_id"]
+            for row in link_rows
+            if row.get("stock_id") is not None
+        ))
         if not stock_ids:
             logger.warning(f"No stocks linked to MarketIndex '{VN100_INDEX_NAME}'")
-            return set()
+            return {}
 
-        symbols: set[str] = set()
+        stocks: dict[str, str] = {}
         for chunk in _chunked(stock_ids, CHUNK_SIZE):
             try:
                 stock_resp = (
                     supabase.table("Stock")
-                    .select("stock_symbol")
+                    .select("id,stock_symbol")
                     .in_("id", chunk)
                     .execute()
                 )
                 stock_rows = getattr(stock_resp, "data", None) or []
-                symbols.update(
-                    str(row.get("stock_symbol") or "").strip().upper()
-                    for row in stock_rows
-                    if str(row.get("stock_symbol") or "").strip()
-                )
+                for row in stock_rows:
+                    symbol = str(row.get("stock_symbol") or "").strip().upper()
+                    stock_id = row.get("id")
+                    if not symbol or stock_id is None:
+                        continue
+                    normalized_id = str(stock_id)
+                    previous_id = stocks.get(symbol)
+                    if previous_id is not None and previous_id != normalized_id:
+                        logger.error(
+                            "Duplicate Stock.stock_symbol '%s' has multiple ids",
+                            symbol,
+                        )
+                        return {}
+                    stocks[symbol] = normalized_id
             except Exception as e:
-                logger.error(f"Failed to fetch stock_symbol chunk ({len(chunk)} ids): {e}")
+                logger.error(f"Failed to fetch Stock chunk ({len(chunk)} ids): {e}")
 
-        logger.info(f"Loaded {len(symbols)} VN100 symbols from DB")
-        return symbols
+        logger.info(f"Loaded {len(stocks)} VN100 stock ids from DB")
+        return stocks
     except Exception as e:
-        logger.error(f"Failed to fetch VN100 symbols from DB: {e}")
-        return set()
+        logger.error(f"Failed to fetch VN100 stock ids from DB: {e}")
+        return {}
+
+
+def get_vn100_symbols(supabase) -> set[str]:
+    """Return the uppercase symbols of all VN100 stocks."""
+    return set(get_vn100_stock_ids(supabase))

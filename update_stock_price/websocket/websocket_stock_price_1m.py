@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from utils.stock_price_validation import normalize_ohlcv
-from utils.vn100_symbols import get_vn100_symbols
+from utils.vn100_symbols import get_vn100_stock_ids
 
 load_dotenv()
 
@@ -97,9 +97,9 @@ def _normalize_timestamp(bar: dict) -> str | None:
 
     return f"{yyyy}-{mm}-{dd}T{raw_timestamp[:8]}"
 
-def get_target_symbols() -> set[str]:
-    """Trả về toàn bộ mã cổ phiếu thuộc rổ VN100 từ DB."""
-    return get_vn100_symbols(supabase)
+def get_target_stocks() -> dict[str, str]:
+    """Return the VN100 stock_symbol -> Stock.id mapping."""
+    return get_vn100_stock_ids(supabase)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # IN-MEMORY CANDLE BUFFER
@@ -109,7 +109,7 @@ def get_target_symbols() -> set[str]:
 
 candle_buffer: dict[tuple, dict] = {}
 candle_buffer_lock = threading.Lock()
-allowed_symbols: set[str] = set()
+stock_ids_by_symbol: dict[str, str] = {}
 
 def get_minute_key(trading_time: str) -> str:
     """'2026-04-22T10:20:13' → '2026-04-22T10:20:00'"""
@@ -133,7 +133,10 @@ def flush_stale_candles(current_minute: str) -> None:
         return
 
     try:
-        supabase.table(TABLE).upsert(payload, on_conflict="symbol,trading_time").execute()
+        supabase.table(TABLE).upsert(
+            payload,
+            on_conflict="stock_id,trading_time",
+        ).execute()
     except Exception as e:
         logger.error(f"Supabase minute flush error: {e} | batch_size: {len(payload)}")
 
@@ -147,13 +150,14 @@ def update_buffer(tick: dict) -> None:
     flush candle của phút đã đóng do main loop (luồng riêng) đảm nhiệm mỗi giây.
     """
     symbol       = tick["symbol"]
+    stock_id     = tick["stock_id"]
     minute_key   = get_minute_key(tick["trading_time"])
     key          = (symbol, minute_key)
 
     with candle_buffer_lock:
         if key not in candle_buffer:
             candle_buffer[key] = {
-                "symbol":       symbol,
+                "stock_id":     stock_id,
                 "trading_time": minute_key,
                 "open":         tick["open"],
                 "high":         tick["high"],
@@ -170,7 +174,10 @@ def update_buffer(tick: dict) -> None:
 
 def flush_candle(candle: dict) -> None:
     """Backward-compatible helper that flushes immediately."""
-    supabase.table(TABLE).upsert([candle], on_conflict="symbol,trading_time").execute()
+    supabase.table(TABLE).upsert(
+        [candle],
+        on_conflict="stock_id,trading_time",
+    ).execute()
 
 # ═════════════════════════════════════════════════════════════════════════════
 # PARSE
@@ -192,7 +199,8 @@ def parse_tick(message) -> Optional[dict]:
         symbol = str(bar.get("Symbol") or "").strip().upper()
         if not SYMBOL_REGEX.match(symbol):
             return None
-        if symbol not in allowed_symbols:
+        stock_id = stock_ids_by_symbol.get(symbol)
+        if stock_id is None:
             return None
 
         trading_time = _normalize_timestamp(bar)
@@ -219,6 +227,7 @@ def parse_tick(message) -> Optional[dict]:
 
         return {
             "symbol":       symbol,
+            "stock_id":     stock_id,
             "trading_time": trading_time,
             **ohlcv,
         }
@@ -248,12 +257,14 @@ def get_error(error) -> None:
 def main():
     logger.info("Starting SSI WebSocket stream...")
 
-    global allowed_symbols
-    allowed_symbols = get_target_symbols()
-    if not allowed_symbols:
+    global stock_ids_by_symbol
+    stock_ids_by_symbol = get_target_stocks()
+    if not stock_ids_by_symbol:
         logger.warning("No VN100 stock symbols loaded from DB; all incoming symbols will be rejected.")
     else:
-        logger.info(f"Loaded {len(allowed_symbols)} VN100 stock symbols for websocket filtering.")
+        logger.info(
+            f"Loaded {len(stock_ids_by_symbol)} VN100 stock ids for websocket filtering."
+        )
 
     try:
         mm = MarketDataStream(config, MarketDataClient(config))
@@ -291,7 +302,10 @@ def main():
                 completed = [c for k, c in candle_buffer.items() if k[1][:16] < now]
             if completed:
                 try:
-                    supabase.table(TABLE).upsert(completed, on_conflict="symbol,trading_time").execute()
+                    supabase.table(TABLE).upsert(
+                        completed,
+                        on_conflict="stock_id,trading_time",
+                    ).execute()
                 except Exception as e:
                     logger.error(f"Supabase shutdown flush error: {e} | batch_size: {len(completed)}")
         logger.info("Stopped.")

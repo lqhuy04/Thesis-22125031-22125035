@@ -14,7 +14,7 @@ from supabase import create_client
 from ssi_fc_data import fc_md_client, model
 
 from utils.stock_price_validation import normalize_ohlcv
-from utils.vn100_symbols import get_vn100_symbols
+from utils.vn100_symbols import get_vn100_stock_ids
 
 load_dotenv()
 
@@ -54,18 +54,23 @@ supabase = create_client(
 # SYMBOL MANAGEMENT
 # ═════════════════════════════════════════════════════════════════════════════
 
-def get_target_symbols() -> set[str]:
-    """Trả về toàn bộ mã cổ phiếu thuộc rổ VN100 từ DB."""
-    vn100_stocks = get_vn100_symbols(supabase)
+def get_target_stocks() -> dict[str, str]:
+    """Return the VN100 stock_symbol -> Stock.id mapping."""
+    vn100_stocks = get_vn100_stock_ids(supabase)
     if not vn100_stocks:
-        logger.warning("VN100 stock symbol list is empty (DB issue?)")
+        logger.warning("VN100 stock id mapping is empty (DB issue?)")
     return vn100_stocks
 
 # ═════════════════════════════════════════════════════════════════════════════
 # SSI DATA
 # ═════════════════════════════════════════════════════════════════════════════
 
-def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
+def fetch_intraday_ohlc(
+    symbol: str,
+    stock_id: str,
+    from_date: str,
+    to_date: str,
+) -> list[dict]:
     req  = model.intraday_ohlc(symbol, from_date, to_date, 1, 9999, "true", 1)
     data = client.intraday_ohlc(config, req)
 
@@ -117,7 +122,7 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]
             continue
 
         result.append({
-            "symbol":       symbol,
+            "stock_id":     stock_id,
             "trading_time": trading_time,
             **ohlcv,
         })
@@ -127,12 +132,12 @@ def fetch_intraday_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]
 
     return result
 
-def get_latest_trading_date(symbol: str) -> str | None:
+def get_latest_trading_date(stock_id: str, symbol: str) -> str | None:
     try:
         response = (
             supabase.table(TABLE)
             .select("trading_time")
-            .eq("symbol", symbol)
+            .eq("stock_id", stock_id)
             .order("trading_time", desc=True)
             .limit(1)
             .execute()
@@ -146,26 +151,31 @@ def get_latest_trading_date(symbol: str) -> str | None:
         logger.warning(f"[{symbol}] Failed to read latest trading_time: {e}")
         return None
 
-def reconcile_latest_day(symbols: list[str], expected_date: str, from_date: str, to_date: str) -> None:
-    stale_symbols: list[str] = []
+def reconcile_latest_day(
+    stocks: dict[str, str],
+    expected_date: str,
+    from_date: str,
+    to_date: str,
+) -> None:
+    stale_stocks: list[tuple[str, str]] = []
 
-    for symbol in symbols:
-        latest_date = get_latest_trading_date(symbol)
+    for symbol, stock_id in stocks.items():
+        latest_date = get_latest_trading_date(stock_id, symbol)
         if latest_date != expected_date:
-            stale_symbols.append(symbol)
+            stale_stocks.append((symbol, stock_id))
 
-    if not stale_symbols:
+    if not stale_stocks:
         logger.info(f"All symbols are up to date for {expected_date}")
         return
 
     logger.warning(
-        f"[RECONCILE] {len(stale_symbols)} symbols are missing latest day {expected_date}; retrying SSI lookback {from_date} → {to_date}"
+        f"[RECONCILE] {len(stale_stocks)} symbols are missing latest day {expected_date}; retrying SSI lookback {from_date} → {to_date}"
     )
 
     repaired = 0
     still_missing: list[str] = []
-    for symbol in stale_symbols:
-        candles = fetch_intraday_ohlc(symbol, from_date, to_date)
+    for symbol, stock_id in stale_stocks:
+        candles = fetch_intraday_ohlc(symbol, stock_id, from_date, to_date)
         if candles:
             upsert_candles(candles)
             repaired += 1
@@ -185,15 +195,18 @@ def reconcile_latest_day(symbols: list[str], expected_date: str, from_date: str,
 def upsert_candles(candles: list[dict]) -> None:
     if not candles:
         return
-    # Khử trùng lặp theo (symbol, trading_time) để tránh lỗi
+    # Khử trùng lặp theo (stock_id, trading_time) để tránh lỗi
     # "ON CONFLICT DO UPDATE cannot affect row a second time" (giữ dòng sau cùng).
-    deduped = {(c["symbol"], c["trading_time"]): c for c in candles}
-    supabase.table(TABLE).upsert(list(deduped.values()), on_conflict="symbol,trading_time").execute()
+    deduped = {(c["stock_id"], c["trading_time"]): c for c in candles}
+    supabase.table(TABLE).upsert(
+        list(deduped.values()),
+        on_conflict="stock_id,trading_time",
+    ).execute()
 
-def delete_old_candles(symbol: str, cutoff_iso: str) -> None:
+def delete_old_candles(stock_id: str, cutoff_iso: str) -> None:
     supabase.table(TABLE) \
         .delete() \
-        .eq("symbol", symbol) \
+        .eq("stock_id", stock_id) \
         .lt("trading_time", cutoff_iso) \
         .execute()
 
@@ -209,26 +222,31 @@ def main():
 
     logger.info(f"=== Starting intraday sync: {from_date} → {today_str} ===")
 
-    symbols = get_target_symbols()
-    logger.info(f"Processing {len(symbols)} VN100 stock symbols")
+    stocks = get_target_stocks()
+    logger.info(f"Processing {len(stocks)} VN100 stocks")
 
-    if not symbols:
-        logger.warning("No symbols to process")
+    if not stocks:
+        logger.warning("No stocks to process")
         return
 
     all_candles = []
-    for symbol in sorted(symbols):
+    for symbol, stock_id in sorted(stocks.items()):
         try:
-            candles = fetch_intraday_ohlc(symbol, from_date, today_str)
+            candles = fetch_intraday_ohlc(
+                symbol,
+                stock_id,
+                from_date,
+                today_str,
+            )
             if candles:
                 all_candles.extend(candles)
                 upsert_candles(candles)
-            delete_old_candles(symbol, cutoff_iso)
+            delete_old_candles(stock_id, cutoff_iso)
             time.sleep(SLEEP_SECONDS)  # Rate limiting
         except Exception as e:
             logger.error(f"[{symbol}] Error processing: {e}")
 
-    reconcile_latest_day(sorted(symbols), today.isoformat(), from_date, today_str)
+    reconcile_latest_day(stocks, today.isoformat(), from_date, today_str)
 
     logger.info(f"Total candles processed: {len(all_candles)}")
     logger.info("=== Done ===")

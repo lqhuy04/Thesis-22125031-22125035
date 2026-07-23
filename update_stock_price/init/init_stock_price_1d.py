@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 from ssi_fc_data import fc_md_client, model
 
-from utils.vn100_symbols import get_vn100_symbols
+from utils.vn100_symbols import get_stock_ids, get_vn100_stock_ids
 
 load_dotenv()
 
@@ -63,7 +63,12 @@ def generate_chunks(start: date, end: date, chunk_days: int):
 # SSI DATA
 # ═════════════════════════════════════════════════════════════════════════════
 
-def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
+def fetch_daily_ohlc(
+    symbol: str,
+    stock_id: str,
+    from_date: str,
+    to_date: str,
+) -> list[dict]:
     """
     Gọi client.daily_ohlc và chuẩn hoá kết quả về dict phù hợp với bảng DB.
     Giá SSI trả về theo đơn vị VNĐ → chia 1000 cho cổ phiếu HOSE (đơn vị nghìn đồng);
@@ -116,7 +121,7 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
         multiplier = 1/1000
 
         result.append({
-            "symbol":       symbol,
+            "stock_id":     stock_id,
             "trading_time": f"{iso_date}T14:45:00",
             "open":         _float(["Open"])   * multiplier,
             "high":         _float(["High"])   * multiplier,
@@ -134,24 +139,46 @@ def fetch_daily_ohlc(symbol: str, from_date: str, to_date: str) -> list[dict]:
 def upsert_candles(candles: list[dict]) -> None:
     if not candles:
         return
-    # Khử trùng lặp theo (symbol, trading_time) để tránh lỗi
+    # Khử trùng lặp theo (stock_id, trading_time) để tránh lỗi
     # "ON CONFLICT DO UPDATE cannot affect row a second time" (giữ dòng sau cùng).
-    deduped = {(c["symbol"], c["trading_time"]): c for c in candles}
-    supabase.table(TABLE).upsert(list(deduped.values()), on_conflict="symbol,trading_time").execute()
+    deduped = {(c["stock_id"], c["trading_time"]): c for c in candles}
+    supabase.table(TABLE).upsert(
+        list(deduped.values()),
+        on_conflict="stock_id,trading_time",
+    ).execute()
 
 
-def resolve_symbols(cli_symbols: list[str] | None = None) -> list[str]:
-    if cli_symbols:
-        return [symbol.strip().upper() for symbol in cli_symbols if symbol.strip()]
-    return sorted(get_vn100_symbols(supabase))
+def resolve_stocks(cli_symbols: list[str] | None = None) -> dict[str, str]:
+    if not cli_symbols:
+        return get_vn100_stock_ids(supabase)
+
+    requested = {
+        symbol.strip().upper()
+        for symbol in cli_symbols
+        if symbol.strip()
+    }
+    stocks = get_stock_ids(supabase, requested)
+    missing = requested - set(stocks)
+    if missing:
+        logger.warning(f"Skipping symbols missing from VN100/Stock: {sorted(missing)}")
+    return {
+        symbol: stock_id
+        for symbol, stock_id in stocks.items()
+        if symbol in requested
+    }
 
 # ═════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ═════════════════════════════════════════════════════════════════════════════
 
 def main(symbols: list[str] | None = None):
-    symbols = resolve_symbols(symbols)
-    logger.info(f"Init daily OHLC for {len(symbols)} VN100 symbols: {symbols}")
+    stocks = resolve_stocks(symbols)
+    logger.info(
+        f"Init daily OHLC for {len(stocks)} VN100 symbols: {sorted(stocks)}"
+    )
+    if not stocks:
+        logger.error("No VN100 stocks with Stock.id found. Exiting.")
+        return
 
     today      = date.today()
     start_date = today - timedelta(days=365 * YEARS_BACK)
@@ -163,10 +190,13 @@ def main(symbols: list[str] | None = None):
         f"({total_chunks} chunks × {CHUNK_DAYS}d, delay={SLEEP_SECONDS}s)"
     )
 
-    total_symbols = len(symbols)
+    total_symbols = len(stocks)
     total_upserted = 0
 
-    for sym_idx, symbol in enumerate(symbols, start=1):
+    for sym_idx, (symbol, stock_id) in enumerate(
+        sorted(stocks.items()),
+        start=1,
+    ):
         logger.info(f"[{sym_idx}/{total_symbols}] Processing {symbol}...")
         symbol_candles = []
 
@@ -174,7 +204,12 @@ def main(symbols: list[str] | None = None):
             logger.info(f"  [{symbol}] Chunk {chunk_idx}/{total_chunks}: {from_date} → {to_date}")
 
             try:
-                candles = fetch_daily_ohlc(symbol, from_date, to_date)
+                candles = fetch_daily_ohlc(
+                    symbol,
+                    stock_id,
+                    from_date,
+                    to_date,
+                )
                 logger.info(f"  [{symbol}]   Fetched {len(candles)} candles")
                 symbol_candles.extend(candles)
 

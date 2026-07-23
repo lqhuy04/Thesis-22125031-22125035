@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from utils.stock_price_validation import normalize_ohlcv
-from utils.vn100_symbols import get_vn100_symbols
+from utils.vn100_symbols import get_vn100_stock_ids
 
 load_dotenv()
 
@@ -52,12 +52,12 @@ supabase = create_client(
     os.getenv("SUPABASE_KEY", "")
 )
 
-allowed_symbols: set[str] = set()
+stock_ids_by_symbol: dict[str, str] = {}
 
 
-def get_target_symbols() -> set[str]:
-    """Trả về toàn bộ mã cổ phiếu thuộc rổ VN100 từ DB."""
-    return get_vn100_symbols(supabase)
+def get_target_stocks() -> dict[str, str]:
+    """Return the VN100 stock_symbol -> Stock.id mapping."""
+    return get_vn100_stock_ids(supabase)
 
 
 def _get_field(payload: dict, *keys: str, default=None):
@@ -124,6 +124,7 @@ def get_day_key(trading_date: str) -> str:
 def update_buffer(tick: dict) -> None:
     """Cập nhật candle ngày trong buffer với tick mới, rồi flush ngay."""
     symbol       = tick["symbol"]
+    stock_id     = tick["stock_id"]
     trading_date = tick["trading_time"][:10]   # "YYYY-MM-DD"
     day_key      = get_day_key(trading_date)
 
@@ -131,7 +132,7 @@ def update_buffer(tick: dict) -> None:
         if symbol not in candle_buffer:
             # Candle đầu tiên trong ngày
             candle_buffer[symbol] = {
-                "symbol":       symbol,
+                "stock_id":     stock_id,
                 "trading_time": day_key,
                 "open":         tick["open"],
                 "high":         tick["high"],
@@ -146,7 +147,7 @@ def update_buffer(tick: dict) -> None:
             if candle["trading_time"] != day_key:
                 logger.info(f"[{symbol}] New day detected, resetting daily candle.")
                 candle_buffer[symbol] = {
-                    "symbol":       symbol,
+                    "stock_id":     stock_id,
                     "trading_time": day_key,
                     "open":         tick["open"],
                     "high":         tick["high"],
@@ -174,7 +175,7 @@ def add_to_batch_flush(candle: dict) -> None:
     duy nhất gọi Supabase, để luồng nhận tick không bao giờ bị block bởi
     network I/O — quan trọng khi rổ mã mở rộng (vd VN100 ~100 mã).
     """
-    batch_key = (candle["symbol"], candle["trading_time"])
+    batch_key = (candle["stock_id"], candle["trading_time"])
     with buffer_lock:
         batch_flush_buffer[batch_key] = candle
 
@@ -186,12 +187,15 @@ def flush_batch() -> None:
         payload = list(batch_flush_buffer.values())
 
     try:
-        supabase.table(TABLE).upsert(payload, on_conflict="symbol,trading_time").execute()
+        supabase.table(TABLE).upsert(
+            payload,
+            on_conflict="stock_id,trading_time",
+        ).execute()
         # Chỉ xoá đúng những entry đã flush thành công; nếu trong lúc upsert
         # có bản cập nhật mới hơn cho cùng key thì giữ lại bản mới đó.
         with buffer_lock:
             for candle in payload:
-                batch_key = (candle["symbol"], candle["trading_time"])
+                batch_key = (candle["stock_id"], candle["trading_time"])
                 if batch_flush_buffer.get(batch_key) is candle:
                     del batch_flush_buffer[batch_key]
     except Exception as e:
@@ -239,7 +243,8 @@ def parse_tick(message) -> Optional[dict]:
         symbol = str(bar.get("Symbol") or "").strip().upper()
         if not SYMBOL_REGEX.match(symbol):
             return None
-        if symbol not in allowed_symbols:
+        stock_id = stock_ids_by_symbol.get(symbol)
+        if stock_id is None:
             return None
 
         trading_time = _normalize_timestamp(bar)
@@ -266,6 +271,7 @@ def parse_tick(message) -> Optional[dict]:
 
         return {
             "symbol":       symbol,
+            "stock_id":     stock_id,
             "trading_time": trading_time,
             **ohlcv,
         }
@@ -296,12 +302,14 @@ def get_error(error) -> None:
 def main():
     logger.info("Starting SSI WebSocket stream (daily candle)...")
 
-    global allowed_symbols
-    allowed_symbols = get_target_symbols()
-    if not allowed_symbols:
+    global stock_ids_by_symbol
+    stock_ids_by_symbol = get_target_stocks()
+    if not stock_ids_by_symbol:
         logger.warning("No VN100 stock symbols loaded from DB; all incoming symbols will be rejected.")
     else:
-        logger.info(f"Loaded {len(allowed_symbols)} VN100 stock symbols for websocket filtering.")
+        logger.info(
+            f"Loaded {len(stock_ids_by_symbol)} VN100 stock ids for websocket filtering."
+        )
 
     periodic_flush_stop.clear()
     flush_thread = threading.Thread(target=periodic_flush_thread, daemon=True)
