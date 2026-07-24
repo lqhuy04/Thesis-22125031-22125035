@@ -22,9 +22,7 @@ logger = logging.getLogger(__name__)
 # API Endpoints
 class SSIEndpoints:
     ACCESS_TOKEN = "api/v2/Market/AccessToken"
-    SECURITIES = "api/v2/Market/Securities"
     SECURITIES_DETAILS = "api/v2/Market/SecuritiesDetails"
-    INDEX_COMPONENTS = "api/v2/Market/IndexComponents"
     INDEX_LIST = "api/v2/Market/IndexList"
     DAILY_OHLC = "api/v2/Market/DailyOhlc"
     INTRADAY_OHLC = "api/v2/Market/IntradayOhlc"
@@ -131,35 +129,6 @@ class SSIService:
             logger.error(f"Error getting access token: {str(e)}")
             return {"success": False, "error": str(e)}
     
-    def get_securities_list(
-        self, 
-        market: str, 
-        page_index: int = 1, 
-        page_size: int = 100
-    ) -> Dict[str, Any]:
-        """
-        Get list of securities from a specific market
-        
-        Args:
-            market: Market code (e.g., 'HNX', 'HOSE', 'UPCOM')
-            page_index: Page number for pagination
-            page_size: Number of items per page
-        """
-        try:
-            if not self._ensure_token():
-                return {"success": False, "error": "Failed to get access token"}
-            
-            params = {
-                "market": market,
-                "pageIndex": page_index,
-                "pageSize": page_size
-            }
-            response = self._make_get_request(SSIEndpoints.SECURITIES, params)
-            return {"success": True, "data": response}
-        except Exception as e:
-            logger.error(f"Error getting securities list: {str(e)}")
-            return {"success": False, "error": str(e)}
-    
     def get_securities_details(
         self, 
         market: str, 
@@ -190,35 +159,6 @@ class SSIService:
             return {"success": True, "data": response}
         except Exception as e:
             logger.error(f"Error getting securities details: {str(e)}")
-            return {"success": False, "error": str(e)}
-    
-    def get_index_components(
-        self, 
-        index_code: str, 
-        page_index: int = 1, 
-        page_size: int = 100
-    ) -> Dict[str, Any]:
-        """
-        Get components of a specific index
-        
-        Args:
-            index_code: Index code (e.g., 'VN30', 'VN100', 'HNX30')
-            page_index: Page number for pagination
-            page_size: Number of items per page
-        """
-        try:
-            if not self._ensure_token():
-                return {"success": False, "error": "Failed to get access token"}
-            
-            params = {
-                "indexCode": index_code,
-                "pageIndex": page_index,
-                "pageSize": page_size
-            }
-            response = self._make_get_request(SSIEndpoints.INDEX_COMPONENTS, params)
-            return {"success": True, "data": response}
-        except Exception as e:
-            logger.error(f"Error getting index components: {str(e)}")
             return {"success": False, "error": str(e)}
     
     def get_index_list(

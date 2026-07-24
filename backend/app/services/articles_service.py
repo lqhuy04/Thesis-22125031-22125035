@@ -331,8 +331,7 @@ class ArticlesService:
     def get_today_highlight(
         stock_limit: int = 10,
         articles_per_stock: int = 2,
-        return_debug: bool = False,
-    ) -> List[dict] | dict:
+    ) -> List[dict]:
         """
         Traverse latest articles for VN100 stocks, keep only exclusive articles
         (1 symbol per article), collect latest unique stocks, and return each stock
@@ -344,34 +343,9 @@ class ArticlesService:
             stock_limit = max(1, stock_limit)
             articles_per_stock = max(1, articles_per_stock)
 
-            debug_info = {
-                "stock_limit": stock_limit,
-                "articles_per_stock": articles_per_stock,
-                "pages_scanned": 0,
-                "articles_scanned": 0,
-                "articles_with_id": 0,
-                "article_stock_links_scanned": 0,
-                "exclusive_article_candidates": 0,
-                "unique_exclusive_stocks_seen": 0,
-                "strict_stocks_count": 0,
-                "fallback_stocks_count": 0,
-                "selected_stocks_count": 0,
-                "returned_stocks_count": 0,
-                "vn100_universe_size": 0,
-                "ended_reason": "",
-            }
-
-            def finalize(items: List[dict], ended_reason: Optional[str] = None) -> List[dict] | dict:
-                if ended_reason:
-                    debug_info["ended_reason"] = ended_reason
-                debug_info["returned_stocks_count"] = len(items)
-                if return_debug:
-                    return {"data": items, "debug": debug_info}
-                return items
-
             vn100_symbols = set(get_index_symbols("VN100"))
             if not vn100_symbols:
-                return finalize([], "vn100_universe_empty")
+                return []
 
             vn100_stock_result = (
                 supabase.table("Stock")
@@ -385,9 +359,8 @@ class ArticlesService:
                 if item.get("id")
                 and str(item.get("stock_symbol") or "").upper().strip() in vn100_symbols
             }
-            debug_info["vn100_universe_size"] = len(vn100_stock_symbol_map)
             if not vn100_stock_symbol_map:
-                return finalize([], "vn100_stocks_missing")
+                return []
 
             def fetch_article_stock_links(article_ids: List[str], batch_size: int = 1000) -> List[dict]:
                 """Fetch all Article_Stock links for article_ids, avoiding default row cap."""
@@ -442,12 +415,9 @@ class ArticlesService:
                     )
 
                 latest_articles_result = query.execute()
-                debug_info["pages_scanned"] += 1
 
                 article_rows = latest_articles_result.data or []
-                debug_info["articles_scanned"] += len(article_rows)
                 if not article_rows:
-                    debug_info["ended_reason"] = "no_more_articles"
                     break
 
                 article_ids = [
@@ -455,10 +425,8 @@ class ArticlesService:
                     for item in article_rows
                     if item.get("id")
                 ]
-                debug_info["articles_with_id"] += len(article_ids)
                 if not article_ids:
                     if len(article_rows) < page_size:
-                        debug_info["ended_reason"] = "last_page_without_article_ids"
                         break
                     last_row = article_rows[-1]
                     cursor_time = last_row.get("time")
@@ -466,10 +434,8 @@ class ArticlesService:
                     continue
 
                 links_data = fetch_article_stock_links(article_ids=article_ids)
-                debug_info["article_stock_links_scanned"] += len(links_data)
                 if not links_data:
                     if len(article_rows) < page_size:
-                        debug_info["ended_reason"] = "last_page_without_links"
                         break
                     last_row = article_rows[-1]
                     cursor_time = last_row.get("time")
@@ -494,8 +460,6 @@ class ArticlesService:
                         continue
                     article_to_stock_id[article_id] = stock_id
 
-                debug_info["exclusive_article_candidates"] += len(article_to_stock_id)
-
                 for article in article_rows:
                     article_id = str(article.get("id") or "")
                     stock_id = article_to_stock_id.get(article_id)
@@ -509,7 +473,6 @@ class ArticlesService:
                         stock_to_articles[stock_id].append(article)
 
                 if len(article_rows) < page_size:
-                    debug_info["ended_reason"] = "reached_last_page"
                     break
 
                 last_row = article_rows[-1]
@@ -528,12 +491,8 @@ class ArticlesService:
                 if len(items) > 0 and len(items) < articles_per_stock
             ]
 
-            debug_info["unique_exclusive_stocks_seen"] = len(stock_to_articles)
-            debug_info["strict_stocks_count"] = len(strict_stock_ids)
-            debug_info["fallback_stocks_count"] = len(fallback_stock_ids)
-
             if not strict_stock_ids and not fallback_stock_ids:
-                return finalize([], "no_eligible_stocks")
+                return []
 
             strict_stock_ids = sorted(
                 strict_stock_ids,
@@ -548,7 +507,6 @@ class ArticlesService:
             )
 
             selected_stock_ids = (strict_stock_ids + fallback_stock_ids)[:stock_limit]
-            debug_info["selected_stocks_count"] = len(selected_stock_ids)
 
             profile_result = (
                 supabase.table("BI_Profile")
@@ -651,18 +609,10 @@ class ArticlesService:
                     }
                 )
 
-            return finalize(highlights, debug_info.get("ended_reason") or "completed")
+            return highlights
 
         except Exception as e:
             print(f"Error getting today highlights: {e}")
             import traceback
             traceback.print_exc()
-            if return_debug:
-                return {
-                    "data": [],
-                    "debug": {
-                        "error": str(e),
-                        "ended_reason": "exception",
-                    },
-                }
             return []

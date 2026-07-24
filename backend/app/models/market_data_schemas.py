@@ -38,24 +38,10 @@ class TimeFrameEnum(str, Enum):
 
 
 # Request Models
-class SecuritiesListRequest(BaseModel):
-    """Request for getting securities list"""
-    market: MarketEnum = Field(..., description="Market code (HOSE, HNX, UPCOM)")
-    page_index: int = Field(1, ge=1, description="Page number for pagination")
-    page_size: int = Field(100, ge=1, le=1000, description="Number of items per page")
-
-
 class SecuritiesDetailsRequest(BaseModel):
     """Request for getting securities details"""
     market: MarketEnum = Field(..., description="Market code (HOSE, HNX, UPCOM)")
     symbol: str = Field(..., min_length=1, max_length=10, description="Stock symbol (e.g., ACB, VNM)")
-    page_index: int = Field(1, ge=1, description="Page number for pagination")
-    page_size: int = Field(100, ge=1, le=1000, description="Number of items per page")
-
-
-class IndexComponentsRequest(BaseModel):
-    """Request for getting index components"""
-    index_code: str = Field(..., min_length=1, max_length=20, description="Index code (e.g., VN30, VN100)")
     page_index: int = Field(1, ge=1, description="Page number for pagination")
     page_size: int = Field(100, ge=1, le=1000, description="Number of items per page")
 
@@ -174,30 +160,6 @@ class SectorStockMovementItem(BaseModel):
 class SectorStockMovementResponse(BaseModel):
     """Response for industry movement endpoint."""
     data: List[SectorStockMovementItem] = Field(default=[], description="Industry stock movement list")
-    errorCode: int = Field(0, description="Error code (0 for success)")
-    errorDesc: str = Field("", description="Error description")
-    requestId: str = Field(..., description="Unique request identifier")
-    result: bool = Field(..., description="Whether the request was successful")
-
-
-class IndexImpactItem(BaseModel):
-    """A stock with impact score to an index."""
-    stock_id: Optional[str] = Field(None, description="Stock UUID")
-    symbol: str = Field(..., description="Stock symbol")
-    company_name: str = Field("", description="Company name")
-    exchange: str = Field("", description="Exchange code")
-    Weight: float = Field(0.0, description="Component weight in index")
-    PriceChange: float = Field(0.0, description="Price change")
-    PerPriceChange: float = Field(0.0, description="Percent price change")
-    CurrentPrice: float = Field(0.0, description="Current price")
-    TotalMatchVal: float = Field(0.0, description="Total matched value")
-    ImpactScore: float = Field(0.0, description="Weighted impact score")
-    AffectedPoints: float = Field(0.0, description="Estimated points contributed to index move")
-
-
-class IndexImpactResponse(BaseModel):
-    """Response for top index impact endpoint."""
-    data: List[IndexImpactItem] = Field(default=[], description="Top impacted stocks")
     errorCode: int = Field(0, description="Error code (0 for success)")
     errorDesc: str = Field("", description="Error description")
     requestId: str = Field(..., description="Unique request identifier")

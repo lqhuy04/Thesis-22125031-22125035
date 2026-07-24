@@ -86,30 +86,6 @@ def get_today_highlight_articles():
     )
 
 
-@router.get("/today-highlight/debug")
-def get_today_highlight_articles_debug(
-    stock_limit: int = Query(10, ge=1, le=50, description="Maximum number of stocks"),
-    articles_per_stock: int = Query(2, ge=1, le=5, description="Maximum number of articles per stock"),
-):
-    """
-    Debug endpoint for VN100 today-highlight selection logic.
-    Returns filtering counters to explain why result size can be below target.
-    """
-    debug_payload = ArticlesService.get_today_highlight(
-        stock_limit=stock_limit,
-        articles_per_stock=articles_per_stock,
-        return_debug=True,
-    )
-
-    return {
-        "data": debug_payload.get("data", []),
-        "debug": debug_payload.get("debug", {}),
-        "errorCode": 0,
-        "errorDesc": "",
-        "requestId": str(uuid4()),
-        "result": True,
-    }
-
 @router.get("/stock/{stock_symbol}", response_model=ArticlesListResponse)
 def get_articles_by_stock_symbol(
     stock_symbol: str,
@@ -151,11 +127,3 @@ def get_news_single_category(
         requestId=str(uuid4()),
         result=True,
     )
-
-
-
-
-
-
-
-

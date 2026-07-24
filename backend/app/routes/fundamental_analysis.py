@@ -11,14 +11,6 @@ import uuid
 
 router = APIRouter(prefix="/api/fundamental-analysis", tags=["Fundamental Metrics"], dependencies=[Depends(get_current_user)])
 
-@router.get("/{symbol}/balance-sheets", summary="Get Balance Sheets")
-def get_balance_sheets(symbol: str):
-    try:
-        data = FundamentalAnalysisService.get_balance_sheets(symbol)
-        return success_response(data=data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @router.get("/{symbol}/cash-flows", summary="Get Cash Flows")
 def get_cash_flows(symbol: str):
     try:

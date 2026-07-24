@@ -19,8 +19,8 @@ COMMENT ON COLUMN public."Stock".stock_symbol IS 'Mã cổ phiếu, viết HOA (
 
 -- ─── Current_Stock_Price ──────────────────────────────────────────────────────
 COMMENT ON TABLE  public."Current_Stock_Price" IS
-  'Giá khớp lệnh MỚI NHẤT (real-time) của từng mã. Đơn vị VNĐ, GIÁ TRỊ THẬT — KHÔNG chia 1000.';
-COMMENT ON COLUMN public."Current_Stock_Price".symbol IS 'Mã cổ phiếu (viết hoa).';
+  'Giá khớp lệnh MỚI NHẤT (real-time) của từng mã. Liên kết "Stock" qua stock_id = Stock.id. Đơn vị VNĐ, GIÁ TRỊ THẬT — KHÔNG chia 1000.';
+COMMENT ON COLUMN public."Current_Stock_Price".stock_id IS 'FK → Stock.id; dùng JOIN Stock để lấy stock_symbol.';
 COMMENT ON COLUMN public."Current_Stock_Price".price_change IS 'Thay đổi giá so với giá tham chiếu (VNĐ).';
 COMMENT ON COLUMN public."Current_Stock_Price".per_price_change IS 'Phần trăm thay đổi giá so với tham chiếu (%).';
 COMMENT ON COLUMN public."Current_Stock_Price".ceiling_price IS 'Giá trần trong phiên (VNĐ).';

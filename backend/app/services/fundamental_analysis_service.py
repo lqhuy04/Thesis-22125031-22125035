@@ -60,23 +60,6 @@ class FundamentalAnalysisService:
             raise ValueError(f"Failed to fetch fundamental summary: {str(e)}")
 
     @staticmethod
-    def get_balance_sheets(symbol: str) -> List[Dict]:
-        """
-        Get balance sheets for a specific symbol
-        """
-        try:
-            result = supabase.table("Stock").select("id, FA_BalanceSheet(*)").eq("stock_symbol", symbol.upper()).single().execute()
-            
-            if not result.data:
-                return []
-            
-            return result.data.get("FA_BalanceSheet") or []
-            
-        except Exception as e:
-            print(f"Error fetching balance sheets: {e}")
-            raise ValueError(f"Failed to fetch balance sheets: {str(e)}")
-
-    @staticmethod
     def get_cash_flows(symbol: str) -> List[Dict]:
         """
         Get cash flows for a specific symbol
@@ -149,4 +132,3 @@ class FundamentalAnalysisService:
         except Exception as e:
             print(f"Error fetching industry aggregate for ICB {icb_code} ({industry_code}): {e}")
             return []
-

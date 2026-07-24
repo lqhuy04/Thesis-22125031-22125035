@@ -1,7 +1,4 @@
-"""
-Company Profile Database Service
-Handles queries for company_profiles, company_leaders, company_subsidiaries.
-"""
+"""Company profile and leadership database service."""
 from supabase import create_client, Client
 from app.config import settings
 from typing import Optional
@@ -38,17 +35,3 @@ class CompanyService:
             return []
         
         return result.data.get("BI_Leader") or []
-
-    @staticmethod
-    def get_subsidiaries(symbol: str) -> list[dict]:
-        result = (
-            supabase.table("Stock")
-            .select("id, BI_Subsidiary(*)")
-            .eq("stock_symbol", symbol.upper())
-            .single()
-            .execute()
-        )
-        if not result.data:
-            return []
-        
-        return result.data.get("BI_Subsidiary") or []

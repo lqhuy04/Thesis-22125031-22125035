@@ -216,37 +216,3 @@ class SearchHistoryService:
         except Exception as e:
             print(f"Error adding search history: {e}")
             raise ValueError(f"Failed to add search history: {str(e)}")
-
-    @staticmethod
-    def remove_search_history_by_symbol(symbol: str, user_id: str) -> List[Dict[str, Any]]:
-        try:
-            sym = SearchHistoryService._normalize_symbol(symbol)
-            if not sym:
-                raise ValueError("Symbol is required")
-
-            stock_id = SearchHistoryService._resolve_stock_id(sym)
-
-            supabase.table(SearchHistoryService.TABLE_NAME) \
-                .delete() \
-                .eq("user_id", user_id) \
-                .eq("stock_id", stock_id) \
-                .execute()
-
-            return SearchHistoryService.list_search_history_by_user_id(user_id)
-        except ValueError:
-            raise
-        except Exception as e:
-            print(f"Error removing search history by symbol: {e}")
-            raise ValueError(f"Failed to remove search history by symbol: {str(e)}")
-
-    @staticmethod
-    def clear_search_history(user_id: str) -> List[Dict[str, Any]]:
-        try:
-            supabase.table(SearchHistoryService.TABLE_NAME) \
-                .delete() \
-                .eq("user_id", user_id) \
-                .execute()
-            return []
-        except Exception as e:
-            print(f"Error clearing search history: {e}")
-            raise ValueError(f"Failed to clear search history: {str(e)}")

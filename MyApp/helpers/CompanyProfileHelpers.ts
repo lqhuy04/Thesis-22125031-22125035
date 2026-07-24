@@ -56,64 +56,6 @@ export const getCompanyProfile = async (
   }
 };
 
-export type SubsidiaryCompany = {
-  symbol: string | null;
-  company_name: string | null;
-  sub_symbol: string | null;
-  charter_capital_billion: number | null;
-  ownership_pct: number | null;
-  relationship_type: string | null;
-};
-
-export const getCompanySubsidiaries = async (
-  symbol: string,
-): Promise<{
-  status: boolean;
-  data: {
-    subsidiaries: SubsidiaryCompany[];
-    associates: SubsidiaryCompany[];
-  };
-}> => {
-  try {
-    const result = await sendMessage(`api/company/${symbol}/subsidiaries`);
-
-    const { errorCode, data } = result || {};
-    if (errorCode === 0) {
-      return {
-        status: true,
-        data: {
-          subsidiaries:
-            data?.filter(
-              (d: any) =>
-                d.company_name != null && d.relationship_type === "subsidiary",
-            ) || [],
-          associates:
-            data?.filter(
-              (d: any) =>
-                d.company_name != null && d.relationship_type === "associate",
-            ) || [],
-        },
-      };
-    }
-    return {
-      status: false,
-      data: {
-        subsidiaries: [],
-        associates: [],
-      },
-    };
-  } catch (error) {
-    console.error(error);
-    return {
-      status: false,
-      data: {
-        subsidiaries: [],
-        associates: [],
-      },
-    };
-  }
-};
-
 export type CompanyLeader = {
   full_name: string | null;
   position: string | null;

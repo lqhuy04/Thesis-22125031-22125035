@@ -52,18 +52,6 @@ class LeaderResponse(BaseModel):
         from_attributes = True
 
 
-class SubsidiaryResponse(BaseModel):
-    id: Optional[str] = None
-    company_name: Optional[str] = None
-    sub_symbol: Optional[str] = None
-    charter_capital_billion: Optional[float] = None
-    ownership_pct: Optional[float] = None
-    relationship_type: Optional[str] = None
-
-    class Config:
-        from_attributes = True
-
-
 # ── Envelope responses ──────────────────────────────────────
 
 class CompanyProfileAPIResponse(BaseModel):
@@ -76,14 +64,6 @@ class CompanyProfileAPIResponse(BaseModel):
 
 class LeadersAPIResponse(BaseModel):
     data: list[LeaderResponse]
-    errorCode: int = Field(default=0)
-    errorDesc: str = Field(default="")
-    requestId: str = Field(default="")
-    result: bool = Field(default=True)
-
-
-class SubsidiariesAPIResponse(BaseModel):
-    data: list[SubsidiaryResponse]
     errorCode: int = Field(default=0)
     errorDesc: str = Field(default="")
     requestId: str = Field(default="")

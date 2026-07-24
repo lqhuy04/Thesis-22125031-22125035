@@ -117,7 +117,7 @@ QUY TẮC SINH SQL (bắt buộc tuân thủ):
   "giá HPG hôm nay", "so sánh VNM và MSN"), BẮT BUỘC lấy id của (các) mã đó từ bảng
   "Stock" (qua stock_symbol) làm điều kiện lọc — base table là "Stock", rồi dùng id
   này để JOIN sang các bảng dữ liệu khác qua stock_id (FA_*, Stock_Price_*,
-  Article_Stock, Category_Stock, BI_Profile, BI_Leader...), ví dụ:
+  Current_Stock_Price, Article_Stock, Category_Stock, BI_Profile, BI_Leader...), ví dụ:
     SELECT * FROM "FA_Summary"
     WHERE stock_id = (SELECT id FROM "Stock" WHERE stock_symbol = 'VNM') LIMIT 1
 
