@@ -1,12 +1,11 @@
 """
-init_stock_articles.py - One-time backfill of stock (VNINDEX) news.
+init_stock_articles.py - One-time backfill of VN100 stock news.
 
-For every VNINDEX stock that is NOT already in VN30 (VN30 đã được backfill
-trước đó nên chỉ init phần còn lại), runs a single Serper query (paginated,
-"tbs": "qdr:y" to scope results to the past year). No AI symbol extraction
-is performed; only sentiment + summary are extracted. Every inserted
-article is saved with article_type = "stock" and linked to its stock via
-the Article_Stock join table.
+For every current VN100 stock, runs Serper queries with pagination and
+"tbs": "qdr:y" to scope results to the past year. No AI symbol extraction
+is performed; only sentiment + summary are extracted. Every inserted article
+is saved with article_type = "stock" and linked to its stock via the
+Article_Stock join table.
 """
 
 import os
@@ -23,8 +22,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
-from vn30_symbols import get_vn30_symbols
-from vnindex_symbols import get_vnindex_symbols, get_vnindex_company_names
+from vn100_symbols import get_vn100_company_names, get_vn100_symbols
 
 load_dotenv()
 
@@ -46,7 +44,7 @@ SLEEP_SECONDS       = 1.1
 STOCK_SLEEP_SECONDS = 3
 PAGES_PER_STOCK     = 5           # Serper trả 5 tin/trang → 5 trang ≈ 50 tin/mã
 SERPER_TIME_FILTER  = "qdr:y"      # giới hạn 1 năm gần nhất
-CHECKPOINT_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init_stock_articles_checkpoint.json")
+CHECKPOINT_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "init_vn100_stock_articles_checkpoint.json")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -72,34 +70,25 @@ class StockExtraction(BaseModel):
     )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# STOCK (VNINDEX trừ VN30)
+# STOCK (VN100)
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_stocks() -> List[dict]:
-    """Fetch VNINDEX stocks KHÔNG thuộc VN30 (VN30 đã backfill trước đó).
-
-    Trả về [{id, stock_symbol, company_name}, ...].
-    """
+    """Fetch VN100 stocks as [{id, stock_symbol, company_name}, ...]."""
     try:
-        vnindex_symbols = get_vnindex_symbols(supabase)
-        if not vnindex_symbols:
-            return []
-
-        # VN30 đã có dữ liệu → chỉ init phần VNINDEX còn lại.
-        symbols = vnindex_symbols - get_vn30_symbols(supabase)
+        symbols = get_vn100_symbols(supabase)
         if not symbols:
-            logger.info("Không còn mã VNINDEX nào ngoài VN30 để init.")
             return []
 
         stock_res = (
             supabase.table(STOCK_TABLE)
             .select("id, stock_symbol")
-            .in_("stock_symbol", list(symbols))
+            .in_("stock_symbol", sorted(symbols))
             .execute()
         )
         stock_rows = stock_res.data or []
 
-        company_map = get_vnindex_company_names(supabase)
+        company_map = get_vn100_company_names(supabase)
 
         return [
             {
@@ -111,7 +100,7 @@ def get_stocks() -> List[dict]:
             if row.get("id") is not None and row.get("stock_symbol")
         ]
     except Exception as e:
-        logger.error(f"Error loading VNINDEX stocks: {e}")
+        logger.error(f"Error loading VN100 stocks: {e}")
         return []
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -425,7 +414,7 @@ def process_stock(
 def main():
     stocks = get_stocks()
     if not stocks:
-        logger.error("No VNINDEX stocks (ngoài VN30) found. Exiting.")
+        logger.error("No VN100 stocks found. Exiting.")
         return
 
     checkpoint = load_checkpoint()
@@ -444,7 +433,7 @@ def main():
     resume_page_index = checkpoint.get("next_page_index", 1)
 
     logger.info(
-        f"Starting stock news backfill for {len(stocks)} VNINDEX stocks (ngoài VN30) "
+        f"Starting stock news backfill for {len(stocks)} VN100 stocks "
         f"({PAGES_PER_STOCK} pages each, past 1 year)..."
     )
 

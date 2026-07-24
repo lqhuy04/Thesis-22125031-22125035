@@ -1,11 +1,10 @@
 """
-update_stock_articles.py - Daily update of stock (VNINDEX) news.
+update_stock_articles.py - Daily update of VN100 stock news.
 
-Runs once per day (end of day). For every VNINDEX stock, runs a single Serper
-query for a single page ("tbs": "qdr:d" to scope results to the past 24
-hours). Same extraction/insert logic as init_stock_articles.py, minus the
-multi-page checkpoint/resume machinery (not needed for a 1-page-per-stock
-daily job).
+Runs once per day (end of day). For every current VN100 stock, runs a single
+Serper query for one page ("tbs": "qdr:w" to scope results to the past week).
+Same extraction/insert logic as init_stock_articles.py, minus the multi-page
+checkpoint/resume machinery.
 """
 
 import os
@@ -21,7 +20,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
-from vnindex_symbols import get_vnindex_symbols, get_vnindex_company_names
+from vn100_symbols import get_vn100_company_names, get_vn100_symbols
 
 load_dotenv()
 
@@ -68,25 +67,25 @@ class StockExtraction(BaseModel):
     )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# STOCK (VNINDEX)
+# STOCK (VN100)
 # ═════════════════════════════════════════════════════════════════════════════
 
 def get_stocks() -> List[dict]:
-    """Fetch all VNINDEX stocks as [{id, stock_symbol, company_name}, ...]."""
+    """Fetch VN100 stocks as [{id, stock_symbol, company_name}, ...]."""
     try:
-        symbols = get_vnindex_symbols(supabase)
+        symbols = get_vn100_symbols(supabase)
         if not symbols:
             return []
 
         stock_res = (
             supabase.table(STOCK_TABLE)
             .select("id, stock_symbol")
-            .in_("stock_symbol", list(symbols))
+            .in_("stock_symbol", sorted(symbols))
             .execute()
         )
         stock_rows = stock_res.data or []
 
-        company_map = get_vnindex_company_names(supabase)
+        company_map = get_vn100_company_names(supabase)
 
         return [
             {
@@ -98,7 +97,7 @@ def get_stocks() -> List[dict]:
             if row.get("id") is not None and row.get("stock_symbol")
         ]
     except Exception as e:
-        logger.error(f"Error loading VNINDEX stocks: {e}")
+        logger.error(f"Error loading VN100 stocks: {e}")
         return []
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -106,7 +105,7 @@ def get_stocks() -> List[dict]:
 # ═════════════════════════════════════════════════════════════════════════════
 
 def search_serper(query: str, page: int = 1) -> List[dict]:
-    """Search news using Serper API (giới hạn 1 ngày gần nhất)."""
+    """Search news using Serper API (giới hạn 1 tuần gần nhất)."""
     if not config.serper_key:
         logger.warning("SERPER_API_KEY not set")
         return []
@@ -304,7 +303,7 @@ def process_stock(
     company_name: str,
     seen_links: dict[str, int],
 ) -> tuple[int, int]:
-    """Quét 1 trang Serper cho 1 mã (tin trong 24h qua), lưu các bài mới.
+    """Quét 1 trang Serper cho 1 mã (tin trong tuần qua), lưu các bài mới.
     Trả về (số bài fetch được, số bài đã lưu)."""
     query = f"Tin tức tình hình kinh doanh, hoạt động của {company_name} {symbol}"
 
@@ -366,12 +365,12 @@ def process_stock(
 def main():
     stocks = get_stocks()
     if not stocks:
-        logger.error("No VNINDEX stocks found. Exiting.")
+        logger.error("No VN100 stocks found. Exiting.")
         return
 
     logger.info(
-        f"Starting daily stock news update for {len(stocks)} VNINDEX stocks "
-        f"({PAGES_PER_STOCK} page each, past 24h)..."
+        f"Starting daily stock news update for {len(stocks)} VN100 stocks "
+        f"({PAGES_PER_STOCK} page each, past week)..."
     )
 
     seen_links = get_seen_links_from_db()
