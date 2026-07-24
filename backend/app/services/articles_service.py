@@ -6,6 +6,7 @@ import requests
 from supabase import create_client, Client
 from app.config import settings
 from app.models.article_schema import ArticlesResponse
+from app.utils.market_index import get_index_symbols
 from typing import Optional, List
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
@@ -203,51 +204,121 @@ class ArticlesService:
         
     @staticmethod
     def get_business_articles(limit: Optional[int] = None) -> List[ArticlesResponse]:
+        """
+        Return the latest stock-type articles linked to exactly one stock,
+        where that single linked stock belongs to VN100.
+        """
         try:
-            # Query Article_Stock rows including the related Article data
-            rows = (
-                supabase.table("Article_Stock")
-                .select("article_id, Article(*)")
-                .execute()
-            )
-
-            if not rows.data:
-                return []
-
             from collections import Counter
 
-            article_map: dict = {}
-            article_id_list: List[str] = []
+            normalized_limit = max(1, limit) if limit is not None else None
 
-            for row in rows.data:
-                article_id = row.get("article_id")
-                article = row.get("Article")
-                if not article_id or not article:
-                    continue
-                aid = str(article_id)
-                article_id_list.append(aid)
-                # keep the article payload (last one wins)
-                article_map[aid] = article
-
-            if not article_map:
+            vn100_symbols = set(get_index_symbols("VN100"))
+            if not vn100_symbols:
                 return []
 
-            counts = Counter(article_id_list)
-            single_tag_ids = {aid for aid, c in counts.items() if c == 1}
+            stock_result = (
+                supabase.table("Stock")
+                .select("id")
+                .in_("stock_symbol", sorted(vn100_symbols))
+                .execute()
+            )
+            vn100_stock_ids = list(dict.fromkeys(
+                str(row.get("id"))
+                for row in (stock_result.data or [])
+                if row.get("id")
+            ))
+            if not vn100_stock_ids:
+                return []
+
+            # First collect candidate articles that have at least one VN100 link.
+            page_size = 1000
+            offset = 0
+            candidate_article_ids: List[str] = []
+            while True:
+                link_result = (
+                    supabase.table("Article_Stock")
+                    .select("id, article_id")
+                    .in_("stock_id", vn100_stock_ids)
+                    .order("id", desc=False)
+                    .range(offset, offset + page_size - 1)
+                    .execute()
+                )
+                link_rows = link_result.data or []
+                if not link_rows:
+                    break
+
+                candidate_article_ids.extend(
+                    str(row.get("article_id"))
+                    for row in link_rows
+                    if row.get("article_id")
+                )
+                if len(link_rows) < page_size:
+                    break
+                offset += page_size
+
+            candidate_article_ids = list(dict.fromkeys(candidate_article_ids))
+            if not candidate_article_ids:
+                return []
+
+            # Count every link of each candidate, including links to stocks
+            # outside VN100. Only articles with exactly one total link qualify.
+            link_counts: Counter = Counter()
+            for start in range(0, len(candidate_article_ids), 100):
+                article_id_chunk = candidate_article_ids[start:start + 100]
+                chunk_offset = 0
+                while True:
+                    count_result = (
+                        supabase.table("Article_Stock")
+                        .select("id, article_id")
+                        .in_("article_id", article_id_chunk)
+                        .order("id", desc=False)
+                        .range(chunk_offset, chunk_offset + page_size - 1)
+                        .execute()
+                    )
+                    count_rows = count_result.data or []
+                    if not count_rows:
+                        break
+
+                    link_counts.update(
+                        str(row.get("article_id"))
+                        for row in count_rows
+                        if row.get("article_id")
+                    )
+                    if len(count_rows) < page_size:
+                        break
+                    chunk_offset += page_size
+
+            article_ids = [
+                article_id
+                for article_id in candidate_article_ids
+                if link_counts.get(article_id) == 1
+            ]
+            if not article_ids:
+                return []
 
             articles: List[ArticlesResponse] = []
-            for aid in single_tag_ids:
-                payload = article_map.get(aid)
-                if not payload:
-                    continue
-                try:
-                    articles.append(ArticlesResponse(**payload))
-                except Exception:
-                    continue
+            for start in range(0, len(article_ids), 100):
+                article_result = (
+                    supabase.table("Article")
+                    .select("*")
+                    .in_("id", article_ids[start:start + 100])
+                    .eq("article_type", "stock")
+                    .order("time", desc=True)
+                    .execute()
+                )
+                for payload in (article_result.data or []):
+                    try:
+                        articles.append(ArticlesResponse(**payload))
+                    except Exception:
+                        continue
 
-            articles.sort(key=lambda item: item.time or datetime.min, reverse=True)
-            if limit is not None:
-                return articles[: max(1, limit)]
+            articles.sort(
+                key=lambda item: item.time.timestamp() if item.time else float("-inf"),
+                reverse=True,
+            )
+            if normalized_limit is not None:
+                return articles[:normalized_limit]
             return articles
 
         except Exception as e:
@@ -263,8 +334,9 @@ class ArticlesService:
         return_debug: bool = False,
     ) -> List[dict] | dict:
         """
-        Traverse latest articles, keep only exclusive articles (1 symbol per article),
-        collect latest unique stocks, and return each stock with latest exclusive news.
+        Traverse latest articles for VN100 stocks, keep only exclusive articles
+        (1 symbol per article), collect latest unique stocks, and return each stock
+        with latest exclusive news.
         """
         try:
             from collections import Counter, defaultdict
@@ -285,6 +357,7 @@ class ArticlesService:
                 "fallback_stocks_count": 0,
                 "selected_stocks_count": 0,
                 "returned_stocks_count": 0,
+                "vn100_universe_size": 0,
                 "ended_reason": "",
             }
 
@@ -295,6 +368,26 @@ class ArticlesService:
                 if return_debug:
                     return {"data": items, "debug": debug_info}
                 return items
+
+            vn100_symbols = set(get_index_symbols("VN100"))
+            if not vn100_symbols:
+                return finalize([], "vn100_universe_empty")
+
+            vn100_stock_result = (
+                supabase.table("Stock")
+                .select("id, stock_symbol")
+                .in_("stock_symbol", sorted(vn100_symbols))
+                .execute()
+            )
+            vn100_stock_symbol_map = {
+                str(item.get("id")): str(item.get("stock_symbol") or "").upper().strip()
+                for item in (vn100_stock_result.data or [])
+                if item.get("id")
+                and str(item.get("stock_symbol") or "").upper().strip() in vn100_symbols
+            }
+            debug_info["vn100_universe_size"] = len(vn100_stock_symbol_map)
+            if not vn100_stock_symbol_map:
+                return finalize([], "vn100_stocks_missing")
 
             def fetch_article_stock_links(article_ids: List[str], batch_size: int = 1000) -> List[dict]:
                 """Fetch all Article_Stock links for article_ids, avoiding default row cap."""
@@ -397,6 +490,8 @@ class ArticlesService:
                         continue
                     if tag_counts.get(article_id) != 1:
                         continue
+                    if stock_id not in vn100_stock_symbol_map:
+                        continue
                     article_to_stock_id[article_id] = stock_id
 
                 debug_info["exclusive_article_candidates"] += len(article_to_stock_id)
@@ -455,49 +550,31 @@ class ArticlesService:
             selected_stock_ids = (strict_stock_ids + fallback_stock_ids)[:stock_limit]
             debug_info["selected_stocks_count"] = len(selected_stock_ids)
 
-            stock_result = (
-                supabase.table("Stock")
-                .select("id, stock_symbol")
-                .in_("id", selected_stock_ids)
-                .execute()
-            )
-            stock_symbol_map = {
-                str(item.get("id")): item.get("stock_symbol", "")
-                for item in (stock_result.data or [])
-                if item.get("id")
-            }
-
-            selected_symbols = [
-                stock_symbol_map[sid]
-                for sid in selected_stock_ids
-                if stock_symbol_map.get(sid)
-            ]
-
-            if not selected_symbols:
-                return finalize([], "selected_stocks_missing_symbols")
-
             profile_result = (
                 supabase.table("BI_Profile")
                 .select("stock_id, logo, symbol, company_name, exchange")
-                .in_("symbol", selected_symbols)
+                .in_("stock_id", selected_stock_ids)
                 .execute()
             )
             profile_map = {
-                str(item.get("symbol") or ""): item
+                str(item.get("stock_id")): item
                 for item in (profile_result.data or [])
-                if item.get("symbol")
+                if item.get("stock_id")
             }
 
             price_result = (
                 supabase.table("Current_Stock_Price")
-                .select("symbol, price_change, per_price_change, ceiling_price, floor_price, ref_price, current_price, total_match_vol, total_match_val")
-                .in_("symbol", selected_symbols)
+                .select(
+                    "stock_id, price_change, per_price_change, ceiling_price, "
+                    "floor_price, ref_price, current_price, total_match_vol, total_match_val"
+                )
+                .in_("stock_id", selected_stock_ids)
                 .execute()
             )
             price_map = {
-                str(item.get("symbol") or ""): item
+                str(item.get("stock_id")): item
                 for item in (price_result.data or [])
-                if item.get("symbol")
+                if item.get("stock_id")
             }
 
             def to_float(value) -> float:
@@ -532,7 +609,7 @@ class ArticlesService:
 
             highlights = []
             for stock_id in selected_stock_ids:
-                stock_symbol = stock_symbol_map.get(stock_id, "")
+                stock_symbol = vn100_stock_symbol_map.get(stock_id, "")
                 if not stock_symbol:
                     continue
 
@@ -546,8 +623,8 @@ class ArticlesService:
                     if fallback_articles:
                         stock_articles = [article.dict() for article in fallback_articles]
 
-                profile = profile_map.get(stock_symbol, {})
-                price = price_map.get(stock_symbol, {})
+                profile = profile_map.get(stock_id, {})
+                price = price_map.get(stock_id, {})
 
                 if not stock_articles:
                     continue

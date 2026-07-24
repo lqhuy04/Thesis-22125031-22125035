@@ -31,12 +31,12 @@ def get_all_stocks(
     page_size: int = Query(20, ge=1, le=100, description="Items per page (default 20)"),
 ):
     """
-    📋 Get paginated list of ALL stocks with movement data
+    📋 Get paginated list of VN100 stocks with movement data
 
     Each item has the same fields as the industry-movement endpoint
     (stock_id, symbol, company_name, logo, exchange, PriceChange, PerPriceChange,
     CeilingPrice, FloorPrice, RefPrice, CurrentPrice, TotalMatchVol, TotalMatchVal),
-    sorted by TotalMatchVal DESC.
+    sorted by stock symbol.
 
     **Example:** `/api/all-stocks?page=1&page_size=20`
     """
@@ -180,10 +180,11 @@ def get_stock_price(symbol: str):
 @router.get("/related-stocks/{symbol}", response_model=Any)
 def get_related_stocks(symbol: str):
     """
-    🔗 Get up to 6 stocks related to the given symbol
+    🔗 Get up to 6 VN100 stocks related to the given VN100 symbol
 
     "Related" = sharing at least one category (industry) with the input symbol,
-    picked randomly. Each item has: symbol, current_price, per_price_change.
+    while both the input and returned stocks belong to VN100. Results are picked
+    randomly. Each item has: symbol, current_price, per_price_change.
 
     **Example:** `/api/related-stocks/VNM`
     """
@@ -200,7 +201,10 @@ def get_related_stocks(symbol: str):
 
 @router.get("/industry-movement", response_model=SectorStockMovementResponse)
 def get_industry_movement(
-    industry_id: str = Query(..., description="Industry (category) id, e.g. 0001"),
+    industry_id: str = Query(
+        ...,
+        description="Industry (category) id; results are restricted to VN100 stocks",
+    ),
     limit: int | None = Query(None, ge=1, description="Max number of stocks to return"),
 ):
     request_id = str(uuid.uuid4())

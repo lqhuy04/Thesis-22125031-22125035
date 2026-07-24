@@ -1000,9 +1000,14 @@ class MarketService:
     @staticmethod
     def get_current_stock_price(symbol: str) -> Dict[str, Any]:
         try:
+            normalized_symbol = (symbol or "").strip().upper()
+            if not normalized_symbol:
+                return {}
+
             query = supabase.table("BI_Profile") \
                 .select("stock_id, symbol, company_name, exchange, logo") \
-                .eq("symbol", symbol.upper())
+                .eq("symbol", normalized_symbol) \
+                .limit(1)
             
             result = query.execute()
             data = result.data if result.data else []
@@ -1011,12 +1016,14 @@ class MarketService:
                 return {}
 
             stock = data[0]  # ✅ Get the first matching record
-
-            ###
+            stock_id = stock.get("stock_id")
+            if not stock_id:
+                return {}
 
             query2 = supabase.table("Current_Stock_Price") \
                 .select("*") \
-                .eq("symbol", symbol.upper())
+                .eq("stock_id", stock_id) \
+                .limit(1)
             
             result2 = query2.execute()
             data2 = result2.data if result2.data else []
@@ -1101,14 +1108,14 @@ class MarketService:
     @staticmethod
     def get_related_stocks(symbol: str, limit: int = 6) -> List[Dict[str, Any]]:
         """
-        Get up to `limit` stocks that share at least one category (industry) with
-        the input symbol, picked randomly.
+        Get up to `limit` VN100 stocks that share at least one category
+        (industry) with the input VN100 symbol, picked randomly.
 
         Flow:
-          1. Stock: stock_symbol -> id
-          2. Category_Stock: id -> category_id(s)
-          3. Category_Stock: category_id(s) -> sibling stock_ids (exclude input)
-          4. Stock: sibling stock_ids -> stock_symbol
+          1. Resolve the VN100 stock universe.
+          2. VN100 Stock: stock_symbol -> id
+          3. Category_Stock: id -> category_id(s)
+          4. Category_Stock: category_id(s) -> VN100 sibling stock_ids
           5. Current_Stock_Price: stock_id -> current_price, per_price_change
 
         Returns: [{symbol, current_price, per_price_change}, ...]
@@ -1118,21 +1125,33 @@ class MarketService:
             if not symbol:
                 return []
 
-            # 1. Resolve input symbol -> stock id.
-            stock_result = (
-                supabase.table("Stock")
-                .select("id, stock_symbol")
-                .eq("stock_symbol", symbol)
-                .execute()
-            )
-            stock_rows = stock_result.data or []
-            if not stock_rows:
-                return []
-            stock_id = stock_rows[0].get("id")
-            if stock_id is None:
+            # 1. Resolve the VN100 universe before applying the category rule.
+            vn100_symbols = set(get_index_symbols("VN100"))
+            if not vn100_symbols:
                 return []
 
-            # 2. Categories that the input stock belongs to.
+            vn100_stock_result = (
+                supabase.table("Stock")
+                .select("id, stock_symbol")
+                .in_("stock_symbol", sorted(vn100_symbols))
+                .execute()
+            )
+            vn100_stock_id_by_symbol = {
+                str(row.get("stock_symbol") or "").upper().strip(): str(row.get("id"))
+                for row in (vn100_stock_result.data or [])
+                if row.get("id")
+                and str(row.get("stock_symbol") or "").upper().strip() in vn100_symbols
+            }
+            if not vn100_stock_id_by_symbol:
+                return []
+
+            # The input and every related candidate must belong to VN100.
+            stock_id = vn100_stock_id_by_symbol.get(symbol)
+            if not stock_id:
+                return []
+            vn100_stock_ids = set(vn100_stock_id_by_symbol.values())
+
+            # 2. Categories that the input VN100 stock belongs to.
             cat_result = (
                 supabase.table("Category_Stock")
                 .select("category_id")
@@ -1147,7 +1166,7 @@ class MarketService:
             if not category_ids:
                 return []
 
-            # 3. Sibling stock_ids sharing those categories (exclude input).
+            # 3. Keep only VN100 siblings sharing those categories.
             sibling_result = (
                 supabase.table("Category_Stock")
                 .select("stock_id")
@@ -1155,9 +1174,10 @@ class MarketService:
                 .execute()
             )
             sibling_ids = {
-                row.get("stock_id")
+                str(row.get("stock_id"))
                 for row in (sibling_result.data or [])
                 if row.get("stock_id") is not None
+                and str(row.get("stock_id")) in vn100_stock_ids
             }
             sibling_ids.discard(stock_id)
             if not sibling_ids:
@@ -1166,7 +1186,7 @@ class MarketService:
             # Random max `limit` siblings.
             sibling_ids = list(sibling_ids)
             random.shuffle(sibling_ids)
-            sibling_ids = sibling_ids[:limit]
+            sibling_ids = sibling_ids[:max(1, limit)]
 
             return MarketService._build_stock_price_summaries(sibling_ids)
         except Exception as e:
@@ -1231,9 +1251,10 @@ class MarketService:
         limit: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Get stock movement list for one industry, sorted by symbol.
-        Resolves the industry's stocks via Category_Stock.stock_id, then enriches
-        with BI_Profile and Current_Stock_Price using the same stock_id.
+        Get VN100 stock movement list for one industry.
+        Resolves the VN100 universe first, intersects it with
+        Category_Stock.stock_id, then enriches the remaining stocks with
+        Current_Stock_Price using the same stock_id.
         Returns all stocks by default, or first `limit` stocks if provided.
         """
         try:
@@ -1241,7 +1262,31 @@ class MarketService:
             if not industry_id:
                 return {"items": []}
 
-            # 1. Category_Stock: find stock_ids belonging to this industry.
+            # 1. Resolve the VN100 universe before applying the industry rule.
+            vn100_symbols = set(get_index_symbols("VN100"))
+            if not vn100_symbols:
+                return {"items": []}
+
+            vn100_profile_result = (
+                supabase.table("BI_Profile")
+                .select("stock_id, symbol, company_name, exchange, logo")
+                .in_("symbol", sorted(vn100_symbols))
+                .execute()
+            )
+            vn100_profiles = [
+                profile
+                for profile in (vn100_profile_result.data or [])
+                if profile.get("stock_id")
+                and str(profile.get("symbol") or "").upper().strip() in vn100_symbols
+            ]
+            profile_by_stock_id: Dict[str, Dict[str, Any]] = {
+                str(profile["stock_id"]): profile
+                for profile in vn100_profiles
+            }
+            if not profile_by_stock_id:
+                return {"items": []}
+
+            # 2. Apply the industry rule only within the VN100 universe.
             category_result = (
                 supabase.table("Category_Stock")
                 .select("stock_id")
@@ -1249,53 +1294,22 @@ class MarketService:
                 .execute()
             )
             category_rows = category_result.data if category_result.data else []
-            stock_ids = [
-                row.get("stock_id") for row in category_rows if row.get("stock_id")
-            ]
+            stock_ids = list(dict.fromkeys(
+                str(row.get("stock_id"))
+                for row in category_rows
+                if row.get("stock_id")
+                and str(row.get("stock_id")) in profile_by_stock_id
+            ))
             if not stock_ids:
                 return {"items": []}
 
-            stock_ids = list(dict.fromkeys(str(stock_id) for stock_id in stock_ids))
-
-            # 2. BI_Profile: enrich profile info for the resolved stock_ids.
-            profiles: List[Dict[str, Any]] = []
-            for id_chunk in MarketService._chunked(stock_ids, chunk_size=100):
-                profile_result = (
-                    supabase.table("BI_Profile")
-                    .select("stock_id, symbol, company_name, exchange, logo")
-                    .in_("stock_id", id_chunk)
-                    .execute()
-                )
-                if profile_result.data:
-                    profiles.extend(profile_result.data)
-
-            profile_by_stock_id: Dict[str, Dict[str, Any]] = {
-                str(profile.get("stock_id")): profile
-                for profile in profiles
-                if profile.get("stock_id")
-                and profile.get("symbol")
-                and len(str(profile.get("symbol"))) <= 3
-            }
-            if not profile_by_stock_id:
-                return {"items": []}
-
-            # 3. Current_Stock_Price: fetch price data by the new stock_id key.
-            prices: List[Dict[str, Any]] = []
-            for id_chunk in MarketService._chunked(
-                list(profile_by_stock_id.keys()),
-                chunk_size=100,
-            ):
-                price_result = (
-                    supabase.table("Current_Stock_Price")
-                    .select(
-                        "stock_id, price_change, per_price_change, ceiling_price, floor_price, "
-                        "ref_price, current_price, total_match_vol, total_match_val"
-                    )
-                    .in_("stock_id", id_chunk)
-                    .execute()
-                )
-                if price_result.data:
-                    prices.extend(price_result.data)
+            # 3. Fetch prices only for VN100 stocks belonging to this industry.
+            prices = MarketService._fetch_rows_by_stock_ids(
+                "Current_Stock_Price",
+                "stock_id, price_change, per_price_change, ceiling_price, floor_price, "
+                "ref_price, current_price, total_match_vol, total_match_val",
+                stock_ids,
+            )
 
             items: List[Dict[str, Any]] = []
             for price in prices:
@@ -1338,7 +1352,7 @@ class MarketService:
         page_size: int = 20,
     ) -> Dict[str, Any]:
         """
-        Get paginated movement list for ALL stocks, sorted by TotalMatchVal DESC.
+        Get paginated movement list for VN100 stocks.
         Each item has the same fields as get_industry_stocks_movement.
         Data source is BI_Profile joined with Current_Stock_Price.
         """
@@ -1346,13 +1360,27 @@ class MarketService:
             page = max(page, 1)
             page_size = max(page_size, 1)
 
-            profiles = MarketService._fetch_all_rows(
-                "BI_Profile",
-                "stock_id, symbol, company_name, exchange, logo",
+            vn100_symbols = set(get_index_symbols("VN100"))
+            if not vn100_symbols:
+                return {
+                    "items": [],
+                    "page": page,
+                    "page_size": page_size,
+                    "total": 0,
+                    "total_pages": 0,
+                }
+
+            profile_result = (
+                supabase.table("BI_Profile")
+                .select("stock_id, symbol, company_name, exchange, logo")
+                .in_("symbol", sorted(vn100_symbols))
+                .execute()
             )
             profiles = [
-                p for p in profiles
-                if p.get("symbol") and len(str(p.get("symbol"))) <= 3
+                profile
+                for profile in (profile_result.data or [])
+                if profile.get("stock_id")
+                and str(profile.get("symbol") or "").upper().strip() in vn100_symbols
             ]
 
             if not profiles:
@@ -1364,35 +1392,28 @@ class MarketService:
                     "total_pages": 0,
                 }
 
-            profile_by_symbol: Dict[str, Dict[str, Any]] = {
-                str(p.get("symbol", "")).upper(): p for p in profiles
-                if p.get("symbol")
+            profile_by_stock_id: Dict[str, Dict[str, Any]] = {
+                str(profile["stock_id"]): profile
+                for profile in profiles
             }
-            symbols = list(profile_by_symbol.keys())
 
-            prices: List[Dict[str, Any]] = []
-            for symbol_chunk in MarketService._chunked(symbols, chunk_size=100):
-                price_result = (
-                    supabase.table("Current_Stock_Price")
-                    .select(
-                        "symbol, price_change, per_price_change, ceiling_price, floor_price, "
-                        "ref_price, current_price, total_match_vol, total_match_val"
-                    )
-                    .in_("symbol", symbol_chunk)
-                    .execute()
-                )
-                if price_result.data:
-                    prices.extend(price_result.data)
+            prices = MarketService._fetch_rows_by_stock_ids(
+                "Current_Stock_Price",
+                "stock_id, price_change, per_price_change, ceiling_price, floor_price, "
+                "ref_price, current_price, total_match_vol, total_match_val",
+                list(profile_by_stock_id.keys()),
+            )
 
             items: List[Dict[str, Any]] = []
             for price in prices:
-                symbol = str(price.get("symbol", "")).upper()
-                profile = profile_by_symbol.get(symbol)
+                stock_id = str(price.get("stock_id") or "")
+                profile = profile_by_stock_id.get(stock_id)
                 if not profile:
                     continue
+                symbol = str(profile.get("symbol") or "").upper().strip()
 
                 items.append({
-                    "stock_id": profile.get("stock_id") or "",
+                    "stock_id": stock_id,
                     "symbol": symbol,
                     "company_name": profile.get("company_name") or "",
                     "logo": profile.get("logo") or "",
@@ -1567,6 +1588,44 @@ class MarketService:
 
         return rows
 
+    @staticmethod
+    def _fetch_rows_by_stock_ids(
+        table: str,
+        select_fields: str,
+        stock_ids: List[str],
+    ) -> List[Dict[str, Any]]:
+        """Paginate rows whose stock_id belongs to the supplied universe."""
+        normalized_ids = list(dict.fromkeys(
+            str(stock_id).strip()
+            for stock_id in stock_ids
+            if stock_id is not None and str(stock_id).strip()
+        ))
+        if not normalized_ids:
+            return []
+
+        page_size = 1000
+        rows: List[Dict[str, Any]] = []
+        for id_chunk in MarketService._chunked(normalized_ids, chunk_size=100):
+            offset = 0
+            while True:
+                response = (
+                    supabase.table(table)
+                    .select(select_fields)
+                    .in_("stock_id", id_chunk)
+                    .range(offset, offset + page_size - 1)
+                    .execute()
+                )
+                batch = response.data if response.data else []
+                if not batch:
+                    break
+
+                rows.extend(batch)
+                if len(batch) < page_size:
+                    break
+                offset += page_size
+
+        return rows
+
     # Valid investing-idea categories (msgType values).
     _INVESTING_IDEA_TYPES = {
         "top_gainers",
@@ -1593,6 +1652,7 @@ class MarketService:
         start_iso: str,
         end_iso: Optional[str] = None,
         select_fields: str = "stock_id, trading_time, close, volume",
+        stock_ids: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
         Paginate Stock_Price_1d lấy các row có trading_time trong [start_iso, end_iso].
@@ -1611,6 +1671,8 @@ class MarketService:
             )
             if end_iso:
                 query = query.lte("trading_time", end_iso)
+            if stock_ids:
+                query = query.in_("stock_id", stock_ids)
 
             response = (
                 query.order("trading_time", desc=False)
@@ -1647,10 +1709,15 @@ class MarketService:
           - per_price_change = % thay đổi close theo kỳ
           - _vol_change      = % thay đổi volume theo kỳ (None nếu vol mốc <= 0)
         """
-        # ── Mốc thời gian mới nhất toàn bảng (1 query rẻ) ──────────────────
+        stock_ids = list(profile_by_stock_id.keys())
+        if not stock_ids:
+            return []
+
+        # ── Mốc thời gian mới nhất trong universe VN100 (1 query rẻ) ───────
         latest_resp = (
             supabase.table("Stock_Price_1d")
             .select("trading_time")
+            .in_("stock_id", stock_ids)
             .order("trading_time", desc=True)
             .limit(1)
             .execute()
@@ -1689,7 +1756,8 @@ class MarketService:
 
         # ── Lát 1: nến mới nhất (4 ngày lịch gần nhất là đủ) ──────────────
         recent_rows = MarketService._fetch_daily_rows_in_range(
-            start_iso=(latest_date - timedelta(days=4)).isoformat()
+            start_iso=(latest_date - timedelta(days=4)).isoformat(),
+            stock_ids=stock_ids,
         )
         latest_by_stock_id = pick_latest(recent_rows)
 
@@ -1697,6 +1765,7 @@ class MarketService:
         past_rows = MarketService._fetch_daily_rows_in_range(
             start_iso=(target_date - timedelta(days=12)).isoformat(),
             end_iso=target_date.isoformat() + "T23:59:59",
+            stock_ids=stock_ids,
         )
         past_by_stock_id = pick_latest(past_rows, cap_date=target_date)
 
@@ -1752,7 +1821,8 @@ class MarketService:
           (gainers/decliners) hoặc volume (top_volume) giữa nến mới nhất và nến
           cách 1 tuần / 1 / 3 / 6 tháng trong bảng Stock_Price_1d.
 
-        Excludes UPCOM exchange; only includes HOSE and HNX.
+        The stock universe is restricted to current VN100 constituents before
+        any category-specific ranking rule is applied.
         """
         try:
             if msg_type not in MarketService._INVESTING_IDEA_TYPES:
@@ -1761,28 +1831,36 @@ class MarketService:
             limit = max(1, min(limit, 100))
             interval = (interval or "today").strip().lower()
 
-            profiles = MarketService._fetch_all_rows(
-                "BI_Profile",
-                "stock_id, symbol, company_name, logo, exchange"
+            vn100_symbols = set(get_index_symbols("VN100"))
+            if not vn100_symbols:
+                return []
+
+            profile_response = (
+                supabase.table("BI_Profile")
+                .select("stock_id, symbol, company_name, logo, exchange")
+                .in_("symbol", sorted(vn100_symbols))
+                .execute()
             )
+            profiles = profile_response.data or []
 
             profile_by_symbol: Dict[str, Dict[str, Any]] = {}
             profile_by_stock_id: Dict[str, Dict[str, Any]] = {}
             for profile in profiles:
                 symbol = str(profile.get("symbol") or "").upper().strip()
                 stock_id = str(profile.get("stock_id") or "").strip()
-                if not symbol or len(symbol) > 3:
-                    continue
-                exchange = str(profile.get("exchange") or "").upper().strip()
-                if exchange == "UPCOM":
+                if not symbol or symbol not in vn100_symbols:
                     continue
                 profile_by_symbol[symbol] = profile
                 if stock_id:
                     profile_by_stock_id[stock_id] = profile
 
-            prices = MarketService._fetch_all_rows(
+            if not profile_by_stock_id:
+                return []
+
+            prices = MarketService._fetch_rows_by_stock_ids(
                 "Current_Stock_Price",
-                "stock_id, current_price, price_change, per_price_change, total_match_vol"
+                "stock_id, current_price, price_change, per_price_change, total_match_vol",
+                list(profile_by_stock_id.keys()),
             )
             price_by_stock_id: Dict[str, Dict[str, Any]] = {}
             price_by_symbol: Dict[str, Dict[str, Any]] = {}
@@ -1812,7 +1890,11 @@ class MarketService:
             # ── Community categories: rank by interaction count ──────────────
             if msg_type in ("top_searched", "top_watchlist"):
                 table = "Search_History" if msg_type == "top_searched" else "Favorite"
-                rows = MarketService._fetch_all_rows(table, "stock_id")
+                rows = MarketService._fetch_rows_by_stock_ids(
+                    table,
+                    "stock_id",
+                    list(profile_by_stock_id.keys()),
+                )
 
                 counts = Counter(
                     str(row.get("stock_id") or "").strip()

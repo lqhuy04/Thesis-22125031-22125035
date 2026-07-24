@@ -54,7 +54,8 @@ def get_business_articles(
     limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
 ):
     """
-    Lấy tin tức "Doanh nghiệp" có tác động lên chỉ 1 mã cổ phiếu.
+    Lấy tin tức mới nhất có ``article_type = "stock"`` và liên kết với
+    đúng một mã cổ phiếu; mã duy nhất đó phải thuộc VN100.
 
     - **limit**: Số lượng bài viết tối đa trả về
     """
@@ -71,7 +72,7 @@ def get_business_articles(
 @router.get("/today-highlight", response_model=TodayHighlightResponse)
 def get_today_highlight_articles():
     """
-    Lấy 10 mã cổ phiếu có tin mới nhất.
+    Lấy 10 mã cổ phiếu VN100 có tin mới nhất.
     Mỗi mã trả về tối đa 2 bài mới nhất chỉ gắn với đúng 1 mã cổ phiếu.
     """
     highlights = ArticlesService.get_today_highlight(stock_limit=10, articles_per_stock=2)
@@ -91,7 +92,7 @@ def get_today_highlight_articles_debug(
     articles_per_stock: int = Query(2, ge=1, le=5, description="Maximum number of articles per stock"),
 ):
     """
-    Debug endpoint for today-highlight selection logic.
+    Debug endpoint for VN100 today-highlight selection logic.
     Returns filtering counters to explain why result size can be below target.
     """
     debug_payload = ArticlesService.get_today_highlight(
@@ -150,9 +151,6 @@ def get_news_single_category(
         requestId=str(uuid4()),
         result=True,
     )
-
-
-
 
 
 
