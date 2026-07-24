@@ -222,7 +222,18 @@ const DetailHeader = ({
               </Text>
             </View>
 
-            {marketState.nextOpen ? (
+            {marketState.closeAt ? (
+              <Text
+                typography="labelLarge"
+                color={theme.text.primary + "88"}
+                style={{ marginTop: 4 }}
+              >
+                {`${t("detailHeader.closesAt")} ${formatNextOpen(
+                  marketState.closeAt,
+                  language,
+                )}`}
+              </Text>
+            ) : marketState.nextOpen ? (
               <Text
                 typography="labelLarge"
                 color={theme.text.primary + "88"}

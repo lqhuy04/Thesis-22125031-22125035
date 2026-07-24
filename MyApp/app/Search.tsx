@@ -476,7 +476,7 @@ const Search = () => {
             )}
             style={{
               marginTop: 12,
-              marginBottom: 24,
+              marginBottom: 200,
               borderRadius: 12,
               backgroundColor: theme.background.bg,
               paddingHorizontal: 16,

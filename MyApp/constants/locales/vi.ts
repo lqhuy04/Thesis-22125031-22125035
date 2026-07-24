@@ -50,12 +50,14 @@ export default {
   },
   detail: {
     screenTitle: "Chi tiết cổ phiếu",
+    marketDetailTitle: "Chi tiết thị trường",
     newsSectionTitle: "Tin tức",
     newsSectionViewAll: "Xem tất cả",
     newsSectionHotTitle: "{symbol} có tin gì hot?",
     AIAnalyze: "Phân tích AI",
     buy: "Mua",
     relatedSectionTitle: "Cổ phiếu liên quan",
+    indexConstituentsTitle: "Cổ phiếu thuộc chỉ số",
   },
   buyStock: {
     screenTitle: "Đặt lệnh mua",
@@ -155,6 +157,7 @@ export default {
     candle: "Nến",
     candlePeriod: "Chu kỳ:",
     technicalIndicator: "Chỉ báo:",
+    noData: "Chưa có dữ liệu biểu đồ",
   },
   detailHeader: {
     follow: "Theo dõi",
@@ -170,6 +173,7 @@ export default {
     marketLunch: "Nghỉ trưa",
     marketClosed: "Đang đóng cửa",
     opensAt: "Mở cửa vào lúc",
+    closesAt: "Đóng cửa vào lúc",
   },
   financialIndicators: {
     sectionTitle: "Chỉ tiêu tài chính",

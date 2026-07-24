@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, TouchableOpacity, View } from "react-native";
 import { Text } from "../ui/Text";
 import {
+  fetchRandomMarketIndexStocks,
   fetchRelatedStocks,
   RelatedStockItem,
 } from "@/helpers/DetailHelpers";
@@ -10,7 +11,8 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import { router } from "expo-router";
 
 interface RelatedStocksSectionProps {
-  stockSymbol: string;
+  stockSymbol?: string;
+  marketIndexId?: string;
   registerRefresh?: (fn: () => Promise<void>) => () => void;
 }
 
@@ -94,6 +96,7 @@ const RelatedStocksSkeleton = () => {
 // ── Main component ────────────────────────────────────────────────────────────
 const RelatedStocksSection = ({
   stockSymbol,
+  marketIndexId,
   registerRefresh,
 }: RelatedStocksSectionProps) => {
   const { theme } = useTheme();
@@ -108,12 +111,16 @@ const RelatedStocksSection = ({
     setLoading(true);
     isNavigatingRef.current = false;
     try {
-      const data = await fetchRelatedStocks(stockSymbol);
+      const data = marketIndexId
+        ? await fetchRandomMarketIndexStocks(marketIndexId)
+        : stockSymbol
+          ? await fetchRelatedStocks(stockSymbol)
+          : [];
       setRelated(data);
     } finally {
       setLoading(false);
     }
-  }, [stockSymbol]);
+  }, [marketIndexId, stockSymbol]);
 
   useEffect(() => {
     fetchData();
@@ -134,6 +141,10 @@ const RelatedStocksSection = ({
     });
   };
 
+  const sectionTitle = marketIndexId
+    ? t("detail.indexConstituentsTitle")
+    : t("detail.relatedSectionTitle");
+
   if (loading) {
     return (
       <View>
@@ -142,7 +153,7 @@ const RelatedStocksSection = ({
           color={theme.text.primary}
           style={{ marginHorizontal: 12, marginTop: 24 }}
         >
-          {t("detail.relatedSectionTitle")}
+          {sectionTitle}
         </Text>
         <RelatedStocksSkeleton />
       </View>
@@ -160,7 +171,7 @@ const RelatedStocksSection = ({
         color={theme.text.primary}
         style={{ marginHorizontal: 12, marginTop: 24 }}
       >
-        {t("detail.relatedSectionTitle")}
+        {sectionTitle}
       </Text>
 
       <View>

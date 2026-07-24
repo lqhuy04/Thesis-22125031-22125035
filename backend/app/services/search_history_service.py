@@ -68,21 +68,21 @@ class SearchHistoryService:
             return {}
 
     @staticmethod
-    def _fetch_price_map(symbols: List[str]) -> Dict[str, Dict[str, Any]]:
-        if not symbols:
+    def _fetch_price_map(stock_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        if not stock_ids:
             return {}
 
         try:
             result = (
                 supabase.table("Current_Stock_Price")
-                .select("symbol, current_price, per_price_change")
-                .in_("symbol", symbols)
+                .select("stock_id, current_price, per_price_change")
+                .in_("stock_id", stock_ids)
                 .execute()
             )
             return {
-                str(item.get("symbol") or "").upper(): item
+                str(item.get("stock_id") or ""): item
                 for item in (result.data or [])
-                if item.get("symbol")
+                if item.get("stock_id")
             }
         except Exception:
             return {}
@@ -92,15 +92,13 @@ class SearchHistoryService:
         if not rows:
             return []
 
-        stock_ids = [str(row.get("stock_id") or "") for row in rows if row.get("stock_id")]
+        stock_ids = list(dict.fromkeys(
+            str(row.get("stock_id") or "")
+            for row in rows
+            if row.get("stock_id")
+        ))
         profile_map = SearchHistoryService._fetch_profile_map(stock_ids)
-
-        symbols = [
-            str(profile_map.get(stock_id, {}).get("symbol") or "").upper()
-            for stock_id in stock_ids
-            if profile_map.get(stock_id, {}).get("symbol")
-        ]
-        price_map = SearchHistoryService._fetch_price_map(symbols)
+        price_map = SearchHistoryService._fetch_price_map(stock_ids)
 
         response: List[Dict[str, Any]] = []
         for row in rows:
@@ -110,7 +108,7 @@ class SearchHistoryService:
             if not symbol:
                 continue
 
-            price = price_map.get(symbol, {})
+            price = price_map.get(stock_id, {})
 
             response.append(
                 {
@@ -168,13 +166,22 @@ class SearchHistoryService:
 
             existing = (
                 supabase.table(SearchHistoryService.TABLE_NAME)
-                .select("stock_id")
+                .select("id, stock_id")
                 .eq("user_id", user_id)
                 .eq("stock_id", stock_id)
                 .limit(1)
                 .execute()
             )
             if existing.data:
+                existing_id = existing.data[0].get("id")
+                if existing_id:
+                    (
+                        supabase.table(SearchHistoryService.TABLE_NAME)
+                        .update({"id": SearchHistoryService._generate_uuid7()})
+                        .eq("id", existing_id)
+                        .eq("user_id", user_id)
+                        .execute()
+                    )
                 return SearchHistoryService.list_search_history_by_user_id(user_id)
 
             ordered_rows = (

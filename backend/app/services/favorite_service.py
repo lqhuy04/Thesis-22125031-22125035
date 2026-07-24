@@ -70,7 +70,11 @@ class FavoriteService:
             if not rows:
                 return []
 
-            stock_ids = [r.get("stock_id") for r in rows if r.get("stock_id")]
+            stock_ids = list(dict.fromkeys(
+                str(row.get("stock_id"))
+                for row in rows
+                if row.get("stock_id")
+            ))
 
             # fetch profile info (symbol, company_name, exchange)
             profiles_by_stock: Dict[str, Dict] = {}
@@ -87,23 +91,23 @@ class FavoriteService:
                 except Exception:
                     pass
 
-            # fetch current prices by symbol
-            symbols = [
-                profiles_by_stock[sid].get("symbol")
-                for sid in stock_ids
-                if profiles_by_stock.get(sid) and profiles_by_stock[sid].get("symbol")
-            ]
-            prices_by_symbol: Dict[str, Dict] = {}
-            if symbols:
+            # fetch current prices using the new Current_Stock_Price.stock_id key
+            prices_by_stock: Dict[str, Dict] = {}
+            if stock_ids:
                 try:
                     price_result = (
                         supabase.table("Current_Stock_Price")
-                        .select("*")
-                        .in_("symbol", symbols)
+                        .select(
+                            "stock_id, price_change, per_price_change, ceiling_price, "
+                            "floor_price, ref_price, current_price, total_match_vol, "
+                            "total_match_val"
+                        )
+                        .in_("stock_id", stock_ids)
                         .execute()
                     )
                     for p in (price_result.data or []):
-                        prices_by_symbol[str(p.get("symbol")).upper()] = p
+                        if p.get("stock_id"):
+                            prices_by_stock[str(p.get("stock_id"))] = p
                 except Exception:
                     pass
 
@@ -111,9 +115,10 @@ class FavoriteService:
             response: List[Dict] = []
             for row in rows:
                 sid = row.get("stock_id")
-                profile = profiles_by_stock.get(sid, {})
+                stock_id_key = str(sid) if sid else ""
+                profile = profiles_by_stock.get(stock_id_key, {})
                 symbol = profile.get("symbol") or ""
-                price_row = prices_by_symbol.get(str(symbol).upper(), {})
+                price_row = prices_by_stock.get(stock_id_key, {})
 
                 # map price fields with safe defaults
                 current_price     = FavoriteService._to_float(price_row.get("current_price"))

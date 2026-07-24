@@ -77,12 +77,14 @@ def get_latest_historical_chart_data(
 ):
     """
     📈 Get exactly the latest 300 records for a specific interval
-    
-    This endpoint automatically syncs missing intra-day info and returns the latest available points:
+
+    The stock symbol is resolved through Stock.stock_symbol, then price rows
+    are queried from Stock_Price_1m or Stock_Price_1d by Stock.id.
+
     - **interval**: 15m, 1h, 1d (defaults to 15m)
     - Returns latest **300** records (fixed)
     
-    **Example:** `/api/stock-price/VNM?interval=1h`
+    **Example:** `/api/price/VNM?interval=1h`
     """
     request_id = str(uuid.uuid4())
     result = MarketService.get_stock_price_by_interval(symbol, interval=interval)
@@ -92,6 +94,40 @@ def get_latest_historical_chart_data(
         "errorDesc": "" if result else "No data found for the specified symbol and interval",
         "requestId": request_id,
         "result": bool(result)
+    }
+
+
+@router.get("/market-index-price/{index_id}", response_model=Any)
+def get_market_index_historical_values(
+    index_id: str,
+    interval: str = Query(
+        "15m",
+        description="Interval: 1m, 5m, 15m, 30m, 1h, 1d, 1w, or 1M",
+    ),
+):
+    """
+    Get the latest 300 historical values for a market index.
+
+    Intraday intervals are derived from MarketIndex_Value_1m. Daily, weekly,
+    and monthly intervals are derived from MarketIndex_Value_1d.
+
+    **Example:** `/api/market-index-price/VN100?interval=1d`
+    """
+    request_id = str(uuid.uuid4())
+    result = MarketService.get_market_index_value_by_interval(
+        index_id,
+        interval=interval,
+    )
+    return {
+        "data": result,
+        "errorCode": 0 if result else 500001,
+        "errorDesc": (
+            ""
+            if result
+            else "No historical data found for the specified market index and interval"
+        ),
+        "requestId": request_id,
+        "result": bool(result),
     }
     
 @router.post("/price/{symbol}", response_model=Any)
@@ -185,18 +221,42 @@ def get_industry_movement(
 @router.get("/market-index", response_model=Any)
 def get_market_indices():
     request_id = str(uuid.uuid4())
-    vnindex_result = MarketService.get_market_index(index_id="VNINDEX")
-    hnxindex_result = MarketService.get_market_index(index_id="HNXINDEX")
-    hnxupcomindex_result = MarketService.get_market_index(index_id="HNXUpcomIndex")
-    vn30_result = MarketService.get_market_index(index_id="VN30")
     vn100_result = MarketService.get_market_index(index_id="VN100")
+    vn30_result = MarketService.get_market_index(index_id="VN30")
 
     return {
-        "data": [ vnindex_result, hnxindex_result,hnxupcomindex_result, vn30_result, vn100_result ],
-        "errorCode": 0 if vnindex_result and hnxindex_result and vn30_result and vn100_result else 500001,
-        "errorDesc": "" if vnindex_result and hnxindex_result and vn30_result and vn100_result else "No data found for the specified index",
+        "data": [vn100_result,  vn30_result ],
+        "errorCode": 0 if vn30_result and vn100_result else 500001,
+        "errorDesc": "" if vn30_result and vn100_result else "No data found for the specified index",
         "requestId": request_id,
-        "result": bool(vnindex_result and hnxindex_result and vn30_result and vn100_result)
+        "result": bool(vn30_result and vn100_result)
+    }
+
+@router.get("/market-index/{index_id}/random-stocks", response_model=Any)
+def get_random_market_index_stocks(
+    index_id: str,
+    limit: int = Query(6, ge=1, le=20, description="Number of random stocks"),
+):
+    """
+    Get a random stock sample belonging to the specified market index.
+
+    **Example:** `/api/market-index/VN100/random-stocks?limit=6`
+    """
+    request_id = str(uuid.uuid4())
+    result = MarketService.get_random_market_index_stocks(
+        index_id=index_id,
+        limit=limit,
+    )
+    return {
+        "data": result,
+        "errorCode": 0 if result else 500001,
+        "errorDesc": (
+            ""
+            if result
+            else "No stocks found for the specified market index"
+        ),
+        "requestId": request_id,
+        "result": bool(result),
     }
 
 @router.get("/market-index/{index_id}", response_model=Any)

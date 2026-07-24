@@ -13,6 +13,8 @@ export interface MarketState {
   status: MarketStatus;
   /** Thời điểm mở cửa (hoặc mở lại phiên) kế tiếp. null khi đang giao dịch. */
   nextOpen: Date | null;
+  /** Thời điểm đóng cửa cuối ngày. Chỉ có giá trị khi đang giao dịch. */
+  closeAt: Date | null;
 }
 
 const OPEN = 9 * 60; // 09:00
@@ -57,10 +59,19 @@ const computeNextOpen = (now: Date, status: MarketStatus): Date | null => {
   return d;
 };
 
+const computeCloseAt = (
+  now: Date,
+  status: MarketStatus,
+  closeMinutes: number,
+): Date | null => {
+  if (status !== "open") return null;
+  return atTime(now, Math.floor(closeMinutes / 60), closeMinutes % 60);
+};
+
 /** Xác định trạng thái thị trường tại thời điểm `now` cho một chỉ số. */
 export const getMarketState = (
   indexId?: string,
-  now: Date = new Date()
+  now: Date = new Date(),
 ): MarketState => {
   const cur = minutesOfDay(now);
   const closeMinutes = getCloseMinutes(indexId);
@@ -77,7 +88,11 @@ export const getMarketState = (
     }
   }
 
-  return { status, nextOpen: computeNextOpen(now, status) };
+  return {
+    status,
+    nextOpen: computeNextOpen(now, status),
+    closeAt: computeCloseAt(now, status, closeMinutes),
+  };
 };
 
 const pad = (n: number): string => (n < 10 ? `0${n}` : `${n}`);

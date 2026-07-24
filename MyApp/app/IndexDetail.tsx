@@ -4,10 +4,13 @@ import React, { useCallback, useRef, useState } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { MarketIndex } from "@/helpers/MarketHelpers";
-import PriceChartComponent from "@/components/detail/PriceChartComponent";
+import IndexValueChartComponent from "@/components/detail/IndexValueChartComponent";
+import { useLocalization } from "@/hooks/LocalizationContext";
+import RelatedStocksSection from "@/components/detail/RelatedStocksSection";
 
 const IndexDetail = () => {
   const { theme } = useTheme();
+  const { t } = useLocalization();
   const { data } = useLocalSearchParams() || {};
   const indexItem: MarketIndex = data ? JSON.parse(data as string) : null;
 
@@ -34,7 +37,7 @@ const IndexDetail = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
-      <ScreenHeader title={indexItem?.IndexName ?? "Chi tiết chỉ số"} />
+      <ScreenHeader title={t("detail.marketDetailTitle")} />
       <ScrollView
         style={{
           flex: 1,
@@ -45,11 +48,19 @@ const IndexDetail = () => {
         }
       >
         {indexItem && (
-          <PriceChartComponent
-            symbol={indexItem?.IndexId}
-            isMarketIndex={true}
-            registerRefresh={registerRefresh}
-          />
+          <>
+            <IndexValueChartComponent
+              symbol={indexItem?.IndexId}
+              registerRefresh={registerRefresh}
+            />
+
+            <View style={{ marginTop: -12 }}>
+              <RelatedStocksSection
+                marketIndexId={indexItem.IndexId}
+                registerRefresh={registerRefresh}
+              />
+            </View>
+          </>
         )}
 
         <View style={{ height: 84 }} />

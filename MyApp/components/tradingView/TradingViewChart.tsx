@@ -32,6 +32,7 @@ type Props = {
   showVolume: boolean;
   technicalIndicatorMode1: string | null;
   technicalIndicatorMode2: string | null;
+  hideTooltip?: boolean;
 };
 
 const TradingViewChart = ({
@@ -48,6 +49,7 @@ const TradingViewChart = ({
   showVolume,
   technicalIndicatorMode1,
   technicalIndicatorMode2,
+  hideTooltip = false,
 }: Props) => {
   const { theme } = useTheme();
   const webViewRef = useRef<WebView>(null);
@@ -172,6 +174,33 @@ const TradingViewChart = ({
     [injectScript],
   );
 
+  const setTooltipHidden = useCallback(
+    (hidden: boolean) => {
+      const script = /*javascript*/ `
+        (function() {
+          try {
+            var styleId = "chart-tooltip-visibility-style";
+            var style = document.getElementById(styleId);
+            if (!style) {
+              style = document.createElement("style");
+              style.id = styleId;
+              style.textContent =
+                ".chart-tooltip-hidden .tooltip { display: none !important; }";
+              document.head.appendChild(style);
+            }
+            document.documentElement.classList.toggle(
+              "chart-tooltip-hidden",
+              ${hidden}
+            );
+          } catch (_e) {}
+        })();
+        true;
+      `;
+      injectScript(script);
+    },
+    [injectScript],
+  );
+
   const onMessage = useCallback(
     (event: WebViewMessageEvent) => {
       try {
@@ -180,7 +209,7 @@ const TradingViewChart = ({
           isChartReady.current = true;
           setTheme(theme.background.bg, theme.text.primary);
           // Push initial data as soon as chart signals ready
-          if (prices.length > 0 && volumes.length > 0) {
+          if (prices.length > 0) {
             updateChartData(
               prices,
               volumes,
@@ -194,8 +223,11 @@ const TradingViewChart = ({
             );
           }
           // Apply initial states
+          switchSeriesType(chartType);
           setVolumeVisible(showVolume);
+          setTechnicalIndicatorMode1(technicalIndicatorMode1);
           setTechnicalIndicatorMode2(technicalIndicatorMode2);
+          setTooltipHidden(hideTooltip);
         }
       } catch (_e) {
         console.error(_e);
@@ -207,10 +239,16 @@ const TradingViewChart = ({
       theme.text.primary,
       prices,
       volumes,
+      chartType,
+      switchSeriesType,
       setVolumeVisible,
       showVolume,
+      setTechnicalIndicatorMode1,
+      technicalIndicatorMode1,
       setTechnicalIndicatorMode2,
       technicalIndicatorMode2,
+      setTooltipHidden,
+      hideTooltip,
       updateChartData,
       volumeMAData,
       maData,
@@ -225,7 +263,7 @@ const TradingViewChart = ({
   // Update chart data whenever data or timeframe changes (after chart is ready)
   useEffect(() => {
     if (!isChartReady.current) return;
-    if (prices.length === 0 || volumes.length === 0) return;
+    if (prices.length === 0) return;
     updateChartData(
       prices,
       volumes,
@@ -269,6 +307,11 @@ const TradingViewChart = ({
     if (!isChartReady.current) return;
     setTechnicalIndicatorMode2(technicalIndicatorMode2);
   }, [technicalIndicatorMode2, setTechnicalIndicatorMode2]);
+
+  useEffect(() => {
+    if (!isChartReady.current) return;
+    setTooltipHidden(hideTooltip);
+  }, [hideTooltip, setTooltipHidden]);
 
   useEffect(() => {
     if (!isChartReady.current) return;

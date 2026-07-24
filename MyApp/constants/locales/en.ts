@@ -49,12 +49,14 @@ export default {
   },
   detail: {
     screenTitle: "Stock Detail",
+    marketDetailTitle: "Market Detail",
     newsSectionTitle: "News",
     newsSectionViewAll: "View All",
     newsSectionHotTitle: "What's hot for {symbol}?",
     AIAnalyze: "AI Analysis",
     buy: "Buy",
     relatedSectionTitle: "Related Stocks",
+    indexConstituentsTitle: "Index Constituents",
   },
   buyStock: {
     screenTitle: "Place Buy Order",
@@ -155,6 +157,7 @@ export default {
     candle: "Candle",
     candlePeriod: "Periods:",
     technicalIndicator: "Indicators:",
+    noData: "No chart data available",
   },
   detailHeader: {
     follow: "Watchlist",
@@ -170,6 +173,7 @@ export default {
     marketLunch: "Lunch break",
     marketClosed: "Closed",
     opensAt: "Opens at",
+    closesAt: "Closes at",
   },
   financialIndicators: {
     sectionTitle: "Financial Indicators",

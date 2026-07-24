@@ -183,6 +183,46 @@ export const fetchStockDataByTimeFrame = async (
 };
 
 //------------------------------------------------------------
+export type MarketIndexValueData = {
+  index_id: string;
+  trading_time: string;
+  value: number;
+};
+
+export const fetchIndexValueDataByTimeFrame = async (
+  indexId: string,
+  timeframe: "1m" | "5m" | "15m" | "30m" | "1h" | "1d" | "1w" | "1M",
+): Promise<{
+  status: boolean;
+  data: MarketIndexValueData[];
+}> => {
+  try {
+    const result = await sendMessage(
+      `api/market-index-price/${indexId}?interval=${timeframe}`,
+    );
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return {
+        status: true,
+        data: (data ?? []) as MarketIndexValueData[],
+      };
+    }
+
+    return {
+      status: false,
+      data: [],
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: [],
+    };
+  }
+};
+
+//------------------------------------------------------------
 export type CurrentPriceData = {
   stock_id: string;
   symbol: string;
@@ -241,6 +281,27 @@ export const fetchRelatedStocks = async (
 ): Promise<RelatedStockItem[]> => {
   try {
     const result = await sendMessage(`api/related-stocks/${symbol}`);
+
+    const { errorCode, data } = result || {};
+    if (errorCode === 0) {
+      return data as RelatedStockItem[];
+    }
+
+    return [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+};
+
+export const fetchRandomMarketIndexStocks = async (
+  indexId: string,
+  limit: number = 6,
+): Promise<RelatedStockItem[]> => {
+  try {
+    const result = await sendMessage(
+      `api/market-index/${indexId}/random-stocks?limit=${limit}`,
+    );
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {

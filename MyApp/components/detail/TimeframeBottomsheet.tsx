@@ -42,7 +42,8 @@ interface Props {
   selectedTimeframe: TIMEFRAME;
   onSelect: (value: TIMEFRAME) => void;
   onClose: () => void;
-  onLearnMore: () => void;
+  onLearnMore?: () => void;
+  showLearnMore?: boolean;
 }
 
 const TimeframeBottomSheet = ({
@@ -51,6 +52,7 @@ const TimeframeBottomSheet = ({
   onSelect,
   onClose,
   onLearnMore,
+  showLearnMore = true,
 }: Props) => {
   const { theme } = useTheme();
   const { t } = useLocalization();
@@ -205,29 +207,33 @@ const TimeframeBottomSheet = ({
           })}
         </View>
 
-        <View
-          style={{
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: theme.base.success,
-            backgroundColor: theme.base.success + "24",
-            padding: 12,
-            margin: 12,
-          }}
-        >
-          <Text typography="bodyMedium" color={theme.text.primary}>
-            {t("timeframe.description")}
-          </Text>
-          <TouchableOpacity onPress={() => onLearnMore()}>
-            <Text
-              typography="labelLarge"
-              color={theme.base.success}
-              style={{ textAlign: "right", marginTop: 8 }}
-            >
-              {t("timeframe.learnMore")}
+        {showLearnMore && onLearnMore ? (
+          <View
+            style={{
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: theme.base.success,
+              backgroundColor: theme.base.success + "24",
+              padding: 12,
+              margin: 12,
+            }}
+          >
+            <Text typography="bodyMedium" color={theme.text.primary}>
+              {t("timeframe.description")}
             </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity onPress={() => onLearnMore()}>
+              <Text
+                typography="labelLarge"
+                color={theme.base.success}
+                style={{ textAlign: "right", marginTop: 8 }}
+              >
+                {t("timeframe.learnMore")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ height: 12 }} />
+        )}
       </Animated.View>
     </Modal>
   );

@@ -11,7 +11,6 @@ import {
   StockPriceData,
   TechnicalIndicatorData,
   getTechnicalIndicators,
-  fetchCurrentIndexData,
   fetchCurrentPriceData,
 } from "@/helpers/DetailHelpers";
 import { TouchableOpacity, View, StyleSheet } from "react-native";
@@ -206,13 +205,11 @@ const skStyles = StyleSheet.create({
 // ─────────────────────────────────────────────
 interface Props {
   symbol: string;
-  isMarketIndex?: boolean;
   registerRefresh?: (fn: () => Promise<void>) => () => void;
 }
 
 const PriceChartComponent = ({
   symbol,
-  isMarketIndex = false,
   registerRefresh,
 }: Props) => {
   const { theme } = useTheme();
@@ -237,15 +234,13 @@ const PriceChartComponent = ({
     volume: false,
   });
 
-  // ── Current price/index header data ──────────────────────────────────
+  // ── Current stock-price header data ──────────────────────────────────
   const [data, setData] = useState<any>(null);
 
   const fetchHeaderData = useCallback(async () => {
-    const res = isMarketIndex
-      ? await fetchCurrentIndexData(symbol)
-      : await fetchCurrentPriceData(symbol);
+    const res = await fetchCurrentPriceData(symbol);
     if (res?.status) setData(res?.data);
-  }, [isMarketIndex, symbol]);
+  }, [symbol]);
 
   useEffect(() => {
     fetchHeaderData();
@@ -444,7 +439,6 @@ const PriceChartComponent = ({
     <View style={{ marginTop: 12 }}>
       <DetailHeader
         data={data}
-        isMarketIndex={isMarketIndex}
         chart={
           <View
             style={{
@@ -623,53 +617,50 @@ const PriceChartComponent = ({
 
               <View style={{ flex: 1 }} />
 
-              {!isMarketIndex && (
-                <>
-                  <Text typography="bodyMedium" color={theme.text.primary}>
-                    {t("priceChart.technicalIndicator")}
-                  </Text>
+              <Text typography="bodyMedium" color={theme.text.primary}>
+                {t("priceChart.technicalIndicator")}
+              </Text>
 
-                  <TouchableOpacity
-                    onPress={() => setShowIndicatorSheet(true)}
+              <TouchableOpacity
+                onPress={() => setShowIndicatorSheet(true)}
+                style={{
+                  backgroundColor: theme.background.bg,
+                  borderWidth: 1,
+                  borderColor: theme.border.default,
+                  paddingVertical: 4.5,
+                  paddingHorizontal: 8,
+                  borderRadius: 8,
+                  flexDirection: "row",
+                  alignItems: "center",
+                }}
+              >
+                <MaterialCommunityIcons
+                  name="finance"
+                  size={18}
+                  color={theme.text.primary}
+                />
+                {activeIndicatorCount > 0 && (
+                  <View
                     style={{
-                      backgroundColor: theme.background.bg,
-                      borderWidth: 1,
-                      borderColor: theme.border.default,
-                      paddingVertical: 4.5,
-                      paddingHorizontal: 8,
+                      width: 16,
+                      height: 16,
                       borderRadius: 8,
-                      flexDirection: "row",
                       alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: theme.base.primary,
+                      marginLeft: 4,
                     }}
                   >
-                    <MaterialCommunityIcons
-                      name="finance"
-                      size={18}
-                      color={theme.text.primary}
-                    />
-                    {activeIndicatorCount > 0 && (
-                      <View
-                        style={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: 8,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          backgroundColor: theme.base.primary,
-                          marginLeft: 4,
-                        }}
-                      >
-                        <Text
-                          typography="bodySmall"
-                          color={theme.text.onPrimary}
-                        >
-                          {activeIndicatorCount}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </>
-              )}
+                    <Text
+                      typography="bodySmall"
+                      color={theme.text.onPrimary}
+                    >
+                      {activeIndicatorCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
             </View>
           </View>
         }
