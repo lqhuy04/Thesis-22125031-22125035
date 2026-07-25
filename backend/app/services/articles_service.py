@@ -205,12 +205,10 @@ class ArticlesService:
     @staticmethod
     def get_business_articles(limit: Optional[int] = None) -> List[ArticlesResponse]:
         """
-        Return the latest stock-type articles linked to exactly one stock,
-        where that single linked stock belongs to VN100.
+        Return the latest stock-type articles linked to at least one VN100 stock.
+        Articles may be linked to multiple stocks.
         """
         try:
-            from collections import Counter
-
             normalized_limit = max(1, limit) if limit is not None else None
 
             vn100_symbols = set(get_index_symbols("VN100"))
@@ -230,95 +228,69 @@ class ArticlesService:
             ))
             if not vn100_stock_ids:
                 return []
+            vn100_stock_id_set = set(vn100_stock_ids)
 
-            # First collect candidate articles that have at least one VN100 link.
-            page_size = 1000
+            page_size = (
+                max(100, min(500, normalized_limit * 4))
+                if normalized_limit is not None
+                else 500
+            )
             offset = 0
-            candidate_article_ids: List[str] = []
-            while True:
-                link_result = (
-                    supabase.table("Article_Stock")
-                    .select("id, article_id")
-                    .in_("stock_id", vn100_stock_ids)
-                    .order("id", desc=False)
-                    .range(offset, offset + page_size - 1)
-                    .execute()
-                )
-                link_rows = link_result.data or []
-                if not link_rows:
-                    break
-
-                candidate_article_ids.extend(
-                    str(row.get("article_id"))
-                    for row in link_rows
-                    if row.get("article_id")
-                )
-                if len(link_rows) < page_size:
-                    break
-                offset += page_size
-
-            candidate_article_ids = list(dict.fromkeys(candidate_article_ids))
-            if not candidate_article_ids:
-                return []
-
-            # Count every link of each candidate, including links to stocks
-            # outside VN100. Only articles with exactly one total link qualify.
-            link_counts: Counter = Counter()
-            for start in range(0, len(candidate_article_ids), 100):
-                article_id_chunk = candidate_article_ids[start:start + 100]
-                chunk_offset = 0
-                while True:
-                    count_result = (
-                        supabase.table("Article_Stock")
-                        .select("id, article_id")
-                        .in_("article_id", article_id_chunk)
-                        .order("id", desc=False)
-                        .range(chunk_offset, chunk_offset + page_size - 1)
-                        .execute()
-                    )
-                    count_rows = count_result.data or []
-                    if not count_rows:
-                        break
-
-                    link_counts.update(
-                        str(row.get("article_id"))
-                        for row in count_rows
-                        if row.get("article_id")
-                    )
-                    if len(count_rows) < page_size:
-                        break
-                    chunk_offset += page_size
-
-            article_ids = [
-                article_id
-                for article_id in candidate_article_ids
-                if link_counts.get(article_id) == 1
-            ]
-            if not article_ids:
-                return []
-
             articles: List[ArticlesResponse] = []
-            for start in range(0, len(article_ids), 100):
+
+            while True:
                 article_result = (
                     supabase.table("Article")
                     .select("*")
-                    .in_("id", article_ids[start:start + 100])
                     .eq("article_type", "stock")
                     .order("time", desc=True)
+                    .order("id", desc=True)
+                    .range(offset, offset + page_size - 1)
                     .execute()
                 )
-                for payload in (article_result.data or []):
+                article_rows = article_result.data or []
+                if not article_rows:
+                    break
+
+                article_ids = [
+                    str(row.get("id"))
+                    for row in article_rows
+                    if row.get("id")
+                ]
+                linked_article_ids = set()
+
+                for start in range(0, len(article_ids), 100):
+                    link_result = (
+                        supabase.table("Article_Stock")
+                        .select("article_id, stock_id")
+                        .in_("article_id", article_ids[start:start + 100])
+                        .execute()
+                    )
+                    linked_article_ids.update(
+                        str(row.get("article_id"))
+                        for row in (link_result.data or [])
+                        if row.get("article_id")
+                        and str(row.get("stock_id")) in vn100_stock_id_set
+                    )
+
+                for payload in article_rows:
+                    if str(payload.get("id")) not in linked_article_ids:
+                        continue
                     try:
                         articles.append(ArticlesResponse(**payload))
                     except Exception:
                         continue
 
-            articles.sort(
-                key=lambda item: item.time.timestamp() if item.time else float("-inf"),
-                reverse=True,
-            )
-            if normalized_limit is not None:
-                return articles[:normalized_limit]
+                    if (
+                        normalized_limit is not None
+                        and len(articles) >= normalized_limit
+                    ):
+                        return articles
+
+                if len(article_rows) < page_size:
+                    break
+                offset += page_size
+
             return articles
 
         except Exception as e:
@@ -333,12 +305,11 @@ class ArticlesService:
         articles_per_stock: int = 2,
     ) -> List[dict]:
         """
-        Traverse latest articles for VN100 stocks, keep only exclusive articles
-        (1 symbol per article), collect latest unique stocks, and return each stock
-        with latest exclusive news.
+        Traverse latest articles for VN100 stocks, collect the latest unique
+        stocks, and return each stock with its latest related news.
         """
         try:
-            from collections import Counter, defaultdict
+            from collections import defaultdict
 
             stock_limit = max(1, stock_limit)
             articles_per_stock = max(1, articles_per_stock)
@@ -442,35 +413,26 @@ class ArticlesService:
                     cursor_id = last_row.get("id")
                     continue
 
-                tag_counts = Counter(
-                    str(row.get("article_id"))
-                    for row in links_data
-                    if row.get("article_id")
-                )
-
-                article_to_stock_id = {}
+                article_to_stock_ids = defaultdict(list)
                 for row in links_data:
                     article_id = str(row.get("article_id") or "")
                     stock_id = str(row.get("stock_id") or "")
                     if not article_id or not stock_id:
                         continue
-                    if tag_counts.get(article_id) != 1:
-                        continue
                     if stock_id not in vn100_stock_symbol_map:
                         continue
-                    article_to_stock_id[article_id] = stock_id
+                    if stock_id not in article_to_stock_ids[article_id]:
+                        article_to_stock_ids[article_id].append(stock_id)
 
                 for article in article_rows:
                     article_id = str(article.get("id") or "")
-                    stock_id = article_to_stock_id.get(article_id)
-                    if not stock_id:
-                        continue
+                    stock_ids = article_to_stock_ids.get(article_id, [])
+                    for stock_id in stock_ids:
+                        if stock_id not in stock_latest_time:
+                            stock_latest_time[stock_id] = article.get("time")
 
-                    if stock_id not in stock_latest_time:
-                        stock_latest_time[stock_id] = article.get("time")
-
-                    if len(stock_to_articles[stock_id]) < articles_per_stock:
-                        stock_to_articles[stock_id].append(article)
+                        if len(stock_to_articles[stock_id]) < articles_per_stock:
+                            stock_to_articles[stock_id].append(article)
 
                 if len(article_rows) < page_size:
                     break
@@ -572,14 +534,6 @@ class ArticlesService:
                     continue
 
                 stock_articles = stock_to_articles.get(stock_id, [])
-                if len(stock_articles) < articles_per_stock:
-                    # Fallback query to fetch up to 2 exclusive latest news for this stock.
-                    fallback_articles = ArticlesService.get_articles_by_stock_symbol(
-                        stock_symbol=stock_symbol,
-                        limit=articles_per_stock,
-                    )
-                    if fallback_articles:
-                        stock_articles = [article.dict() for article in fallback_articles]
 
                 profile = profile_map.get(stock_id, {})
                 price = price_map.get(stock_id, {})

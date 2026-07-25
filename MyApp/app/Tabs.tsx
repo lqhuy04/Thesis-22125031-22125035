@@ -6,7 +6,9 @@ import {
   Animated,
   Dimensions,
 } from "react-native";
-import PagerView from "react-native-pager-view";
+import PagerView, {
+  type PagerViewOnPageScrollEvent,
+} from "react-native-pager-view";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/ThemeContext";
 import Home from "./Home";
@@ -32,8 +34,13 @@ const Tabs = () => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
   const pagerRef = useRef<PagerView>(null);
+  const activeIndexRef = useRef(0);
+  const visitedTabsRef = useRef<Set<number>>(new Set([0]));
+  const navigationFrameRef = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [visitedTabs, setVisitedTabs] = useState<Set<number>>(new Set([0]));
+  const [visitedTabs, setVisitedTabs] = useState<Set<number>>(
+    () => new Set(visitedTabsRef.current),
+  );
 
   const TABS = [
     {
@@ -83,14 +90,75 @@ const Tabs = () => {
     [indicatorAnim],
   );
 
-  const handleTabPress = useCallback(
+  const markTabsVisited = useCallback((indexes: number[]) => {
+    const next = new Set(visitedTabsRef.current);
+    let changed = false;
+
+    indexes.forEach((index) => {
+      if (index >= 0 && index < TAB_COUNT && !next.has(index)) {
+        next.add(index);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      visitedTabsRef.current = next;
+      setVisitedTabs(next);
+    }
+  }, []);
+
+  const updateActiveTab = useCallback(
     (index: number) => {
-      pagerRef.current?.setPage(index);
+      if (activeIndexRef.current === index) return;
+
+      activeIndexRef.current = index;
       setActiveIndex(index);
-      setVisitedTabs((prev) => new Set(prev).add(index));
       animateTo(index);
     },
     [animateTo],
+  );
+
+  const handleTabPress = useCallback(
+    (index: number) => {
+      if (
+        index < 0 ||
+        index >= TAB_COUNT ||
+        index === activeIndexRef.current
+      ) {
+        return;
+      }
+
+      const distance = Math.abs(index - activeIndexRef.current);
+      markTabsVisited([index]);
+
+      if (navigationFrameRef.current !== null) {
+        cancelAnimationFrame(navigationFrameRef.current);
+      }
+
+      // Give React one frame to mount the target tab before PagerView reveals it.
+      navigationFrameRef.current = requestAnimationFrame(() => {
+        if (distance > 1) {
+          pagerRef.current?.setPageWithoutAnimation(index);
+        } else {
+          pagerRef.current?.setPage(index);
+        }
+
+        updateActiveTab(index);
+        navigationFrameRef.current = null;
+      });
+    },
+    [markTabsVisited, updateActiveTab],
+  );
+
+  const handlePageScroll = useCallback(
+    (event: PagerViewOnPageScrollEvent) => {
+      const { position, offset } = event.nativeEvent;
+      if (offset <= 0 || offset >= 1) return;
+
+      // During a swipe, these are the two pages currently entering the viewport.
+      markTabsVisited([position, position + 1]);
+    },
+    [markTabsVisited],
   );
 
   useEffect(() => {
@@ -98,6 +166,9 @@ const Tabs = () => {
     tabEvents.on(SWITCH_TAB_EVENT, handler);
     return () => {
       tabEvents.off(SWITCH_TAB_EVENT, handler);
+      if (navigationFrameRef.current !== null) {
+        cancelAnimationFrame(navigationFrameRef.current);
+      }
     };
   }, [handleTabPress]);
 
@@ -114,16 +185,22 @@ const Tabs = () => {
         ref={pagerRef}
         style={{ flex: 1 }}
         initialPage={0}
+        onPageScroll={handlePageScroll}
         onPageSelected={(e) => {
           const idx = e.nativeEvent.position;
-          setActiveIndex(idx);
-          setVisitedTabs((prev) => new Set(prev).add(idx));
-          animateTo(idx);
+          markTabsVisited([idx]);
+          updateActiveTab(idx);
         }}
         overdrag={false}
       >
         {TABS.map((tab, index) => (
-          <View key={tab.name} style={{ flex: 1 }}>
+          <View
+            key={tab.name}
+            style={{
+              flex: 1,
+              backgroundColor: theme.background.surface,
+            }}
+          >
             {visitedTabs.has(index) ? tab.component : null}
           </View>
         ))}

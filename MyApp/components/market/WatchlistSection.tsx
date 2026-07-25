@@ -20,6 +20,7 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import Entypo from "@expo/vector-icons/Entypo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ALL_VALUE } from "@/app/IndustryMovement";
+import { saveSearchHistory } from "@/helpers/SearchHelper";
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
@@ -185,6 +186,14 @@ const WatchlistSection = ({ registerRefresh }: Props) => {
     });
   }, []);
 
+  const goToStock = useCallback(async (symbol: string) => {
+    router.push({
+      pathname: "/Detail",
+      params: { data: symbol },
+    });
+    await saveSearchHistory(symbol);
+  }, []);
+
   const fetchFavorites = useCallback(async () => {
     const res = await getFavoritelist();
     if (res?.status) {
@@ -252,9 +261,7 @@ const WatchlistSection = ({ registerRefresh }: Props) => {
         )}
 
         <TouchableOpacity
-          onPress={() => {
-            router.push({ pathname: "/Detail", params: { data: item.symbol } });
-          }}
+          onPress={() => goToStock(item.symbol)}
           style={{
             flexDirection: "row",
             alignItems: "center",

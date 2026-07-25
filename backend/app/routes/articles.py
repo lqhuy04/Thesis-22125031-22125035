@@ -54,8 +54,8 @@ def get_business_articles(
     limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
 ):
     """
-    Lấy tin tức mới nhất có ``article_type = "stock"`` và liên kết với
-    đúng một mã cổ phiếu; mã duy nhất đó phải thuộc VN100.
+    Lấy tin tức mới nhất có ``article_type = "stock"`` và liên kết với ít nhất
+    một mã cổ phiếu thuộc VN100.
 
     - **limit**: Số lượng bài viết tối đa trả về
     """
@@ -73,7 +73,7 @@ def get_business_articles(
 def get_today_highlight_articles():
     """
     Lấy 10 mã cổ phiếu VN100 có tin mới nhất.
-    Mỗi mã trả về tối đa 2 bài mới nhất chỉ gắn với đúng 1 mã cổ phiếu.
+    Mỗi mã trả về tối đa 2 bài mới nhất có liên kết với mã cổ phiếu đó.
     """
     highlights = ArticlesService.get_today_highlight(stock_limit=10, articles_per_stock=2)
 

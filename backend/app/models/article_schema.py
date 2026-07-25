@@ -70,7 +70,7 @@ class TodayHighlightStockItem(BaseModel):
     CurrentPrice: float = Field(0.0, description="Current price")
     TotalMatchVol: float = Field(0.0, description="Total matched volume")
     TotalMatchVal: float = Field(0.0, description="Total matched value")
-    news: List[TodayHighlightNewsItem] = Field(default_factory=list, description="Latest exclusive news")
+    news: List[TodayHighlightNewsItem] = Field(default_factory=list, description="Latest related news")
 
 
 class TodayHighlightResponse(BaseModel):
