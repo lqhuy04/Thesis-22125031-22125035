@@ -2,12 +2,12 @@
 Market Data Routes
 FastAPI routes for SSI FC Data API integration
 """
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, Path
 import uuid
 from supabase_auth import Any
 from app.services.market_service import MarketService
 from app.models.market_data_schemas import SectorStockMovementResponse, InvestingIdeaResponse
-from app.middleware.auth_middleware import get_current_user
+from app.middleware.auth_middleware import get_current_user, get_current_admin
 
 
 router = APIRouter(prefix="/api", tags=["Market Data"], dependencies=[Depends(get_current_user)])
@@ -130,7 +130,10 @@ def get_market_index_historical_values(
     }
     
 @router.post("/price/{symbol}", response_model=Any)
-def update_price_data_for_symbol_with_time_interval(symbol: str):
+def update_price_data_for_symbol_with_time_interval(
+    symbol: str = Path(..., min_length=1, max_length=16, pattern=r"^[A-Za-z0-9._-]+$"),
+    current_admin: dict = Depends(get_current_admin),
+):
     """
     🔄 Manually trigger price data update for a stock symbol
     
