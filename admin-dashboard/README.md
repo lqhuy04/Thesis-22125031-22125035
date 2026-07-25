@@ -1,50 +1,38 @@
 # Admin Dashboard
 
-Dashboard web nho gon de admin thao tac nhanh voi API backend.
+Dashboard web nhỏ gọn để quản trị viên thao tác với API backend.
 
-## Tinh nang
+## Tính năng
 
-- Tai danh sach ma co phieu tu `GET /api/all-symbol`
-- Chon ma co phieu va goi `POST /api/price/{symbol}` de cap nhat gia moi nhat
-- Goi `POST /api/articles/update` de cap nhat tin tuc
-- Tuy chon cap nhat tin tuc theo ma: `POST /api/articles/update?symbol=VNM`
-- Hien thi JSON response va lich su thao tac
-- Chay Backtest pipeline (chi admin) va truc quan hoa
-- Phan tich AI (chi admin): 1 ma, hoac ca ro VN30 / VN100
+- Tải danh sách mã cổ phiếu từ `GET /api/all-symbol`.
+- Cập nhật giá và tin tức.
+- Chạy backtest pipeline và phân tích AI dành riêng cho admin.
+- Xem kết quả JSON, lịch sử thao tác và biểu đồ.
 
-## Dang nhap admin (tu dong)
+## Đăng nhập admin
 
-Cac API backtest / phan tich AI yeu cau quyen admin. Dashboard tu dong dang nhap
-khi mo bang cach goi `POST /api/auth/admin-login` — backend dung credential trong
-`.env` (`ADMIN_EMAIL`, `ADMIN_PASSWORD`) nen credential khong nam trong frontend.
+Dashboard hiển thị form email/mật khẩu, gửi thông tin tới
+`POST /api/auth/login`, rồi xác minh quyền qua `GET /api/auth/admin-session`.
+Access token và refresh token chỉ được giữ trong bộ nhớ của trang.
 
-Yeu cau:
+Yêu cầu:
 
-1. Tao 1 tai khoan trong bang `User`, set `role = 'admin'` va `status = 'verified'`.
-2. Dat `ADMIN_EMAIL` va `ADMIN_PASSWORD` trong `backend/.env` khop voi tai khoan do.
-3. Them origin cua dashboard vao `CORS_ORIGINS` (mac dinh da co `http://localhost:5500`,
-   `http://127.0.0.1:5500`).
+1. Tạo tài khoản trong bảng `User`, đặt `role = 'admin'` và
+   `status = 'verified'`.
+2. Thêm origin của dashboard vào `CORS_ORIGINS`, ví dụ
+   `http://localhost:5500` và `http://127.0.0.1:5500`.
 
-Trang thai dang nhap hien o goc phai thanh tab. Token het han se tu dong dang nhap lai.
+Không đặt mật khẩu admin, API key hoặc giá trị `.env` trong file frontend.
+Khi token hết hạn, dashboard sẽ yêu cầu đăng nhập lại.
 
-## Chay dashboard
+## Chạy dashboard
 
-1. Chay backend FastAPI o cong `8000`.
-2. Chay static server:
+1. Chạy backend FastAPI ở cổng `8000`.
+2. Trong thư mục `admin-dashboard`, chạy:
 
 ```bash
 python -m http.server 5500
 ```
 
-3. Mo trinh duyet:
-
-- Neu dang o trong folder `admin-dashboard` khi chay lenh:
-
-	- `http://localhost:5500/`
-	- `http://localhost:5500/index.html`
-
-- Neu chay lenh tu thu muc goc workspace:
-
-	- `http://localhost:5500/admin-dashboard/`
-
-4. Neu backend khong o `http://localhost:8000`, sua o o `API Base URL` tren giao dien.
+3. Mở `http://localhost:5500/`.
+4. Nếu backend không ở `http://localhost:8000`, sửa ô `API Base URL`.

@@ -16,14 +16,16 @@ async def _deliver_email(to_email: str, subject: str, text_body: str, html_body:
     ra console (hữu ích khi chạy local).
     """
     if not settings.RESEND_API_KEY:
-        print("\n" + "=" * 60)
-        print("EMAIL (Development Mode - no RESEND_API_KEY configured)")
-        print("=" * 60)
-        print(f"To: {to_email}")
-        print(f"Subject: {subject}")
-        print(text_body)
-        print("=" * 60 + "\n")
-        return True
+        if settings.DEBUG:
+            print("\n" + "=" * 60)
+            print("EMAIL (Development Mode - no RESEND_API_KEY configured)")
+            print("=" * 60)
+            print(f"To: {to_email}")
+            print(f"Subject: {subject}")
+            print(text_body)
+            print("=" * 60 + "\n")
+            return True
+        raise RuntimeError("Email delivery is not configured")
 
     payload = {
         "from": settings.FROM_EMAIL,

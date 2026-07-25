@@ -3,7 +3,7 @@ from app.config import settings
 from app.utils.password import hash_password, verify_password
 from app.utils.token import create_access_token, create_refresh_token, verify_token
 from app.utils.email import send_reset_email, send_verification_email
-from app.utils.otp import OTPService
+from app.utils.otp import OTPResendCooldownError, OTPService
 from app.services.redis_session_service import RedisSessionService
 import asyncio
 import httpx
@@ -85,28 +85,6 @@ class AuthService:
         }
 
     @staticmethod
-    async def admin_login():
-        """
-        Log in with the server-side admin credentials (settings.ADMIN_EMAIL /
-        ADMIN_PASSWORD) and verify the account has role = 'admin'. Used by the
-        admin dashboard so credentials never live in frontend code.
-        """
-        email = settings.ADMIN_EMAIL
-        password = settings.ADMIN_PASSWORD
-        if not email or not password:
-            raise ValueError("Admin credentials are not configured on the server")
-
-        result = await AuthService.login(email, password)
-
-        role_result = supabase.table("User").select("role").eq("email", email).execute()
-        role = role_result.data[0].get("role") if role_result.data else None
-        if role != "admin":
-            raise ValueError("Configured account does not have admin privileges")
-
-        result["role"] = role
-        return result
-
-    @staticmethod
     async def verify_email(email: str, otp: str):
         user_result = supabase.table("User").select("*").eq("email", email).execute()
 
@@ -140,8 +118,12 @@ class AuthService:
         if user.get("status") == "verified":
             return {"message": "Email already verified"}
 
-        await OTPService.delete_otp_for_purpose(email, "verify-email")
-        verification_otp = await OTPService.generate_and_store_otp_for_purpose(email, "verify-email")
+        try:
+            verification_otp = await OTPService.generate_and_store_otp_for_purpose(
+                email, "verify-email"
+            )
+        except OTPResendCooldownError:
+            return {"message": "If the email exists, a new verification OTP has been sent"}
         await send_verification_email(email, verification_otp)
 
         return {"message": "If the email exists, a new verification OTP has been sent"}
@@ -192,7 +174,10 @@ class AuthService:
         user = user_result.data[0]
         
         # Generate OTP and store in Redis
-        otp = await OTPService.generate_and_store_otp(email)
+        try:
+            otp = await OTPService.generate_and_store_otp(email)
+        except OTPResendCooldownError:
+            return {"message": "If the email exists, an OTP has been sent"}
         
         # Send OTP via email
         await send_reset_email(email, otp)
@@ -296,12 +281,13 @@ class AuthService:
             # Don't reveal if user exists or not
             return {"message": "If the email exists, a new OTP has been sent"}
         
-        # Delete old OTP if exists
-        await OTPService.delete_otp(email)
         await OTPService.delete_reset_session(email)
         
         # Generate new OTP and store in Redis
-        otp = await OTPService.generate_and_store_otp(email)
+        try:
+            otp = await OTPService.generate_and_store_otp(email)
+        except OTPResendCooldownError:
+            return {"message": "If the email exists, a new OTP has been sent"}
         
         # Send OTP via email
         await send_reset_email(email, otp)
@@ -368,7 +354,7 @@ class AuthService:
             }
             
         except Exception as e:
-            raise ValueError(f"Google authentication failed: {str(e)}")
+            raise ValueError("Google authentication failed") from e
     
     @staticmethod
     async def refresh_access_token(refresh_token: str):
@@ -379,7 +365,7 @@ class AuthService:
         try:
             payload = verify_token(refresh_token, "refresh")
         except ValueError as e:
-            raise ValueError(f"Invalid refresh token: {str(e)}")
+            raise ValueError("Invalid refresh token") from e
 
         user_id = payload.get("user_id")
         email = payload.get("email")
@@ -409,7 +395,7 @@ class AuthService:
         try:
             payload = verify_token(refresh_token, "refresh")
         except ValueError as e:
-            raise ValueError(f"Invalid refresh token: {str(e)}")
+            raise ValueError("Invalid refresh token") from e
 
         user_id = payload.get("user_id")
 
@@ -423,7 +409,7 @@ class AuthService:
     async def verify_google_token(token: str):
         """Helper method to verify Google OAuth token and return user info"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
                     f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}"
                 )
@@ -431,13 +417,13 @@ class AuthService:
                     raise ValueError("Invalid Google token")
                 return response.json()
         except Exception as e:
-            raise ValueError(f"Token verification failed: {str(e)}")
+            raise ValueError("Token verification failed") from e
     
     @staticmethod
     async def verify_facebook_token(token: str):
         """Helper method to verify Facebook access token"""
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(
                     f"https://graph.facebook.com/me?access_token={token}&fields=id,email,name,picture"
                 )
@@ -445,4 +431,4 @@ class AuthService:
                     raise ValueError("Invalid Facebook token")
                 return response.json()
         except Exception as e:
-            raise ValueError(f"Token verification failed: {str(e)}")
+            raise ValueError("Token verification failed") from e
