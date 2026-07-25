@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, model_validator
 # ─── Shared ───────────────────────────────────────────────────────────────────
 
 class RiskAppetite(BaseModel):
-    period: str = Field(description="Kỳ hạn đầu tư, ví dụ: 'Ngắn hạn (Dưới 1 năm)'")
+    period: str = Field(min_length=1, max_length=100, description="Kỳ hạn đầu tư, ví dụ: 'Ngắn hạn (Dưới 1 năm)'")
 
 
 # ─── Data selection (toggle nguồn dữ liệu cho AI) ──────────────────────────────
@@ -71,8 +71,8 @@ class DataSelection(BaseModel):
 # ─── /analyze (API mode) ──────────────────────────────────────────────────────
 
 class StockAnalysisRequest(BaseModel):
-    mode: str = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
-    symbol: str = Field(description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
+    mode: Literal["auto", "manual"] = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
+    symbol: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9._-]+$", description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
     risk_appetite: RiskAppetite
     data_selection: DataSelection = Field(
         default_factory=DataSelection,
@@ -84,13 +84,16 @@ class StockAnalysisRequest(BaseModel):
 
 class AdminAnalysisRequest(BaseModel):
     """Như /analyze nhưng dành cho admin và hỗ trợ chạy theo rổ chỉ số."""
-    mode: str = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
-    universe: str | None = Field(
+    mode: Literal["auto", "manual"] = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
+    universe: Literal["VN30", "VN100"] | None = Field(
         default=None,
         description="Rổ phân tích: 'VN30' | 'VN100'. Bỏ trống = phân tích 1 mã (symbol).",
     )
     symbol: str | None = Field(
         default=None,
+        min_length=1,
+        max_length=16,
+        pattern=r"^[A-Za-z0-9._-]+$",
         description="Mã cổ phiếu khi không dùng rổ, ví dụ: VNM, FPT, VIC",
     )
     risk_appetite: RiskAppetite
@@ -111,9 +114,12 @@ class InvestmentRecommendation(BaseModel):
 
 class ChatRequest(BaseModel):
     session_id: str = Field(
+        min_length=36,
+        max_length=36,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
         description="ID phiên hội thoại. Client tự tạo (UUID) và giữ nguyên suốt cuộc trò chuyện."
     )
-    message: str = Field(description="Tin nhắn của user")
+    message: str = Field(min_length=1, max_length=4000, description="Tin nhắn của user")
 
 
 class ChatResponse(BaseModel):
@@ -131,7 +137,10 @@ class ChatSeedRequest(BaseModel):
     có đầy đủ ngữ cảnh phân tích mà không phải chạy lại pipeline.
     """
     session_id: str = Field(
+        min_length=36,
+        max_length=36,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
         description="ID phiên hội thoại. Client tự tạo (UUID) và giữ nguyên suốt cuộc trò chuyện."
     )
-    user_message: str = Field(description="Câu hỏi của user cho lượt đầu tiên")
-    assistant_message: str = Field(description="Nội dung phân tích dựng sẵn làm câu trả lời của trợ lý")
+    user_message: str = Field(min_length=1, max_length=4000, description="Câu hỏi của user cho lượt đầu tiên")
+    assistant_message: str = Field(min_length=1, max_length=20000, description="Nội dung phân tích dựng sẵn làm câu trả lời của trợ lý")
