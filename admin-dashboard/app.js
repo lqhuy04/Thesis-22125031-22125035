@@ -89,6 +89,14 @@ const els = {
 
   // Admin auth
   adminAuthBadge: document.getElementById("adminAuthBadge"),
+  adminLoginCard: document.getElementById("adminLoginCard"),
+  adminLoginForm: document.getElementById("adminLoginForm"),
+  adminApiBaseUrl: document.getElementById("adminApiBaseUrl"),
+  adminEmail: document.getElementById("adminEmail"),
+  adminPassword: document.getElementById("adminPassword"),
+  adminLoginBtn: document.getElementById("adminLoginBtn"),
+  adminLoginError: document.getElementById("adminLoginError"),
+  adminLogoutBtn: document.getElementById("adminLogoutBtn"),
 
   // Analyze tab
   tabAnalyzeBtn: document.getElementById("tab-analyze-btn"),
@@ -116,8 +124,9 @@ const els = {
   exportAnalyzeCsvBtn: document.getElementById("exportAnalyzeCsvBtn"),
 };
 
-// Admin auth token obtained via POST /api/auth/admin-login
+// Tokens remain in memory only. Never put credentials or tokens in web storage.
 let adminToken = null;
+let adminRefreshToken = null;
 let analyzeSummaryData = [];
 
 let symbolsLoaded = false;
@@ -199,7 +208,7 @@ function parseSymbolList(payload) {
     .filter(Boolean);
 }
 
-async function requestJson(url, options = {}, _isRetry = false) {
+async function requestJson(url, options = {}) {
   const response = await fetch(url, {
     method: options.method || "GET",
     headers: {
@@ -211,12 +220,8 @@ async function requestJson(url, options = {}, _isRetry = false) {
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
   });
 
-  // Access token expired/revoked → re-login once and retry transparently.
-  if (response.status === 401 && !_isRetry) {
-    const ok = await adminLogin();
-    if (ok) {
-      return requestJson(url, options, true);
-    }
+  if (response.status === 401) {
+    clearAdminSession("Phiên đăng nhập đã hết hạn.");
   }
 
   let body;
@@ -235,7 +240,7 @@ async function requestJson(url, options = {}, _isRetry = false) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ADMIN AUTO-LOGIN
+// ADMIN LOGIN
 // ─────────────────────────────────────────────────────────────────────────────
 function setAdminAuthBadge(type, text) {
   if (!els.adminAuthBadge) return;
@@ -244,36 +249,96 @@ function setAdminAuthBadge(type, text) {
   els.adminAuthBadge.textContent = text;
 }
 
-async function adminLogin() {
-  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
-  if (!baseUrl) return false;
+function clearAdminSession(message = "") {
+  adminToken = null;
+  adminRefreshToken = null;
+  els.adminPassword.value = "";
+  els.adminLoginError.textContent = message;
+  els.adminLoginCard.hidden = false;
+  document.body.classList.add("auth-required");
+  setAdminAuthBadge("error", "Chưa đăng nhập");
+}
 
-  setAdminAuthBadge("running", "Đang đăng nhập admin...");
+function showAdminDashboard(email) {
+  els.adminLoginError.textContent = "";
+  els.adminPassword.value = "";
+  els.adminLoginCard.hidden = true;
+  document.body.classList.remove("auth-required");
+  setAdminAuthBadge("ok", email || "Admin đã đăng nhập");
+}
+
+async function adminLogin(event) {
+  event?.preventDefault();
+  const baseUrl = normalizeBaseUrl(els.adminApiBaseUrl.value);
+  const email = els.adminEmail.value.trim();
+  const password = els.adminPassword.value;
+  if (!baseUrl || !email || !password) return false;
+
+  els.baseUrl.value = baseUrl;
+  els.adminLoginBtn.disabled = true;
+  els.adminLoginError.textContent = "";
+  setAdminAuthBadge("running", "Đang đăng nhập...");
+
   try {
-    // Send without the (possibly stale) Authorization header.
-    const response = await fetch(`${baseUrl}/api/auth/admin-login`, {
+    const loginResponse = await fetch(`${baseUrl}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ email, password }),
     });
-    const payload = await response.json();
-
-    if (response.ok && payload?.result && payload?.data?.token) {
-      adminToken = payload.data.token;
-      setAdminAuthBadge("ok", "Admin đã đăng nhập");
-      appendLog("Đăng nhập admin thành công.");
-      return true;
+    const loginPayload = await loginResponse.json();
+    if (!loginResponse.ok || !loginPayload?.result || !loginPayload?.data?.token) {
+      throw new Error(loginPayload?.errorDesc || "Đăng nhập không thành công.");
     }
 
-    adminToken = null;
-    const msg = payload?.errorDesc || response.statusText;
-    setAdminAuthBadge("error", "Đăng nhập admin lỗi");
-    appendLog(`Đăng nhập admin thất bại: ${msg}`);
-    return false;
+    const candidateToken = loginPayload.data.token;
+    const candidateRefreshToken = loginPayload.data.refresh_token || null;
+    const sessionResponse = await fetch(`${baseUrl}/api/auth/admin-session`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${candidateToken}`,
+      },
+    });
+    const sessionPayload = await sessionResponse.json();
+    if (!sessionResponse.ok || !sessionPayload?.result || sessionPayload?.data?.role !== "admin") {
+      if (candidateRefreshToken) {
+        await fetch(`${baseUrl}/api/auth/logout`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ refresh_token: candidateRefreshToken }),
+        });
+      }
+      throw new Error("Tài khoản không có quyền quản trị.");
+    }
+
+    adminToken = candidateToken;
+    adminRefreshToken = candidateRefreshToken;
+    showAdminDashboard(sessionPayload.data.email);
+    appendLog("Đăng nhập admin thành công.");
+    if (!symbolsLoaded) loadSymbols();
+    loadCloudHistory();
+    return true;
   } catch (error) {
-    adminToken = null;
-    setAdminAuthBadge("error", "Đăng nhập admin lỗi");
-    appendLog(`Lỗi đăng nhập admin: ${error.message}`);
+    clearAdminSession(error.message);
+    appendLog(`Đăng nhập admin thất bại: ${error.message}`);
     return false;
+  } finally {
+    els.adminLoginBtn.disabled = false;
+  }
+}
+
+async function adminLogout() {
+  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
+  const refreshToken = adminRefreshToken;
+  clearAdminSession("Đã đăng xuất.");
+  if (!baseUrl || !refreshToken) return;
+  try {
+    await fetch(`${baseUrl}/api/auth/logout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  } catch {
+    // Local credentials are already cleared; server expiry is the fallback.
   }
 }
 
@@ -824,11 +889,8 @@ async function loadCloudHistory() {
         item.querySelector(".btn-view-cloud").addEventListener("click", async () => {
           appendLog(`Đang tải dữ liệu backtest ${file.name} từ Cloud...`);
           try {
-            const dataResponse = await fetch(file.json_url);
-            if (!dataResponse.ok) {
-              throw new Error(`HTTP error ${dataResponse.status}`);
-            }
-            const vizData = await dataResponse.json();
+            const fileUrl = new URL(file.json_url, `${baseUrl}/`).toString();
+            const vizData = await requestJson(fileUrl);
             
             if (!vizData.symbol || !vizData.ohlc_data || !vizData.trades || !vizData.metrics) {
               throw new Error("Cấu trúc file JSON không khớp với chuẩn dữ liệu Visualization.");
@@ -1561,11 +1623,8 @@ async function runAnalyze() {
     return;
   }
   if (!adminToken) {
-    const ok = await adminLogin();
-    if (!ok) {
-      alert("Chưa đăng nhập admin. Kiểm tra ADMIN_EMAIL/ADMIN_PASSWORD ở backend.");
-      return;
-    }
+    alert("Vui lòng đăng nhập bằng tài khoản quản trị.");
+    return;
   }
 
   const source = getAnalyzeSource();
@@ -1688,6 +1747,8 @@ els.exportVn30CsvBtn.addEventListener("click", exportVn30Csv);
 els.refreshCloudHistoryBtn.addEventListener("click", loadCloudHistory);
 els.runAnalyzeBtn.addEventListener("click", runAnalyze);
 els.exportAnalyzeCsvBtn.addEventListener("click", exportAnalyzeCsv);
+els.adminLoginForm.addEventListener("submit", adminLogin);
+els.adminLogoutBtn.addEventListener("click", adminLogout);
 
 window.addEventListener("DOMContentLoaded", async () => {
   appendLog("Dashboard đã khởi tạo.");
@@ -1704,9 +1765,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   // AI analyze tab controls init
   initAnalyzeControls();
 
-  // Auto-login as admin so protected endpoints (backtest, admin-analyze) work.
-  await adminLogin();
-
   // Disable text symbol input if VN30 option is checked
   els.vn30Option.addEventListener("change", (e) => {
     els.backtestSymbol.disabled = e.target.checked;
@@ -1717,11 +1775,5 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Auto-load symbols once to reduce manual actions for admin.
-  if (!symbolsLoaded) {
-    loadSymbols();
-  }
-
-  // Load cloud backtest history
-  loadCloudHistory();
+  clearAdminSession();
 });

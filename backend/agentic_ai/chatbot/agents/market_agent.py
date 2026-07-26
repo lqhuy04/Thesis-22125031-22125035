@@ -14,6 +14,7 @@ Mọi SQL đều đi qua sql_runner.sanitize_sql() — LLM không bao giờ ch�
 """
 
 import json
+import re
 import unicodedata
 from datetime import datetime, timezone, timedelta
 
@@ -53,7 +54,9 @@ def _fallback_sql_for_symbol(symbol: str) -> str:
     Lấy bảng tổng quan cơ bản FA_Summary của mã đó — luôn có dữ liệu để đánh giá,
     không phụ thuộc vào quyết định bỏ cuộc thiếu ổn định của LLM.
     """
-    sym = symbol.strip().upper().replace("'", "")
+    sym = symbol.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9._-]{1,16}", sym):
+        return ""
     return (
         'SELECT * FROM "FA_Summary" '
         'WHERE stock_id = (SELECT id FROM "Stock" '

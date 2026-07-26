@@ -240,7 +240,7 @@ def run_full_backtest(
             pipeline_results=pipeline_results,
         )
 
-        visualization_file = f"/visualizations/{json_output_filename}"
+        visualization_file = f"/api/agentic/backtests/local/{json_output_filename}"
         visualization_data = get_backtest_visualization_data(
             df=scored_1d,
             trades=full_trades,

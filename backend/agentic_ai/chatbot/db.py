@@ -5,7 +5,7 @@ Dùng bởi:
   - PostgresSaver (lịch sử hội thoại) trong graph.py
   - ChatSessionService (bảng chat_sessions: map user ↔ session)
 
-Cả hai cùng nằm trong DB Supabase, quản lý chung một pool cho gọn.
+Generated market-data SQL uses a separate, least-privilege pool.
 """
 
 import atexit
@@ -29,6 +29,8 @@ _pool = ConnectionPool(
     },
 )
 _opened = False
+_query_pool: ConnectionPool | None = None
+_query_opened = False
 
 
 def get_pool() -> ConnectionPool:
@@ -40,16 +42,48 @@ def get_pool() -> ConnectionPool:
     return _pool
 
 
+def get_query_pool() -> ConnectionPool:
+    """Return the least-privilege pool used for AI-generated SELECT queries."""
+    global _query_pool, _query_opened
+    conninfo = settings.CHATBOT_READONLY_DB_URL
+    if not conninfo and settings.DEBUG:
+        conninfo = settings.SUPABASE_DB_URL
+    if not conninfo:
+        raise RuntimeError(
+            "CHATBOT_READONLY_DB_URL is required outside development."
+        )
+    if _query_pool is None:
+        _query_pool = ConnectionPool(
+            conninfo=conninfo,
+            min_size=0,
+            max_size=4,
+            num_workers=1,
+            open=False,
+            kwargs={
+                "autocommit": True,
+                "prepare_threshold": 0,
+                "connect_timeout": 10,
+            },
+        )
+    if not _query_opened:
+        _query_pool.open()
+        _query_opened = True
+    return _query_pool
+
+
 def close_pool() -> None:
     """Đóng pool khi app tắt (gọi ở shutdown handler).
 
     timeout=15: nới rộng thời gian chờ worker dừng (mặc định 5s) để tránh cảnh báo
     "couldn't stop thread ... within 5.0 seconds" khi connection Supabase đóng chậm.
     """
-    global _opened
+    global _opened, _query_opened
     if _opened:
         _pool.close(timeout=15.0)
         _opened = False
+    if _query_pool is not None and _query_opened:
+        _query_pool.close(timeout=15.0)
+        _query_opened = False
 
 
 # Đóng pool tường minh lúc interpreter thoát. Cần thiết vì khi bấm Ctrl+C trên

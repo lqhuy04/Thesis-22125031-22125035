@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     # Connection string Postgres của Supabase (khác SUPABASE_URL là REST endpoint).
     # Dùng cho LangGraph PostgresSaver lưu lịch sử chat.
     SUPABASE_DB_URL: str = ""
+    # Dedicated SELECT-only role for AI-generated market queries.
+    CHATBOT_READONLY_DB_URL: str = ""
     
     # JWT
     JWT_SECRET: str
@@ -58,6 +60,7 @@ class Settings(BaseSettings):
     # CORS — danh sách origin (cách nhau bởi dấu phẩy) được phép gọi từ trình duyệt.
     # App mobile không bị CORS kiểm soát; cấu hình này dành cho web admin / Expo web.
     CORS_ORIGINS: str = "http://localhost:8081,http://localhost:3000,http://localhost:5500,http://127.0.0.1:5500"
+    MAX_REQUEST_BODY_BYTES: int = 1_048_576
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -81,13 +84,6 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str
     OPENAI_API_KEY: str = ""
     CHATBOT_API_KEY: str = ""
-
-    # Admin dashboard auto-login. The static admin dashboard calls
-    # POST /api/auth/admin-login (no body); the server logs in with these
-    # credentials so they never live in frontend code. The account must have
-    # role = 'admin' in the User table.
-    ADMIN_EMAIL: str = ""
-    ADMIN_PASSWORD: str = ""
 
     # Serper
     SERPER_API_URL: str = "https://google.serper.dev/search"

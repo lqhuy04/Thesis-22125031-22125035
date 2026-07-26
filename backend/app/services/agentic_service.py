@@ -4,6 +4,7 @@ app/services/agentic_service.py
 
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Lock
 
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -11,13 +12,30 @@ from agentic_ai.chatbot.graph import build_chatbot_graph
 from agentic_ai.analyze.graph import build_graph
 from app.services.chat_session_service import ChatSessionService
 
-# Graph được khởi tạo một lần duy nhất khi server start
-# tránh tạo lại connection mỗi request
-_graph = build_graph()
-_chatbot_graph = build_chatbot_graph()
+# Heavyweight graphs and their database checkpointer are initialized only when
+# first used. Importing the API must not open an external database connection.
+_graph = None
+_chatbot_graph = None
+_graph_lock = Lock()
 
-# Đảm bảo bảng chat_sessions tồn tại (idempotent)
-ChatSessionService.ensure_table()
+
+def _get_analysis_graph():
+    global _graph
+    if _graph is None:
+        with _graph_lock:
+            if _graph is None:
+                _graph = build_graph()
+    return _graph
+
+
+def _get_chatbot_graph():
+    global _chatbot_graph
+    if _chatbot_graph is None:
+        with _graph_lock:
+            if _chatbot_graph is None:
+                ChatSessionService.ensure_table()
+                _chatbot_graph = build_chatbot_graph()
+    return _chatbot_graph
 
 
 # ─── API mode ────────────────────────────────────────────────────────────────
@@ -52,7 +70,7 @@ def run_stock_analysis(
         "error": None,
     }
 
-    result = _graph.invoke(initial_state)
+    result = _get_analysis_graph().invoke(initial_state)
 
     if result.get("error"):
         raise RuntimeError(result["error"])
@@ -161,7 +179,7 @@ def run_chat(session_id: str, message: str, user_id: str) -> str:
     }
 
     # thread_id = session_id → LangGraph tự load/save history qua PostgresSaver
-    result = _chatbot_graph.invoke(
+    result = _get_chatbot_graph().invoke(
         initial_state, config={"configurable": {"thread_id": session_id}}
     )
 
@@ -200,7 +218,7 @@ def seed_chat_session(
         raise PermissionError("Session không thuộc về người dùng này.")
 
     # Ghi cặp message vào lịch sử (add_messages reducer sẽ nối vào state)
-    _chatbot_graph.update_state(
+    _get_chatbot_graph().update_state(
         config={"configurable": {"thread_id": session_id}},
         values={
             "messages": [
@@ -226,7 +244,7 @@ def get_chat_history(session_id: str, user_id: str) -> list[dict]:
     if owner != user_id:
         raise PermissionError("Session không thuộc về người dùng này.")
 
-    snapshot = _chatbot_graph.get_state(
+    snapshot = _get_chatbot_graph().get_state(
         config={"configurable": {"thread_id": session_id}}
     )
     messages = (snapshot.values or {}).get("messages", []) if snapshot else []

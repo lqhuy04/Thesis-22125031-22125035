@@ -16,7 +16,7 @@ import re
 
 from psycopg.rows import dict_row
 
-from agentic_ai.chatbot.db import get_pool
+from agentic_ai.chatbot.db import get_query_pool
 
 # ─── Cấu hình guardrail ───────────────────────────────────────────────────────
 
@@ -50,6 +50,7 @@ ALLOWED_TABLES: set[str] = {
 
 MAX_ROWS = 100            # Số dòng tối đa trả về (chống ngốn token + lạm dụng)
 STATEMENT_TIMEOUT_MS = 4000  # Hủy query chạy quá lâu
+MAX_SQL_LENGTH = 12_000
 
 # Từ khóa bị cấm tuyệt đối (ghi/thay đổi dữ liệu hoặc lệnh nguy hiểm).
 _FORBIDDEN_KEYWORDS = re.compile(
@@ -64,6 +65,31 @@ _TABLE_REF = re.compile(
     r'\b(?:from|join)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?',
     re.IGNORECASE,
 )
+_CTE_NAME = re.compile(
+    r'(?:\bwith|,)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\s+as\s*\(',
+    re.IGNORECASE,
+)
+
+_FUNCTION_CALL = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", re.IGNORECASE)
+_LIMIT = re.compile(r"\blimit\s+(\d+)\b", re.IGNORECASE)
+_DISALLOWED_CONTEXT = re.compile(
+    r"\b(current_user|session_user|current_role|current_catalog|current_schema)\b",
+    re.IGNORECASE,
+)
+_ROW_LOCK = re.compile(
+    r"\bfor\s+(update|no\s+key\s+update|share|key\s+share)\b", re.IGNORECASE
+)
+_ALLOWED_FUNCTIONS = {
+    "abs", "avg", "cast", "coalesce", "count", "date", "date_trunc",
+    "extract", "greatest", "least", "lower", "max", "min", "nullif",
+    "round", "sum", "to_char", "upper",
+}
+_PAREN_KEYWORDS = {"all", "any", "as", "exists", "filter", "in", "on", "over"}
+
+
+def _mask_string_literals(sql: str) -> str:
+    """Mask quoted values so their contents are not parsed as SQL structure."""
+    return re.sub(r"'(?:''|[^'])*'", "''", sql)
 
 
 class UnsafeSQLError(ValueError):
@@ -76,13 +102,16 @@ def sanitize_sql(sql: str) -> str:
         raise UnsafeSQLError("Câu SQL rỗng.")
 
     cleaned = sql.strip().rstrip(";").strip()
+    if len(cleaned) > MAX_SQL_LENGTH:
+        raise UnsafeSQLError("SQL vượt quá độ dài cho phép.")
+    structural_sql = _mask_string_literals(cleaned)
 
     # 1. Cấm comment (né bypass kiểu `-- ` hoặc `/* */`)
-    if "--" in cleaned or "/*" in cleaned or "*/" in cleaned:
+    if "--" in structural_sql or "/*" in structural_sql or "*/" in structural_sql:
         raise UnsafeSQLError("SQL chứa comment — không cho phép.")
 
     # 2. Cấm multi-statement (sau khi đã bỏ dấu ; ở cuối mà vẫn còn ;)
-    if ";" in cleaned:
+    if ";" in structural_sql:
         raise UnsafeSQLError("Chỉ cho phép một câu lệnh duy nhất.")
 
     # 3. Phải là câu đọc: bắt đầu bằng SELECT hoặc WITH (CTE)
@@ -91,19 +120,34 @@ def sanitize_sql(sql: str) -> str:
         raise UnsafeSQLError("Chỉ cho phép câu SELECT (hoặc WITH ... SELECT).")
 
     # 4. Cấm từ khóa ghi/DDL/lệnh nguy hiểm
-    forbidden = _FORBIDDEN_KEYWORDS.search(cleaned)
+    forbidden = _FORBIDDEN_KEYWORDS.search(structural_sql)
     if forbidden:
         raise UnsafeSQLError(f"SQL chứa từ khóa bị cấm: '{forbidden.group(1)}'.")
 
     # 5. Mọi bảng trong FROM/JOIN phải nằm trong allowlist
-    refs = _TABLE_REF.findall(cleaned)
+    if _DISALLOWED_CONTEXT.search(structural_sql) or _ROW_LOCK.search(structural_sql):
+        raise UnsafeSQLError("SQL chứa biểu thức truy cập ngữ cảnh hệ thống.")
+
+    for function in _FUNCTION_CALL.findall(structural_sql):
+        normalized = function.lower()
+        if normalized not in _ALLOWED_FUNCTIONS and normalized not in _PAREN_KEYWORDS:
+            raise UnsafeSQLError(f"Hàm SQL '{function}' không được phép.")
+
+    refs = _TABLE_REF.findall(structural_sql)
+    cte_names = {name.lower() for name in _CTE_NAME.findall(structural_sql)}
     if not refs:
         raise UnsafeSQLError("Không xác định được bảng nguồn trong câu SQL.")
     for table in refs:
-        if table not in ALLOWED_TABLES:
+        if table not in ALLOWED_TABLES and table.lower() not in cte_names:
             raise UnsafeSQLError(
                 f"Bảng '{table}' không được phép truy vấn."
             )
+
+    limits = [int(value) for value in _LIMIT.findall(structural_sql)]
+    if any(value > MAX_ROWS for value in limits):
+        raise UnsafeSQLError(f"LIMIT không được vượt quá {MAX_ROWS}.")
+    if not limits:
+        cleaned = f"SELECT * FROM ({cleaned}) AS guarded_query LIMIT {MAX_ROWS}"
 
     return cleaned
 
@@ -116,13 +160,14 @@ def run_select(sql: str) -> list[dict]:
     """
     safe_sql = sanitize_sql(sql)
 
-    pool = get_pool()
+    pool = get_query_pool()
     with pool.connection() as conn:
         # Mở transaction tường minh (pool đang autocommit) để SET LOCAL có hiệu lực.
         with conn.transaction():
             with conn.cursor(row_factory=dict_row) as cur:
                 cur.execute("SET TRANSACTION READ ONLY")
                 cur.execute(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
+                cur.execute("SET LOCAL search_path = pg_catalog, public")
                 cur.execute(safe_sql)
                 rows = cur.fetchmany(MAX_ROWS)
     return rows
@@ -144,7 +189,7 @@ def get_schema_ddl() -> str:
         return _schema_cache
 
     table_list = sorted(ALLOWED_TABLES)
-    pool = get_pool()
+    pool = get_query_pool()
     cols_by_table: dict[str, list[str]] = {t: [] for t in table_list}
     table_comment: dict[str, str] = {}
 

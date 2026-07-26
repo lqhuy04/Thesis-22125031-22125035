@@ -119,6 +119,43 @@ h1 {
   max-width: 780px;
 }
 
+.auth-required .tabs-nav,
+.auth-required .tab-content {
+  display: none !important;
+}
+
+.login-card {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  gap: 20px;
+}
+
+.login-card[hidden] {
+  display: none;
+}
+
+.login-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr)) auto;
+  align-items: end;
+  gap: 14px;
+}
+
+.login-error {
+  grid-column: 1 / -1;
+  min-height: 1.25rem;
+  margin: 0;
+  color: var(--danger);
+}
+
+@media (max-width: 760px) {
+  .login-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 .controls {
   padding: 24px;
   display: grid;

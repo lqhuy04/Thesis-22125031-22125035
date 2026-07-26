@@ -81,4 +81,4 @@ def get_technical_indicators(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         print(f"Error in get_technical_indicators: {e}")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")

@@ -16,24 +16,24 @@ def get_cash_flows(symbol: str):
     try:
         data = FundamentalAnalysisService.get_cash_flows(symbol)
         return success_response(data=data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/{symbol}/financial-indicators", summary="Get Financial Indicators")
 def get_financial_indicators(symbol: str):
     try:
         data = FundamentalAnalysisService.get_indicators(symbol)
         return success_response(data=data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/{symbol}/income-statements", summary="Get Income Statements")
 def get_income_statements(symbol: str):
     try:
         data = FundamentalAnalysisService.get_income_statements(symbol)
         return success_response(data=data)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/{symbol}/summary",

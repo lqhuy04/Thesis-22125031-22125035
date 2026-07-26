@@ -1,17 +1,22 @@
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from app.models.auth_schemas import (
     SignupRequest, LoginRequest, AuthResponse, AuthData,
     ForgotPasswordRequest, ResetPasswordRequest, UserResponse, SocialLoginRequest,
     RefreshTokenRequest, LogoutRequest, VerifyOTPRequest, ResetPasswordWithOTPRequest
 )
 from app.services.auth_service import AuthService
-from app.middleware.auth_middleware import get_current_user
+from app.middleware.auth_middleware import get_current_user, get_current_admin
+from app.utils.rate_limit import client_ip, enforce_rate_limit
 import uuid
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-async def signup(request: SignupRequest):
+async def signup(request: SignupRequest, http_request: Request):
+    await enforce_rate_limit(
+        "auth-signup", f"{client_ip(http_request)}:{request.email}",
+        limit=5, window_seconds=3600,
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.signup(
@@ -43,7 +48,11 @@ async def signup(request: SignupRequest):
         )
 
 @router.post("/login", response_model=AuthResponse)
-async def login(request: LoginRequest):
+async def login(request: LoginRequest, http_request: Request):
+    await enforce_rate_limit(
+        "auth-login", f"{client_ip(http_request)}:{request.email}",
+        limit=10, window_seconds=900,
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.login(request.email, request.password)
@@ -84,42 +93,28 @@ async def login(request: LoginRequest):
         )
 
 
-@router.post("/admin-login", response_model=AuthResponse)
-async def admin_login():
-    """Auto-login for the admin dashboard using server-side credentials."""
-    request_id = str(uuid.uuid4())
-    try:
-        result = await AuthService.admin_login()
-        return AuthResponse(
-            data=AuthData(
-                token=result["token"],
-                refresh_token=result.get("refresh_token")
-            ).dict(),
-            errorCode=0,
-            errorDesc="Admin login successful",
-            requestId=request_id,
-            result=True
-        )
-    except ValueError as e:
-        return AuthResponse(
-            data={},
-            errorCode=401001,
-            errorDesc=str(e),
-            requestId=request_id,
-            result=False
-        )
-    except Exception:
-        return AuthResponse(
-            data={},
-            errorCode=500001,
-            errorDesc="Internal server error",
-            requestId=request_id,
-            result=False
-        )
+@router.get("/admin-session")
+async def get_admin_session(current_admin: dict = Depends(get_current_admin)):
+    """Confirm that the current access token belongs to an administrator."""
+    return {
+        "data": {
+            "user_id": current_admin["user_id"],
+            "email": current_admin["email"],
+            "role": current_admin["role"],
+        },
+        "errorCode": 0,
+        "errorDesc": "",
+        "requestId": str(uuid.uuid4()),
+        "result": True,
+    }
 
 
 @router.post("/verify-email")
-async def verify_email(request: VerifyOTPRequest):
+async def verify_email(request: VerifyOTPRequest, http_request: Request):
+    await enforce_rate_limit(
+        "auth-verify-email", f"{client_ip(http_request)}:{request.email}",
+        limit=10, window_seconds=900,
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.verify_email(request.email, request.otp)
@@ -149,7 +144,11 @@ async def verify_email(request: VerifyOTPRequest):
 
 
 @router.post("/resend-verification-otp")
-async def resend_verification_otp(request: ForgotPasswordRequest):
+async def resend_verification_otp(request: ForgotPasswordRequest, http_request: Request):
+    await enforce_rate_limit(
+        "auth-resend-verification", f"{client_ip(http_request)}:{request.email}",
+        limit=3, window_seconds=900,
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.resend_verification_otp(request.email)
@@ -207,7 +206,11 @@ async def reset_password(
         }
 
 @router.post("/social-login", response_model=AuthResponse)
-async def social_login(request: SocialLoginRequest):
+async def social_login(request: SocialLoginRequest, http_request: Request):
+    await enforce_rate_limit(
+        "auth-social-login", client_ip(http_request),
+        limit=10, window_seconds=900,
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.google_login(request.token)
@@ -282,7 +285,10 @@ def get_me(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/refresh", response_model=AuthResponse)
-async def refresh(request: RefreshTokenRequest):
+async def refresh(request: RefreshTokenRequest, http_request: Request):
+    await enforce_rate_limit(
+        "auth-refresh", client_ip(http_request), limit=30, window_seconds=900
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.refresh_access_token(request.refresh_token)
@@ -345,7 +351,11 @@ async def logout(request: LogoutRequest):
     
 
 @router.post("/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest):
+async def forgot_password(request: ForgotPasswordRequest, http_request: Request):
+    await enforce_rate_limit(
+        "auth-forgot-password", f"{client_ip(http_request)}:{request.email}",
+        limit=3, window_seconds=900,
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.forgot_password(request.email)
@@ -367,11 +377,15 @@ async def forgot_password(request: ForgotPasswordRequest):
 
 
 @router.post("/verify-otp")
-async def verify_otp(request: VerifyOTPRequest):
+async def verify_otp(request: VerifyOTPRequest, http_request: Request):
     """
     Verify OTP sent to email for password reset.
     This endpoint validates the OTP without resetting the password.
     """
+    await enforce_rate_limit(
+        "auth-verify-otp", f"{client_ip(http_request)}:{request.email}",
+        limit=10, window_seconds=900,
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.verify_otp(request.email, request.otp)
@@ -401,11 +415,17 @@ async def verify_otp(request: VerifyOTPRequest):
 
 
 @router.post("/reset-password-with-otp")
-async def reset_password_with_otp(request: ResetPasswordWithOTPRequest):
+async def reset_password_with_otp(
+    request: ResetPasswordWithOTPRequest, http_request: Request
+):
     """
     Reset password after OTP verification.
     OTP must be verified before calling this endpoint.
     """
+    await enforce_rate_limit(
+        "auth-reset-with-otp", client_ip(http_request),
+        limit=10, window_seconds=900,
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.reset_password_with_otp(
@@ -438,11 +458,15 @@ async def reset_password_with_otp(request: ResetPasswordWithOTPRequest):
 
 
 @router.post("/resend-otp")
-async def resend_otp(request: ForgotPasswordRequest):
+async def resend_otp(request: ForgotPasswordRequest, http_request: Request):
     """
     Resend OTP to email. Call this when user didn't receive OTP or it expired.
     Deletes old OTP and generates a new one.
     """
+    await enforce_rate_limit(
+        "auth-resend-otp", f"{client_ip(http_request)}:{request.email}",
+        limit=3, window_seconds=900,
+    )
     request_id = str(uuid.uuid4())
     try:
         result = await AuthService.resend_otp(request.email)

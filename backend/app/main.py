@@ -22,13 +22,6 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-import os
-from fastapi.staticfiles import StaticFiles
-current_dir = os.path.dirname(os.path.abspath(__file__))
-visualizations_dir = os.path.join(current_dir, "backtest", "visualizations")
-os.makedirs(visualizations_dir, exist_ok=True)
-app.mount("/visualizations", StaticFiles(directory=visualizations_dir), name="visualizations")
-
 # CORS — chỉ cho phép các origin khai báo trong CORS_ORIGINS (xem config/.env)
 app.add_middleware(
     CORSMiddleware,
@@ -37,6 +30,42 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            too_large = int(content_length) > settings.MAX_REQUEST_BODY_BYTES
+        except ValueError:
+            too_large = True
+        if too_large:
+            return JSONResponse(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                content={
+                    "data": {},
+                    "errorCode": 413001,
+                    "errorDesc": "Request body is too large",
+                    "requestId": str(uuid.uuid4()),
+                    "result": False,
+                },
+            )
+
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), payment=()"
+    )
+    if not settings.DEBUG:
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+    if request.url.path.startswith("/api/auth/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 # Custom exception handlers
 @app.exception_handler(RequestValidationError)

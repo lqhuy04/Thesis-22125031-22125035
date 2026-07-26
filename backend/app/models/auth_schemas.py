@@ -11,7 +11,7 @@ def validate_confirm_password(v, values):
 
 class SignupRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8, max_length=128)
     
     @validator('password')
     def validate_password(cls, v):
@@ -27,7 +27,7 @@ class SignupRequest(BaseModel):
     
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1, max_length=128)
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -35,9 +35,9 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    old_password: Optional[str] = None
-    new_password: str = Field(..., min_length=8)
-    confirm_new_password: str = Field(..., min_length=8)
+    old_password: Optional[str] = Field(default=None, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+    confirm_new_password: str = Field(..., min_length=8, max_length=128)
     
     @validator('new_password')
     def validate_password(cls, v):
@@ -58,13 +58,13 @@ class ResetPasswordRequest(BaseModel):
 
 class VerifyOTPRequest(BaseModel):
     email: EmailStr
-    otp: str = Field(..., min_length=6, max_length=6)
+    otp: str = Field(..., min_length=6, max_length=6, pattern=r"^\d{6}$")
 
 
 class ResetPasswordWithOTPRequest(BaseModel):
-    reset_password_token: str = Field(..., min_length=1)
-    new_password: str = Field(..., min_length=8)
-    confirm_new_password: str = Field(..., min_length=8)
+    reset_password_token: str = Field(..., min_length=32, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=128)
+    confirm_new_password: str = Field(..., min_length=8, max_length=128)
     
     @validator('new_password')
     def validate_password(cls, v):
@@ -97,7 +97,7 @@ class AuthData(BaseModel):
 
 
 class SocialLoginRequest(BaseModel):
-    token: str
+    token: str = Field(..., min_length=1, max_length=8192)
 
 
 class UserResponse(BaseModel):
@@ -109,8 +109,8 @@ class UserResponse(BaseModel):
 
 
 class RefreshTokenRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(..., min_length=1, max_length=4096)
 
 
 class LogoutRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str = Field(..., min_length=1, max_length=4096)

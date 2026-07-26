@@ -1,5 +1,5 @@
 import logging
-import os
+from urllib.parse import quote
 from typing import Any, List, Dict
 from supabase import create_client, Client
 from app.config import settings
@@ -14,7 +14,7 @@ def get_supabase_client() -> Client:
 
 def upload_backtest_file(file_path: str, filename: str, content_type: str) -> str:
     """
-    Uploads a file to Supabase Storage and returns its public URL.
+    Upload a file and return its authenticated API proxy URL.
     """
     try:
         supabase = get_supabase_client()
@@ -28,9 +28,9 @@ def upload_backtest_file(file_path: str, filename: str, content_type: str) -> st
             file_options={"content-type": content_type, "upsert": "true"}
         )
         
-        public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(filename)
-        logger.info(f"Successfully uploaded {filename} to Supabase Storage: {public_url}")
-        return public_url
+        protected_url = f"/api/agentic/backtests/files/{quote(filename)}"
+        logger.info("Successfully uploaded %s to private storage", filename)
+        return protected_url
     except Exception as e:
         logger.error(f"Failed to upload {filename} to Supabase Storage: {e}")
         raise e
@@ -48,12 +48,10 @@ def list_backtest_files() -> List[Dict[str, Any]]:
             name = file.get("name") if isinstance(file, dict) else getattr(file, "name", "")
             if name and name.endswith(".json"):
                 created_at = file.get("created_at") if isinstance(file, dict) else getattr(file, "created_at", None)
-                json_url = supabase.storage.from_(BUCKET_NAME).get_public_url(name)
-                
                 results.append({
                     "name": name,
                     "created_at": created_at,
-                    "json_url": json_url
+                    "json_url": f"/api/agentic/backtests/files/{quote(name)}"
                 })
         
         # Sort alphabetically by name descending (effectively sorting by timestamp in name)
@@ -62,3 +60,8 @@ def list_backtest_files() -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Failed to list backtest files from Supabase Storage: {e}")
         return []
+
+
+def download_backtest_file(filename: str) -> bytes:
+    """Download one object from the private backtests bucket."""
+    return get_supabase_client().storage.from_(BUCKET_NAME).download(filename)

@@ -17,6 +17,7 @@ import time
 import threading
 
 logger = logging.getLogger(__name__)
+HTTP_TIMEOUT = (5, 20)
 
 
 # API Endpoints
@@ -78,7 +79,10 @@ class SSIService:
         """Make a POST request to SSI API"""
         url = f"{self._config.url}{endpoint}"
         payload = json.dumps(data)
-        response = requests.post(url, headers=self._headers, data=payload)
+        response = requests.post(
+            url, headers=self._headers, data=payload, timeout=HTTP_TIMEOUT
+        )
+        response.raise_for_status()
         return response.json()
     
     def _make_get_request(self, endpoint: str, params: dict = None) -> Dict[str, Any]:
@@ -87,7 +91,10 @@ class SSIService:
         headers = self._headers.copy()
         if self._access_token:
             headers["Authorization"] = f"{self._config.auth_type} {self._access_token}"
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(
+            url, headers=headers, params=params, timeout=HTTP_TIMEOUT
+        )
+        response.raise_for_status()
         payload = response.json()
 
         # Retry once on auth failure by refreshing token.
@@ -96,7 +103,10 @@ class SSIService:
             if token_result.get("success") and self._access_token:
                 retry_headers = self._headers.copy()
                 retry_headers["Authorization"] = f"{self._config.auth_type} {self._access_token}"
-                retry_response = requests.get(url, headers=retry_headers, params=params)
+                retry_response = requests.get(
+                    url, headers=retry_headers, params=params, timeout=HTTP_TIMEOUT
+                )
+                retry_response.raise_for_status()
                 return retry_response.json()
 
         return payload
