@@ -28,6 +28,8 @@ import {
 } from "@/helpers/AgenticHelpers";
 import type { ChatConversation } from "@/components/chatbot/ChatHistoryBottomsheet";
 import { RadarChart, RadarAxis } from "@/components/ui/RadarChart";
+import Markdown from "react-native-markdown-display";
+import { typography } from "@/constants/typography";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -188,6 +190,27 @@ const AIAnalysis = () => {
     "fundamental",
     "technical",
   ];
+
+  const analysisMarkdownStyle = {
+    body: {
+      ...typography.bodyMedium,
+      color: theme.text.primary,
+      lineHeight: 22,
+    },
+    strong: { fontFamily: typography.titleMedium.fontFamily },
+    bullet_list: { marginVertical: 4 },
+    ordered_list: { marginVertical: 4 },
+    list_item: { marginVertical: 2 },
+  };
+
+  const summaryMarkdownStyle = {
+    ...analysisMarkdownStyle,
+    body: {
+      ...typography.bodyLarge,
+      color: theme.text.primary,
+      lineHeight: 24,
+    },
+  };
 
   const handleAxisPress = (index: number) => {
     setSelectedAxis((prev) => (prev === index ? null : index));
@@ -453,13 +476,9 @@ const AIAnalysis = () => {
                   >
                     {scoreData[selectedAxis].label}
                   </Text>
-                  <Text
-                    typography="bodyMedium"
-                    color={theme.text.primary}
-                    style={{ lineHeight: 22 }}
-                  >
+                  <Markdown style={analysisMarkdownStyle}>
                     {analysis.analysis[axisAnalysisKeys[selectedAxis]]}
-                  </Text>
+                  </Markdown>
                 </>
               )}
             </View>
@@ -473,13 +492,9 @@ const AIAnalysis = () => {
             ]}
           >
             <SectionTitle>{t("aiAnalysis.analysis")}</SectionTitle>
-            <Text
-              typography="bodyLarge"
-              color={theme.text.primary}
-              style={{ lineHeight: 24 }}
-            >
+            <Markdown style={summaryMarkdownStyle}>
               {analysis.analysis.summary}
-            </Text>
+            </Markdown>
           </View>
         </ScrollView>
       )}
