@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Stockrium Admin Dashboard & Backtest</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -10,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260727-2" />
     <!-- Lightweight Charts library from TradingView -->
     <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
   </head>
@@ -36,19 +39,19 @@
           <p class="subtitle">Dùng tài khoản có <code>role = admin</code>. Thông tin đăng nhập chỉ được gửi tới API và không được lưu trong trình duyệt.</p>
         </div>
         <form id="adminLoginForm" class="login-form">
-          <div class="field">
+          <div class="field login-api-field">
             <label for="adminApiBaseUrl">API Base URL</label>
             <input id="adminApiBaseUrl" name="apiBaseUrl" type="url" value="http://localhost:8000" required />
           </div>
-          <div class="field">
+          <div class="field login-email-field">
             <label for="adminEmail">Email</label>
             <input id="adminEmail" name="email" type="email" autocomplete="username" maxlength="254" required />
           </div>
-          <div class="field">
+          <div class="field login-password-field">
             <label for="adminPassword">Mật khẩu</label>
             <input id="adminPassword" name="password" type="password" autocomplete="current-password" maxlength="128" required />
           </div>
-          <button id="adminLoginBtn" class="btn btn-primary" type="submit">Đăng nhập</button>
+          <button id="adminLoginBtn" class="btn btn-primary login-submit" type="submit">Đăng nhập</button>
           <p id="adminLoginError" class="login-error" role="alert" aria-live="polite"></p>
         </form>
       </section>
@@ -613,6 +616,6 @@
       </div>
     </main>
 
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260727-2"></script>
   </body>
 </html>
