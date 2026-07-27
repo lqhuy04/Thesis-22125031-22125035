@@ -41,7 +41,13 @@
         <form id="adminLoginForm" class="login-form">
           <div class="field login-api-field">
             <label for="adminApiBaseUrl">API Base URL</label>
-            <input id="adminApiBaseUrl" name="apiBaseUrl" type="url" value="http://localhost:8000" required />
+            <input
+              id="adminApiBaseUrl"
+              name="apiBaseUrl"
+              type="url"
+              value="https://backend-server-production-1625.up.railway.app"
+              required
+            />
           </div>
           <div class="field login-email-field">
             <label for="adminEmail">Email</label>
@@ -70,8 +76,12 @@
         <section class="controls card">
           <div class="field">
             <label for="baseUrl">API Base URL</label>
-            <input id="baseUrl" type="text" value="http://localhost:8000" />
-            <p class="hint">Ví dụ: http://localhost:8000</p>
+            <input
+              id="baseUrl"
+              type="text"
+              value="https://backend-server-production-1625.up.railway.app"
+            />
+            <p class="hint">Backend production trên Railway.</p>
           </div>
 
           <div class="symbol-row">
