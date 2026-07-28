@@ -2,12 +2,12 @@
 Market Data Routes
 FastAPI routes for SSI FC Data API integration
 """
-from fastapi import APIRouter, Query, Depends, Path
+from fastapi import APIRouter, Query, Depends
 import uuid
 from supabase_auth import Any
 from app.services.market_service import MarketService
 from app.models.market_data_schemas import SectorStockMovementResponse, InvestingIdeaResponse
-from app.middleware.auth_middleware import get_current_user, get_current_admin
+from app.middleware.auth_middleware import get_current_user
 
 
 router = APIRouter(prefix="/api", tags=["Market Data"], dependencies=[Depends(get_current_user)])
@@ -129,30 +129,6 @@ def get_market_index_historical_values(
         "result": bool(result),
     }
     
-@router.post("/price/{symbol}", response_model=Any)
-def update_price_data_for_symbol_with_time_interval(
-    symbol: str = Path(..., min_length=1, max_length=16, pattern=r"^[A-Za-z0-9._-]+$"),
-    current_admin: dict = Depends(get_current_admin),
-):
-    """
-    🔄 Manually trigger price data update for a stock symbol
-    
-    This endpoint forces a sync of missing intra-day price data for the specified symbol.
-    Use this if you want to ensure the latest data is available before fetching.
-    
-    **Example:** `/api/price/VNM`
-    """
-    request_id = str(uuid.uuid4())
-    result = MarketService.update_price_data_for_symbol(symbol)
-    return {
-        "data": result,
-        "errorCode": 0 if result else 500001,
-        "errorDesc": "" if result else "Failed to update price data for the specified symbol",
-        "requestId": request_id,
-        "result": result
-    }
-
-
 @router.get("/current-price/{symbol}", response_model=Any)
 def get_stock_price(symbol: str):
     """
