@@ -125,7 +125,7 @@ h1 {
 }
 
 .login-card {
-  width: min(760px, 100%);
+  width: min(820px, 100%);
   margin: 0 auto;
   padding: 24px;
   display: grid;
@@ -138,21 +138,63 @@ h1 {
 
 .login-form {
   display: grid;
-  grid-template-columns: repeat(3, minmax(180px, 1fr)) auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "api api"
+    "email password"
+    "submit submit"
+    "error error";
   align-items: end;
   gap: 14px;
+  width: 100%;
+}
+
+.login-form .field {
+  min-width: 0;
+  width: 100%;
+}
+
+.login-api-field {
+  grid-area: api;
+}
+
+.login-email-field {
+  grid-area: email;
+}
+
+.login-password-field {
+  grid-area: password;
+}
+
+.login-submit {
+  grid-area: submit;
+  justify-self: end;
+  width: min(180px, 100%);
+  min-height: 45px;
+  white-space: nowrap;
 }
 
 .login-error {
-  grid-column: 1 / -1;
+  grid-area: error;
   min-height: 1.25rem;
   margin: 0;
   color: var(--danger);
 }
 
-@media (max-width: 760px) {
+@media (max-width: 680px) {
   .login-form {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "api"
+      "email"
+      "password"
+      "submit"
+      "error";
+  }
+
+  .login-submit {
+    justify-self: stretch;
+    width: 100%;
   }
 }
 
