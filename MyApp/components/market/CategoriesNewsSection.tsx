@@ -446,7 +446,6 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
     return () => unregister?.();
   }, [registerRefresh, categories, chosenIndex]);
 
-  if (isLoading) return <CategorySkeleton />;
   if (categoryArticles.length === 0) return null;
 
   const currentCategory = categoryArticles[chosenIndex];
@@ -507,7 +506,7 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
         </ScrollView>
 
         {/* Content hoặc skeleton khi lazy load */}
-        {isCurrentLoading ? (
+        {isCurrentLoading || isLoading ? (
           <CategorySkeleton />
         ) : (
           <CategoryContent

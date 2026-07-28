@@ -46,7 +46,6 @@ const NewDetal = () => {
             flexDirection: "row",
             alignItems: "flex-end",
             marginVertical: 8,
-            marginHorizontal: 12,
           }}
         >
           <Text typography="bodyLarge" color={theme.text.primary}>
@@ -57,18 +56,14 @@ const NewDetal = () => {
           </Text>
         </View>
 
-        <Text
-          typography="titleLarge"
-          color={theme.text.primary}
-          style={{ marginHorizontal: 12 }}
-        >
+        <Text typography="titleLarge" color={theme.text.primary}>
           {item?.description}
         </Text>
 
         <Text
           typography="bodyLarge"
           color={theme.text.primary}
-          style={{ marginVertical: 8, marginHorizontal: 12 }}
+          style={{ marginVertical: 8 }}
         >
           {item?.content ?? ""}
         </Text>
@@ -76,7 +71,7 @@ const NewDetal = () => {
         <Text
           typography="bodyLarge"
           color={theme.text.primary}
-          style={{ marginHorizontal: 12, marginTop: 24 }}
+          style={{ marginTop: 24 }}
         >
           Link:{" "}
           <Text
