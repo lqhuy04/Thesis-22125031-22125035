@@ -10,7 +10,9 @@ from pydantic import BaseModel, Field, model_validator
 # ─── Shared ───────────────────────────────────────────────────────────────────
 
 class RiskAppetite(BaseModel):
-    period: str = Field(min_length=1, max_length=100, description="Kỳ hạn đầu tư, ví dụ: 'Ngắn hạn (Dưới 1 năm)'")
+    period: Literal["short_term", "mid_term", "long_term"] = Field(
+        description="Kỳ hạn đầu tư: short_term, mid_term hoặc long_term"
+    )
 
 
 # ─── Data selection (toggle nguồn dữ liệu cho AI) ──────────────────────────────
@@ -25,12 +27,12 @@ class TechnicalSelection(BaseModel):
 
 
 class FundamentalSelection(BaseModel):
-    """Bật/tắt từng nhóm chỉ số cơ bản mà AI được phép phân tích."""
-    liquidity: bool = Field(default=True, description="Khả năng thanh toán: tỷ lệ thanh toán hiện hành, thanh toán nhanh, tiền mặt")
-    leverage: bool = Field(default=True, description="Đòn bẩy tài chính: Nợ/VCSH, đòn bẩy tài chính, khả năng trả lãi")
-    efficiency: bool = Field(default=True, description="Hiệu quả hoạt động: vòng quay tài sản, vòng quay TSCĐ, số ngày tồn kho, số ngày phải thu")
-    profitability: bool = Field(default=True, description="Khả năng sinh lời: ROE, ROA, biên LN gộp, biên LN ròng")
-    valuation: bool = Field(default=True, description="Nhóm định giá: P/E, P/B, EV/EBITDA, EPS")
+    """Legacy fundamental toggles used by the v1 admin analysis graph."""
+    liquidity: bool = True
+    leverage: bool = True
+    efficiency: bool = True
+    profitability: bool = True
+    valuation: bool = True
 
 
 class WeightSelection(BaseModel):
@@ -58,14 +60,25 @@ class WeightSelection(BaseModel):
 
 
 class DataSelection(BaseModel):
-    """Cấu hình người dùng chọn dữ liệu nào để AI phân tích. Mặc định bật tất cả."""
+    """Data-source selection for the public v2 analysis endpoint."""
     news: bool = Field(default=True, description="Tin tức / sentiment bài viết")
     technical: TechnicalSelection = Field(default_factory=TechnicalSelection)
-    fundamental: FundamentalSelection = Field(default_factory=FundamentalSelection)
+    fundamental: bool = Field(
+        default=True,
+        description="Bật hoặc tắt toàn bộ phân tích cơ bản",
+    )
     weight: WeightSelection | None = Field(
         default=None,
         description="Trọng số thủ công cho news/technical/fundamental. Bỏ trống = dùng mặc định theo kỳ hạn.",
     )
+
+
+class AdminDataSelection(BaseModel):
+    """Legacy selection contract retained for the v1 admin graph."""
+    news: bool = True
+    technical: TechnicalSelection = Field(default_factory=TechnicalSelection)
+    fundamental: FundamentalSelection = Field(default_factory=FundamentalSelection)
+    weight: WeightSelection | None = None
 
 
 # ─── /analyze (API mode) ──────────────────────────────────────────────────────
@@ -97,8 +110,8 @@ class AdminAnalysisRequest(BaseModel):
         description="Mã cổ phiếu khi không dùng rổ, ví dụ: VNM, FPT, VIC",
     )
     risk_appetite: RiskAppetite
-    data_selection: DataSelection = Field(
-        default_factory=DataSelection,
+    data_selection: AdminDataSelection = Field(
+        default_factory=AdminDataSelection,
         description="Chọn nguồn/chỉ số dữ liệu cho AI phân tích. Bỏ trống = bật tất cả.",
     )
 

@@ -4,7 +4,6 @@ import { useLocalization } from "@/hooks/LocalizationContext";
 import { useTheme } from "@/hooks/ThemeContext";
 import {
   DataSelection,
-  FundamentalSelection,
   TechnicalSelection,
   WeightSelection,
 } from "@/helpers/AgenticHelpers";
@@ -43,14 +42,6 @@ const DEFAULT_TECHNICAL: TechnicalSelection = {
   rsi: true,
   macd: true,
   kdj: true,
-};
-
-const DEFAULT_FUNDAMENTAL: FundamentalSelection = {
-  liquidity: true,
-  leverage: true,
-  efficiency: true,
-  profitability: true,
-  valuation: true,
 };
 
 const DEFAULT_WEIGHT: WeightSelection = {
@@ -433,9 +424,6 @@ const AIAnalysisConfig = () => {
   const [technical, setTechnical] = useState<TechnicalSelection>({
     ...DEFAULT_TECHNICAL,
   });
-  const [fundamental, setFundamental] = useState<FundamentalSelection>({
-    ...DEFAULT_FUNDAMENTAL,
-  });
   const [weight, setWeight] = useState<WeightSelection>({
     ...DEFAULT_WEIGHT,
   });
@@ -486,7 +474,6 @@ const AIAnalysisConfig = () => {
           if (typeof preset.fundamentalEnabled === "boolean")
             setFundamentalEnabled(preset.fundamentalEnabled);
           if (preset.technical) setTechnical(preset.technical);
-          if (preset.fundamental) setFundamental(preset.fundamental);
           if (preset.weight) setWeight(preset.weight);
         } catch {}
       }
@@ -505,7 +492,6 @@ const AIAnalysisConfig = () => {
         technicalEnabled,
         fundamentalEnabled,
         technical,
-        fundamental,
         weight,
       }),
     );
@@ -516,7 +502,6 @@ const AIAnalysisConfig = () => {
     technicalEnabled,
     fundamentalEnabled,
     technical,
-    fundamental,
     weight,
   ]);
 
@@ -547,23 +532,16 @@ const AIAnalysisConfig = () => {
   const technicalKeys = Object.keys(
     DEFAULT_TECHNICAL,
   ) as (keyof TechnicalSelection)[];
-  const fundamentalKeys = Object.keys(
-    DEFAULT_FUNDAMENTAL,
-  ) as (keyof FundamentalSelection)[];
 
   const technicalCheckedCount = technicalKeys.filter(
     (k) => technical[k],
   ).length;
-  const fundamentalCheckedCount = fundamentalKeys.filter(
-    (k) => fundamental[k],
-  ).length;
 
-  // Nguồn nào đang thực sự đóng góp dữ liệu (toggle bật và, với technical/
-  // fundamental, còn ít nhất một checkbox con được chọn).
+  // Technical cần ít nhất một chỉ báo; fundamental là toggle toàn nguồn.
   const sourceActive = {
     news: newsEnabled,
     technical: technicalEnabled && technicalCheckedCount > 0,
-    fundamental: fundamentalEnabled && fundamentalCheckedCount > 0,
+    fundamental: fundamentalEnabled,
   };
 
   // Có được phép tắt `source` không: chỉ chặn khi đây là nguồn active duy nhất.
@@ -579,17 +557,11 @@ const AIAnalysisConfig = () => {
     }
   }, [technicalEnabled, technicalCheckedCount]);
 
-  useEffect(() => {
-    if (fundamentalEnabled && fundamentalCheckedCount === 0) {
-      setFundamentalEnabled(false);
-    }
-  }, [fundamentalEnabled, fundamentalCheckedCount]);
-
   const isValid =
     mode === "auto" ||
     newsEnabled ||
     (technicalEnabled && technicalCheckedCount > 0) ||
-    (fundamentalEnabled && fundamentalCheckedCount > 0);
+    fundamentalEnabled;
 
   const technicalLabels: Record<keyof TechnicalSelection, string> = {
     ma: t("aiAnalysis.ma"),
@@ -597,14 +569,6 @@ const AIAnalysisConfig = () => {
     rsi: t("aiAnalysis.rsi"),
     macd: t("aiAnalysis.macd"),
     kdj: t("aiAnalysis.kdj"),
-  };
-
-  const fundamentalLabels: Record<keyof FundamentalSelection, string> = {
-    liquidity: t("aiAnalysis.liquidity"),
-    leverage: t("aiAnalysis.leverage"),
-    efficiency: t("aiAnalysis.efficiency"),
-    profitability: t("aiAnalysis.profitability"),
-    valuation: t("aiAnalysis.valuation"),
   };
 
   const handleAnalyze = () => {
@@ -625,15 +589,7 @@ const AIAnalysisConfig = () => {
               macd: false,
               kdj: false,
             },
-        fundamental: fundamentalEnabled
-          ? { ...fundamental }
-          : {
-              liquidity: false,
-              leverage: false,
-              efficiency: false,
-              profitability: false,
-              valuation: false,
-            },
+        fundamental: fundamentalEnabled,
         weight: { ...weight },
       };
       params.dataSelection = JSON.stringify(selection);
@@ -784,39 +740,17 @@ const AIAnalysisConfig = () => {
             <SectionToggle
               label={t("aiAnalysis.fundamental")}
               enabled={fundamentalEnabled}
-              checkedCount={fundamentalCheckedCount}
-              totalCount={fundamentalKeys.length}
+              checkedCount={fundamentalEnabled ? 1 : 0}
+              totalCount={1}
               onToggle={(v) => {
                 if (!v && !canDisableSource("fundamental")) {
                   showToast();
                   return;
                 }
                 setFundamentalEnabled(v);
-                if (v) setFundamental({ ...DEFAULT_FUNDAMENTAL });
               }}
               theme={theme}
             />
-            {fundamentalEnabled &&
-              fundamentalKeys.map((key) => (
-                <SubCheckbox
-                  key={key}
-                  label={fundamentalLabels[key]}
-                  checked={!!fundamental[key]}
-                  onPress={() => {
-                    const isLastChecked =
-                      fundamental[key] && fundamentalCheckedCount === 1;
-                    if (isLastChecked && !canDisableSource("fundamental")) {
-                      showToast();
-                      return;
-                    }
-                    setFundamental((prev) => ({
-                      ...prev,
-                      [key]: !prev[key],
-                    }));
-                  }}
-                  theme={theme}
-                />
-              ))}
           </View>
         )}
 

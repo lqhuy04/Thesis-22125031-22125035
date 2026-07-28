@@ -18,7 +18,7 @@ from app.utils.rate_limit import enforce_rate_limit
 from app.services.agentic_service import (
     run_chat,
     seed_chat_session,
-    run_stock_analysis,
+    run_stock_analysis_v2,
     run_admin_analysis,
     list_chat_sessions,
     get_chat_history,
@@ -76,7 +76,7 @@ async def _limit_backtest(
 @router.post(
     "/analyze",
     summary="Phân tích cổ phiếu",
-    description="Chạy full pipeline: tin tức + cơ bản + kỹ thuật → structured output. Không có memory.",
+    description="Chạy pipeline phân tích agentic AI v2. Không có memory.",
 )
 def analyze_stock(
     body: StockAnalysisRequest,
@@ -84,7 +84,7 @@ def analyze_stock(
     _rate_limit: None = Depends(_limit_ai),
 ):
     try:
-        recommendation = run_stock_analysis(
+        recommendation = run_stock_analysis_v2(
             mode=body.mode,
             symbol=body.symbol,
             risk_appetite=body.risk_appetite.model_dump(),

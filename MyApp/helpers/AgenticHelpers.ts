@@ -34,14 +34,6 @@ export type TechnicalSelection = {
   kdj?: boolean;
 };
 
-export type FundamentalSelection = {
-  liquidity?: boolean;
-  leverage?: boolean;
-  efficiency?: boolean;
-  profitability?: boolean;
-  valuation?: boolean;
-};
-
 export type WeightSelection = {
   news: number;
   technical: number;
@@ -51,7 +43,7 @@ export type WeightSelection = {
 export type DataSelection = {
   news?: boolean;
   technical?: TechnicalSelection | boolean;
-  fundamental?: FundamentalSelection | boolean;
+  fundamental?: boolean;
   weight?: WeightSelection;
 };
 

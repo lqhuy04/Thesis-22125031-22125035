@@ -10,11 +10,13 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from agentic_ai.chatbot.graph import build_chatbot_graph
 from agentic_ai.analyze.graph import build_graph
+from agentic_ai_v2.analyze.graph import build_graph as build_graph_v2
 from app.services.chat_session_service import ChatSessionService
 
 # Heavyweight graphs and their database checkpointer are initialized only when
 # first used. Importing the API must not open an external database connection.
 _graph = None
+_graph_v2 = None
 _chatbot_graph = None
 _graph_lock = Lock()
 
@@ -28,6 +30,15 @@ def _get_analysis_graph():
     return _graph
 
 
+def _get_analysis_graph_v2():
+    global _graph_v2
+    if _graph_v2 is None:
+        with _graph_lock:
+            if _graph_v2 is None:
+                _graph_v2 = build_graph_v2()
+    return _graph_v2
+
+
 def _get_chatbot_graph():
     global _chatbot_graph
     if _chatbot_graph is None:
@@ -38,16 +49,16 @@ def _get_chatbot_graph():
     return _chatbot_graph
 
 
-# ─── API mode ────────────────────────────────────────────────────────────────
+# ─── Analysis runners ────────────────────────────────────────────────────────
 
-def run_stock_analysis(
+def _run_stock_analysis_with_graph(
+    graph,
     symbol: str,
     risk_appetite: dict,
     mode: str,
     data_selection: dict | None = None,
 ) -> dict:
-    # Chỉ chế độ manual mới tôn trọng lựa chọn dữ liệu của người dùng.
-    # Chế độ auto luôn dùng toàn bộ dữ liệu ({} → get_selection mặc định bật tất cả).
+    # Manual mode respects the user's toggles. Auto mode uses every data source.
     effective_selection = data_selection if mode == "manual" else {}
 
     initial_state = {
@@ -70,12 +81,44 @@ def run_stock_analysis(
         "error": None,
     }
 
-    result = _get_analysis_graph().invoke(initial_state)
+    result = graph.invoke(initial_state)
 
     if result.get("error"):
         raise RuntimeError(result["error"])
 
     return result["final_output"]
+
+
+def run_stock_analysis(
+    symbol: str,
+    risk_appetite: dict,
+    mode: str,
+    data_selection: dict | None = None,
+) -> dict:
+    """Run the legacy analysis graph used by admin and batch workflows."""
+    return _run_stock_analysis_with_graph(
+        graph=_get_analysis_graph(),
+        symbol=symbol,
+        risk_appetite=risk_appetite,
+        mode=mode,
+        data_selection=data_selection,
+    )
+
+
+def run_stock_analysis_v2(
+    symbol: str,
+    risk_appetite: dict,
+    mode: str,
+    data_selection: dict | None = None,
+) -> dict:
+    """Run the v2 analysis graph used by the public /analyze endpoint."""
+    return _run_stock_analysis_with_graph(
+        graph=_get_analysis_graph_v2(),
+        symbol=symbol,
+        risk_appetite=risk_appetite,
+        mode=mode,
+        data_selection=data_selection,
+    )
 
 
 # ─── Admin API mode (single symbol or full index basket) ──────────────────────
