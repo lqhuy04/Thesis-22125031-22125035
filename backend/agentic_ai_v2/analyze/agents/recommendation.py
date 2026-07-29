@@ -41,6 +41,25 @@ INTERVAL_BY_PERIOD = {
     "long_term": "1w",
 }
 
+MIN_REWARD_TO_RISK_RATIO = 1.5
+PLAN_RULES_BY_PERIOD = {
+    "short_term": {
+        "take_profit_pct": (0.08, 0.15),
+        "stop_loss_pct": (0.04, 0.07),
+        "max_hold_candles": (5, 15),
+    },
+    "mid_term": {
+        "take_profit_pct": (0.15, 0.30),
+        "stop_loss_pct": (0.07, 0.12),
+        "max_hold_candles": (15, 60),
+    },
+    "long_term": {
+        "take_profit_pct": (0.40, 0.80),
+        "stop_loss_pct": (0.15, 0.20),
+        "max_hold_candles": (26, 104),
+    },
+}
+
 _FALLBACK_PLAN_BY_PERIOD = {
     "short_term": {
         "take_profit_pct": 0.10,
@@ -67,6 +86,10 @@ fundamental và technical được cung cấp, hãy trả về:
 - take_profit: mức giá chốt lời lớn hơn current_price.
 - stop_loss: mức giá cắt lỗ dương và nhỏ hơn current_price.
 - max_hold_candles: số cây nến tối đa nên giữ theo đúng interval được cung cấp.
+
+Bạn BẮT BUỘC tuân thủ trading_plan_constraints trong dữ liệu đầu vào, gồm khoảng
+phần trăm chốt lời/cắt lỗ, khoảng số nến giữ và reward_to_risk_ratio tối thiểu.
+Phần trăm chốt lời và cắt lỗ đều được tính từ current_price.
 
 Ưu tiên vùng hỗ trợ/kháng cự, Bollinger Bands, MA và mức độ rủi ro thể hiện trong
 tin tức/cơ bản. Không bịa dữ liệu; nếu dữ liệu không đủ thì chọn kế hoạch thận
@@ -185,6 +208,29 @@ def _call_trading_plan_llm(
         "total_score": total_score,
         "component_scores": scores,
         "current_price": _current_price(results),
+        "trading_plan_constraints": {
+            "take_profit_percent": {
+                "min": PLAN_RULES_BY_PERIOD[period]["take_profit_pct"][0]
+                * 100,
+                "max": PLAN_RULES_BY_PERIOD[period]["take_profit_pct"][1]
+                * 100,
+            },
+            "stop_loss_percent": {
+                "min": PLAN_RULES_BY_PERIOD[period]["stop_loss_pct"][0]
+                * 100,
+                "max": PLAN_RULES_BY_PERIOD[period]["stop_loss_pct"][1]
+                * 100,
+            },
+            "max_hold_candles": {
+                "min": PLAN_RULES_BY_PERIOD[period][
+                    "max_hold_candles"
+                ][0],
+                "max": PLAN_RULES_BY_PERIOD[period][
+                    "max_hold_candles"
+                ][1],
+            },
+            "minimum_reward_to_risk_ratio": MIN_REWARD_TO_RISK_RATIO,
+        },
         "article": {
             "data": results.get("article_agent"),
             "analysis": results.get("article_analysis_agent"),
@@ -226,10 +272,30 @@ def _call_trading_plan_llm(
 def _is_valid_plan(
     plan: TradingPlanOutput,
     current_price: float | None,
+    period: str,
 ) -> bool:
     if current_price is None:
-        return True
-    return plan.stop_loss < current_price < plan.take_profit
+        return False
+    if not plan.stop_loss < current_price < plan.take_profit:
+        return False
+
+    rules = PLAN_RULES_BY_PERIOD[_normalize_period(period)]
+    take_profit_pct = (plan.take_profit - current_price) / current_price
+    stop_loss_pct = (current_price - plan.stop_loss) / current_price
+    take_profit_min, take_profit_max = rules["take_profit_pct"]
+    stop_loss_min, stop_loss_max = rules["stop_loss_pct"]
+    hold_min, hold_max = rules["max_hold_candles"]
+
+    within_period_ranges = (
+        take_profit_min <= take_profit_pct <= take_profit_max
+        and stop_loss_min <= stop_loss_pct <= stop_loss_max
+        and hold_min <= plan.max_hold_candles <= hold_max
+    )
+    if not within_period_ranges:
+        return False
+
+    reward_to_risk_ratio = take_profit_pct / stop_loss_pct
+    return reward_to_risk_ratio >= MIN_REWARD_TO_RISK_RATIO
 
 
 def _fallback_plan(
@@ -288,14 +354,18 @@ def recommendation_agent(state: AgentState) -> dict:
                 total_score=total_score,
                 scores=scores,
             )
-            if not _is_valid_plan(candidate, current_price):
-                raise ValueError(
-                    "Trading plan must satisfy "
-                    "stop_loss < current_price < take_profit"
+            if _is_valid_plan(candidate, current_price, period):
+                plan = candidate
+            else:
+                logger.warning(
+                    "LLM trading plan violates constraints for period=%s; "
+                    "using fallback",
+                    period,
                 )
-            plan = candidate
         except Exception:
             logger.exception("Recommendation trading-plan generation failed")
+
+        if plan is None:
             plan = _fallback_plan(period, current_price)
 
         if plan is not None:

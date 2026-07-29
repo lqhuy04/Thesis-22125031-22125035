@@ -21,6 +21,7 @@ from agentic_ai_v2.analyze.agents.fundamental import (
 from agentic_ai_v2.analyze.agents.recommendation import (
     TradingPlanOutput,
     _calculate_total_score,
+    _is_valid_plan,
     recommendation_agent,
 )
 from agentic_ai_v2.analyze.agents.technical_analysis import (
@@ -351,6 +352,93 @@ class V2RecommendationAgentTests(unittest.TestCase):
         )
         call_llm.assert_called_once()
 
+    def test_trading_plan_must_follow_period_ranges_and_reward_risk(self):
+        valid_plans = {
+            "short_term": TradingPlanOutput(
+                take_profit=112.0,
+                stop_loss=94.0,
+                max_hold_candles=10,
+            ),
+            "mid_term": TradingPlanOutput(
+                take_profit=120.0,
+                stop_loss=90.0,
+                max_hold_candles=30,
+            ),
+            "long_term": TradingPlanOutput(
+                take_profit=150.0,
+                stop_loss=82.0,
+                max_hold_candles=52,
+            ),
+        }
+
+        for period, plan in valid_plans.items():
+            with self.subTest(period=period):
+                self.assertTrue(_is_valid_plan(plan, 100.0, period))
+
+        invalid_plans = {
+            "take_profit_out_of_range": TradingPlanOutput(
+                take_profit=107.0,
+                stop_loss=95.0,
+                max_hold_candles=10,
+            ),
+            "stop_loss_out_of_range": TradingPlanOutput(
+                take_profit=110.0,
+                stop_loss=97.0,
+                max_hold_candles=10,
+            ),
+            "max_hold_out_of_range": TradingPlanOutput(
+                take_profit=110.0,
+                stop_loss=95.0,
+                max_hold_candles=16,
+            ),
+            "reward_risk_too_low": TradingPlanOutput(
+                take_profit=108.0,
+                stop_loss=93.0,
+                max_hold_candles=10,
+            ),
+        }
+
+        for reason, plan in invalid_plans.items():
+            with self.subTest(reason=reason):
+                self.assertFalse(
+                    _is_valid_plan(plan, 100.0, "short_term")
+                )
+
+        self.assertFalse(
+            _is_valid_plan(valid_plans["mid_term"], None, "mid_term")
+        )
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.recommendation."
+        "_call_trading_plan_llm"
+    )
+    def test_invalid_llm_plan_uses_period_fallback(self, call_llm):
+        call_llm.return_value = TradingPlanOutput(
+            take_profit=110.0,
+            stop_loss=95.0,
+            max_hold_candles=100,
+        )
+        state = {
+            "risk_appetite": {"period": "mid_term"},
+            "agent_results": {
+                "article_analysis_agent": {"score": 1.0},
+                "fundamental_analysis_agent": {"score": 1.0},
+                "technical_analysis_agent": {"score": 1.0},
+                "technical_agent": {
+                    "current_price": {"value": 100.0},
+                },
+            },
+        }
+
+        result = recommendation_agent(state)["agent_results"][
+            "recommendation_agent"
+        ]
+
+        self.assertEqual(result["entry_price"], 100.0)
+        self.assertEqual(result["take_profit"], 120.0)
+        self.assertEqual(result["stop_loss"], 90.0)
+        self.assertEqual(result["max_hold_candles"], 30)
+
     @patch(
         "agentic_ai_v2.analyze.agents.recommendation."
         "_call_trading_plan_llm"
@@ -423,8 +511,8 @@ class V2RecommendationAgentTests(unittest.TestCase):
     )
     def test_manual_mode_uses_payload_weights(self, call_llm):
         call_llm.return_value = TradingPlanOutput(
-            take_profit=120.0,
-            stop_loss=92.0,
+            take_profit=150.0,
+            stop_loss=82.0,
             max_hold_candles=30,
         )
         state = {
