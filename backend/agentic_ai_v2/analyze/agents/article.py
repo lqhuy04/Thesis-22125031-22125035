@@ -1,37 +1,16 @@
-"""News analysis node for the v2 analysis graph."""
+"""Article-data preparation node for the v2 analysis graph."""
 
 import logging
 from datetime import date, datetime
 from typing import Any
 
 from agentic_ai_v2.analyze.state import AgentState
-from agentic_ai_v2.service.openai_service import _get_openai_client
 from app.services.articles_service import ArticlesService
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "gpt-4o-mini"
 _MAX_ARTICLES = 50
 _MAX_DESCRIPTION_LENGTH = 1_200
-
-_SYSTEM_PROMPT = """Bạn là chuyên gia phân tích tin tức tài chính Việt Nam.
-
-Hãy tổng hợp các bài viết được cung cấp thành báo cáo Markdown ngắn gọn theo cấu trúc:
-
-## Phân tích tin tức
-### Tóm tắt chính
-### Tín hiệu tích cực
-### Rủi ro
-### Đánh giá chung
-
-Quy tắc:
-- Chỉ sử dụng thông tin có trong danh sách bài viết.
-- Ưu tiên sự kiện có ảnh hưởng trực tiếp đến doanh nghiệp và giá cổ phiếu.
-- Gộp các bài trùng nội dung, không liệt kê lại từng bài.
-- Nêu rõ khi thông tin chưa đủ để kết luận.
-- Không đưa ra khuyến nghị mua hoặc bán.
-- Trả lời bằng tiếng Việt.
-"""
 
 
 def _parse_plan_date(value: Any, field_name: str) -> date:
@@ -122,37 +101,8 @@ def _build_articles_message(
     return "\n".join(lines)
 
 
-def _analyze_articles(
-    symbol: str,
-    from_date: date,
-    to_date: date,
-    articles: list[Any],
-) -> str:
-    client = _get_openai_client()
-    response = client.chat.completions.create(
-        model=_MODEL,
-        temperature=0.2,
-        messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": _build_articles_message(
-                    symbol=symbol,
-                    from_date=from_date,
-                    to_date=to_date,
-                    articles=articles,
-                ),
-            },
-        ],
-    )
-    content = response.choices[0].message.content
-    if not content or not content.strip():
-        raise ValueError("OpenAI returned an empty article analysis")
-    return content.strip()
-
-
 def article_agent(state: AgentState) -> dict:
-    """Analyze stock news within the date range created by the orchestrator."""
+    """Load and format stock news for the downstream analysis agent."""
     symbol = state.get("symbol", "").strip().upper()
     article_plan = (state.get("plan") or {}).get("article") or {}
 
@@ -183,17 +133,17 @@ def article_agent(state: AgentState) -> dict:
                 f"{from_date.isoformat()} đến {to_date.isoformat()}."
             )
         else:
-            output = _analyze_articles(
+            output = _build_articles_message(
                 symbol=symbol,
                 from_date=from_date,
                 to_date=to_date,
                 articles=filtered_articles,
             )
     except Exception:
-        logger.exception("Article analysis failed for %s", symbol)
-        output = "Không có dữ liệu phân tích tin tức."
+        logger.exception("Article data preparation failed for %s", symbol)
+        output = "Không có dữ liệu tin tức."
 
-    print(f"Article analysis output for {symbol}:\n{output}")
+    print(f"Article output for {symbol}:\n{output}")
 
     return {
         "agent_results": {

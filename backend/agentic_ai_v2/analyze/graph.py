@@ -7,49 +7,57 @@ from langgraph.graph.state import CompiledStateGraph
 
 from agentic_ai_v2.analyze.agents.aggregator import aggregator_agent
 from agentic_ai_v2.analyze.agents.orchestrator import orchestrator_agent
+from agentic_ai_v2.analyze.agents.recommendation import (
+    recommendation_agent,
+)
 from agentic_ai_v2.analyze.agents.article import article_agent
+from agentic_ai_v2.analyze.agents.article_analysis import (
+    article_analysis_agent,
+)
+from agentic_ai_v2.analyze.agents.fundamental import fundamental_agent
 from agentic_ai_v2.analyze.agents.fundamental_analysis import (
     fundamental_analysis_agent,
 )
+from agentic_ai_v2.analyze.agents.technical import technical_agent
 from agentic_ai_v2.analyze.agents.technical_analysis import (
     technical_analysis_agent,
 )
 from agentic_ai_v2.analyze.state import AgentState
 
 
-AnalysisRoute = Literal[
+SourceRoute = Literal[
     "article_agent",
-    "fundamental_analysis_agent",
-    "technical_analysis_agent",
-    "aggregator",
+    "fundamental_agent",
+    "technical_agent",
+    "recommendation_agent",
 ]
 
 
-def _route_selected_agents(state: AgentState) -> list[AnalysisRoute]:
-    """Select analysis branches from mode and the data_selection payload."""
+def _route_selected_agents(state: AgentState) -> list[SourceRoute]:
+    """Select source-data branches from mode and the data_selection payload."""
     if state.get("mode") == "auto":
         return [
             "article_agent",
-            "technical_analysis_agent",
-            "fundamental_analysis_agent",
+            "technical_agent",
+            "fundamental_agent",
         ]
 
     selection = state.get("data_selection") or {}
     technical = selection.get("technical") or {}
 
-    routes: list[AnalysisRoute] = []
+    routes: list[SourceRoute] = []
 
     if selection.get("news") is True:
         routes.append("article_agent")
 
     if any(value is True for value in technical.values()):
-        routes.append("technical_analysis_agent")
+        routes.append("technical_agent")
 
     if selection.get("fundamental") is True:
-        routes.append("fundamental_analysis_agent")
+        routes.append("fundamental_agent")
 
-    # The aggregator still finishes the graph when every data source is off.
-    return routes or ["aggregator"]
+    # Recommendation produces a zero-score "Chờ" result when every source is off.
+    return routes or ["recommendation_agent"]
 
 
 def build_graph() -> CompiledStateGraph:
@@ -58,8 +66,12 @@ def build_graph() -> CompiledStateGraph:
 
     graph.add_node("orchestrator", orchestrator_agent)
     graph.add_node("article_agent", article_agent)
+    graph.add_node("article_analysis_agent", article_analysis_agent)
+    graph.add_node("fundamental_agent", fundamental_agent)
     graph.add_node("fundamental_analysis_agent", fundamental_analysis_agent)
+    graph.add_node("technical_agent", technical_agent)
     graph.add_node("technical_analysis_agent", technical_analysis_agent)
+    graph.add_node("recommendation_agent", recommendation_agent)
     graph.add_node("aggregator", aggregator_agent)
 
     graph.add_edge(START, "orchestrator")
@@ -69,16 +81,20 @@ def build_graph() -> CompiledStateGraph:
         _route_selected_agents,
         {
             "article_agent": "article_agent",
-            "fundamental_analysis_agent": "fundamental_analysis_agent",
-            "technical_analysis_agent": "technical_analysis_agent",
-            "aggregator": "aggregator",
+            "fundamental_agent": "fundamental_agent",
+            "technical_agent": "technical_agent",
+            "recommendation_agent": "recommendation_agent",
         },
     )
 
-    graph.add_edge("article_agent", "aggregator")
-    graph.add_edge("fundamental_analysis_agent", "aggregator")
-    graph.add_edge("technical_analysis_agent", "aggregator")
+    graph.add_edge("article_agent", "article_analysis_agent")
+    graph.add_edge("article_analysis_agent", "recommendation_agent")
+    graph.add_edge("fundamental_agent", "fundamental_analysis_agent")
+    graph.add_edge("fundamental_analysis_agent", "recommendation_agent")
+    graph.add_edge("technical_agent", "technical_analysis_agent")
+    graph.add_edge("technical_analysis_agent", "recommendation_agent")
 
+    graph.add_edge("recommendation_agent", "aggregator")
     graph.add_edge("aggregator", END)
 
     return graph.compile()
