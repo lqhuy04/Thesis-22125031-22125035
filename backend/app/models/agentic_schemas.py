@@ -77,6 +77,10 @@ class DataSelection(BaseModel):
 class StockAnalysisRequest(BaseModel):
     mode: Literal["auto", "manual"] = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
     symbol: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9._-]+$", description="Mã cổ phiếu, ví dụ: VNM, FPT, VIC")
+    language: Literal["vi", "en"] = Field(
+        default="vi",
+        description="Ngôn ngữ kết quả phân tích theo cài đặt app: vi hoặc en",
+    )
     risk_appetite: RiskAppetite
     data_selection: DataSelection = Field(
         default_factory=DataSelection,

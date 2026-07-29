@@ -87,6 +87,7 @@ def analyze_stock(
         recommendation = run_stock_analysis_v2(
             mode=body.mode,
             symbol=body.symbol,
+            language=body.language,
             risk_appetite=body.risk_appetite.model_dump(),
             data_selection=body.data_selection.model_dump(),
         )

@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from agentic_ai.chatbot.graph import build_chatbot_graph
 from agentic_ai_v2.analyze.graph import build_graph as build_graph_v2
+from agentic_ai_v2.analyze.language import localized_text, normalize_language
 from app.services.chat_session_service import ChatSessionService
 
 # Heavyweight graphs and their database checkpointer are initialized only when
@@ -46,16 +47,26 @@ def _run_stock_analysis_with_graph(
     risk_appetite: dict,
     mode: str,
     data_selection: dict | None = None,
+    language: str = "vi",
 ) -> dict:
     # Manual mode respects the user's toggles. Auto mode uses every data source.
     effective_selection = data_selection if mode == "manual" else {}
+    analysis_language = normalize_language(language)
 
     initial_state = {
         "mode": mode,
+        "language": analysis_language,
 
-        "user_input": (
-            f"Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu {symbol} "
-            f"dựa vào khẩu vị rủi ro của nhà đầu tư."
+        "user_input": localized_text(
+            analysis_language,
+            vi=(
+                f"Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu "
+                f"{symbol} dựa vào khẩu vị rủi ro của nhà đầu tư."
+            ),
+            en=(
+                f"Summarize {symbol}'s current situation and suggest an "
+                "investment timing based on the investor's risk appetite."
+            ),
         ),
         "risk_appetite": risk_appetite,
 
@@ -83,6 +94,7 @@ def run_stock_analysis_v2(
     risk_appetite: dict,
     mode: str,
     data_selection: dict | None = None,
+    language: str = "vi",
 ) -> dict:
     """Run the v2 analysis graph used by the public /analyze endpoint."""
     return _run_stock_analysis_with_graph(
@@ -91,6 +103,7 @@ def run_stock_analysis_v2(
         risk_appetite=risk_appetite,
         mode=mode,
         data_selection=data_selection,
+        language=language,
     )
 
 

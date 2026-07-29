@@ -90,7 +90,7 @@ const AIAnalysisLoading = () => {
 
 const AIAnalysis = () => {
   const { theme } = useTheme();
-  const { t } = useLocalization();
+  const { t, language } = useLocalization();
   const insets = useSafeAreaInsets();
 
   const { data, mode, dataSelection } = useLocalSearchParams() || {};
@@ -141,7 +141,12 @@ const AIAnalysis = () => {
     setIsLoading(true);
     setAnalysis(null);
 
-    getAnalysis(stockSymbol, analysisMode, parsedDataSelection)
+    getAnalysis(
+      stockSymbol,
+      analysisMode,
+      parsedDataSelection,
+      language,
+    )
       .then((res) => {
         if (mounted && res.status) setAnalysis(res.data);
       })
@@ -152,7 +157,7 @@ const AIAnalysis = () => {
     return () => {
       mounted = false;
     };
-  }, [analysisMode, parsedDataSelection, stockSymbol]);
+  }, [analysisMode, language, parsedDataSelection, stockSymbol]);
 
   const isBuy = analysis?.buy ?? false;
   const recommendationLabel = isBuy

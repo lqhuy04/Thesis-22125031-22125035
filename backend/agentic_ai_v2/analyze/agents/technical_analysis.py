@@ -7,6 +7,11 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from agentic_ai_v2.analyze.language import (
+    localized_text,
+    normalize_language,
+    output_language_instruction,
+)
 from agentic_ai_v2.analyze.state import AgentState
 from agentic_ai_v2.service.openai_service import _get_openai_client
 
@@ -17,7 +22,7 @@ _MAX_OUTPUT_TOKENS = 1_500
 
 _SYSTEM_PROMPT = """Bạn là chuyên gia phân tích kỹ thuật cổ phiếu Việt Nam.
 
-Hãy tóm tắt dữ liệu kỹ thuật được cung cấp thành trường analysis bằng tiếng Việt.
+Hãy tóm tắt dữ liệu kỹ thuật được cung cấp thành trường analysis.
 Phân tích giá hiện tại, khung thời gian và từng chỉ báo hiện diện trong đầu vào;
 nêu tín hiệu tích cực, tiêu cực và trạng thái xu hướng.
 
@@ -52,6 +57,7 @@ def _calculate_score(technical_data: dict[str, Any]) -> float:
 
 def _call_technical_analysis_llm(
     technical_data: dict[str, Any],
+    language: str = "vi",
 ) -> TechnicalAnalysisOutput:
     client = _get_openai_client()
     response = client.beta.chat.completions.parse(
@@ -59,7 +65,13 @@ def _call_technical_analysis_llm(
         temperature=0.1,
         max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
+            {
+                "role": "system",
+                "content": (
+                    f"{_SYSTEM_PROMPT}\n\n"
+                    f"{output_language_instruction(language)}"
+                ),
+            },
             {
                 "role": "user",
                 "content": json.dumps(
@@ -79,13 +91,14 @@ def _call_technical_analysis_llm(
 
 def technical_analysis_agent(state: AgentState) -> dict:
     """Summarize technical data and attach its deterministic normalized score."""
+    language = normalize_language(state.get("language"))
     technical_data = (state.get("agent_results") or {}).get("technical_agent")
 
     if not isinstance(technical_data, dict) or technical_data.get("error"):
-        analysis = (
-            str(technical_data.get("error"))
-            if isinstance(technical_data, dict) and technical_data.get("error")
-            else "Không có dữ liệu phân tích kỹ thuật."
+        analysis = localized_text(
+            language,
+            vi="Không có dữ liệu phân tích kỹ thuật.",
+            en="No technical analysis data is available.",
         )
         output = {
             "score": 0.0,
@@ -94,11 +107,18 @@ def technical_analysis_agent(state: AgentState) -> dict:
     else:
         score = _calculate_score(technical_data)
         try:
-            parsed = _call_technical_analysis_llm(technical_data)
+            parsed = _call_technical_analysis_llm(
+                technical_data,
+                language,
+            )
             analysis = parsed.analysis.strip()
         except Exception:
             logger.exception("Technical LLM analysis failed")
-            analysis = "Không thể tóm tắt dữ liệu phân tích kỹ thuật."
+            analysis = localized_text(
+                language,
+                vi="Không thể tóm tắt dữ liệu phân tích kỹ thuật.",
+                en="Unable to summarize the technical analysis data.",
+            )
 
         output = {
             "score": score,

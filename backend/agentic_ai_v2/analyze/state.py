@@ -10,6 +10,7 @@ class AgentState(TypedDict, total=False):
     """State passed between nodes in the analysis pipeline."""
 
     mode: Literal["auto", "manual", "chat"]
+    language: Literal["vi", "en"]
     user_input: str
     risk_appetite: dict[str, Any]
     symbol: str

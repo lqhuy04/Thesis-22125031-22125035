@@ -32,6 +32,10 @@ from agentic_ai_v2.analyze.graph import (
     _route_selected_agents,
     build_graph,
 )
+from agentic_ai_v2.analyze.language import (
+    normalize_language,
+    output_language_instruction,
+)
 
 
 class V2AnalysisAgentTests(unittest.TestCase):
@@ -79,7 +83,8 @@ class V2AnalysisAgentTests(unittest.TestCase):
             },
         )
         call_llm.assert_called_once_with(
-            "Mã cổ phiếu: FPT\n1. FPT tăng trưởng."
+            "Mã cổ phiếu: FPT\n1. FPT tăng trưởng.",
+            "vi",
         )
 
     @patch(
@@ -112,7 +117,8 @@ class V2AnalysisAgentTests(unittest.TestCase):
             },
         )
         call_llm.assert_called_once_with(
-            "ROE tăng và đòn bẩy ổn định."
+            "ROE tăng và đòn bẩy ổn định.",
+            "vi",
         )
 
     @patch(
@@ -147,7 +153,80 @@ class V2AnalysisAgentTests(unittest.TestCase):
                 "analysis": "Ba trên năm tín hiệu đang tích cực.",
             },
         )
-        call_llm.assert_called_once_with(technical_data)
+        call_llm.assert_called_once_with(technical_data, "vi")
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.technical_analysis."
+        "_call_technical_analysis_llm"
+    )
+    def test_technical_analysis_passes_english_to_llm(
+        self,
+        call_llm,
+    ):
+        technical_data = {
+            "total_score": 1,
+            "max_score": 2,
+        }
+        call_llm.return_value = TechnicalAnalysisOutput(
+            analysis="The technical signals are mixed."
+        )
+
+        result = technical_analysis_agent(
+            {
+                "language": "en",
+                "agent_results": {
+                    "technical_agent": technical_data,
+                },
+            }
+        )["agent_results"]["technical_analysis_agent"]
+
+        self.assertEqual(
+            result["analysis"],
+            "The technical signals are mixed.",
+        )
+        call_llm.assert_called_once_with(technical_data, "en")
+
+    def test_no_data_fallbacks_follow_english_language(self):
+        state = {
+            "language": "en",
+            "agent_results": {
+                "article_agent": "Không có dữ liệu tin tức.",
+                "fundamental_agent": (
+                    "Không có dữ liệu phân tích cơ bản."
+                ),
+            },
+        }
+
+        article = article_analysis_agent(state)["agent_results"][
+            "article_analysis_agent"
+        ]
+        fundamental = fundamental_analysis_agent(state)[
+            "agent_results"
+        ]["fundamental_analysis_agent"]
+        technical = technical_analysis_agent(
+            {"language": "en", "agent_results": {}}
+        )["agent_results"]["technical_analysis_agent"]
+
+        self.assertEqual(
+            article["analysis"],
+            "No news data is available.",
+        )
+        self.assertEqual(
+            fundamental["analysis"],
+            "No fundamental analysis data is available.",
+        )
+        self.assertEqual(
+            technical["analysis"],
+            "No technical analysis data is available.",
+        )
+
+    def test_analysis_language_helpers_default_to_vi_and_support_en(self):
+        self.assertEqual(normalize_language(None), "vi")
+        self.assertEqual(normalize_language("en"), "en")
+        self.assertIn(
+            "entirely in English",
+            output_language_instruction("en"),
+        )
 
     def test_technical_score_is_bounded_and_handles_invalid_denominator(self):
         self.assertEqual(

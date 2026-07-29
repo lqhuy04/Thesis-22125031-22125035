@@ -43,11 +43,19 @@ class SQLGuardTests(unittest.TestCase):
 class InputGuardTests(unittest.TestCase):
     def test_existing_mobile_payloads_remain_valid(self):
         LoginRequest(email="admin@example.com", password="Secret123")
-        StockAnalysisRequest(
+        legacy_analysis = StockAnalysisRequest(
             mode="auto",
             symbol="FPT",
             risk_appetite={"period": "short_term"},
         )
+        english_analysis = StockAnalysisRequest(
+            mode="auto",
+            symbol="FPT",
+            language="en",
+            risk_appetite={"period": "short_term"},
+        )
+        self.assertEqual(legacy_analysis.language, "vi")
+        self.assertEqual(english_analysis.language, "en")
         ChatRequest(
             session_id="123e4567-e89b-42d3-a456-426614174000",
             message="Phân tích FPT",
@@ -117,6 +125,12 @@ class InputGuardTests(unittest.TestCase):
                 message="x" * 4001,
             ),
             lambda: BacktestPipelineRequest(symbol="../User"),
+            lambda: StockAnalysisRequest(
+                mode="auto",
+                symbol="FPT",
+                language="fr",
+                risk_appetite={"period": "short_term"},
+            ),
         ]
         for factory in invalid_factories:
             with self.subTest(factory=factory), self.assertRaises(ValidationError):

@@ -3,10 +3,11 @@
 import json
 import logging
 import math
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, Field
 
+from agentic_ai_v2.analyze.language import localized_text
 from agentic_ai_v2.analyze.state import AgentState
 from agentic_ai_v2.service.openai_service import _get_openai_client
 
@@ -264,7 +265,11 @@ def recommendation_agent(state: AgentState) -> dict:
         total_score >= SCORE_THRESHOLD
         and scores["technical"] >= TECHNICAL_SCORE_THRESHOLD
     )
-    recommendation: Literal["Mua", "Chờ"] = "Mua" if buy else "Chờ"
+    recommendation = localized_text(
+        state.get("language"),
+        vi="Mua" if buy else "Chờ",
+        en="Buy" if buy else "Wait",
+    )
 
     entry_price = 0.0
     take_profit = 0.0

@@ -4,6 +4,11 @@ import logging
 
 from pydantic import BaseModel, Field
 
+from agentic_ai_v2.analyze.language import (
+    localized_text,
+    normalize_language,
+    output_language_instruction,
+)
 from agentic_ai_v2.analyze.state import AgentState
 from agentic_ai_v2.service.openai_service import _get_openai_client
 
@@ -18,7 +23,7 @@ _SYSTEM_PROMPT = """Bạn là chuyên gia phân tích cơ bản cổ phiếu Vi�
 Đọc duy nhất báo cáo chỉ số cơ bản được cung cấp và trả về:
 - score trong khoảng 0 đến 1, thể hiện sức khỏe và mức độ hấp dẫn cơ bản:
   0 = rất yếu/rủi ro cao, 0.5 = trung lập, 1 = rất khỏe/hấp dẫn.
-- analysis là bản tóm tắt tiếng Việt, nêu xu hướng quan trọng, điểm mạnh, điểm
+- analysis là bản tóm tắt, nêu xu hướng quan trọng, điểm mạnh, điểm
   yếu, rủi ro và so sánh ngành nếu đầu vào có dữ liệu ngành.
 
 Quy tắc:
@@ -37,6 +42,7 @@ class FundamentalAnalysisOutput(BaseModel):
 
 def _call_fundamental_analysis_llm(
     fundamental_text: str,
+    language: str = "vi",
 ) -> FundamentalAnalysisOutput:
     client = _get_openai_client()
     response = client.beta.chat.completions.parse(
@@ -44,7 +50,13 @@ def _call_fundamental_analysis_llm(
         temperature=0.1,
         max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[
-            {"role": "system", "content": _SYSTEM_PROMPT},
+            {
+                "role": "system",
+                "content": (
+                    f"{_SYSTEM_PROMPT}\n\n"
+                    f"{output_language_instruction(language)}"
+                ),
+            },
             {"role": "user", "content": fundamental_text},
         ],
         response_format=FundamentalAnalysisOutput,
@@ -57,6 +69,7 @@ def _call_fundamental_analysis_llm(
 
 def fundamental_analysis_agent(state: AgentState) -> dict:
     """Score and summarize text prepared by fundamental_agent."""
+    language = normalize_language(state.get("language"))
     fundamental_text = (state.get("agent_results") or {}).get(
         "fundamental_agent"
     )
@@ -64,16 +77,27 @@ def fundamental_analysis_agent(state: AgentState) -> dict:
     if not isinstance(fundamental_text, str) or not fundamental_text.strip():
         output = {
             "score": 0.0,
-            "analysis": "Không có dữ liệu phân tích cơ bản.",
+            "analysis": localized_text(
+                language,
+                vi="Không có dữ liệu phân tích cơ bản.",
+                en="No fundamental analysis data is available.",
+            ),
         }
     elif fundamental_text.strip().startswith(_NO_DATA_PREFIX):
         output = {
             "score": 0.0,
-            "analysis": fundamental_text.strip(),
+            "analysis": localized_text(
+                language,
+                vi="Không có dữ liệu phân tích cơ bản.",
+                en="No fundamental analysis data is available.",
+            ),
         }
     else:
         try:
-            parsed = _call_fundamental_analysis_llm(fundamental_text)
+            parsed = _call_fundamental_analysis_llm(
+                fundamental_text,
+                language,
+            )
             output = {
                 "score": round(parsed.score, 4),
                 "analysis": parsed.analysis.strip(),
@@ -82,7 +106,11 @@ def fundamental_analysis_agent(state: AgentState) -> dict:
             logger.exception("Fundamental LLM analysis failed")
             output = {
                 "score": 0.0,
-                "analysis": "Không thể phân tích dữ liệu cơ bản.",
+                "analysis": localized_text(
+                    language,
+                    vi="Không thể phân tích dữ liệu cơ bản.",
+                    en="Unable to analyze the fundamental data.",
+                ),
             }
 
     print(f"Fundamental Analysis output:\n{output}")

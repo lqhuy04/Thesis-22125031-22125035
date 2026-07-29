@@ -1,5 +1,6 @@
 import { sendMessage } from "./api/ApiClients";
 import { getRiskAppetite } from "./ProfileHelpers";
+import type { Language } from "@/hooks/LocalizationContext";
 
 export type AnalysisDetail = {
   technical: string;
@@ -53,6 +54,7 @@ export const getAnalysis = async (
   symbol: string,
   mode: AnalysisMode = "auto",
   dataSelection?: DataSelection,
+  language: Language = "vi",
 ): Promise<{
   status: boolean;
   data: AnalysisData | null;
@@ -63,6 +65,7 @@ export const getAnalysis = async (
     const body: Record<string, unknown> = {
       mode,
       symbol,
+      language,
       risk_appetite: riskAppetite?.data,
     };
 
