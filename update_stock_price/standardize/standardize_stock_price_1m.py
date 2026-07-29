@@ -35,7 +35,7 @@ client = fc_md_client.MarketDataClient(config)
 VN_TZ = timezone(timedelta(hours=7))
 
 TABLE         = "Stock_Price_1m"
-KEEP_DAYS     = 30
+KEEP_DAYS     = 90
 LOOKBACK_DAYS  = 2
 SLEEP_SECONDS  = 1.1        # Delay giữa các symbol để tránh rate-limit SSI
 

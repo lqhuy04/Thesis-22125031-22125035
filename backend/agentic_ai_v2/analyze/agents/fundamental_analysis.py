@@ -438,6 +438,8 @@ def fundamental_analysis_agent(state: AgentState) -> dict:
         logger.exception("Fundamental analysis failed for %s", symbol)
         output = "Không có dữ liệu phân tích cơ bản."
 
+    print(f"Fundamental analysis output for {symbol}:\n{output}")
+
     return {
         "agent_results": {
             "fundamental_analysis_agent": output,
