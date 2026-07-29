@@ -60,11 +60,11 @@ class BacktestPipelineRequest(BaseModel):
         default=30,
         ge=7,
         le=120,
-        description="Lookback window for 1m data",
+        description="Legacy compatibility field; v2 backtest uses daily data",
     )
     use_intraday: bool = Field(
         default=True,
-        description="Whether to load 1m data for current-price precision",
+        description="Legacy compatibility field; ignored by daily v2 backtest",
     )
     transaction_cost_pct: float = Field(
         default=0.0015,

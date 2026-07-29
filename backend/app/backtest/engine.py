@@ -4,6 +4,10 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from app.services.technical_indicators_service import (
+    TechnicalIndicatorsService,
+)
+
 
 class IndicatorEngine:
     def __init__(
@@ -31,44 +35,9 @@ class IndicatorEngine:
     def add_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         data = df.copy()
 
-        close = data["close"].astype(float)
-        high = data["high"].astype(float)
-        low = data["low"].astype(float)
-
-        delta = close.diff()
-        gain = delta.clip(lower=0)
-        loss = -delta.clip(upper=0)
-        avg_gain = gain.ewm(alpha=1 / self.rsi_period, adjust=False, min_periods=self.rsi_period).mean()
-        avg_loss = loss.ewm(alpha=1 / self.rsi_period, adjust=False, min_periods=self.rsi_period).mean()
-        rs = avg_gain / avg_loss.replace(0, np.nan)
-        data["rsi_14"] = 100 - (100 / (1 + rs))
-
-        data["sma_20"] = close.rolling(self.sma_short, min_periods=self.sma_short).mean()
-        data["sma_50"] = close.rolling(self.sma_long, min_periods=self.sma_long).mean()
-
-        bb_middle = close.rolling(self.boll_period, min_periods=self.boll_period).mean()
-        bb_std = close.rolling(self.boll_period, min_periods=self.boll_period).std()
-        data["bb_middle"] = bb_middle
-        data["bb_upper"] = bb_middle + 2 * bb_std
-        data["bb_lower"] = bb_middle - 2 * bb_std
-
-        ema_fast = close.ewm(span=self.macd_fast, adjust=False, min_periods=self.macd_fast).mean()
-        ema_slow = close.ewm(span=self.macd_slow, adjust=False, min_periods=self.macd_slow).mean()
-        macd = ema_fast - ema_slow
-        macd_signal = macd.ewm(span=self.macd_signal, adjust=False, min_periods=self.macd_signal).mean()
-        data["macd"] = macd
-        data["macd_signal"] = macd_signal
-        data["macd_histogram"] = macd - macd_signal
-
-        low_min = low.rolling(self.kdj_period, min_periods=self.kdj_period).min()
-        high_max = high.rolling(self.kdj_period, min_periods=self.kdj_period).max()
-        denom = (high_max - low_min).replace(0, np.nan)
-        rsv = (close - low_min) / denom * 100
-        k = rsv.rolling(self.kdj_smooth, min_periods=self.kdj_smooth).mean()
-        d = k.rolling(self.kdj_smooth, min_periods=self.kdj_smooth).mean()
-        data["kdj_k"] = k
-        data["kdj_d"] = d
-        data["kdj_j"] = 3 * k - 2 * d
+        indicators = TechnicalIndicatorsService.calculate_all_indicators(data)
+        for name, values in indicators.items():
+            data[name] = values
 
         return data
 
@@ -233,6 +202,13 @@ class ScoringEngine:
         if k_current is None or d_current is None or j_current is None:
             return 0, "Không đủ dữ liệu KDJ"
 
+        if k_current > 80:
+            return 0, f"K ({k_current:.2f}) trong vùng quá mua, rủi ro điều chỉnh"
+
+        if k_previous is not None:
+            if k_current < 20 and k_current > k_previous:
+                return 1, f"K hồi phục từ vùng quá bán ({k_previous:.2f} → {k_current:.2f})"
+
         if k_previous is not None and d_previous is not None:
             if k_previous < d_previous and k_current >= d_current:
                 return 1, f"K vừa cắt lên D ({k_previous:.2f} → {k_current:.2f}, D={d_current:.2f})"
@@ -241,12 +217,6 @@ class ScoringEngine:
             if k_current > d_current and j_current > j_previous:
                 return 1, f"K trên D và J tăng tốc ({j_previous:.2f} → {j_current:.2f})"
 
-        if k_previous is not None:
-            if k_current < 20 and k_current > k_previous:
-                return 1, f"K hồi phục từ vùng quá bán ({k_previous:.2f} → {k_current:.2f})"
-
-        if k_current > 80:
-            return 0, f"K ({k_current:.2f}) trong vùng quá mua, rủi ro điều chỉnh"
         if k_current < d_current:
             return 0, f"K ({k_current:.2f}) dưới D ({d_current:.2f}), xu hướng yếu"
         if j_previous is not None and j_current < j_previous:
@@ -302,13 +272,23 @@ class ScoringEngine:
         bb_lower = data["bb_lower"]
         close_current = data["close"]
         close_previous = close_current.shift(1)
+        middle_previous = bb_middle.shift(1)
         price_now = close_current
-        boll_valid = bb_upper.notna() & bb_middle.notna() & bb_lower.notna() & price_now.notna() & close_previous.notna()
+        boll_valid = (
+            bb_upper.notna()
+            & bb_middle.notna()
+            & bb_lower.notna()
+            & middle_previous.notna()
+            & price_now.notna()
+            & close_previous.notna()
+        )
         gap_current = close_current - bb_middle
-        gap_previous = close_previous - bb_middle
+        gap_previous = close_previous - middle_previous
         boll_score = np.select(
             [
-                boll_valid & (close_previous < bb_middle) & (price_now >= bb_middle),
+                boll_valid
+                & (close_previous < middle_previous)
+                & (price_now >= bb_middle),
                 boll_valid & close_current.notna() & (close_current > bb_middle) & (gap_current > gap_previous),
                 boll_valid & (price_now <= bb_lower) & (price_now > close_previous),
             ],
@@ -348,9 +328,9 @@ class ScoringEngine:
         kdj_valid = k.notna() & d.notna() & j.notna()
         kdj_score = np.select(
             [
-                kdj_valid & k_prev.notna() & d_prev.notna() & (k_prev < d_prev) & (k >= d),
-                kdj_valid & j_prev.notna() & (k > d) & (j > j_prev),
-                kdj_valid & k_prev.notna() & (k < 20) & (k > k_prev),
+                kdj_valid & (k <= 80) & k_prev.notna() & (k < 20) & (k > k_prev),
+                kdj_valid & (k <= 80) & k_prev.notna() & d_prev.notna() & (k_prev < d_prev) & (k >= d),
+                kdj_valid & (k <= 80) & j_prev.notna() & (k > d) & (j > j_prev),
             ],
             [1, 1, 1],
             default=0,

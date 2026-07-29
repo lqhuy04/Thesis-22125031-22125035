@@ -72,7 +72,9 @@ def walk_forward(
     start = train_window
     while start + test_window <= len(df):
         test_df = df.iloc[start : start + test_window].copy()
-        scored = scorer.score_dataframe(test_df)
+        scored = pipeline.apply_technical_selection(
+            scorer.score_dataframe(test_df)
+        )
         signaled = signal_gen.generate_signals(scored, min_score=min_score)
 
         signal_dates = pipeline.filter_signal_dates(signaled, min_score=min_score)
@@ -80,7 +82,7 @@ def walk_forward(
         approved_dates = {
             result.get("date")
             for result in pipeline_results
-            if result.get("recommendation") == "Mua"
+            if result.get("buy") is True
         }
 
         date_labels = pd.to_datetime(signaled["datetime"]).dt.strftime("%Y-%m-%d")
@@ -206,7 +208,7 @@ def regime_analysis(
     confidence_distribution: dict[str, dict[str, float]] = {}
     for regime in ["uptrend", "downtrend", "sideway"]:
         labels = [
-            r.get("confidence")
+            confidence_tier(r.get("confidence"))
             for r in pipeline_results
             if regime_map.get(r.get("date")) == regime
         ]

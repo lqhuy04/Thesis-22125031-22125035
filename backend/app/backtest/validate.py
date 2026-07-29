@@ -31,7 +31,7 @@ def validate_pipeline_consistency(
     pipeline_result: dict[str, Any],
     direct_agent_result: dict[str, Any],
 ) -> dict[str, Any]:
-    recommendation_match = pipeline_result.get("recommendation") == direct_agent_result.get("recommendation")
+    recommendation_match = pipeline_result.get("buy") == direct_agent_result.get("buy")
     confidence_match = pipeline_result.get("confidence") == direct_agent_result.get("confidence")
 
     return {

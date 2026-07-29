@@ -192,22 +192,9 @@
                 </div>
               </div>
 
-              <div class="form-row-3">
-                <div class="field">
-                  <label for="transCost">Phí giao dịch (mỗi chiều)</label>
-                  <input id="transCost" type="number" min="0" max="0.05" step="0.0005" value="0.0015" />
-                </div>
-                <div class="field">
-                  <label for="lookbackDays">Số ngày 1m lookback</label>
-                  <input id="lookbackDays" type="number" min="7" max="120" value="30" />
-                </div>
-                <div class="field" style="display: flex; align-items: flex-end; padding-bottom: 12px; gap: 8px;">
-                  <label class="switch">
-                    <input id="useIntraday" type="checkbox" checked />
-                    <span class="slider"></span>
-                  </label>
-                  <span class="switch-text">Dùng intraday 1m</span>
-                </div>
+              <div class="field">
+                <label for="transCost">Phí giao dịch (mỗi chiều)</label>
+                <input id="transCost" type="number" min="0" max="0.05" step="0.0005" value="0.0015" />
               </div>
 
               <div class="switch-row" style="margin-top: 4px;">
@@ -256,19 +243,33 @@
                   </div>
 
                   <!-- Cơ bản -->
+                  <div class="ds-group ds-group-inline">
+                    <span class="ds-group-title">📊 Cơ bản</span>
+                    <label class="switch switch-sm">
+                      <input id="dsFundamental" type="checkbox" checked />
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+
                   <div class="ds-group">
                     <div class="ds-group-head">
-                      <span class="ds-group-title">📊 Cơ bản</span>
-                      <span class="ds-count" id="dsFundCount">5/5</span>
+                      <span class="ds-group-title">⚖️ Trọng số thủ công (%)</span>
+                      <span class="ds-count">Tổng phải bằng 100%</span>
                     </div>
-                    <div class="ds-options">
-                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="liquidity" checked /><span>Thanh toán</span></label>
-                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="leverage" checked /><span>Đòn bẩy</span></label>
-                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="efficiency" checked /><span>Hiệu quả HĐ</span></label>
-                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="profitability" checked /><span>Sinh lời</span></label>
-                      <label class="ds-check"><input type="checkbox" class="ds-fund" value="valuation" checked /><span>Định giá</span></label>
+                    <div class="form-row-3">
+                      <div class="field">
+                        <label for="dsWeightNews">Tin tức</label>
+                        <input id="dsWeightNews" type="number" min="0" max="100" step="1" value="20" />
+                      </div>
+                      <div class="field">
+                        <label for="dsWeightTechnical">Kỹ thuật</label>
+                        <input id="dsWeightTechnical" type="number" min="0" max="100" step="1" value="40" />
+                      </div>
+                      <div class="field">
+                        <label for="dsWeightFundamental">Cơ bản</label>
+                        <input id="dsWeightFundamental" type="number" min="0" max="100" step="1" value="40" />
+                      </div>
                     </div>
-                    <p class="ds-hint" style="font-size: 0.72rem; opacity: 0.65; margin: 4px 0 0;">4 nhóm đầu kèm CAGR (tốc độ tăng trưởng TB); định giá không tính CAGR.</p>
                   </div>
                 </div>
               </div>
@@ -560,19 +561,33 @@
                   </div>
                 </div>
 
+                <div class="ds-group ds-group-inline">
+                  <span class="ds-group-title">📊 Cơ bản</span>
+                  <label class="switch switch-sm">
+                    <input id="anFundamental" type="checkbox" checked />
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
                 <div class="ds-group">
                   <div class="ds-group-head">
-                    <span class="ds-group-title">📊 Cơ bản</span>
-                    <span class="ds-count" id="anFundCount">5/5</span>
+                    <span class="ds-group-title">⚖️ Trọng số thủ công (%)</span>
+                    <span class="ds-count">Tổng phải bằng 100%</span>
                   </div>
-                  <div class="ds-options">
-                    <label class="ds-check"><input type="checkbox" class="an-fund" value="liquidity" checked /><span>Thanh toán</span></label>
-                    <label class="ds-check"><input type="checkbox" class="an-fund" value="leverage" checked /><span>Đòn bẩy</span></label>
-                    <label class="ds-check"><input type="checkbox" class="an-fund" value="efficiency" checked /><span>Hiệu quả HĐ</span></label>
-                    <label class="ds-check"><input type="checkbox" class="an-fund" value="profitability" checked /><span>Sinh lời</span></label>
-                    <label class="ds-check"><input type="checkbox" class="an-fund" value="valuation" checked /><span>Định giá</span></label>
+                  <div class="form-row-3">
+                    <div class="field">
+                      <label for="anWeightNews">Tin tức</label>
+                      <input id="anWeightNews" type="number" min="0" max="100" step="1" value="20" />
+                    </div>
+                    <div class="field">
+                      <label for="anWeightTechnical">Kỹ thuật</label>
+                      <input id="anWeightTechnical" type="number" min="0" max="100" step="1" value="40" />
+                    </div>
+                    <div class="field">
+                      <label for="anWeightFundamental">Cơ bản</label>
+                      <input id="anWeightFundamental" type="number" min="0" max="100" step="1" value="40" />
+                    </div>
                   </div>
-                  <p class="ds-hint" style="font-size: 0.72rem; opacity: 0.65; margin: 4px 0 0;">4 nhóm đầu kèm CAGR (tốc độ tăng trưởng TB); định giá không tính CAGR.</p>
                 </div>
               </div>
             </div>
@@ -612,6 +627,7 @@
                 <tr>
                   <th>Mã</th>
                   <th>Khuyến nghị</th>
+                  <th>Điểm</th>
                   <th>Độ tự tin</th>
                   <th>Tóm tắt</th>
                   <th>Trạng thái</th>
@@ -626,6 +642,6 @@
       </div>
     </main>
 
-    <script src="./app.js?v=20260727-2"></script>
+    <script src="./app.js?v=20260729-1"></script>
   </body>
 </html>

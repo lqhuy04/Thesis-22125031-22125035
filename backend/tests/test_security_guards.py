@@ -4,7 +4,11 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from agentic_ai.chatbot.sql_runner import UnsafeSQLError, sanitize_sql
-from app.models.agentic_schemas import ChatRequest, StockAnalysisRequest
+from app.models.agentic_schemas import (
+    AdminAnalysisRequest,
+    ChatRequest,
+    StockAnalysisRequest,
+)
 from app.models.auth_schemas import LoginRequest, VerifyOTPRequest
 from app.models.backtest_pipeline_schemas import BacktestPipelineRequest
 from app.utils.otp import OTPService
@@ -49,6 +53,21 @@ class InputGuardTests(unittest.TestCase):
             message="Phân tích FPT",
         )
         BacktestPipelineRequest(symbol="FPT")
+        AdminAnalysisRequest(
+            mode="manual",
+            symbol="FPT",
+            risk_appetite={"period": "mid_term"},
+            data_selection={
+                "news": True,
+                "technical": {"rsi": True},
+                "fundamental": True,
+                "weight": {
+                    "news": 0.2,
+                    "technical": 0.4,
+                    "fundamental": 0.4,
+                },
+            },
+        )
 
     def test_stock_analysis_requires_at_least_one_technical_indicator(self):
         StockAnalysisRequest(

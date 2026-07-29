@@ -26,15 +26,6 @@ class TechnicalSelection(BaseModel):
     kdj: bool = Field(default=True, description="KDJ")
 
 
-class FundamentalSelection(BaseModel):
-    """Legacy fundamental toggles used by the v1 admin analysis graph."""
-    liquidity: bool = True
-    leverage: bool = True
-    efficiency: bool = True
-    profitability: bool = True
-    valuation: bool = True
-
-
 class WeightSelection(BaseModel):
     """Trọng số thủ công người dùng gán cho từng nguồn khi tính confidence.
 
@@ -81,14 +72,6 @@ class DataSelection(BaseModel):
         return self
 
 
-class AdminDataSelection(BaseModel):
-    """Legacy selection contract retained for the v1 admin graph."""
-    news: bool = True
-    technical: TechnicalSelection = Field(default_factory=TechnicalSelection)
-    fundamental: FundamentalSelection = Field(default_factory=FundamentalSelection)
-    weight: WeightSelection | None = None
-
-
 # ─── /analyze (API mode) ──────────────────────────────────────────────────────
 
 class StockAnalysisRequest(BaseModel):
@@ -118,17 +101,10 @@ class AdminAnalysisRequest(BaseModel):
         description="Mã cổ phiếu khi không dùng rổ, ví dụ: VNM, FPT, VIC",
     )
     risk_appetite: RiskAppetite
-    data_selection: AdminDataSelection = Field(
-        default_factory=AdminDataSelection,
+    data_selection: DataSelection = Field(
+        default_factory=DataSelection,
         description="Chọn nguồn/chỉ số dữ liệu cho AI phân tích. Bỏ trống = bật tất cả.",
     )
-
-
-class InvestmentRecommendation(BaseModel):
-    summary: str
-    recommendation: Literal["Mua", "Giữ", "Chờ", "Bán"]
-    reasoning: str
-    confidence: float = Field(ge=0, le=1)
 
 
 # ─── /chat (Chatbot mode) ─────────────────────────────────────────────────────

@@ -29,8 +29,6 @@ const els = {
   minSignalScore: document.getElementById("minSignalScore"),
   maxHoldCandles: document.getElementById("maxHoldCandles"),
   transCost: document.getElementById("transCost"),
-  lookbackDays: document.getElementById("lookbackDays"),
-  useIntraday: document.getElementById("useIntraday"),
   exitOnScoreDrop: document.getElementById("exitOnScoreDrop"),
   runBacktestBtn: document.getElementById("runBacktestBtn"),
 
@@ -38,8 +36,11 @@ const els = {
   backtestModeControl: document.getElementById("backtestModeControl"),
   dataSelectionPanel: document.getElementById("dataSelectionPanel"),
   dsNews: document.getElementById("dsNews"),
+  dsFundamental: document.getElementById("dsFundamental"),
   dsTechCount: document.getElementById("dsTechCount"),
-  dsFundCount: document.getElementById("dsFundCount"),
+  dsWeightNews: document.getElementById("dsWeightNews"),
+  dsWeightTechnical: document.getElementById("dsWeightTechnical"),
+  dsWeightFundamental: document.getElementById("dsWeightFundamental"),
 
   // Drag and Drop
   dragDropZone: document.getElementById("dragDropZone"),
@@ -109,8 +110,11 @@ const els = {
   analyzeModeControl: document.getElementById("analyzeModeControl"),
   analyzeDataSelectionPanel: document.getElementById("analyzeDataSelectionPanel"),
   anNews: document.getElementById("anNews"),
+  anFundamental: document.getElementById("anFundamental"),
   anTechCount: document.getElementById("anTechCount"),
-  anFundCount: document.getElementById("anFundCount"),
+  anWeightNews: document.getElementById("anWeightNews"),
+  anWeightTechnical: document.getElementById("anWeightTechnical"),
+  anWeightFundamental: document.getElementById("anWeightFundamental"),
   runAnalyzeBtn: document.getElementById("runAnalyzeBtn"),
   analyzeProgressCard: document.getElementById("analyzeProgressCard"),
   analyzeStatus: document.getElementById("analyzeStatus"),
@@ -496,7 +500,6 @@ function initTabs() {
 // BACKTEST EXECUTION CONTROLLER
 // ─────────────────────────────────────────────────────────────────────────────
 const DS_TECH_KEYS = ["ma", "boll", "rsi", "macd", "kdj"];
-const DS_FUND_KEYS = ["liquidity", "leverage", "efficiency", "profitability", "valuation"];
 
 function getBacktestMode() {
   const activeBtn = els.backtestModeControl?.querySelector(".seg-btn.active");
@@ -512,16 +515,79 @@ function readChecks(selector, keys) {
   return result;
 }
 
+function readWeightSelection(newsInput, technicalInput, fundamentalInput) {
+  const percentages = {
+    news: Number(newsInput?.value),
+    technical: Number(technicalInput?.value),
+    fundamental: Number(fundamentalInput?.value),
+  };
+
+  if (Object.values(percentages).some((value) => !Number.isFinite(value) || value < 0 || value > 100 || !Number.isInteger(value))) {
+    throw new Error("Mỗi trọng số phải là số nguyên trong khoảng 0–100%.");
+  }
+
+  const total = percentages.news + percentages.technical + percentages.fundamental;
+  if (Math.abs(total - 100) > 0.001) {
+    throw new Error(`Tổng trọng số phải bằng 100% (hiện tại ${total}%).`);
+  }
+
+  return {
+    news: percentages.news / 100,
+    technical: percentages.technical / 100,
+    fundamental: percentages.fundamental / 100,
+  };
+}
+
+function redistributeWeights(inputs, enabled) {
+  const order = ["technical", "fundamental", "news"];
+  const active = order.filter((key) => enabled[key]);
+  const next = { news: 0, technical: 0, fundamental: 0 };
+  let remaining = 100;
+
+  active.forEach((key, index) => {
+    const value = index === active.length - 1
+      ? remaining
+      : Math.floor(100 / active.length);
+    next[key] = value;
+    remaining -= value;
+  });
+
+  order.forEach((key) => {
+    if (!inputs[key]) return;
+    inputs[key].value = next[key];
+    inputs[key].disabled = !enabled[key];
+  });
+}
+
+function bindRequiredTechnical(selector, updateCount) {
+  document.querySelectorAll(selector).forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      const checkedCount = document.querySelectorAll(`${selector}:checked`).length;
+      if (checkedCount === 0) {
+        checkbox.checked = true;
+        alert("Phải giữ lại ít nhất một chỉ báo kỹ thuật.");
+      }
+      updateCount();
+    });
+  });
+}
+
 function getDataSelection() {
   return {
     news: els.dsNews ? els.dsNews.checked : true,
     technical: readChecks(".ds-tech", DS_TECH_KEYS),
-    fundamental: readChecks(".ds-fund", DS_FUND_KEYS),
+    fundamental: els.dsFundamental ? els.dsFundamental.checked : true,
+    weight: readWeightSelection(
+      els.dsWeightNews,
+      els.dsWeightTechnical,
+      els.dsWeightFundamental,
+    ),
   };
 }
 
 function getBacktestParams(symbolOverride = null) {
-  return {
+  const mode = getBacktestMode();
+  const params = {
     symbol: symbolOverride || els.backtestSymbol.value.trim().toUpperCase() || "FPT",
     start_date: els.startDate.value || null,
     end_date: els.endDate.value || null,
@@ -529,19 +595,18 @@ function getBacktestParams(symbolOverride = null) {
     min_signal_score: parseInt(els.minSignalScore.value) || 3,
     max_hold_candles: parseInt(els.maxHoldCandles.value) || 20,
     transaction_cost_pct: parseFloat(els.transCost.value) || 0.0015,
-    one_minute_lookback_days: parseInt(els.lookbackDays.value) || 30,
-    use_intraday: els.useIntraday.checked,
     exit_on_score_drop: els.exitOnScoreDrop.checked,
-    mode: getBacktestMode(),
-    data_selection: getDataSelection(),
+    mode,
   };
+  if (mode === "manual") {
+    params.data_selection = getDataSelection();
+  }
+  return params;
 }
 
 function updateDsCounts() {
   const techOn = DS_TECH_KEYS.filter((k) => document.querySelector(`.ds-tech[value="${k}"]`)?.checked).length;
-  const fundOn = DS_FUND_KEYS.filter((k) => document.querySelector(`.ds-fund[value="${k}"]`)?.checked).length;
   if (els.dsTechCount) els.dsTechCount.textContent = `${techOn}/${DS_TECH_KEYS.length}`;
-  if (els.dsFundCount) els.dsFundCount.textContent = `${fundOn}/${DS_FUND_KEYS.length}`;
 }
 
 function initDataSelectionControls() {
@@ -558,9 +623,20 @@ function initDataSelectionControls() {
     });
   });
 
-  document.querySelectorAll(".ds-tech, .ds-fund").forEach((cb) => {
-    cb.addEventListener("change", updateDsCounts);
+  bindRequiredTechnical(".ds-tech", updateDsCounts);
+
+  const weightInputs = {
+    news: els.dsWeightNews,
+    technical: els.dsWeightTechnical,
+    fundamental: els.dsWeightFundamental,
+  };
+  const updateSourceWeights = () => redistributeWeights(weightInputs, {
+    news: els.dsNews?.checked !== false,
+    technical: true,
+    fundamental: els.dsFundamental?.checked !== false,
   });
+  els.dsNews?.addEventListener("change", updateSourceWeights);
+  els.dsFundamental?.addEventListener("change", updateSourceWeights);
   updateDsCounts();
 }
 
@@ -572,11 +648,18 @@ async function runBacktest() {
   }
 
   const runVn30 = els.vn30Option.checked;
+  let baseParams;
+  try {
+    baseParams = getBacktestParams();
+  } catch (error) {
+    alert(`Cấu hình backtest không hợp lệ: ${error.message}`);
+    return;
+  }
   els.runBacktestBtn.disabled = true;
 
   if (!runVn30) {
     // SINGLE ticker run
-    const params = getBacktestParams();
+    const params = baseParams;
     if (!params.symbol) {
       alert("Vui lòng điền mã cổ phiếu.");
       els.runBacktestBtn.disabled = false;
@@ -629,7 +712,7 @@ async function runBacktest() {
       const ticker = VN30_TICKERS[i];
       updateProgressBar(i, VN30_TICKERS.length, `Đang xử lý ${ticker} (${i + 1}/${VN30_TICKERS.length})...`);
 
-      const params = getBacktestParams(ticker);
+      const params = { ...baseParams, symbol: ticker };
       appendVn30Log(`[${i + 1}/30] Khởi động chạy backtest cho ${ticker}...`);
 
       try {
@@ -1324,6 +1407,24 @@ function confidenceInfo(conf) {
   return { text: (conf || "N/A").toString().toUpperCase(), cls };
 }
 
+function isBuyRecommendation(rec) {
+  if (typeof rec?.buy === "boolean") return rec.buy;
+  return rec?.recommendation === "Mua";
+}
+
+function recommendationText(rec) {
+  if (!rec) return "N/A";
+  if (typeof rec.buy === "boolean") return rec.buy ? "Mua" : "Chờ";
+  return rec.recommendation || "N/A";
+}
+
+function scoreOutOf100(value) {
+  const score = Number(value);
+  return Number.isFinite(score)
+    ? `${Math.round(Math.min(Math.max(score, 0), 1) * 100)}/100`
+    : "--";
+}
+
 function escapeHtml(str) {
   return String(str ?? "")
     .replace(/&/g, "&amp;")
@@ -1337,9 +1438,20 @@ function analysisSection(title, text) {
 }
 
 function renderAgentReportDetail(report) {
-  const rec = report.recommendation || "N/A";
+  const rec = recommendationText(report);
   const conf = confidenceInfo(report.confidence);
   const analysis = report.analysis;
+  const score = report.score && typeof report.score === "object"
+    ? report.score
+    : {};
+  const totalScore = Number.isFinite(Number(score.total))
+    ? scoreOutOf100(score.total)
+    : (report.total_score ?? "--");
+  const technicalScore = Number.isFinite(Number(score.technical))
+    ? scoreOutOf100(score.technical)
+    : (report.technical_total_score !== undefined
+      ? `${report.technical_total_score}/5`
+      : "--");
 
   const sources = Array.isArray(report.data_sources_used) && report.data_sources_used.length
     ? report.data_sources_used.join(", ")
@@ -1370,7 +1482,10 @@ function renderAgentReportDetail(report) {
       </div>
     </div>
     <ul class="detail-list">
-      <li><span class="lbl">Score kỹ thuật:</span> <span class="val">${report.total_score ?? "--"}</span></li>
+      <li><span class="lbl">Điểm tổng:</span> <span class="val">${totalScore}</span></li>
+      <li><span class="lbl">Điểm kỹ thuật:</span> <span class="val">${technicalScore}</span></li>
+      <li><span class="lbl">Điểm cơ bản:</span> <span class="val">${scoreOutOf100(score.fundamental)}</span></li>
+      <li><span class="lbl">Điểm tin tức:</span> <span class="val">${scoreOutOf100(score.news)}</span></li>
       <li><span class="lbl">Giá vào:</span> <span class="val">${report.entry_price ?? "--"}</span></li>
       <li><span class="lbl">Take Profit:</span> <span class="val text-green">${report.take_profit_price ?? "--"}</span></li>
       <li><span class="lbl">Stop Loss:</span> <span class="val text-red">${report.stop_loss_price ?? "--"}</span></li>
@@ -1384,7 +1499,7 @@ function renderAgentReportDetail(report) {
 function renderAgentReports(vizData) {
   // Chỉ hiển thị report cho các tín hiệu được khuyến nghị Mua.
   const reports = (Array.isArray(vizData.agent_reports) ? vizData.agent_reports : [])
-    .filter((r) => r.recommendation === "Mua");
+    .filter((report) => isBuyRecommendation(report));
 
   if (reports.length === 0) {
     els.agentReportCard.style.display = "none";
@@ -1398,7 +1513,7 @@ function renderAgentReports(vizData) {
   reports.forEach((report) => {
     const item = document.createElement("div");
     item.className = "agent-report-item";
-    const rec = report.recommendation || "N/A";
+    const rec = recommendationText(report);
     const conf = confidenceInfo(report.confidence);
 
     item.innerHTML = `
@@ -1451,7 +1566,6 @@ window.addEventListener("resize", () => {
 // AI ANALYZE TAB (Admin) — single symbol or VN30/VN100 basket
 // ─────────────────────────────────────────────────────────────────────────────
 const AN_TECH_KEYS = ["ma", "boll", "rsi", "macd", "kdj"];
-const AN_FUND_KEYS = ["liquidity", "leverage", "efficiency", "profitability", "valuation"];
 
 function getAnalyzeSource() {
   const btn = els.analyzeSourceControl?.querySelector(".seg-btn.active");
@@ -1467,15 +1581,18 @@ function getAnalyzeDataSelection() {
   return {
     news: els.anNews ? els.anNews.checked : true,
     technical: readChecks(".an-tech", AN_TECH_KEYS),
-    fundamental: readChecks(".an-fund", AN_FUND_KEYS),
+    fundamental: els.anFundamental ? els.anFundamental.checked : true,
+    weight: readWeightSelection(
+      els.anWeightNews,
+      els.anWeightTechnical,
+      els.anWeightFundamental,
+    ),
   };
 }
 
 function updateAnalyzeDsCounts() {
   const techOn = AN_TECH_KEYS.filter((k) => document.querySelector(`.an-tech[value="${k}"]`)?.checked).length;
-  const fundOn = AN_FUND_KEYS.filter((k) => document.querySelector(`.an-fund[value="${k}"]`)?.checked).length;
   if (els.anTechCount) els.anTechCount.textContent = `${techOn}/${AN_TECH_KEYS.length}`;
-  if (els.anFundCount) els.anFundCount.textContent = `${fundOn}/${AN_FUND_KEYS.length}`;
 }
 
 function buildAnalyzeBody(symbol) {
@@ -1517,9 +1634,20 @@ function initAnalyzeControls() {
     });
   }
 
-  document.querySelectorAll(".an-tech, .an-fund").forEach((cb) => {
-    cb.addEventListener("change", updateAnalyzeDsCounts);
+  bindRequiredTechnical(".an-tech", updateAnalyzeDsCounts);
+
+  const weightInputs = {
+    news: els.anWeightNews,
+    technical: els.anWeightTechnical,
+    fundamental: els.anWeightFundamental,
+  };
+  const updateSourceWeights = () => redistributeWeights(weightInputs, {
+    news: els.anNews?.checked !== false,
+    technical: true,
+    fundamental: els.anFundamental?.checked !== false,
   });
+  els.anNews?.addEventListener("change", updateSourceWeights);
+  els.anFundamental?.addEventListener("change", updateSourceWeights);
   updateAnalyzeDsCounts();
 }
 
@@ -1548,19 +1676,30 @@ function analysisBlocksHtml(rec) {
 
 function recommendationDetailHtml(symbol, rec) {
   const conf = confidenceInfo(rec.confidence);
-  return `
-    <div class="report-detail-header">
-      <h3>${escapeHtml(symbol)}</h3>
-      <div class="report-badges">
-        <span class="badge ${recommendationBadgeClass(rec.recommendation)}">${escapeHtml(rec.recommendation || "N/A")}</span>
-        <span class="badge ${conf.cls}">${escapeHtml(conf.text)}</span>
-      </div>
-    </div>
-    <ul class="detail-list">
+  const recText = recommendationText(rec);
+  const score = rec.score && typeof rec.score === "object" ? rec.score : {};
+  const tradingPlanHtml = isBuyRecommendation(rec)
+    ? `
       <li><span class="lbl">Giá vào:</span> <span class="val">${rec.entry_price ?? "--"}</span></li>
       <li><span class="lbl">Take Profit:</span> <span class="val text-green">${rec.take_profit_price ?? "--"}</span></li>
       <li><span class="lbl">Stop Loss:</span> <span class="val text-red">${rec.stop_loss_price ?? "--"}</span></li>
       <li><span class="lbl">Nến giữ tối đa:</span> <span class="val">${rec.max_hold_candles ?? "--"}</span></li>
+    `
+    : "";
+  return `
+    <div class="report-detail-header">
+      <h3>${escapeHtml(symbol)}</h3>
+      <div class="report-badges">
+        <span class="badge ${recommendationBadgeClass(recText)}">${escapeHtml(recText)}</span>
+        <span class="badge ${conf.cls}">${escapeHtml(conf.text)}</span>
+      </div>
+    </div>
+    <ul class="detail-list">
+      <li><span class="lbl">Điểm tổng:</span> <span class="val">${scoreOutOf100(score.total)}</span></li>
+      <li><span class="lbl">Điểm kỹ thuật:</span> <span class="val">${scoreOutOf100(score.technical)}</span></li>
+      <li><span class="lbl">Điểm cơ bản:</span> <span class="val">${scoreOutOf100(score.fundamental)}</span></li>
+      <li><span class="lbl">Điểm tin tức:</span> <span class="val">${scoreOutOf100(score.news)}</span></li>
+      ${tradingPlanHtml}
     </ul>
     ${analysisBlocksHtml(rec)}
   `;
@@ -1574,7 +1713,8 @@ function renderSingleRecommendation(symbol, rec) {
 
 function addAnalyzeTableRow(symbol, rec, status, errMsg = "") {
   const tr = document.createElement("tr");
-  const recText = rec ? (rec.recommendation || "N/A") : "N/A";
+  const recText = recommendationText(rec);
+  const totalScore = rec ? scoreOutOf100(rec.score?.total) : "--";
   const conf = rec ? confidenceInfo(rec.confidence) : { text: "--", cls: "" };
   const summary = rec && rec.analysis && rec.analysis.summary ? rec.analysis.summary : "";
   const shortSummary = summary.length > 90 ? summary.slice(0, 90) + "…" : summary;
@@ -1584,6 +1724,7 @@ function addAnalyzeTableRow(symbol, rec, status, errMsg = "") {
   tr.innerHTML = `
     <td><strong>${escapeHtml(symbol)}</strong></td>
     <td><span class="${recClass}">${escapeHtml(recText)}</span></td>
+    <td>${escapeHtml(totalScore)}</td>
     <td><span class="badge ${conf.cls}">${escapeHtml(conf.text)}</span></td>
     <td style="max-width: 320px; color: var(--muted); font-size: 0.82rem;">${escapeHtml(shortSummary)}</td>
     <td><span class="${statusClass}" title="${escapeHtml(errMsg)}">${status === "ok" ? "OK" : "Lỗi"}</span></td>
@@ -1628,6 +1769,14 @@ async function runAnalyze() {
   }
 
   const source = getAnalyzeSource();
+  if (getAnalyzeMode() === "manual") {
+    try {
+      getAnalyzeDataSelection();
+    } catch (error) {
+      alert(`Cấu hình phân tích không hợp lệ: ${error.message}`);
+      return;
+    }
+  }
   els.runAnalyzeBtn.disabled = true;
 
   // Reset result panels
@@ -1653,7 +1802,7 @@ async function runAnalyze() {
       const entry = payload?.data?.results?.[0];
       if (entry && entry.status === "ok" && entry.recommendation) {
         renderSingleRecommendation(symbol, entry.recommendation);
-        appendLog(`Phân tích ${symbol} hoàn thành: ${entry.recommendation.recommendation}.`);
+        appendLog(`Phân tích ${symbol} hoàn thành: ${recommendationText(entry.recommendation)}.`);
       } else {
         throw new Error(entry?.error || "Không nhận được kết quả phân tích.");
       }
@@ -1692,7 +1841,7 @@ async function runAnalyze() {
             const rec = entry.recommendation;
             addAnalyzeTableRow(sym, rec, "ok");
             analyzeSummaryData.push({ symbol: sym, rec, status: "ok" });
-            appendAnalyzeLog(`✅ ${sym}: ${rec.recommendation} (tự tin ${confidenceInfo(rec.confidence).text}).`);
+            appendAnalyzeLog(`✅ ${sym}: ${recommendationText(rec)} (điểm ${scoreOutOf100(rec.score?.total)}, tự tin ${confidenceInfo(rec.confidence).text}).`);
           } else {
             throw new Error(entry?.error || "Kết quả rỗng");
           }
@@ -1721,11 +1870,12 @@ async function runAnalyze() {
 
 function exportAnalyzeCsv() {
   if (analyzeSummaryData.length === 0) return;
-  let csv = "data:text/csv;charset=utf-8,Symbol,Recommendation,Confidence,Status\n";
+  let csv = "data:text/csv;charset=utf-8,Symbol,Recommendation,Score,Confidence,Status\n";
   analyzeSummaryData.forEach((row) => {
-    const rec = row.rec ? (row.rec.recommendation || "") : "";
+    const rec = row.rec ? recommendationText(row.rec) : "";
+    const score = row.rec ? scoreOutOf100(row.rec.score?.total) : "";
     const conf = row.rec ? confidenceInfo(row.rec.confidence).text : "";
-    csv += `${row.symbol},${rec},${conf},${row.status}\n`;
+    csv += `${row.symbol},${rec},${score},${conf},${row.status}\n`;
   });
   const link = document.createElement("a");
   link.setAttribute("href", encodeURI(csv));

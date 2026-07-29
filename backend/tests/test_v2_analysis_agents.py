@@ -1,4 +1,5 @@
 import unittest
+from datetime import date
 from unittest.mock import patch
 
 import agentic_ai_v2.analyze.graph as graph_module
@@ -13,6 +14,9 @@ from agentic_ai_v2.analyze.agents.article_analysis import (
 from agentic_ai_v2.analyze.agents.fundamental_analysis import (
     FundamentalAnalysisOutput,
     fundamental_analysis_agent,
+)
+from agentic_ai_v2.analyze.agents.fundamental import (
+    _rows_available_before,
 )
 from agentic_ai_v2.analyze.agents.recommendation import (
     TradingPlanOutput,
@@ -31,6 +35,20 @@ from agentic_ai_v2.analyze.graph import (
 
 
 class V2AnalysisAgentTests(unittest.TestCase):
+    def test_fundamental_backtest_excludes_same_year_and_future_rows(self):
+        rows = [
+            {"year": 2021, "roe": 0.1},
+            {"year": "2022", "roe": 0.2},
+            {"year": 2023, "roe": 0.3},
+            {"year": 2024, "roe": 0.4},
+        ]
+
+        self.assertEqual(
+            _rows_available_before(rows, date(2023, 8, 1)),
+            rows[:2],
+        )
+        self.assertIs(_rows_available_before(rows, None), rows)
+
     @patch(
         "agentic_ai_v2.analyze.agents.article_analysis."
         "_call_article_analysis_llm"

@@ -9,25 +9,14 @@ from threading import Lock
 from langchain_core.messages import AIMessage, HumanMessage
 
 from agentic_ai.chatbot.graph import build_chatbot_graph
-from agentic_ai.analyze.graph import build_graph
 from agentic_ai_v2.analyze.graph import build_graph as build_graph_v2
 from app.services.chat_session_service import ChatSessionService
 
 # Heavyweight graphs and their database checkpointer are initialized only when
 # first used. Importing the API must not open an external database connection.
-_graph = None
 _graph_v2 = None
 _chatbot_graph = None
 _graph_lock = Lock()
-
-
-def _get_analysis_graph():
-    global _graph
-    if _graph is None:
-        with _graph_lock:
-            if _graph is None:
-                _graph = build_graph()
-    return _graph
 
 
 def _get_analysis_graph_v2():
@@ -89,22 +78,6 @@ def _run_stock_analysis_with_graph(
     return result["final_output"]
 
 
-def run_stock_analysis(
-    symbol: str,
-    risk_appetite: dict,
-    mode: str,
-    data_selection: dict | None = None,
-) -> dict:
-    """Run the legacy analysis graph used by admin and batch workflows."""
-    return _run_stock_analysis_with_graph(
-        graph=_get_analysis_graph(),
-        symbol=symbol,
-        risk_appetite=risk_appetite,
-        mode=mode,
-        data_selection=data_selection,
-    )
-
-
 def run_stock_analysis_v2(
     symbol: str,
     risk_appetite: dict,
@@ -158,7 +131,7 @@ def run_admin_analysis(
 
         def _one(sym: str) -> dict:
             try:
-                rec = run_stock_analysis(
+                rec = run_stock_analysis_v2(
                     symbol=sym,
                     risk_appetite=risk_appetite,
                     mode=mode,
@@ -180,7 +153,7 @@ def run_admin_analysis(
     if not symbol or not symbol.strip():
         raise ValueError("Cần cung cấp 'symbol' khi không chọn rổ VN30/VN100.")
 
-    rec = run_stock_analysis(
+    rec = run_stock_analysis_v2(
         symbol=symbol.strip().upper(),
         risk_appetite=risk_appetite,
         mode=mode,

@@ -4,7 +4,7 @@ Service to run the LLM-backed backtest pipeline.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 import pandas as pd
 
@@ -69,38 +69,23 @@ def _build_dataframe(
     return df
 
 
-def _resolve_end_date(df: pd.DataFrame, fallback_end: str | None) -> datetime:
-    if fallback_end:
-        return _parse_date_boundary(fallback_end, end_of_day=True) or df["datetime"].max()
-    return df["datetime"].max()
-
-
 def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
     symbol = request.symbol.upper().strip()
     market_symbol = request.market_symbol.upper().strip()
 
-    df_1d = _build_dataframe(symbol=symbol, interval="1d", start_date=request.start_date, end_date=request.end_date)
+    # Keep all history before start_date so rolling/EMA indicators at the
+    # evaluation boundary are identical to the production v2 technical agent.
+    # run_full_backtest trims the scored frame back to the requested period.
+    df_1d = _build_dataframe(
+        symbol=symbol,
+        interval="1d",
+        start_date=None,
+        end_date=request.end_date,
+    )
 
-    if request.use_intraday:
-        end_dt = _resolve_end_date(df_1d, request.end_date)
-        one_minute_start = end_dt - timedelta(days=request.one_minute_lookback_days)
-
-        try:
-            df_1m = _build_dataframe(
-                symbol=symbol,
-                interval="1m",
-                start_date=one_minute_start.strftime("%Y-%m-%d"),
-                end_date=end_dt.strftime("%Y-%m-%d"),
-            )
-        except ValueError:
-            df_1m_all = _build_dataframe(symbol=symbol, interval="1m", start_date=None, end_date=None)
-            latest_dt = df_1m_all["datetime"].max()
-            cutoff = latest_dt - timedelta(days=request.one_minute_lookback_days)
-            df_1m = df_1m_all[df_1m_all["datetime"] >= cutoff].reset_index(drop=True)
-            if df_1m.empty:
-                raise ValueError("No 1m data available for fallback window")
-    else:
-        df_1m = df_1d.copy()
+    # Kept as a compatibility argument for run_full_backtest. The migrated v2
+    # pipeline is explicitly daily/mid-term and does not read intraday prices.
+    df_1m = df_1d
 
     market_df = _build_dataframe(
         symbol=market_symbol,
@@ -124,6 +109,7 @@ def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
         df_1m=df_1m,
         market_df=market_df,
         symbol=symbol,
+        evaluation_start_date=request.start_date,
         min_signal_score=request.min_signal_score,
         mode=request.mode,
         data_selection=effective_selection,

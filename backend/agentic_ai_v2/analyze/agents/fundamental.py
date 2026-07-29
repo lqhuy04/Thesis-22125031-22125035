@@ -2,6 +2,7 @@
 
 import logging
 import math
+from datetime import date
 from dataclasses import dataclass
 
 from agentic_ai_v2.analyze.state import AgentState
@@ -376,6 +377,39 @@ def _get_industry_rows(icb_code: str | None) -> list[dict]:
         return []
 
 
+def _rows_available_before(
+    rows: list[dict],
+    as_of_date: date | None,
+) -> list[dict]:
+    """Exclude same-year/future annual data from historical backtests.
+
+    FA_Indicator and FA_Industry_Aggregate only expose an annual ``year`` field,
+    not a publication timestamp. The conservative boundary below ensures a
+    backtest never reads financial data for the year being simulated.
+    """
+    if as_of_date is None:
+        return rows
+
+    available_rows = []
+    for row in rows:
+        try:
+            year = int(row.get("year"))
+        except (TypeError, ValueError):
+            continue
+        if year < as_of_date.year:
+            available_rows.append(row)
+    return available_rows
+
+
+def _fundamental_as_of_date(state: AgentState) -> date | None:
+    value = ((state.get("plan") or {}).get("fundamental") or {}).get(
+        "as_of_date"
+    )
+    if not value:
+        return None
+    return date.fromisoformat(value)
+
+
 def _format_output(
     indicators: list[dict],
     is_financial: bool,
@@ -427,12 +461,19 @@ def fundamental_agent(state: AgentState) -> dict:
     symbol = state.get("symbol", "").strip().upper()
 
     try:
-        indicators = FundamentalAnalysisService.get_indicators(symbol)
+        as_of_date = _fundamental_as_of_date(state)
+        indicators = _rows_available_before(
+            FundamentalAnalysisService.get_indicators(symbol),
+            as_of_date,
+        )
         is_financial, icb_code = _get_company_context(symbol)
         output = _format_output(
             indicators=indicators,
             is_financial=is_financial,
-            industry_rows=_get_industry_rows(icb_code),
+            industry_rows=_rows_available_before(
+                _get_industry_rows(icb_code),
+                as_of_date,
+            ),
         )
     except Exception:
         logger.exception("Fundamental data preparation failed for %s", symbol)

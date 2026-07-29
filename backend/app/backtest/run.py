@@ -8,8 +8,8 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-from agentic_ai.analyze.nodes.technical_analysis import technical_analysis_agent
-from agentic_ai.analyze.state import AgentState
+from agentic_ai_v2.analyze.agents.technical import technical_agent
+from agentic_ai_v2.analyze.state import AgentState
 
 from .engine import IndicatorEngine, ScoringEngine, SignalGenerator, TradeSimulator, MetricsCalculator
 from .pipeline import BacktestPipeline
@@ -22,15 +22,14 @@ def _build_state(symbol: str, from_date: str, to_date: str) -> AgentState:
     return {
         "mode": "auto",
         "user_input": "Backtest parity check",
-        "risk_appetite": {},
+        "risk_appetite": {"period": "mid_term"},
         "symbol": symbol,
         "plan": {
-            "technical_analysis_agent": {
+            "technical": {
                 "interval": "1d",
                 "from_date": from_date,
                 "to_date": to_date,
                 "use_current_price": False,
-                "indicator_source": "backtest",
             }
         },
         "agent_results": {},
@@ -50,6 +49,7 @@ def run_full_backtest(
     transaction_cost_pct: float = 0.0015,
     mode: str = "auto",
     data_selection: dict | None = None,
+    evaluation_start_date: str | None = None,
 ) -> dict[str, Any]:
     indicator_engine = IndicatorEngine()
     scoring_engine = ScoringEngine()
@@ -72,10 +72,10 @@ def run_full_backtest(
     for idx in sample_indices:
         date_str = pd.to_datetime(df_1d.iloc[idx]["datetime"]).strftime("%Y-%m-%d")
         state = _build_state(symbol, parity_start, date_str)
-        output = technical_analysis_agent(state)
+        output = technical_agent(state)
         live_outputs.append({
             "candle_index": idx,
-            "live_output": output.get("agent_results", {}).get("technical_analysis_agent", {}),
+            "live_output": output.get("agent_results", {}).get("technical_agent", {}),
         })
 
     parity_report = run_parity_suite(live_outputs, scored_1d_for_parity)
@@ -83,9 +83,18 @@ def run_full_backtest(
         raise ValueError("Parity check failed: scoring parity < 100%")
 
     scored_1d = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1d))
-    scored_1m = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1m))
 
     pipeline = BacktestPipeline(symbol, trade_config, mode=mode, data_selection=data_selection)
+    if evaluation_start_date:
+        evaluation_start = pd.to_datetime(evaluation_start_date)
+        scored_1d = scored_1d[
+            pd.to_datetime(scored_1d["datetime"]) >= evaluation_start
+        ].reset_index(drop=True)
+        if scored_1d.empty:
+            raise ValueError(
+                "No daily candles remain in the requested backtest period"
+            )
+    scored_1d = pipeline.apply_technical_selection(scored_1d)
     signal_dates_1d = pipeline.filter_signal_dates(scored_1d, min_score=min_signal_score)
 
     print(f"Goi LLM cho {len(signal_dates_1d)} signal dates tren 1d...")
@@ -94,10 +103,9 @@ def run_full_backtest(
     approved_dates = {
         result.get("date")
         for result in pipeline_results
-        if result.get("recommendation") == "Mua"
+        if result.get("buy") is True
     }
     confidence_map = {result.get("date"): result.get("confidence") for result in pipeline_results}
-    entry_price_map = {result.get("date"): result.get("entry_price") for result in pipeline_results}
     take_profit_map = {result.get("date"): result.get("take_profit_price") for result in pipeline_results}
     stop_loss_map = {result.get("date"): result.get("stop_loss_price") for result in pipeline_results}
     max_hold_map = {result.get("date"): result.get("max_hold_candles") for result in pipeline_results}
@@ -108,7 +116,6 @@ def run_full_backtest(
     signaled_full.loc[:, "signal"] = None
     signaled_full.loc[allowed_mask, "signal"] = "BUY"
     signaled_full["confidence"] = date_labels.map(confidence_map)
-    signaled_full["entry_price_override"] = date_labels.map(entry_price_map)
     signaled_full["take_profit_price"] = date_labels.map(take_profit_map)
     signaled_full["stop_loss_price"] = date_labels.map(stop_loss_map)
     signaled_full["max_hold_candles_override"] = date_labels.map(max_hold_map)
@@ -165,7 +172,7 @@ def run_full_backtest(
     print(f"\n[FULL PIPELINE — LLM + Technical + Article + Fundamental]")
     print(f"Transaction cost:      {transaction_cost_pct*100:.2f}% per side ({transaction_cost_pct*2*100:.2f}% round-trip)")
     print(f"Signal dates found:    {len(signal_dates_1d)}")
-    print(f"LLM calls made:        {len(pipeline_results)}")
+    print(f"Signal dates analyzed: {len(pipeline_results)}")
     print(f"Trades executed:       {full_metrics['volume']['n_trades']}")
     print(f"Win Rate:              {_pct(full_metrics['volume']['win_rate'])}")
     print(f"Total Return:          {_pct(full_metrics['pnl']['total_return'])}")

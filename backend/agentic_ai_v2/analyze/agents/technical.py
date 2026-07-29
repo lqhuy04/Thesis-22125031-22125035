@@ -365,7 +365,12 @@ def technical_agent(state: AgentState) -> dict:
                 f"Không có dữ liệu giá {interval} cho mã {symbol}."
             )
 
-        current_price = _fetch_current_price(symbol)
+        use_current_price = technical_plan.get("use_current_price", True)
+        current_price = (
+            _fetch_current_price(symbol)
+            if use_current_price
+            else None
+        )
         frame = _attach_indicators(_build_price_frame(rows))
         output = _format_output(
             symbol=symbol,

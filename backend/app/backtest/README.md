@@ -7,9 +7,12 @@ app/services/backtest_pipeline_service.py.
 ## What It Does
 
 - Computes indicators and technical scores (RSI, MA, Bollinger, MACD, KDJ).
-- Generates technical signals, then calls the live LLM pipeline only on signal dates.
+- Generates technical signals, then runs the v2 source, analysis,
+  recommendation, and aggregator agents only on signal dates.
 - Simulates trades and calculates metrics, benchmarks, and statistical tests.
 - Runs walk-forward validation, regime analysis, and confidence calibration.
+- Uses the daily/mid-term v2 configuration. Historical recommendations use the
+  final daily candle at each simulated date, never `Current_Stock_Price`.
 
 ## Key Entry Point
 
@@ -19,11 +22,12 @@ Signature:
 
 run_full_backtest(
     df_1d,        # 5y daily OHLCV
-    df_1m,        # 1m OHLCV (recent window)
+    df_1m,        # legacy compatibility argument; v2 does not use it
     market_df,    # VN-Index daily OHLCV
     symbol,
     max_hold_candles=20,
     exit_on_score_drop=False,
+    evaluation_start_date=None,
 )
 
 ## Data Requirements
@@ -34,6 +38,9 @@ All DataFrames must include:
 
 No look-ahead is used; indicators at index i only use data up to i.
 Entry price is the next candle open (open[i+1]).
+The v2 recommendation's `entry_price` remains in `pipeline_results` for audit,
+but it does not override the simulator's executable next-candle entry price.
+Annual fundamental rows from the simulated year and future years are excluded.
 
 ## API Usage (Backtest Pipeline)
 
@@ -42,6 +49,23 @@ POST /api/agentic/backtest
 Example payload:
 {
   "symbol": "VNM",
+  "mode": "manual",
+  "data_selection": {
+    "news": true,
+    "technical": {
+      "ma": true,
+      "boll": true,
+      "rsi": true,
+      "macd": true,
+      "kdj": true
+    },
+    "fundamental": true,
+    "weight": {
+      "news": 0.2,
+      "technical": 0.4,
+      "fundamental": 0.4
+    }
+  },
   "start_date": "2021-01-01",
   "end_date": "2024-12-31",
   "market_symbol": "VNINDEX",
@@ -49,7 +73,7 @@ Example payload:
   "min_signal_score": 4,
   "exit_on_score_drop": false,
   "one_minute_lookback_days": 30,
-  "use_intraday": true
+  "use_intraday": false
 }
 
 ## VN30 Aggregate Stats (local JSON)
@@ -75,6 +99,7 @@ pipeline với baseline engine-only của các mã hiện có trong file.
 
 ## Notes
 
-- LLM calls happen only on technical signal dates (to reduce cost).
+- The v2 LLM analysis/recommendation calls happen only on technical signal
+  dates (to reduce cost).
 - Requires working LLM configuration and data access via MarketService.
 - Parity checks must pass before the full backtest runs.

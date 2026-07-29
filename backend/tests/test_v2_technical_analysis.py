@@ -8,6 +8,7 @@ from agentic_ai_v2.analyze.agents.technical import (
     _fetch_current_price,
     _format_output,
     _score_kdj,
+    technical_agent,
 )
 
 
@@ -162,6 +163,84 @@ class V2TechnicalAnalysisCurrentPriceTests(unittest.TestCase):
             {
                 "value": 128.0,
                 "time": "2026-07-29T00:00:00+00:00",
+                "source": "Stock_Price_1d",
+            },
+        )
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.technical._fetch_current_price"
+    )
+    @patch(
+        "agentic_ai_v2.analyze.agents.technical."
+        "TechnicalIndicatorsService.calculate_all_indicators"
+    )
+    @patch(
+        "agentic_ai_v2.analyze.agents.technical."
+        "MarketService.get_stock_price_by_interval"
+    )
+    def test_backtest_plan_never_reads_live_current_price(
+        self,
+        get_prices,
+        calculate_indicators,
+        fetch_current_price,
+    ):
+        dates = pd.date_range("2023-01-01", periods=51, tz="UTC")
+        get_prices.return_value = [
+            {
+                "trading_time": timestamp.isoformat(),
+                "open": 100 + index,
+                "high": 101 + index,
+                "low": 99 + index,
+                "close": 100 + index,
+                "volume": 1_000 + index,
+            }
+            for index, timestamp in enumerate(dates)
+        ]
+        calculate_indicators.return_value = {
+            "rsi_14": [50.0] * 51,
+            "sma_20": [100.0] * 51,
+            "sma_50": [90.0] * 51,
+            "bb_upper": [160.0] * 51,
+            "bb_middle": [120.0] * 51,
+            "bb_lower": [80.0] * 51,
+            "macd": [1.0] * 51,
+            "macd_signal": [0.5] * 51,
+            "macd_histogram": [0.5] * 51,
+            "kdj_k": [50.0] * 51,
+            "kdj_d": [45.0] * 51,
+            "kdj_j": [55.0] * 51,
+        }
+
+        result = technical_agent(
+            {
+                "mode": "manual",
+                "symbol": "FPT",
+                "data_selection": {
+                    "technical": {
+                        "ma": True,
+                        "boll": False,
+                        "rsi": False,
+                        "macd": False,
+                        "kdj": False,
+                    }
+                },
+                "plan": {
+                    "technical": {
+                        "interval": "1d",
+                        "from_date": "2023-01-01",
+                        "to_date": "2023-02-20",
+                        "use_current_price": False,
+                    }
+                },
+            }
+        )["agent_results"]["technical_agent"]
+
+        fetch_current_price.assert_not_called()
+        self.assertEqual(
+            result["current_price"],
+            {
+                "value": 150.0,
+                "time": "2023-02-20T00:00:00+00:00",
                 "source": "Stock_Price_1d",
             },
         )
