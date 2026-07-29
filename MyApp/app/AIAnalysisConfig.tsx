@@ -137,15 +137,11 @@ const ModeCard = ({
 const SectionToggle = ({
   label,
   enabled,
-  checkedCount,
-  totalCount,
   onToggle,
   theme,
 }: {
   label: string;
   enabled: boolean;
-  checkedCount: number;
-  totalCount: number;
   onToggle: (v: boolean) => void;
   theme: ReturnType<typeof useTheme>["theme"];
 }) => (
@@ -159,18 +155,6 @@ const SectionToggle = ({
       {label}
     </Text>
     <View style={styles.sectionToggleRight}>
-      {enabled && (
-        <View
-          style={[
-            styles.countBadge,
-            { backgroundColor: PURPLE_GRADIENT[1] + "22" },
-          ]}
-        >
-          <Text typography="labelSmall" color={PURPLE_GRADIENT[0]}>
-            {checkedCount}/{totalCount}
-          </Text>
-        </View>
-      )}
       <Switch
         value={enabled}
         onValueChange={onToggle}
@@ -419,7 +403,6 @@ const AIAnalysisConfig = () => {
 
   const [mode, setMode] = useState<Mode>("auto");
   const [newsEnabled, setNewsEnabled] = useState(true);
-  const [technicalEnabled, setTechnicalEnabled] = useState(true);
   const [fundamentalEnabled, setFundamentalEnabled] = useState(true);
   const [technical, setTechnical] = useState<TechnicalSelection>({
     ...DEFAULT_TECHNICAL,
@@ -431,7 +414,7 @@ const AIAnalysisConfig = () => {
   const PRESET_KEY = "ai_analysis_preset";
   const [hydrated, setHydrated] = useState(false);
 
-  // Toast cảnh báo khi cố tắt data source cuối cùng còn lại.
+  // Toast cảnh báo khi cố tắt chỉ báo kỹ thuật cuối cùng.
   const [toastVisible, setToastVisible] = useState(false);
   const toastAnim = useRef(new Animated.Value(0)).current;
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -469,11 +452,20 @@ const AIAnalysisConfig = () => {
           if (preset.mode) setMode(preset.mode);
           if (typeof preset.newsEnabled === "boolean")
             setNewsEnabled(preset.newsEnabled);
-          if (typeof preset.technicalEnabled === "boolean")
-            setTechnicalEnabled(preset.technicalEnabled);
           if (typeof preset.fundamentalEnabled === "boolean")
             setFundamentalEnabled(preset.fundamentalEnabled);
-          if (preset.technical) setTechnical(preset.technical);
+          if (preset.technical) {
+            const savedTechnical = {
+              ...DEFAULT_TECHNICAL,
+              ...preset.technical,
+            };
+            const hasEnabledIndicator = Object.values(savedTechnical).some(
+              (enabled) => enabled === true,
+            );
+            setTechnical(
+              hasEnabledIndicator ? savedTechnical : { ...DEFAULT_TECHNICAL },
+            );
+          }
           if (preset.weight) setWeight(preset.weight);
         } catch {}
       }
@@ -489,7 +481,6 @@ const AIAnalysisConfig = () => {
       JSON.stringify({
         mode,
         newsEnabled,
-        technicalEnabled,
         fundamentalEnabled,
         technical,
         weight,
@@ -499,7 +490,6 @@ const AIAnalysisConfig = () => {
     hydrated,
     mode,
     newsEnabled,
-    technicalEnabled,
     fundamentalEnabled,
     technical,
     weight,
@@ -511,7 +501,7 @@ const AIAnalysisConfig = () => {
   const prevEnabledKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!hydrated) return;
-    const key = `${technicalEnabled}-${fundamentalEnabled}-${newsEnabled}`;
+    const key = `${fundamentalEnabled}-${newsEnabled}`;
     if (prevEnabledKeyRef.current === null) {
       prevEnabledKeyRef.current = key;
       return;
@@ -521,13 +511,13 @@ const AIAnalysisConfig = () => {
 
     const activeKeys = SOURCE_ORDER.filter((k) =>
       k === "technical"
-        ? technicalEnabled
+        ? true
         : k === "fundamental"
           ? fundamentalEnabled
           : newsEnabled,
     );
     setWeight(equalWeights(activeKeys));
-  }, [hydrated, technicalEnabled, fundamentalEnabled, newsEnabled]);
+  }, [hydrated, fundamentalEnabled, newsEnabled]);
 
   const technicalKeys = Object.keys(
     DEFAULT_TECHNICAL,
@@ -537,31 +527,7 @@ const AIAnalysisConfig = () => {
     (k) => technical[k],
   ).length;
 
-  // Technical cần ít nhất một chỉ báo; fundamental là toggle toàn nguồn.
-  const sourceActive = {
-    news: newsEnabled,
-    technical: technicalEnabled && technicalCheckedCount > 0,
-    fundamental: fundamentalEnabled,
-  };
-
-  // Có được phép tắt `source` không: chỉ chặn khi đây là nguồn active duy nhất.
-  const canDisableSource = (source: keyof typeof sourceActive) =>
-    (["news", "technical", "fundamental"] as const).some(
-      (k) => k !== source && sourceActive[k],
-    );
-
-  // Bỏ hết checkbox thành phần thì tự động tắt toggle của section đó.
-  useEffect(() => {
-    if (technicalEnabled && technicalCheckedCount === 0) {
-      setTechnicalEnabled(false);
-    }
-  }, [technicalEnabled, technicalCheckedCount]);
-
-  const isValid =
-    mode === "auto" ||
-    newsEnabled ||
-    (technicalEnabled && technicalCheckedCount > 0) ||
-    fundamentalEnabled;
+  const isValid = mode === "auto" || technicalCheckedCount > 0;
 
   const technicalLabels: Record<keyof TechnicalSelection, string> = {
     ma: t("aiAnalysis.ma"),
@@ -580,15 +546,7 @@ const AIAnalysisConfig = () => {
     if (mode === "manual") {
       const selection: DataSelection = {
         news: newsEnabled,
-        technical: technicalEnabled
-          ? { ...technical }
-          : {
-              ma: false,
-              boll: false,
-              rsi: false,
-              macd: false,
-              kdj: false,
-            },
+        technical: { ...technical },
         fundamental: fundamentalEnabled,
         weight: { ...weight },
       };
@@ -654,7 +612,7 @@ const AIAnalysisConfig = () => {
               onChange={setWeight}
               theme={theme}
               enabled={{
-                technical: technicalEnabled,
+                technical: true,
                 fundamental: fundamentalEnabled,
                 news: newsEnabled,
               }}
@@ -687,70 +645,58 @@ const AIAnalysisConfig = () => {
             <SectionToggle
               label={t("aiAnalysis.news")}
               enabled={newsEnabled}
-              checkedCount={1}
-              totalCount={1}
-              onToggle={(v) => {
-                if (!v && !canDisableSource("news")) {
-                  showToast();
-                  return;
-                }
-                setNewsEnabled(v);
-              }}
+              onToggle={setNewsEnabled}
               theme={theme}
             />
-
-            {/* Technical */}
-            <SectionToggle
-              label={t("aiAnalysis.technical")}
-              enabled={technicalEnabled}
-              checkedCount={technicalCheckedCount}
-              totalCount={technicalKeys.length}
-              onToggle={(v) => {
-                if (!v && !canDisableSource("technical")) {
-                  showToast();
-                  return;
-                }
-                setTechnicalEnabled(v);
-                if (v) setTechnical({ ...DEFAULT_TECHNICAL });
-              }}
-              theme={theme}
-            />
-            {technicalEnabled &&
-              technicalKeys.map((key) => (
-                <SubCheckbox
-                  key={key}
-                  label={technicalLabels[key]}
-                  checked={!!technical[key]}
-                  onPress={() => {
-                    const isLastChecked =
-                      technical[key] && technicalCheckedCount === 1;
-                    if (isLastChecked && !canDisableSource("technical")) {
-                      showToast();
-                      return;
-                    }
-                    setTechnical((prev) => ({ ...prev, [key]: !prev[key] }));
-                  }}
-                  theme={theme}
-                />
-              ))}
-
-            <View style={{ height: 8 }} />
 
             {/* Fundamental */}
             <SectionToggle
               label={t("aiAnalysis.fundamental")}
               enabled={fundamentalEnabled}
-              checkedCount={fundamentalEnabled ? 1 : 0}
-              totalCount={1}
-              onToggle={(v) => {
-                if (!v && !canDisableSource("fundamental")) {
-                  showToast();
-                  return;
-                }
-                setFundamentalEnabled(v);
-              }}
+              onToggle={setFundamentalEnabled}
               theme={theme}
             />
+
+            {/* Technical */}
+            <View
+              style={[
+                styles.sectionToggleRow,
+                { borderBottomColor: theme.border.default },
+              ]}
+            >
+              <Text typography="titleSmall" color={theme.text.primary}>
+                {t("aiAnalysis.technical")}
+              </Text>
+              <View
+                style={[
+                  styles.countBadge,
+                  { backgroundColor: PURPLE_GRADIENT[1] + "22" },
+                ]}
+              >
+                <Text typography="labelSmall" color={PURPLE_GRADIENT[0]}>
+                  {technicalCheckedCount}/{technicalKeys.length}
+                </Text>
+              </View>
+            </View>
+            {technicalKeys.map((key) => (
+              <SubCheckbox
+                key={key}
+                label={technicalLabels[key]}
+                checked={!!technical[key]}
+                onPress={() => {
+                  const isLastChecked =
+                    technical[key] && technicalCheckedCount === 1;
+                  if (isLastChecked) {
+                    showToast();
+                    return;
+                  }
+                  setTechnical((prev) => ({ ...prev, [key]: !prev[key] }));
+                }}
+                theme={theme}
+              />
+            ))}
+
+            <View style={{ height: 8 }} />
           </View>
         )}
 
@@ -760,7 +706,7 @@ const AIAnalysisConfig = () => {
             color={theme.base.error}
             style={{ textAlign: "center", marginTop: 12 }}
           >
-            {t("aiAnalysis.selectAtLeastOne")}
+            {t("aiAnalysis.selectAtLeastOneTechnicalIndicator")}
           </Text>
         )}
       </ScrollView>
@@ -801,7 +747,7 @@ const AIAnalysisConfig = () => {
           >
             <Feather name="alert-triangle" size={16} color="#FFFFFF" />
             <Text typography="labelLarge" color="#FFFFFF">
-              {t("aiAnalysis.selectAtLeastOne")}
+              {t("aiAnalysis.selectAtLeastOneTechnicalIndicator")}
             </Text>
           </Animated.View>
         )}

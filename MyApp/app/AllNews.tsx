@@ -150,7 +150,7 @@ const AllNews = () => {
         <FlatList
           style={{
             marginHorizontal: 12,
-            marginBottom: insets.bottom,
+            marginBottom: insets.bottom + 12,
             borderRadius: 12,
             paddingHorizontal: 12,
             backgroundColor: theme.background.bg,

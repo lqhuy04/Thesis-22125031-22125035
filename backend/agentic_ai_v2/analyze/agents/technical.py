@@ -218,14 +218,14 @@ def _score_kdj(current: pd.Series, previous: pd.Series) -> tuple[int, str]:
 
     if None in (k, d, j, previous_k, previous_d, previous_j):
         return 0, "Không đủ dữ liệu KDJ."
+    if k > 80:
+        return 0, "KDJ ở vùng quá mua."
+    if k < 20 and k > previous_k:
+        return 1, "K hồi phục từ vùng quá bán."
     if previous_k < previous_d and k >= d:
         return 1, "K vừa cắt lên D."
     if k > d and j > previous_j:
         return 1, "K trên D và J đang tăng."
-    if k < 20 and k > previous_k:
-        return 1, "K hồi phục từ vùng quá bán."
-    if k > 80:
-        return 0, "KDJ ở vùng quá mua."
     return 0, "KDJ chưa có tín hiệu tăng rõ ràng."
 
 

@@ -106,6 +106,7 @@ export default {
     recommendation: "Recommendation",
     buy: "Buy",
     wait: "Wait",
+    stockScore: "Stock score",
     confidence: "Confidence",
     tradingPlan: "Trading Plan",
     entryPrice: "Entry Price",
@@ -146,6 +147,8 @@ export default {
     weightTitle: "Weight allocation",
     weightHint: "Drag the handles to adjust how much each source contributes",
     selectAtLeastOne: "Please select at least one data source",
+    selectAtLeastOneTechnicalIndicator:
+      "Please select at least one technical indicator",
     askMore: "Ask more about this analysis",
     chatQuestion:
       "Summarize the situation and suggest an investment timing for {symbol} based on the investor's risk appetite.",

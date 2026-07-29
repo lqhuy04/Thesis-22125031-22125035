@@ -154,10 +154,16 @@ const AIAnalysis = () => {
     };
   }, [analysisMode, parsedDataSelection, stockSymbol]);
 
-  const isBuy = analysis?.recommendation === t("aiAnalysis.buy");
+  const isBuy = analysis?.buy ?? false;
+  const recommendationLabel = isBuy
+    ? t("aiAnalysis.buy")
+    : t("aiAnalysis.wait");
 
   const formatPrice = (value: number | null | undefined) =>
     value == null ? t("aiAnalysis.notAvailable") : value.toFixed(2);
+
+  const formatStockScore = (value: number | null | undefined) =>
+    `${Math.round(Math.min(Math.max(value ?? 0, 0), 1) * 100)}/100`;
 
   const formatPercentDiff = (
     value: number | null | undefined,
@@ -220,14 +226,20 @@ const AIAnalysis = () => {
   // sẵn vào phiên chat (Markdown — khớp cách ChatDetail render tin nhắn bot).
   const buildAssistantMessage = (a: AnalysisData): string => {
     const conf = `${(a.confidence * 100).toFixed(0)}%`;
+    const decision = a.buy ? t("aiAnalysis.buy") : t("aiAnalysis.wait");
     return [
-      `**${t("aiAnalysis.recommendation")}:** ${a.recommendation} · ${t("aiAnalysis.confidence")} ${conf}`,
-      "",
-      `**${t("aiAnalysis.tradingPlan")}**`,
-      `- ${t("aiAnalysis.entryPrice")}: ${formatPrice(a.entry_price)}`,
-      `- ${t("aiAnalysis.takeProfit")}: ${formatPrice(a.take_profit_price)}`,
-      `- ${t("aiAnalysis.stopLoss")}: ${formatPrice(a.stop_loss_price)}`,
-      `- ${t("aiAnalysis.maxHoldCandles")}: ${formatPrice(a.max_hold_candles)}`,
+      `**${t("aiAnalysis.recommendation")}:** ${decision}`,
+      `**${t("aiAnalysis.stockScore")}:** ${formatStockScore(a.score.total)} · ${t("aiAnalysis.confidence")} ${conf}`,
+      ...(a.buy
+        ? [
+            "",
+            `**${t("aiAnalysis.tradingPlan")}**`,
+            `- ${t("aiAnalysis.entryPrice")}: ${formatPrice(a.entry_price)}`,
+            `- ${t("aiAnalysis.takeProfit")}: ${formatPrice(a.take_profit_price)}`,
+            `- ${t("aiAnalysis.stopLoss")}: ${formatPrice(a.stop_loss_price)}`,
+            `- ${t("aiAnalysis.maxHoldCandles")}: ${formatPrice(a.max_hold_candles)}`,
+          ]
+        : []),
       "",
       `**${t("aiAnalysis.fundamental")}**`,
       a.analysis.fundamental,
@@ -326,14 +338,28 @@ const AIAnalysis = () => {
                   style={{ marginRight: 6 }}
                 />
                 <Text typography="titleMedium" color="#FFFFFF">
-                  {analysis.recommendation}
+                  {recommendationLabel}
                 </Text>
               </View>
             </View>
 
-            {/* Confidence */}
+            {/* Stock score and confidence */}
             <View style={{ marginTop: 20 }}>
               <View style={[styles.rowBetween, { marginHorizontal: 12 }]}>
+                <Text typography="bodyMedium" color="#FFFFFFCC">
+                  {t("aiAnalysis.stockScore")}
+                </Text>
+                <Text typography="titleMedium" color="#FFFFFF">
+                  {formatStockScore(analysis.score.total)}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.rowBetween,
+                  { marginHorizontal: 12, marginTop: 12 },
+                ]}
+              >
                 <Text typography="bodyMedium" color="#FFFFFFCC">
                   {t("aiAnalysis.confidence")}
                 </Text>
@@ -356,80 +382,82 @@ const AIAnalysis = () => {
           </LinearGradient>
 
           {/* ── Trading Plan ── */}
-          <View
-            style={[
-              styles.card,
-              { backgroundColor: theme.background.bg, marginTop: 12 },
-            ]}
-          >
-            <SectionTitle>{t("aiAnalysis.tradingPlan")}</SectionTitle>
+          {isBuy && (
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: theme.background.bg, marginTop: 12 },
+              ]}
+            >
+              <SectionTitle>{t("aiAnalysis.tradingPlan")}</SectionTitle>
 
-            {[
-              {
-                label: t("aiAnalysis.entryPrice"),
-                value: formatPrice(analysis.entry_price),
-                color: theme.text.primary,
-                percent: null,
-              },
-              {
-                label: t("aiAnalysis.takeProfit"),
-                value: formatPrice(analysis.take_profit_price),
-                color: theme.base.success,
-                percent: formatPercentDiff(
-                  analysis.take_profit_price,
-                  analysis.entry_price,
-                ),
-              },
-              {
-                label: t("aiAnalysis.stopLoss"),
-                value: formatPrice(analysis.stop_loss_price),
-                color: theme.base.error,
-                percent: formatPercentDiff(
-                  analysis.stop_loss_price,
-                  analysis.entry_price,
-                ),
-              },
-              {
-                label: t("aiAnalysis.maxHoldCandles"),
-                value: formatPrice(analysis.max_hold_candles),
-                color: theme.text.primary,
-                percent: null,
-              },
-            ].map(({ label, value, color, percent }, i, arr) => (
-              <React.Fragment key={label}>
-                <View style={styles.rowBetween}>
-                  <Text
-                    typography="bodyLarge"
-                    color={theme.text.primary + "88"}
-                  >
-                    {label}
-                  </Text>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <Text typography="titleMedium" color={color}>
-                      {value}{" "}
+              {[
+                {
+                  label: t("aiAnalysis.entryPrice"),
+                  value: formatPrice(analysis.entry_price),
+                  color: theme.text.primary,
+                  percent: null,
+                },
+                {
+                  label: t("aiAnalysis.takeProfit"),
+                  value: formatPrice(analysis.take_profit_price),
+                  color: theme.base.success,
+                  percent: formatPercentDiff(
+                    analysis.take_profit_price,
+                    analysis.entry_price,
+                  ),
+                },
+                {
+                  label: t("aiAnalysis.stopLoss"),
+                  value: formatPrice(analysis.stop_loss_price),
+                  color: theme.base.error,
+                  percent: formatPercentDiff(
+                    analysis.stop_loss_price,
+                    analysis.entry_price,
+                  ),
+                },
+                {
+                  label: t("aiAnalysis.maxHoldCandles"),
+                  value: formatPrice(analysis.max_hold_candles),
+                  color: theme.text.primary,
+                  percent: null,
+                },
+              ].map(({ label, value, color, percent }, i, arr) => (
+                <React.Fragment key={label}>
+                  <View style={styles.rowBetween}>
+                    <Text
+                      typography="bodyLarge"
+                      color={theme.text.primary + "88"}
+                    >
+                      {label}
                     </Text>
-                    {percent != null && (
-                      <Text
-                        typography="labelMedium"
-                        color={color}
-                        style={{ marginLeft: 6 }}
-                      >
-                        ({percent})
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Text typography="titleMedium" color={color}>
+                        {value}{" "}
                       </Text>
-                    )}
+                      {percent != null && (
+                        <Text
+                          typography="labelMedium"
+                          color={color}
+                          style={{ marginLeft: 6 }}
+                        >
+                          ({percent})
+                        </Text>
+                      )}
+                    </View>
                   </View>
-                </View>
-                {i < arr.length - 1 && (
-                  <View
-                    style={[
-                      styles.divider,
-                      { backgroundColor: theme.border.default },
-                    ]}
-                  />
-                )}
-              </React.Fragment>
-            ))}
-          </View>
+                  {i < arr.length - 1 && (
+                    <View
+                      style={[
+                        styles.divider,
+                        { backgroundColor: theme.border.default },
+                      ]}
+                    />
+                  )}
+                </React.Fragment>
+              ))}
+            </View>
+          )}
 
           {/* ── Score Breakdown (Radar) ── */}
           <View

@@ -16,6 +16,7 @@ _MODEL = "gpt-4o-mini"
 _MAX_OUTPUT_TOKENS = 1_000
 
 SCORE_THRESHOLD = 0.55
+TECHNICAL_SCORE_THRESHOLD = 0.60
 WEIGHTS_BY_PERIOD = {
     "short_term": {
         "fundamental": 0.10,
@@ -109,14 +110,50 @@ def _analysis_scores(results: dict[str, Any]) -> dict[str, float]:
     }
 
 
+def _weights_for_state(
+    state: AgentState,
+    period: str,
+) -> dict[str, float]:
+    default_weights = WEIGHTS_BY_PERIOD[_normalize_period(period)]
+    if state.get("mode") != "manual":
+        return default_weights
+
+    payload_weights = (
+        (state.get("data_selection") or {}).get("weight") or {}
+    )
+    if not isinstance(payload_weights, dict):
+        return default_weights
+
+    manual_weights = {
+        "article": _finite_score(payload_weights.get("news")),
+        "technical": _finite_score(payload_weights.get("technical")),
+        "fundamental": _finite_score(payload_weights.get("fundamental")),
+    }
+    if not math.isclose(
+        sum(manual_weights.values()),
+        1.0,
+        abs_tol=1e-6,
+    ):
+        logger.warning(
+            "Invalid manual recommendation weights; using period defaults"
+        )
+        return default_weights
+
+    return manual_weights
+
+
 def _calculate_total_score(
     period: str,
     scores: dict[str, float],
+    weights: dict[str, float] | None = None,
 ) -> float:
     normalized_period = _normalize_period(period)
-    weights = WEIGHTS_BY_PERIOD[normalized_period]
+    effective_weights = weights or WEIGHTS_BY_PERIOD[normalized_period]
     return round(
-        sum(scores[name] * weights[name] for name in weights),
+        sum(
+            scores[name] * effective_weights[name]
+            for name in effective_weights
+        ),
         4,
     )
 
@@ -221,8 +258,12 @@ def recommendation_agent(state: AgentState) -> dict:
         (state.get("risk_appetite") or {}).get("period")
     )
     scores = _analysis_scores(results)
-    total_score = _calculate_total_score(period, scores)
-    buy = total_score >= SCORE_THRESHOLD
+    weights = _weights_for_state(state, period)
+    total_score = _calculate_total_score(period, scores, weights)
+    buy = (
+        total_score >= SCORE_THRESHOLD
+        and scores["technical"] >= TECHNICAL_SCORE_THRESHOLD
+    )
     recommendation: Literal["Mua", "Chờ"] = "Mua" if buy else "Chờ"
 
     entry_price = 0.0

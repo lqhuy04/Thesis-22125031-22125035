@@ -106,6 +106,7 @@ export default {
     recommendation: "Khuyến nghị",
     buy: "Mua",
     wait: "Chờ",
+    stockScore: "Điểm cổ phiếu",
     confidence: "Độ tin cậy",
     tradingPlan: "Kế hoạch giao dịch",
     entryPrice: "Giá mua",
@@ -146,6 +147,8 @@ export default {
     weightTitle: "Phân bổ trọng số",
     weightHint: "Kéo thanh trượt để điều chỉnh mức đóng góp của mỗi nguồn",
     selectAtLeastOne: "Vui lòng chọn ít nhất một nguồn dữ liệu",
+    selectAtLeastOneTechnicalIndicator:
+      "Vui lòng chọn ít nhất một chỉ báo kỹ thuật",
     askMore: "Hỏi thêm về phân tích",
     chatQuestion:
       "Tóm tắt tình hình và gợi ý thời điểm đầu tư của mã cổ phiếu {symbol} dựa vào khẩu vị rủi ro của nhà đầu tư.",

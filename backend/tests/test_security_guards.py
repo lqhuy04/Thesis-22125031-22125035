@@ -50,6 +50,42 @@ class InputGuardTests(unittest.TestCase):
         )
         BacktestPipelineRequest(symbol="FPT")
 
+    def test_stock_analysis_requires_at_least_one_technical_indicator(self):
+        StockAnalysisRequest(
+            mode="manual",
+            symbol="FPT",
+            risk_appetite={"period": "short_term"},
+            data_selection={
+                "news": False,
+                "technical": {
+                    "ma": False,
+                    "boll": False,
+                    "rsi": True,
+                    "macd": False,
+                    "kdj": False,
+                },
+                "fundamental": False,
+            },
+        )
+
+        with self.assertRaises(ValidationError):
+            StockAnalysisRequest(
+                mode="manual",
+                symbol="FPT",
+                risk_appetite={"period": "short_term"},
+                data_selection={
+                    "news": True,
+                    "technical": {
+                        "ma": False,
+                        "boll": False,
+                        "rsi": False,
+                        "macd": False,
+                        "kdj": False,
+                    },
+                    "fundamental": True,
+                },
+            )
+
     def test_oversized_or_malformed_inputs_are_rejected(self):
         invalid_factories = [
             lambda: LoginRequest(email="a@example.com", password="x" * 129),

@@ -223,12 +223,12 @@ class V2RecommendationAgentTests(unittest.TestCase):
                     "analysis": "Tin tức khá tích cực.",
                 },
                 "fundamental_analysis_agent": {
-                    "score": 0.5,
-                    "analysis": "Cơ bản trung lập.",
+                    "score": 0.4,
+                    "analysis": "Cơ bản còn thận trọng.",
                 },
                 "technical_analysis_agent": {
-                    "score": 0.5,
-                    "analysis": "Kỹ thuật trung lập.",
+                    "score": 0.6,
+                    "analysis": "Kỹ thuật vừa đạt ngưỡng.",
                 },
                 "technical_agent": {
                     "current_price": {"value": 100.0},
@@ -287,6 +287,105 @@ class V2RecommendationAgentTests(unittest.TestCase):
                 "max_hold_candles": 0,
             },
         )
+        call_llm.assert_not_called()
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.recommendation."
+        "_call_trading_plan_llm"
+    )
+    def test_high_total_score_waits_when_technical_is_below_threshold(
+        self,
+        call_llm,
+    ):
+        state = {
+            "mode": "auto",
+            "risk_appetite": {"period": "long_term"},
+            "agent_results": {
+                "article_analysis_agent": {"score": 1.0},
+                "fundamental_analysis_agent": {"score": 1.0},
+                "technical_analysis_agent": {"score": 0.59},
+                "technical_agent": {
+                    "current_price": {"value": 100.0},
+                },
+            },
+        }
+
+        result = recommendation_agent(state)["agent_results"][
+            "recommendation_agent"
+        ]
+
+        self.assertEqual(result["score"], 0.9385)
+        self.assertFalse(result["buy"])
+        self.assertEqual(result["recommendation"], "Chờ")
+        self.assertEqual(result["entry_price"], 0.0)
+        call_llm.assert_not_called()
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.recommendation."
+        "_call_trading_plan_llm"
+    )
+    def test_manual_mode_uses_payload_weights(self, call_llm):
+        call_llm.return_value = TradingPlanOutput(
+            take_profit=120.0,
+            stop_loss=92.0,
+            max_hold_candles=30,
+        )
+        state = {
+            "mode": "manual",
+            "risk_appetite": {"period": "long_term"},
+            "data_selection": {
+                "weight": {
+                    "news": 0.0,
+                    "technical": 1.0,
+                    "fundamental": 0.0,
+                }
+            },
+            "agent_results": {
+                "article_analysis_agent": {"score": 0.9},
+                "fundamental_analysis_agent": {"score": 0.1},
+                "technical_analysis_agent": {"score": 0.6},
+                "technical_agent": {
+                    "current_price": {"value": 100.0},
+                },
+            },
+        }
+
+        result = recommendation_agent(state)["agent_results"][
+            "recommendation_agent"
+        ]
+
+        self.assertEqual(result["score"], 0.6)
+        self.assertTrue(result["buy"])
+        call_llm.assert_called_once()
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.recommendation."
+        "_call_trading_plan_llm"
+    )
+    def test_auto_mode_ignores_payload_weights(self, call_llm):
+        state = {
+            "mode": "auto",
+            "risk_appetite": {"period": "long_term"},
+            "data_selection": {
+                "weight": {
+                    "news": 0.0,
+                    "technical": 1.0,
+                    "fundamental": 0.0,
+                }
+            },
+            "agent_results": {
+                "article_analysis_agent": {"score": 0.9},
+                "fundamental_analysis_agent": {"score": 0.1},
+                "technical_analysis_agent": {"score": 0.6},
+            },
+        }
+
+        result = recommendation_agent(state)["agent_results"][
+            "recommendation_agent"
+        ]
+
+        self.assertEqual(result["score"], 0.295)
+        self.assertFalse(result["buy"])
         call_llm.assert_not_called()
 
 

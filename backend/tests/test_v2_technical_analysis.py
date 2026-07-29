@@ -7,7 +7,73 @@ import pandas as pd
 from agentic_ai_v2.analyze.agents.technical import (
     _fetch_current_price,
     _format_output,
+    _score_kdj,
 )
+
+
+class V2TechnicalAnalysisKDJTests(unittest.TestCase):
+    def test_overbought_kdj_scores_zero_even_with_bullish_cross(self):
+        score, reason = _score_kdj(
+            pd.Series(
+                {
+                    "kdj_k": 85.0,
+                    "kdj_d": 82.0,
+                    "kdj_j": 90.0,
+                }
+            ),
+            pd.Series(
+                {
+                    "kdj_k": 79.0,
+                    "kdj_d": 80.0,
+                    "kdj_j": 84.0,
+                }
+            ),
+        )
+
+        self.assertEqual(score, 0)
+        self.assertIn("quá mua", reason)
+
+    def test_oversold_recovery_scores_one(self):
+        score, reason = _score_kdj(
+            pd.Series(
+                {
+                    "kdj_k": 18.0,
+                    "kdj_d": 22.0,
+                    "kdj_j": 15.0,
+                }
+            ),
+            pd.Series(
+                {
+                    "kdj_k": 14.0,
+                    "kdj_d": 23.0,
+                    "kdj_j": 12.0,
+                }
+            ),
+        )
+
+        self.assertEqual(score, 1)
+        self.assertIn("quá bán", reason)
+
+    def test_bullish_cross_outside_overbought_zone_scores_one(self):
+        score, reason = _score_kdj(
+            pd.Series(
+                {
+                    "kdj_k": 55.0,
+                    "kdj_d": 52.0,
+                    "kdj_j": 60.0,
+                }
+            ),
+            pd.Series(
+                {
+                    "kdj_k": 48.0,
+                    "kdj_d": 50.0,
+                    "kdj_j": 46.0,
+                }
+            ),
+        )
+
+        self.assertEqual(score, 1)
+        self.assertIn("cắt lên", reason)
 
 
 class V2TechnicalAnalysisCurrentPriceTests(unittest.TestCase):

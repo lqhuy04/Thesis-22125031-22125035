@@ -72,6 +72,14 @@ class DataSelection(BaseModel):
         description="Trọng số thủ công cho news/technical/fundamental. Bỏ trống = dùng mặc định theo kỳ hạn.",
     )
 
+    @model_validator(mode="after")
+    def _require_technical_indicator(self):
+        if not any(self.technical.model_dump().values()):
+            raise ValueError(
+                "Phân tích kỹ thuật phải bật ít nhất một chỉ báo"
+            )
+        return self
+
 
 class AdminDataSelection(BaseModel):
     """Legacy selection contract retained for the v1 admin graph."""

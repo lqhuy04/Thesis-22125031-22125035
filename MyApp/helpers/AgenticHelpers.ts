@@ -12,16 +12,16 @@ export type AnalysisScore = {
   news: number;
   technical: number;
   fundamental: number;
+  total: number;
 };
 
 export type AnalysisData = {
-  recommendation: string;
-  entry_price: number | null;
-  take_profit_price: number | null;
-  stop_loss_price: number | null;
-  max_hold_candles: number | null;
+  buy: boolean;
+  entry_price: number;
+  take_profit_price: number;
+  stop_loss_price: number;
+  max_hold_candles: number;
   confidence: number;
-  confidence_threshold: number;
   analysis: AnalysisDetail;
   score: AnalysisScore;
 };
