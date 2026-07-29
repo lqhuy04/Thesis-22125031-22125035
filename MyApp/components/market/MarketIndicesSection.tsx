@@ -208,12 +208,12 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
             decelerationRate="fast"
             contentContainerStyle={{ paddingRight: width - CARD_WIDTH }}
             renderItem={({ item }) => {
-              // const adv = Number(item.Advances) || 0;
-              // const noChg = Number(item.NoChanges) || 0;
-              // const dec = Number(item.Declines) || 0;
-              // const total = adv + noChg + dec;
-              // const allZero = total === 0;
-              // const mutedColor = theme.text.primary + "88";
+              const adv = Number(item.Advances) || 0;
+              const noChg = Number(item.NoChanges) || 0;
+              const dec = Number(item.Declines) || 0;
+              const total = adv + noChg + dec;
+              const allZero = total === 0;
+              const mutedColor = theme.text.primary + "88";
 
               return (
                 <TouchableOpacity
@@ -346,7 +346,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                     {t("home.billion")}
                   </Text>
 
-                  {/* {(() => {
+                  {(() => {
                     const advPct = allZero ? 33.33 : (adv / total) * 100;
                     const noChgPct = allZero ? 33.33 : (noChg / total) * 100;
                     const decPct = allZero ? 33.34 : (dec / total) * 100;
@@ -432,7 +432,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
                     >
                       {item.Declines} {t("home.ticker")} {"▼"}
                     </Text>
-                  </View> */}
+                  </View>
                 </TouchableOpacity>
               );
             }}
