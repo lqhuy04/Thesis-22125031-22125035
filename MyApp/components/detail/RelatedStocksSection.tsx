@@ -8,7 +8,7 @@ import {
 } from "@/helpers/DetailHelpers";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 interface RelatedStocksSectionProps {
   stockSymbol?: string;
@@ -106,6 +106,12 @@ const RelatedStocksSection = ({
 
   // Khoá điều hướng để tránh push nhiều trang Detail khi bấm nhanh nhiều lần
   const isNavigatingRef = useRef(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      isNavigatingRef.current = false;
+    }, []),
+  );
 
   const fetchData = useCallback(async () => {
     setLoading(true);

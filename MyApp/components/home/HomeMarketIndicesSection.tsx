@@ -282,7 +282,7 @@ const HomeMarketIndicesSection = ({ registerRefresh }: Props) => {
                 <Text
                   typography="bodySmall"
                   color={theme.text.primary + "80"}
-                  style={{ marginVertical: 8 }}
+                  style={{ marginTop: 4 }}
                 >
                   {(Number(item.TotalVol) / 1000000).toLocaleString("vi-VN", {
                     maximumFractionDigits: 0,

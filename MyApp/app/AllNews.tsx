@@ -7,12 +7,43 @@ import {
   getMacroEcomNews,
   getNewsByCategoryId,
 } from "@/helpers/MarketHelpers";
+import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, View } from "react-native";
 import { FlatList } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "@/hooks/ThemeContext";
+
+const PAGE_SIZE = 20;
+
+type NewsFetchResult = {
+  status: boolean;
+  data: New[];
+};
+
+const sortNewestFirst = (items: New[]) =>
+  [...items].sort((first, second) => {
+    const firstTime = Date.parse(first.time || first.published_at || "");
+    const secondTime = Date.parse(second.time || second.published_at || "");
+    const normalizedFirstTime = Number.isNaN(firstTime) ? 0 : firstTime;
+    const normalizedSecondTime = Number.isNaN(secondTime) ? 0 : secondTime;
+
+    if (normalizedFirstTime !== normalizedSecondTime) {
+      return normalizedSecondTime - normalizedFirstTime;
+    }
+
+    return second.id.localeCompare(first.id);
+  });
+
+const mergeUniqueArticles = (current: New[], incoming: New[]) => {
+  const articlesById = new Map(current.map((article) => [article.id, article]));
+
+  incoming.forEach((article) => {
+    articlesById.set(article.id, article);
+  });
+
+  return sortNewestFirst(Array.from(articlesById.values()));
+};
 
 // --- Skeleton Item ---
 const NewsItemSkeleton = () => {
@@ -101,30 +132,96 @@ const AllNews = () => {
 
   const [articles, setArticles] = useState<New[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const nextOffsetRef = useRef(0);
+  const isLoadingMoreRef = useRef(false);
+  const requestGenerationRef = useRef(0);
+
+  const fetchArticlesPage = useCallback(
+    (offset: number): Promise<NewsFetchResult> => {
+      if (type === "macro") {
+        return getMacroEcomNews(PAGE_SIZE, offset);
+      }
+      if (type === "business") {
+        return getBusinessNews(PAGE_SIZE, offset);
+      }
+      if (type === "all") {
+        return getAllNews(PAGE_SIZE, offset);
+      }
+      if (typeof category_id === "string" && category_id.length > 0) {
+        return getNewsByCategoryId(String(category_id), PAGE_SIZE, offset);
+      }
+
+      return fetchNews(symbol, PAGE_SIZE, offset);
+    },
+    [category_id, symbol, type],
+  );
 
   useEffect(() => {
+    const requestGeneration = ++requestGenerationRef.current;
+    nextOffsetRef.current = 0;
+    isLoadingMoreRef.current = false;
+    setArticles([]);
+    setHasMore(true);
+    setLoadingMore(false);
     setLoading(true);
 
-    let promise;
-    if (type === "macro") {
-      promise = getMacroEcomNews();
-    } else if (type === "business") {
-      promise = getBusinessNews();
-    } else if (type === "all") {
-      promise = getAllNews();
-    } else if (typeof category_id === "string" && category_id.length > 0) {
-      promise = getNewsByCategoryId(String(category_id));
-    } else {
-      promise = fetchNews(symbol);
+    const loadInitialPage = async () => {
+      const result = await fetchArticlesPage(0);
+      if (requestGenerationRef.current !== requestGeneration) {
+        return;
+      }
+
+      if (result.status) {
+        setArticles(sortNewestFirst(result.data));
+        nextOffsetRef.current = PAGE_SIZE;
+      }
+
+      setHasMore(result.status && result.data.length === PAGE_SIZE);
+      setLoading(false);
+    };
+
+    loadInitialPage();
+
+    return () => {
+      if (requestGenerationRef.current === requestGeneration) {
+        requestGenerationRef.current += 1;
+      }
+    };
+  }, [fetchArticlesPage]);
+
+  const loadMoreArticles = useCallback(async () => {
+    if (loading || !hasMore || isLoadingMoreRef.current) {
+      return;
     }
 
-    promise.then((result) => {
-      if (result.status) {
-        setArticles(result.data);
+    const requestGeneration = requestGenerationRef.current;
+    const offset = nextOffsetRef.current;
+    isLoadingMoreRef.current = true;
+    setLoadingMore(true);
+
+    try {
+      const result = await fetchArticlesPage(offset);
+      if (requestGenerationRef.current !== requestGeneration) {
+        return;
       }
-      setLoading(false);
-    });
-  }, [category_id, symbol, type]);
+
+      if (result.status) {
+        setArticles((current) =>
+          mergeUniqueArticles(current, result.data),
+        );
+        nextOffsetRef.current = offset + PAGE_SIZE;
+      }
+
+      setHasMore(result.status && result.data.length === PAGE_SIZE);
+    } finally {
+      if (requestGenerationRef.current === requestGeneration) {
+        isLoadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
+    }
+  }, [fetchArticlesPage, hasMore, loading]);
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
@@ -157,6 +254,7 @@ const AllNews = () => {
             marginTop: 12,
           }}
           data={articles}
+          keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
             <View>
               {index !== 0 && (
@@ -171,6 +269,11 @@ const AllNews = () => {
               <NewsItem newItem={item} />
             </View>
           )}
+          onEndReached={loadMoreArticles}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={
+            loadingMore ? <NewsItemSkeleton /> : null
+          }
         />
       )}
     </View>

@@ -13,15 +13,17 @@ router = APIRouter(prefix="/api/articles", tags=["Articles"], dependencies=[Depe
 
 @router.get("", response_model=ArticlesListResponse)
 def get_all_articles(
-    limit: Optional[int] = Query(None, ge=1, le=500, description="Optional maximum number of latest articles")
+    limit: Optional[int] = Query(None, ge=1, le=500, description="Optional maximum number of latest articles"),
+    offset: int = Query(0, ge=0, description="Number of latest articles to skip"),
 ):
     """
     Lấy tất cả tin tức tài chính, sắp xếp theo thời gian mới nhất.
 
     - **limit**: Giới hạn số bài viết trả về (optional)
+    - **offset**: Số bài viết mới nhất cần bỏ qua
     """
 
-    articles = ArticlesService.get_articles(limit=limit)
+    articles = ArticlesService.get_articles(limit=limit, offset=offset)
 
     return ArticlesListResponse(
         data=articles,
@@ -33,14 +35,15 @@ def get_all_articles(
 
 @router.get("/macro", response_model=ArticlesListResponse)
 def get_macro_articles(
-    limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of articles"),
+    offset: int = Query(0, ge=0, description="Number of latest articles to skip"),
 ):
     """
     Lấy tin tức "Kinh tế vĩ mô" (article_type = "macro").
 
     - **limit**: Số lượng bài viết tối đa trả về
     """
-    articles = ArticlesService.get_macro_articles(limit=limit)
+    articles = ArticlesService.get_macro_articles(limit=limit, offset=offset)
     return ArticlesListResponse(
         data=articles,
         errorCode=0,
@@ -51,7 +54,8 @@ def get_macro_articles(
 
 @router.get("/business", response_model=ArticlesListResponse)
 def get_business_articles(
-    limit: int = Query(50, ge=1, le=200, description="Maximum number of articles")
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of articles"),
+    offset: int = Query(0, ge=0, description="Number of latest articles to skip"),
 ):
     """
     Lấy tin tức mới nhất có ``article_type = "stock"`` và liên kết với ít nhất
@@ -59,7 +63,7 @@ def get_business_articles(
 
     - **limit**: Số lượng bài viết tối đa trả về
     """
-    articles = ArticlesService.get_business_articles(limit=limit)
+    articles = ArticlesService.get_business_articles(limit=limit, offset=offset)
     return ArticlesListResponse(
         data=articles,
         errorCode=0,
@@ -90,6 +94,7 @@ def get_today_highlight_articles():
 def get_articles_by_stock_symbol(
     stock_symbol: str,
     limit: Optional[int] = Query(None, ge=1, le=500, description="Optional maximum number of latest articles"),
+    offset: int = Query(0, ge=0, description="Number of latest articles to skip"),
 ):
     """
     Lấy tất cả tin tức tài chính liên quan đến một mã chứng khoán cụ thể.
@@ -100,6 +105,7 @@ def get_articles_by_stock_symbol(
     articles = ArticlesService.get_articles_by_stock_symbol(
         stock_symbol=stock_symbol.upper(),
         limit=limit,
+        offset=offset,
     )
     
     # Giả định NewsListData nhận vào một list các items
@@ -116,10 +122,15 @@ def get_articles_by_stock_symbol(
 @router.get("/category/{category_id}", response_model=ArticlesListResponse)
 def get_news_single_category(
     category_id: str,
-    limit: int = Query(100, ge=1, le=500, description="Maximum number of articles")
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of articles"),
+    offset: int = Query(0, ge=0, description="Number of latest articles to skip"),
 ):
     """Get news list for one category by category ID or category name."""
-    articles = ArticlesService.get_articles_by_category_id(category_id=category_id, limit=limit)
+    articles = ArticlesService.get_articles_by_category_id(
+        category_id=category_id,
+        limit=limit,
+        offset=offset,
+    )
     return ArticlesListResponse(
         data=articles,
         errorCode=0,

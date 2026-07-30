@@ -92,14 +92,19 @@ export type New = {
 export const fetchNews = async (
   symbol: string,
   limit?: number,
+  offset: number = 0,
 ): Promise<{
   status: boolean;
   data: New[];
 }> => {
   try {
-    const result = limit
-      ? await sendMessage(`api/articles/stock/${symbol}?limit=${limit}`)
-      : await sendMessage(`api/articles/stock/${symbol}`);
+    const paginationParams = [
+      ...(limit !== undefined ? [`limit=${limit}`] : []),
+      ...(offset > 0 ? [`offset=${offset}`] : []),
+    ];
+    const query =
+      paginationParams.length > 0 ? `?${paginationParams.join("&")}` : "";
+    const result = await sendMessage(`api/articles/stock/${symbol}${query}`);
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {

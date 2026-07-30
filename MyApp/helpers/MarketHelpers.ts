@@ -1,6 +1,19 @@
 import { sendMessage } from "./api/ApiClients";
 import { CurrentPriceData, New } from "./DetailHelpers";
 
+const buildPaginationQuery = (limit?: number, offset: number = 0) => {
+  const params: string[] = [];
+
+  if (limit !== undefined) {
+    params.push(`limit=${limit}`);
+  }
+  if (offset > 0) {
+    params.push(`offset=${offset}`);
+  }
+
+  return params.length > 0 ? `?${params.join("&")}` : "";
+};
+
 export type MarketIndex = {
   IndexId: string;
   IndexValue: number;
@@ -55,13 +68,14 @@ export const getMarketIndices = async (): Promise<{
 
 export const getMacroEcomNews = async (
   limit?: number,
+  offset: number = 0,
 ): Promise<{
   status: boolean;
   data: New[];
 }> => {
   try {
     const result = await sendMessage(
-      limit ? `api/articles/macro?limit=${limit}` : `api/articles/macro`,
+      `api/articles/macro${buildPaginationQuery(limit, offset)}`,
     );
 
     const { errorCode, data } = result || {};
@@ -87,13 +101,14 @@ export const getMacroEcomNews = async (
 
 export const getAllNews = async (
   limit?: number,
+  offset: number = 0,
 ): Promise<{
   status: boolean;
   data: New[];
 }> => {
   try {
     const result = await sendMessage(
-      limit ? `api/articles?limit=${limit}` : `api/articles`,
+      `api/articles${buildPaginationQuery(limit, offset)}`,
     );
 
     const { errorCode, data } = result || {};
@@ -120,15 +135,14 @@ export const getAllNews = async (
 export const getNewsByCategoryId = async (
   category_id: string,
   limit?: number,
+  offset: number = 0,
 ): Promise<{
   status: boolean;
   data: New[];
 }> => {
   try {
     const result = await sendMessage(
-      limit
-        ? `api/articles/category/${category_id}?limit=${limit}`
-        : `api/articles/category/${category_id}`,
+      `api/articles/category/${category_id}${buildPaginationQuery(limit, offset)}`,
     );
 
     const { errorCode, data } = result || {};
@@ -154,13 +168,14 @@ export const getNewsByCategoryId = async (
 
 export const getBusinessNews = async (
   limit?: number,
+  offset: number = 0,
 ): Promise<{
   status: boolean;
   data: New[];
 }> => {
   try {
     const result = await sendMessage(
-      limit ? `api/articles/business?limit=${limit}` : `api/articles/business`,
+      `api/articles/business${buildPaginationQuery(limit, offset)}`,
     );
 
     const { errorCode, data } = result || {};

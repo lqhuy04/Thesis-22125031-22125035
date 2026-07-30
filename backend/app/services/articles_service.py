@@ -33,11 +33,21 @@ class ArticlesService:
     """Service for news database operations"""
 
     @staticmethod
-    def get_articles(limit: Optional[int] = None) -> List[ArticlesResponse]:
+    def get_articles(
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> List[ArticlesResponse]:
         try:
-            query = supabase.table("Article").select("*").order("time", desc=True)
+            offset = max(0, offset)
+            query = (
+                supabase.table("Article")
+                .select("*")
+                .order("time", desc=True, nullsfirst=False)
+                .order("id", desc=True)
+            )
             if limit is not None:
-                query = query.limit(max(1, limit))
+                normalized_limit = max(1, limit)
+                query = query.range(offset, offset + normalized_limit - 1)
             result = query.execute()
             return [ArticlesResponse(**item) for item in result.data] if result.data else []
 
@@ -48,8 +58,13 @@ class ArticlesService:
             return []
 
     @staticmethod
-    def get_articles_by_stock_symbol(stock_symbol: str, limit: Optional[int] = None) -> List[ArticlesResponse]:
+    def get_articles_by_stock_symbol(
+        stock_symbol: str,
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> List[ArticlesResponse]:
         try:
+            offset = max(0, offset)
             stock = supabase.table("Stock").select("id").eq("stock_symbol", stock_symbol).execute()
             stock_id = stock.data[0]["id"] if stock.data else None
             if not stock_id:
@@ -105,10 +120,16 @@ class ArticlesService:
                 except Exception:
                     continue
 
-            articles.sort(key=lambda item: item.time or datetime.min, reverse=True)
+            articles.sort(
+                key=lambda item: (
+                    item.time.timestamp() if item.time else float("-inf"),
+                    item.id,
+                ),
+                reverse=True,
+            )
             if limit is not None:
-                return articles[: max(1, limit)]
-            return articles
+                return articles[offset:offset + max(1, limit)]
+            return articles[offset:]
 
         except Exception as e:
             print(f"Error getting news: {e}")
@@ -117,16 +138,21 @@ class ArticlesService:
             return []
 
     @staticmethod
-    def get_macro_articles(limit: int = 50) -> List[ArticlesResponse]:
+    def get_macro_articles(
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[ArticlesResponse]:
         try:
             limit = max(1, limit)
+            offset = max(0, offset)
 
             result = (
                 supabase.table("Article")
                 .select("*")
                 .eq("article_type", "macro")
-                .order("time", desc=True)
-                .limit(limit)
+                .order("time", desc=True, nullsfirst=False)
+                .order("id", desc=True)
+                .range(offset, offset + limit - 1)
                 .execute()
             )
 
@@ -149,13 +175,18 @@ class ArticlesService:
             return []
 
     @staticmethod
-    def get_articles_by_category_id(category_id: str, limit: int = 100) -> List[ArticlesResponse]:
+    def get_articles_by_category_id(
+        category_id: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> List[ArticlesResponse]:
         """
         Get news for a specific category by ID.
         Category(id) -> Article_Category(category_id, article_id) -> Article(id)
         """
         try:
             limit = max(1, limit)
+            offset = max(0, offset)
 
             # Step 1: Get all article_ids linked to this category
             article_category_result = (
@@ -180,8 +211,9 @@ class ArticlesService:
                 supabase.table("Article")
                 .select("*")
                 .in_("id", article_ids)
-                .order("time", desc=True)
-                .limit(limit)
+                .order("time", desc=True, nullsfirst=False)
+                .order("id", desc=True)
+                .range(offset, offset + limit - 1)
                 .execute()
             )
             if not articles_result.data:
@@ -203,13 +235,22 @@ class ArticlesService:
             return []
         
     @staticmethod
-    def get_business_articles(limit: Optional[int] = None) -> List[ArticlesResponse]:
+    def get_business_articles(
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> List[ArticlesResponse]:
         """
         Return the latest stock-type articles linked to at least one VN100 stock.
         Articles may be linked to multiple stocks.
         """
         try:
+            requested_offset = max(0, offset)
             normalized_limit = max(1, limit) if limit is not None else None
+            target_count = (
+                requested_offset + normalized_limit
+                if normalized_limit is not None
+                else None
+            )
 
             vn100_symbols = set(get_index_symbols("VN100"))
             if not vn100_symbols:
@@ -231,11 +272,11 @@ class ArticlesService:
             vn100_stock_id_set = set(vn100_stock_ids)
 
             page_size = (
-                max(100, min(500, normalized_limit * 4))
-                if normalized_limit is not None
+                max(100, min(500, target_count * 4))
+                if target_count is not None
                 else 500
             )
-            offset = 0
+            scan_offset = 0
             articles: List[ArticlesResponse] = []
 
             while True:
@@ -243,9 +284,9 @@ class ArticlesService:
                     supabase.table("Article")
                     .select("*")
                     .eq("article_type", "stock")
-                    .order("time", desc=True)
+                    .order("time", desc=True, nullsfirst=False)
                     .order("id", desc=True)
-                    .range(offset, offset + page_size - 1)
+                    .range(scan_offset, scan_offset + page_size - 1)
                     .execute()
                 )
                 article_rows = article_result.data or []
@@ -282,16 +323,20 @@ class ArticlesService:
                         continue
 
                     if (
-                        normalized_limit is not None
-                        and len(articles) >= normalized_limit
+                        target_count is not None
+                        and len(articles) >= target_count
                     ):
-                        return articles
+                        return articles[requested_offset:target_count]
 
                 if len(article_rows) < page_size:
                     break
-                offset += page_size
+                scan_offset += page_size
 
-            return articles
+            if normalized_limit is not None:
+                return articles[
+                    requested_offset:requested_offset + normalized_limit
+                ]
+            return articles[requested_offset:]
 
         except Exception as e:
             print(f"Error getting business articles: {e}")
