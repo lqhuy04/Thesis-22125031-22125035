@@ -289,13 +289,13 @@ const MacroEcomNewsSection = ({ registerRefresh }: Props) => {
           onPress={() => {
             router.push({
               pathname: "/NewDetail",
-              params: { data: JSON.stringify(articles[0]) },
+              params: { articleId: articles[0].id },
             });
           }}
           style={{ marginHorizontal: 12 }}
         >
           <Image
-            source={{ uri: articles[0].thumbnail }}
+            source={{ uri: articles[0].thumbnail || undefined }}
             style={{ width: "100%", height: 200, borderRadius: 8 }}
           />
           <Text
@@ -311,9 +311,9 @@ const MacroEcomNewsSection = ({ registerRefresh }: Props) => {
             color={theme.text.primary + "80"}
             style={{ marginTop: 8, marginBottom: 12 }}
           >
-            {articles[0].source}
+            {articles[0].source ?? ""}
             {" • "}
-            {articles[0].time.slice(0, 10)}
+            {articles[0].time?.slice(0, 10) ?? ""}
           </Text>
           <View style={{ height: 1, backgroundColor: theme.border.default }} />
         </TouchableOpacity>

@@ -23,8 +23,8 @@ type NewsFetchResult = {
 
 const sortNewestFirst = (items: New[]) =>
   [...items].sort((first, second) => {
-    const firstTime = Date.parse(first.time || first.published_at || "");
-    const secondTime = Date.parse(second.time || second.published_at || "");
+    const firstTime = Date.parse(first.time || "");
+    const secondTime = Date.parse(second.time || "");
     const normalizedFirstTime = Number.isNaN(firstTime) ? 0 : firstTime;
     const normalizedSecondTime = Number.isNaN(secondTime) ? 0 : secondTime;
 
@@ -208,9 +208,7 @@ const AllNews = () => {
       }
 
       if (result.status) {
-        setArticles((current) =>
-          mergeUniqueArticles(current, result.data),
-        );
+        setArticles((current) => mergeUniqueArticles(current, result.data));
         nextOffsetRef.current = offset + PAGE_SIZE;
       }
 
@@ -271,9 +269,7 @@ const AllNews = () => {
           )}
           onEndReached={loadMoreArticles}
           onEndReachedThreshold={0.4}
-          ListFooterComponent={
-            loadingMore ? <NewsItemSkeleton /> : null
-          }
+          ListFooterComponent={loadingMore ? <NewsItemSkeleton /> : null}
         />
       )}
     </View>

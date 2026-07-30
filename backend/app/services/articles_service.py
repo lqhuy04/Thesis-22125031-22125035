@@ -5,9 +5,9 @@ Handles database operations for financial news
 import requests
 from supabase import create_client, Client
 from app.config import settings
-from app.models.article_schema import ArticlesResponse
+from app.models.article_schema import ArticleListItemResponse, ArticlesResponse
 from app.utils.market_index import get_index_symbols
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 import re
@@ -29,6 +29,9 @@ class NewsExtraction(BaseModel):
 
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+ARTICLE_LIST_FIELDS = "id,title,time,thumbnail,source"
+
+
 class ArticlesService:
     """Service for news database operations"""
 
@@ -36,12 +39,12 @@ class ArticlesService:
     def get_articles(
         limit: Optional[int] = None,
         offset: int = 0,
-    ) -> List[ArticlesResponse]:
+    ) -> List[ArticleListItemResponse]:
         try:
             offset = max(0, offset)
             query = (
                 supabase.table("Article")
-                .select("*")
+                .select(ARTICLE_LIST_FIELDS)
                 .order("time", desc=True, nullsfirst=False)
                 .order("id", desc=True)
             )
@@ -49,7 +52,10 @@ class ArticlesService:
                 normalized_limit = max(1, limit)
                 query = query.range(offset, offset + normalized_limit - 1)
             result = query.execute()
-            return [ArticlesResponse(**item) for item in result.data] if result.data else []
+            return [
+                ArticleListItemResponse(**item)
+                for item in (result.data or [])
+            ]
 
         except Exception as e:
             print(f"Error getting news: {e}")
@@ -58,11 +64,32 @@ class ArticlesService:
             return []
 
     @staticmethod
+    def get_article_by_id(article_id: str) -> Optional[ArticlesResponse]:
+        try:
+            result = (
+                supabase.table("Article")
+                .select("*")
+                .eq("id", article_id)
+                .limit(1)
+                .execute()
+            )
+            if not result.data:
+                return None
+            return ArticlesResponse(**result.data[0])
+
+        except Exception as e:
+            print(f"Error getting article detail for id={article_id}: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
+
+    @staticmethod
     def get_articles_by_stock_symbol(
         stock_symbol: str,
         limit: Optional[int] = None,
         offset: int = 0,
-    ) -> List[ArticlesResponse]:
+        summary_only: bool = False,
+    ) -> Union[List[ArticlesResponse], List[ArticleListItemResponse]]:
         try:
             offset = max(0, offset)
             stock = supabase.table("Stock").select("id").eq("stock_symbol", stock_symbol).execute()
@@ -72,7 +99,11 @@ class ArticlesService:
             
             result = (
                 supabase.table("Article_Stock")
-                .select("Article(*)")
+                .select(
+                    f"Article({ARTICLE_LIST_FIELDS})"
+                    if summary_only
+                    else "Article(*)"
+                )
                 .eq("stock_id", stock_id)
                 .execute()
             )
@@ -112,11 +143,16 @@ class ArticlesService:
 
             # Bước 5: Build response chỉ từ exclusive articles
             articles = []
+            article_model = (
+                ArticleListItemResponse
+                if summary_only
+                else ArticlesResponse
+            )
             for article_id, article in article_map.items():
                 if article_id not in exclusive_ids:
                     continue
                 try:
-                    articles.append(ArticlesResponse(**article))
+                    articles.append(article_model(**article))
                 except Exception:
                     continue
 
@@ -141,14 +177,14 @@ class ArticlesService:
     def get_macro_articles(
         limit: int = 50,
         offset: int = 0,
-    ) -> List[ArticlesResponse]:
+    ) -> List[ArticleListItemResponse]:
         try:
             limit = max(1, limit)
             offset = max(0, offset)
 
             result = (
                 supabase.table("Article")
-                .select("*")
+                .select(ARTICLE_LIST_FIELDS)
                 .eq("article_type", "macro")
                 .order("time", desc=True, nullsfirst=False)
                 .order("id", desc=True)
@@ -162,7 +198,7 @@ class ArticlesService:
             macro_items = []
             for article in result.data:
                 try:
-                    macro_items.append(ArticlesResponse(**article))
+                    macro_items.append(ArticleListItemResponse(**article))
                 except Exception:
                     continue
 
@@ -179,7 +215,7 @@ class ArticlesService:
         category_id: str,
         limit: int = 100,
         offset: int = 0,
-    ) -> List[ArticlesResponse]:
+    ) -> List[ArticleListItemResponse]:
         """
         Get news for a specific category by ID.
         Category(id) -> Article_Category(category_id, article_id) -> Article(id)
@@ -209,7 +245,7 @@ class ArticlesService:
             # Step 2: Fetch articles, sorted by time desc
             articles_result = (
                 supabase.table("Article")
-                .select("*")
+                .select(ARTICLE_LIST_FIELDS)
                 .in_("id", article_ids)
                 .order("time", desc=True, nullsfirst=False)
                 .order("id", desc=True)
@@ -219,10 +255,10 @@ class ArticlesService:
             if not articles_result.data:
                 return []
 
-            articles: List[ArticlesResponse] = []
+            articles: List[ArticleListItemResponse] = []
             for item in articles_result.data:
                 try:
-                    articles.append(ArticlesResponse(**item))
+                    articles.append(ArticleListItemResponse(**item))
                 except Exception:
                     continue
 
@@ -238,7 +274,7 @@ class ArticlesService:
     def get_business_articles(
         limit: Optional[int] = None,
         offset: int = 0,
-    ) -> List[ArticlesResponse]:
+    ) -> List[ArticleListItemResponse]:
         """
         Return the latest stock-type articles linked to at least one VN100 stock.
         Articles may be linked to multiple stocks.
@@ -277,12 +313,12 @@ class ArticlesService:
                 else 500
             )
             scan_offset = 0
-            articles: List[ArticlesResponse] = []
+            articles: List[ArticleListItemResponse] = []
 
             while True:
                 article_result = (
                     supabase.table("Article")
-                    .select("*")
+                    .select(ARTICLE_LIST_FIELDS)
                     .eq("article_type", "stock")
                     .order("time", desc=True, nullsfirst=False)
                     .order("id", desc=True)
@@ -318,7 +354,7 @@ class ArticlesService:
                     if str(payload.get("id")) not in linked_article_ids:
                         continue
                     try:
-                        articles.append(ArticlesResponse(**payload))
+                        articles.append(ArticleListItemResponse(**payload))
                     except Exception:
                         continue
 

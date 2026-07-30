@@ -275,8 +275,12 @@ export const getAllStocks = async (
   }
 };
 
+export type TodayHighlightNews = New & {
+  sentiment?: string | null;
+};
+
 export type TodayHighlight = CurrentPriceData & {
-  news: New[];
+  news: TodayHighlightNews[];
 };
 
 export const getTodayHighlights = async (): Promise<{

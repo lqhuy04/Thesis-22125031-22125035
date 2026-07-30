@@ -31,9 +31,31 @@ class ArticlesResponse(ArticlesBase):
     class Config:
         from_attributes = True
 
+
+class ArticleListItemResponse(BaseModel):
+    """Minimal article payload used by news list items."""
+    id: str = Field(..., description="Unique article identifier")
+    title: str = Field(..., description="Article title")
+    time: Optional[datetime] = Field(None, description="Publication time")
+    thumbnail: Optional[str] = Field(None, description="Article image URL")
+    source: Optional[str] = Field(None, description="Article source")
+
+    class Config:
+        from_attributes = True
+
+
 class ArticlesListResponse(BaseModel):
     """Standardized API response for Articles list"""
-    data: list[ArticlesResponse]
+    data: list[ArticleListItemResponse]
+    errorCode: int = Field(default=0, description="Error code (0 = success)")
+    errorDesc: str = Field(default="", description="Error description")
+    requestId: str = Field(default="", description="Unique request ID")
+    result: bool = Field(default=True, description="Success flag")
+
+
+class ArticleDetailResponse(BaseModel):
+    """Standardized API response for one complete article."""
+    data: Optional[ArticlesResponse] = None
     errorCode: int = Field(default=0, description="Error code (0 = success)")
     errorDesc: str = Field(default="", description="Error description")
     requestId: str = Field(default="", description="Unique request ID")

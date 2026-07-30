@@ -231,13 +231,13 @@ const CategoryContent = ({
         onPress={() => {
           router.push({
             pathname: "/NewDetail",
-            params: { data: JSON.stringify(featured) },
+            params: { articleId: featured.id },
           });
         }}
         style={{ marginHorizontal: 0 }}
       >
         <Image
-          source={{ uri: featured.thumbnail }}
+          source={{ uri: featured.thumbnail || undefined }}
           style={{ width: "100%", height: 200, borderRadius: 8 }}
         />
         <Text
@@ -253,9 +253,9 @@ const CategoryContent = ({
           color={theme.text.primary + "80"}
           style={{ marginTop: 8, marginBottom: 12 }}
         >
-          {featured.source}
+          {featured.source ?? ""}
           {" • "}
-          {featured.time.slice(0, 10)}
+          {featured.time?.slice(0, 10) ?? ""}
         </Text>
         <View style={{ height: 1, backgroundColor: theme.border.default }} />
       </TouchableOpacity>

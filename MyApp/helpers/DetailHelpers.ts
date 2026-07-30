@@ -78,15 +78,17 @@ export type Content = {
 export type New = {
   id: string;
   title: string;
+  time: string | null;
+  thumbnail: string | null;
+  source: string | null;
+};
+
+export type ArticleDetail = New & {
   link: string;
-  stock_symbol: string;
-  description: string;
-  time: string;
-  thumbnail: string;
-  published_at: string;
-  content: string;
-  source: string;
-  sentiment?: string;
+  description: string | null;
+  content: string | null;
+  sentiment: string | null;
+  summary: string | null;
 };
 
 export const fetchNews = async (
@@ -123,6 +125,38 @@ export const fetchNews = async (
     return {
       status: false,
       data: [],
+    };
+  }
+};
+
+export const fetchArticleById = async (
+  articleId: string,
+): Promise<{
+  status: boolean;
+  data: ArticleDetail | null;
+}> => {
+  try {
+    const result = await sendMessage(
+      `api/articles/detail/${encodeURIComponent(articleId)}`,
+    );
+    const { errorCode, data } = result || {};
+
+    if (errorCode === 0 && data) {
+      return {
+        status: true,
+        data: data as ArticleDetail,
+      };
+    }
+
+    return {
+      status: false,
+      data: null,
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      status: false,
+      data: null,
     };
   }
 };

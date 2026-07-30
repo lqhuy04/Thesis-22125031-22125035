@@ -22,12 +22,12 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
       onPress={() => {
         router.push({
           pathname: "/NewDetail",
-          params: { data: JSON.stringify(newItem) },
+          params: { articleId: newItem.id },
         });
       }}
     >
       <Image
-        source={{ uri: newItem.thumbnail }}
+        source={{ uri: newItem.thumbnail || undefined }}
         style={{ width: 92, height: 64, borderRadius: 8, marginRight: 12 }}
       />
 
@@ -45,9 +45,9 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
           numberOfLines={1}
           color={theme.text.primary + "80"}
         >
-          {newItem.source}
+          {newItem.source ?? ""}
           {" • "}
-          {newItem.time.slice(0, 10)}
+          {newItem.time?.slice(0, 10) ?? ""}
         </Text>
       </View>
     </TouchableOpacity>

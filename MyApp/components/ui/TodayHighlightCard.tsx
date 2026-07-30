@@ -142,7 +142,7 @@ const TodayHighlightCard = ({ item }: Props) => {
               onPress={() => {
                 router.push({
                   pathname: "/NewDetail",
-                  params: { data: JSON.stringify(item) },
+                  params: { articleId: item.id },
                 });
               }}
             >

@@ -2,8 +2,12 @@
 News Routes
 API endpoints for financial news
 """
-from fastapi import APIRouter, Query, Depends
-from app.models.article_schema import ArticlesListResponse, TodayHighlightResponse
+from fastapi import APIRouter, Query, Depends, Response, status
+from app.models.article_schema import (
+    ArticleDetailResponse,
+    ArticlesListResponse,
+    TodayHighlightResponse,
+)
 from app.services.articles_service import ArticlesService
 from app.middleware.auth_middleware import get_current_user
 from typing import Optional
@@ -90,6 +94,30 @@ def get_today_highlight_articles():
     )
 
 
+@router.get("/detail/{article_id}", response_model=ArticleDetailResponse)
+def get_article_detail(article_id: str, response: Response):
+    """Lấy đầy đủ thông tin của một bài viết theo ID."""
+    article = ArticlesService.get_article_by_id(article_id=article_id)
+
+    if article is None:
+        response.status_code = status.HTTP_404_NOT_FOUND
+        return ArticleDetailResponse(
+            data=None,
+            errorCode=404001,
+            errorDesc="Article not found",
+            requestId=str(uuid4()),
+            result=False,
+        )
+
+    return ArticleDetailResponse(
+        data=article,
+        errorCode=0,
+        errorDesc="",
+        requestId=str(uuid4()),
+        result=True,
+    )
+
+
 @router.get("/stock/{stock_symbol}", response_model=ArticlesListResponse)
 def get_articles_by_stock_symbol(
     stock_symbol: str,
@@ -106,6 +134,7 @@ def get_articles_by_stock_symbol(
         stock_symbol=stock_symbol.upper(),
         limit=limit,
         offset=offset,
+        summary_only=True,
     )
     
     # Giả định NewsListData nhận vào một list các items
