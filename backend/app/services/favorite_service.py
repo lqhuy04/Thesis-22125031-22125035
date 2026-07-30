@@ -41,7 +41,6 @@ class FavoriteService:
     @staticmethod
     def _normalize_row(row: Dict) -> Dict:
         return {
-            "id": row.get("id"),
             "stock_id": row.get("stock_id"),
             "user_id": row.get("user_id"),
         }
@@ -59,9 +58,9 @@ class FavoriteService:
             # fetch user favorites
             result = (
                 supabase.table(FavoriteService.TABLE_NAME)
-                .select("id, stock_id, user_id")
+                .select("stock_id, user_id")
                 .eq("user_id", user_id)
-                .order("id")
+                .order("stock_id")
                 .execute()
             )
 
@@ -131,7 +130,6 @@ class FavoriteService:
                 total_match_val   = FavoriteService._to_float(price_row.get("total_match_val")  or price_row.get("TotalMatchVal"))
 
                 response.append({
-                    "id":           row.get("id"),
                     "stock_id":     sid,
                     "symbol":       symbol,
                     "company_name": profile.get("company_name", ""),
@@ -162,7 +160,7 @@ class FavoriteService:
             try:
                 existing = (
                     supabase.table(FavoriteService.TABLE_NAME)
-                    .select("id")
+                    .select("stock_id")
                     .eq("stock_id", stock_id)
                     .eq("user_id", user_id.strip())
                     .limit(1)
@@ -236,7 +234,7 @@ class FavoriteService:
             # Check if favorite exists (efficient: limit(1))
             result = (
                 supabase.table(FavoriteService.TABLE_NAME)
-                .select("id", count="exact")
+                .select("stock_id", count="exact")
                 .eq("stock_id", stock_id)
                 .eq("user_id", user_id.strip())
                 .limit(1)

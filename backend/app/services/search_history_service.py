@@ -2,10 +2,8 @@
 Search history service.
 Stores the last 6 unique searched stocks per user.
 """
+from datetime import datetime, timezone
 from typing import Any, Dict, List
-import secrets
-import time
-import uuid
 
 from supabase import Client, create_client
 
@@ -18,21 +16,6 @@ supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 class SearchHistoryService:
     TABLE_NAME = "Search_History"
     MAX_RECORDS = 6
-
-    @staticmethod
-    def _generate_uuid7() -> str:
-        timestamp_ms = int(time.time_ns() // 1_000_000)
-        random_a = secrets.randbits(12)
-        random_b = secrets.randbits(62)
-
-        value = (
-            (timestamp_ms & ((1 << 48) - 1)) << 80
-            | 0x7 << 76
-            | (random_a & ((1 << 12) - 1)) << 64
-            | 0x2 << 62
-            | (random_b & ((1 << 62) - 1))
-        )
-        return str(uuid.UUID(int=value))
 
     @staticmethod
     def _normalize_symbol(symbol: str) -> str:
@@ -144,9 +127,10 @@ class SearchHistoryService:
         try:
             result = (
                 supabase.table(SearchHistoryService.TABLE_NAME)
-                .select("stock_id, id")
+                .select("stock_id, searched_at")
                 .eq("user_id", user_id)
-                .order("id", desc=True)
+                .order("searched_at", desc=True)
+                .order("stock_id")
                 .execute()
             )
             rows = result.data or []
@@ -163,52 +147,43 @@ class SearchHistoryService:
                 raise ValueError("Symbol is required")
 
             stock_id = SearchHistoryService._resolve_stock_id(sym)
+            searched_at = datetime.now(timezone.utc).isoformat()
 
-            existing = (
+            (
                 supabase.table(SearchHistoryService.TABLE_NAME)
-                .select("id, stock_id")
-                .eq("user_id", user_id)
-                .eq("stock_id", stock_id)
-                .limit(1)
+                .upsert(
+                    {
+                        "user_id": user_id,
+                        "stock_id": stock_id,
+                        "searched_at": searched_at,
+                    },
+                    on_conflict="user_id,stock_id",
+                )
                 .execute()
             )
-            if existing.data:
-                existing_id = existing.data[0].get("id")
-                if existing_id:
-                    (
-                        supabase.table(SearchHistoryService.TABLE_NAME)
-                        .update({"id": SearchHistoryService._generate_uuid7()})
-                        .eq("id", existing_id)
-                        .eq("user_id", user_id)
-                        .execute()
-                    )
-                return SearchHistoryService.list_search_history_by_user_id(user_id)
 
             ordered_rows = (
                 supabase.table(SearchHistoryService.TABLE_NAME)
-                .select("id, stock_id")
+                .select("stock_id, searched_at")
                 .eq("user_id", user_id)
-                .order("id", desc=False)
+                .order("searched_at", desc=True)
+                .order("stock_id")
                 .execute()
             ).data or []
 
-            if len(ordered_rows) >= SearchHistoryService.MAX_RECORDS:
-                oldest_row = ordered_rows[0]
-                oldest_id = oldest_row.get("id")
-                if oldest_id:
-                    supabase.table(SearchHistoryService.TABLE_NAME) \
-                        .delete() \
-                        .eq("user_id", user_id) \
-                        .eq("id", oldest_id) \
-                        .execute()
-
-            supabase.table(SearchHistoryService.TABLE_NAME).insert(
-                {
-                    "id": SearchHistoryService._generate_uuid7(),
-                    "user_id": user_id,
-                    "stock_id": stock_id,
-                }
-            ).execute()
+            stale_stock_ids = [
+                row.get("stock_id")
+                for row in ordered_rows[SearchHistoryService.MAX_RECORDS:]
+                if row.get("stock_id")
+            ]
+            if stale_stock_ids:
+                (
+                    supabase.table(SearchHistoryService.TABLE_NAME)
+                    .delete()
+                    .eq("user_id", user_id)
+                    .in_("stock_id", stale_stock_ids)
+                    .execute()
+                )
 
             return SearchHistoryService.list_search_history_by_user_id(user_id)
         except ValueError:

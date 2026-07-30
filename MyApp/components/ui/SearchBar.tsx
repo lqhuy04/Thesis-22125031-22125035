@@ -41,7 +41,7 @@ export const SearchBar = ({
           placeholder={t("common.searchPlaceholder")}
           placeholderTextColor={theme.text.primary}
           numberOfLines={1}
-          onBlur={() => {
+          onSubmitEditing={() => {
             if (value.trim() !== "") onSearchPress?.();
           }}
           autoFocus={autoFocus}

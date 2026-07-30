@@ -60,9 +60,7 @@ export const getRiskAppetite = async (): Promise<{
 };
 
 // ----------------------------------------------
-export type FavoriteItem = CurrentPriceData & {
-  id: string;
-};
+export type FavoriteItem = CurrentPriceData;
 
 export const getFavoritelist = async (): Promise<{
   status: boolean;

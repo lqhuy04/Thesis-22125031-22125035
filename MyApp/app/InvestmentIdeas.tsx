@@ -10,6 +10,7 @@ import {
   Dimensions,
   FlatList,
   Image,
+  RefreshControl,
   ScrollView,
   TouchableOpacity,
   View,
@@ -380,6 +381,8 @@ const InvestmentIdeas = () => {
   const { theme } = useTheme();
   const [dataMap, setDataMap] = useState<Record<string, SuggestionItem[]>>({});
   const loadingRef = useRef<Set<string>>(new Set());
+  const refreshingRef = useRef(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeGroup, setActiveGroup] = useState<
     "trend" | "community" | "top_choice"
   >("top_choice");
@@ -586,6 +589,39 @@ const InvestmentIdeas = () => {
     }
   };
 
+  const handleRefresh = useCallback(async () => {
+    if (refreshingRef.current) {
+      return;
+    }
+
+    const activeTab = tabs[currentPage];
+    if (!activeTab) {
+      return;
+    }
+
+    const key = cacheKeyFor(activeTab.msgType, selectedInterval);
+    refreshingRef.current = true;
+    setIsRefreshing(true);
+
+    try {
+      const result = await getInvestingIdea(
+        activeTab.msgType,
+        20,
+        isTrendMsgType(activeTab.msgType) ? selectedInterval : undefined,
+      );
+
+      if (result.status) {
+        setDataMap((current) => ({
+          ...current,
+          [key]: result.data,
+        }));
+      }
+    } finally {
+      refreshingRef.current = false;
+      setIsRefreshing(false);
+    }
+  }, [currentPage, selectedInterval, tabs]);
+
   // ------------------------------------------------------------------
   // Render a single full-screen stock row
   // ------------------------------------------------------------------
@@ -719,9 +755,19 @@ const InvestmentIdeas = () => {
     return (
       <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
         <ScrollView
+          alwaysBounceVertical
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={["transparent"]}
+              progressBackgroundColor="transparent"
+              tintColor="transparent"
+            />
+          }
         >
           {/* Table header */}
           <View
@@ -902,7 +948,10 @@ const InvestmentIdeas = () => {
   // ------------------------------------------------------------------
   // Loading state — show full skeleton until the first tab has loaded.
   // ------------------------------------------------------------------
-  if (dataMap[cacheKeyFor(tabs[0].msgType, selectedInterval)] === undefined) {
+  if (
+    isRefreshing ||
+    dataMap[cacheKeyFor(tabs[0].msgType, selectedInterval)] === undefined
+  ) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
         <LinearGradient
@@ -1151,6 +1200,7 @@ const InvestmentIdeas = () => {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         data={tabs}
+        initialScrollIndex={currentPage}
         keyExtractor={(_, index) => index.toString()}
         onMomentumScrollEnd={handleScrollEnd}
         getItemLayout={(_, index) => ({

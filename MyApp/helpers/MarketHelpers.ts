@@ -275,11 +275,22 @@ export const getAllStocks = async (
   }
 };
 
-export type TodayHighlightNews = Omit<New, "related_stocks"> & {
+export type TodayHighlightNews = {
+  id: string;
+  title: string;
   sentiment?: string | null;
 };
 
-export type TodayHighlight = CurrentPriceData & {
+export type TodayHighlight = Pick<
+  CurrentPriceData,
+  | "stock_id"
+  | "symbol"
+  | "logo"
+  | "company_name"
+  | "PriceChange"
+  | "PerPriceChange"
+  | "CurrentPrice"
+> & {
   news: TodayHighlightNews[];
 };
 

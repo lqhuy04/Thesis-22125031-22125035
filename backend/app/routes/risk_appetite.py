@@ -34,7 +34,6 @@ def get_risk_appetite(current_user: dict = Depends(get_current_user)):
             )
 
         risk_data = RiskAppetiteData(
-            id=data.get("id"),
             userId=data.get("userid"),
             period=data.get("period"),
         ).model_dump()
@@ -77,7 +76,6 @@ def save_risk_appetite(
         )
 
         risk_data = RiskAppetiteData(
-            id=data.get("id"),
             userId=data.get("userid"),
             period=data.get("period"),
         ).model_dump()

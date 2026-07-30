@@ -22,11 +22,9 @@ logger = logging.getLogger(__name__)
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
 
-def get_index_symbols(index_name: str) -> list[str]:
+def get_index_stocks(index_name: str) -> list[dict[str, str]]:
     """
-    Return the sorted list of uppercase stock symbols belonging to the given
-    market index. Returns an empty list if the index is unknown or has no
-    linked stocks.
+    Return stock IDs and uppercase symbols belonging to a market index.
     """
     name = (index_name or "").strip().upper()
     if not name:
@@ -59,15 +57,36 @@ def get_index_symbols(index_name: str) -> list[str]:
 
     stock_resp = (
         supabase.table("Stock")
-        .select("stock_symbol")
+        .select("id,stock_symbol")
         .in_("id", stock_ids)
         .execute()
     )
     stock_rows = getattr(stock_resp, "data", None) or []
-    symbols = {
-        str(row.get("stock_symbol") or "").strip().upper()
+    stocks_by_symbol = {
+        str(row.get("stock_symbol") or "").strip().upper(): {
+            "id": str(row.get("id")),
+            "stock_symbol": str(
+                row.get("stock_symbol") or ""
+            ).strip().upper(),
+        }
         for row in stock_rows
-        if str(row.get("stock_symbol") or "").strip()
+        if row.get("id") and str(row.get("stock_symbol") or "").strip()
     }
-    logger.info("Loaded %d symbols for index '%s'", len(symbols), name)
-    return sorted(symbols)
+    stocks = [
+        stocks_by_symbol[symbol]
+        for symbol in sorted(stocks_by_symbol)
+    ]
+    logger.info("Loaded %d stocks for index '%s'", len(stocks), name)
+    return stocks
+
+
+def get_index_symbols(index_name: str) -> list[str]:
+    """
+    Return the sorted list of uppercase stock symbols belonging to the given
+    market index. Returns an empty list if the index is unknown or has no
+    linked stocks.
+    """
+    return [
+        stock["stock_symbol"]
+        for stock in get_index_stocks(index_name)
+    ]

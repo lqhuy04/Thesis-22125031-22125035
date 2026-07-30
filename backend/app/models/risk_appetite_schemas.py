@@ -18,6 +18,5 @@ class RiskAppetiteRequest(BaseModel):
 
 
 class RiskAppetiteData(BaseModel):
-    id: Optional[str] = None
     userId: Optional[str] = None
     period: Optional[str] = None

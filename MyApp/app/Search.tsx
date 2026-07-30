@@ -5,7 +5,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { Animated, FlatList, TouchableOpacity, View } from "react-native";
+import {
+  Animated,
+  FlatList,
+  Keyboard,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import { SearchBar } from "@/components/ui/SearchBar";
 import SearchResultItem from "@/components/ui/SearchResultItem";
@@ -299,6 +305,7 @@ const Search = () => {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
 
+    Keyboard.dismiss();
     router.push({
       pathname: "/Detail",
       params: { data: symbol },
@@ -456,6 +463,7 @@ const Search = () => {
 
           <FlatList
             data={searchResults}
+            keyboardShouldPersistTaps="handled"
             keyExtractor={(item) => item.symbol}
             renderItem={({ item, index }) => (
               <View>

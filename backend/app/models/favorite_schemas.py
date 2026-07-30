@@ -11,7 +11,6 @@ class FavoriteCreateRequest(BaseModel):
 
 
 class FavoriteData(BaseModel):
-    id: str
     stock_id: str
     user_id: str
     symbol: str

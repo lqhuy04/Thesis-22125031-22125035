@@ -55,25 +55,12 @@ class RiskAppetiteService:
                 "period": period,
             }
 
-            # Check if record already exists
-            existing = supabase.table("RiskAppetite") \
-                .select("id") \
-                .eq("userid", user_id) \
-                .limit(1) \
+            result = (
+                supabase.table("RiskAppetite")
+                .upsert(payload, on_conflict="userid")
                 .execute()
+            )
 
-            if existing.data:
-                # Update existing record
-                result = supabase.table("RiskAppetite") \
-                    .update(payload) \
-                    .eq("userid", user_id) \
-                    .execute()
-            else:
-                # Insert new record
-                result = supabase.table("RiskAppetite") \
-                    .insert(payload) \
-                    .execute()
-            
             return result.data[0] if result.data else payload
 
         except Exception as e:

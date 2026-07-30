@@ -247,7 +247,7 @@ const WatchlistSection = ({ registerRefresh }: Props) => {
     const screenWidth = Dimensions.get("window").width;
 
     return (
-      <View key={String(item.id)}>
+      <View key={item.stock_id}>
         {index !== 0 && (
           <View
             style={{

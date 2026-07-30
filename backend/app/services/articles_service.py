@@ -6,9 +6,8 @@ import requests
 from supabase import create_client, Client
 from app.config import settings
 from app.models.article_schema import ArticleListItemResponse, ArticlesResponse
-from app.utils.market_index import get_index_symbols
+from app.utils.market_index import get_index_stocks, get_index_symbols
 from typing import Optional, List, Union
-from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 import re
 from openai import OpenAI
@@ -494,84 +493,91 @@ class ArticlesService:
     def get_today_highlight(
         stock_limit: int = 10,
         articles_per_stock: int = 2,
+        max_scan_pages: int = 5,
     ) -> List[dict]:
         """
-        Traverse latest articles for VN100 stocks, collect the latest unique
-        stocks, and return each stock with its latest related news.
+        Return the VN100 stocks with the latest related news.
+
+        A stock only needs one article to qualify. Up to ``articles_per_stock``
+        articles are collected while scanning a bounded number of pages.
         """
         try:
             from collections import defaultdict
 
             stock_limit = max(1, stock_limit)
             articles_per_stock = max(1, articles_per_stock)
+            max_scan_pages = max(1, max_scan_pages)
 
-            vn100_symbols = set(get_index_symbols("VN100"))
-            if not vn100_symbols:
-                return []
-
-            vn100_stock_result = (
-                supabase.table("Stock")
-                .select("id, stock_symbol")
-                .in_("stock_symbol", sorted(vn100_symbols))
-                .execute()
-            )
             vn100_stock_symbol_map = {
-                str(item.get("id")): str(item.get("stock_symbol") or "").upper().strip()
-                for item in (vn100_stock_result.data or [])
+                str(item.get("id")): str(
+                    item.get("stock_symbol") or ""
+                ).upper().strip()
+                for item in get_index_stocks("VN100")
                 if item.get("id")
-                and str(item.get("stock_symbol") or "").upper().strip() in vn100_symbols
+                and str(item.get("stock_symbol") or "").strip()
             }
             if not vn100_stock_symbol_map:
                 return []
 
-            def fetch_article_stock_links(article_ids: List[str], batch_size: int = 1000) -> List[dict]:
-                """Fetch all Article_Stock links for article_ids, avoiding default row cap."""
+            def fetch_article_stock_links(
+                article_ids: List[str],
+                article_id_batch_size: int = 100,
+                row_batch_size: int = 1000,
+            ) -> List[dict]:
+                """Fetch links in small ID batches and avoid PostgREST's row cap."""
                 all_rows: List[dict] = []
-                start = 0
-                while True:
-                    batch_result = (
-                        supabase.table("Article_Stock")
-                        .select("id, article_id, stock_id")
-                        .in_("article_id", article_ids)
-                        .order("id", desc=False)
-                        .range(start, start + batch_size - 1)
-                        .execute()
-                    )
-                    rows = batch_result.data or []
-                    if not rows:
-                        break
+                for batch_start in range(
+                    0,
+                    len(article_ids),
+                    article_id_batch_size,
+                ):
+                    article_id_batch = article_ids[
+                        batch_start:batch_start + article_id_batch_size
+                    ]
+                    row_start = 0
 
-                    all_rows.extend(rows)
-                    if len(rows) < batch_size:
-                        break
+                    while True:
+                        batch_result = (
+                            supabase.table("Article_Stock")
+                            .select("article_id, stock_id")
+                            .in_("article_id", article_id_batch)
+                            .order("article_id", desc=False)
+                            .order("stock_id", desc=False)
+                            .range(
+                                row_start,
+                                row_start + row_batch_size - 1,
+                            )
+                            .execute()
+                        )
+                        rows = batch_result.data or []
+                        all_rows.extend(rows)
 
-                    start += batch_size
+                        if len(rows) < row_batch_size:
+                            break
+                        row_start += row_batch_size
 
                 return all_rows
 
-            page_size = 500
+            page_size = 200
             cursor_time = None
             cursor_id = None
 
             stock_to_articles = defaultdict(list)
-            stock_latest_time = {}
+            selected_stock_ids: List[str] = []
+            selected_stock_id_set = set()
 
-            while True:
-                qualified_stock_count = sum(
-                    1 for items in stock_to_articles.values() if len(items) >= articles_per_stock
-                )
-                if qualified_stock_count >= stock_limit:
-                    break
-
+            for _ in range(max_scan_pages):
                 query = (
                     supabase.table("Article")
-                    .select("*")
-                    .order("time", desc=True)
+                    .select("id,title,time,sentiment")
+                    .eq("article_type", "stock")
+                    .not_.is_("time", "null")
+                    .order("time", desc=True, nullsfirst=False)
                     .order("id", desc=True)
                     .limit(page_size)
                 )
 
-                if cursor_time and cursor_id:
+                if cursor_time is not None and cursor_id is not None:
                     query = query.or_(
                         f"time.lt.{cursor_time},and(time.eq.{cursor_time},id.lt.{cursor_id})"
                     )
@@ -588,24 +594,10 @@ class ArticlesService:
                     if item.get("id")
                 ]
                 if not article_ids:
-                    if len(article_rows) < page_size:
-                        break
-                    last_row = article_rows[-1]
-                    cursor_time = last_row.get("time")
-                    cursor_id = last_row.get("id")
-                    continue
-
-                links_data = fetch_article_stock_links(article_ids=article_ids)
-                if not links_data:
-                    if len(article_rows) < page_size:
-                        break
-                    last_row = article_rows[-1]
-                    cursor_time = last_row.get("time")
-                    cursor_id = last_row.get("id")
-                    continue
+                    break
 
                 article_to_stock_ids = defaultdict(list)
-                for row in links_data:
+                for row in fetch_article_stock_links(article_ids):
                     article_id = str(row.get("article_id") or "")
                     stock_id = str(row.get("stock_id") or "")
                     if not article_id or not stock_id:
@@ -617,13 +609,26 @@ class ArticlesService:
 
                 for article in article_rows:
                     article_id = str(article.get("id") or "")
-                    stock_ids = article_to_stock_ids.get(article_id, [])
+                    stock_ids = sorted(
+                        article_to_stock_ids.get(article_id, []),
+                        key=lambda stock_id: vn100_stock_symbol_map.get(
+                            stock_id,
+                            "",
+                        ),
+                    )
+
                     for stock_id in stock_ids:
-                        if stock_id not in stock_latest_time:
-                            stock_latest_time[stock_id] = article.get("time")
+                        if stock_id not in selected_stock_id_set:
+                            if len(selected_stock_ids) >= stock_limit:
+                                continue
+                            selected_stock_ids.append(stock_id)
+                            selected_stock_id_set.add(stock_id)
 
                         if len(stock_to_articles[stock_id]) < articles_per_stock:
                             stock_to_articles[stock_id].append(article)
+
+                if len(selected_stock_ids) >= stock_limit:
+                    break
 
                 if len(article_rows) < page_size:
                     break
@@ -631,39 +636,15 @@ class ArticlesService:
                 last_row = article_rows[-1]
                 cursor_time = last_row.get("time")
                 cursor_id = last_row.get("id")
+                if cursor_time is None or cursor_id is None:
+                    break
 
-            strict_stock_ids = [
-                stock_id
-                for stock_id, items in stock_to_articles.items()
-                if len(items) >= articles_per_stock
-            ]
-
-            fallback_stock_ids = [
-                stock_id
-                for stock_id, items in stock_to_articles.items()
-                if len(items) > 0 and len(items) < articles_per_stock
-            ]
-
-            if not strict_stock_ids and not fallback_stock_ids:
+            if not selected_stock_ids:
                 return []
-
-            strict_stock_ids = sorted(
-                strict_stock_ids,
-                key=lambda sid: stock_latest_time.get(sid) or datetime.min,
-                reverse=True,
-            )
-
-            fallback_stock_ids = sorted(
-                fallback_stock_ids,
-                key=lambda sid: stock_latest_time.get(sid) or datetime.min,
-                reverse=True,
-            )
-
-            selected_stock_ids = (strict_stock_ids + fallback_stock_ids)[:stock_limit]
 
             profile_result = (
                 supabase.table("BI_Profile")
-                .select("stock_id, logo, symbol, company_name, exchange")
+                .select("stock_id, logo, company_name")
                 .in_("stock_id", selected_stock_ids)
                 .execute()
             )
@@ -675,10 +656,7 @@ class ArticlesService:
 
             price_result = (
                 supabase.table("Current_Stock_Price")
-                .select(
-                    "stock_id, price_change, per_price_change, ceiling_price, "
-                    "floor_price, ref_price, current_price, total_match_vol, total_match_val"
-                )
+                .select("stock_id,price_change,per_price_change,current_price")
                 .in_("stock_id", selected_stock_ids)
                 .execute()
             )
@@ -696,26 +674,15 @@ class ArticlesService:
                 except Exception:
                     return 0.0
 
-            def to_str(value) -> str:
-                if value is None:
-                    return ""
-                if hasattr(value, "isoformat"):
-                    return value.isoformat()
-                return str(value)
-
-            def to_news_item(article: dict, stock_symbol: str) -> dict:
+            def to_news_item(article: dict) -> dict:
                 return {
                     "id": str(article.get("id") or ""),
                     "title": str(article.get("title") or ""),
-                    "link": str(article.get("link") or ""),
-                    "stock_symbol": stock_symbol,
-                    "description": str(article.get("description") or ""),
-                    "time": to_str(article.get("time")),
-                    "thumbnail": str(article.get("thumbnail") or ""),
-                    "published_at": to_str(article.get("published_at") or article.get("time")),
-                    "content": str(article.get("content") or ""),
-                    "source": str(article.get("source") or ""),
-                    "sentiment": str(article.get("sentiment") or ""),
+                    "sentiment": (
+                        str(article.get("sentiment"))
+                        if article.get("sentiment") is not None
+                        else None
+                    ),
                 }
 
             highlights = []
@@ -738,17 +705,11 @@ class ArticlesService:
                         "symbol": stock_symbol,
                         "logo": str(profile.get("logo") or ""),
                         "company_name": str(profile.get("company_name") or ""),
-                        "exchange": str(profile.get("exchange") or ""),
                         "PriceChange": to_float(price.get("price_change")),
                         "PerPriceChange": to_float(price.get("per_price_change")),
-                        "CeilingPrice": to_float(price.get("ceiling_price")),
-                        "FloorPrice": to_float(price.get("floor_price")),
-                        "RefPrice": to_float(price.get("ref_price")),
                         "CurrentPrice": to_float(price.get("current_price")),
-                        "TotalMatchVol": to_float(price.get("total_match_vol")),
-                        "TotalMatchVal": to_float(price.get("total_match_val")),
                         "news": [
-                            to_news_item(article=item, stock_symbol=stock_symbol)
+                            to_news_item(article=item)
                             for item in stock_articles[:articles_per_stock]
                         ],
                     }

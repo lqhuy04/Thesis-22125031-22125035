@@ -81,7 +81,7 @@ def get_business_articles(
 def get_today_highlight_articles():
     """
     Lấy 10 mã cổ phiếu VN100 có tin mới nhất.
-    Mỗi mã trả về tối đa 2 bài mới nhất có liên kết với mã cổ phiếu đó.
+    Mỗi mã chỉ cần có ít nhất 1 bài và trả về tối đa 2 bài mới nhất.
     """
     highlights = ArticlesService.get_today_highlight(stock_limit=10, articles_per_stock=2)
 
