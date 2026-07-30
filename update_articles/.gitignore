@@ -6,3 +6,4 @@ __pycache__/
 venv/
 *_checkpoint.json
 *_checkpoint.json.tmp
+*_review*.jsonl

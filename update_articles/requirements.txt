@@ -4,5 +4,6 @@ ssi-fc-data
 requests
 newspaper3k
 openai
+httpx
 lxml[html-clean]
 beautifulsoup4
