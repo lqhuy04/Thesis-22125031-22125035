@@ -222,9 +222,16 @@ const RelatedStocksSection = ({
                     }
                     typography="bodySmall"
                   >
-                    {item?.current_price?.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}{" "}
+                    {item?.current_price?.toLocaleString("vi-VN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}{" "}
                     {item?.per_price_change >= 0 ? "+" : ""}
-                    {item?.per_price_change?.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+                    {item?.per_price_change?.toLocaleString("vi-VN", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                    %
                   </Text>
                 </TouchableOpacity>
               ) : (

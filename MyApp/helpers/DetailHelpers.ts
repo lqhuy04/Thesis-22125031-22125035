@@ -75,12 +75,18 @@ export type Content = {
   content?: string;
 };
 
+export type RelatedStock = {
+  symbol: string;
+  per_price_change: number | null;
+};
+
 export type New = {
   id: string;
   title: string;
   time: string | null;
   thumbnail: string | null;
   source: string | null;
+  related_stocks: RelatedStock[];
 };
 
 export type ArticleDetail = New & {

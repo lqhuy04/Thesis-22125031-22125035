@@ -22,6 +22,7 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
 import NewsItem from "../ui/NewsItem";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import RelatedStockBadges from "../ui/RelatedStockBadges";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const ITEM_WIDTH = SCREEN_WIDTH - 48;
@@ -305,6 +306,11 @@ const MacroEcomNewsSection = ({ registerRefresh }: Props) => {
           >
             {articles[0].title}
           </Text>
+          <RelatedStockBadges
+            maxVisible={3}
+            stocks={articles[0].related_stocks}
+            style={{ marginTop: 8 }}
+          />
           <Text
             typography="bodySmall"
             numberOfLines={2}

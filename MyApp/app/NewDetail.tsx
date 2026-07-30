@@ -13,6 +13,7 @@ import {
   fetchArticleById,
 } from "@/helpers/DetailHelpers";
 import ScreenHeader from "@/components/ui/ScreenHeader";
+import RelatedStockBadges from "@/components/ui/RelatedStockBadges";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -96,6 +97,25 @@ const NewDetailSkeleton = () => {
           opacity={shimmer}
           width="72%"
         />
+      </View>
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 4,
+          marginTop: 10,
+        }}
+      >
+        {[62, 72, 66].map((width) => (
+          <SkeletonLine
+            key={width}
+            color={skeletonColor}
+            height={30}
+            opacity={shimmer}
+            width={width + 12}
+          />
+        ))}
       </View>
 
       <View
@@ -250,6 +270,12 @@ const NewDetail = () => {
           <Text typography="headlineLarge" color={theme.text.primary}>
             {item.title}
           </Text>
+
+          <RelatedStockBadges
+            size="large"
+            stocks={item.related_stocks}
+            style={{ marginTop: 8 }}
+          />
 
           <View
             style={{

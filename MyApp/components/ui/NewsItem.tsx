@@ -4,6 +4,7 @@ import React from "react";
 import { Image, TouchableOpacity, View } from "react-native";
 import { Text } from "./Text";
 import { router } from "expo-router";
+import RelatedStockBadges from "./RelatedStockBadges";
 
 interface NewsItemProps {
   newItem: New;
@@ -17,7 +18,7 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
       style={{
         marginVertical: 12,
         flexDirection: "row",
-        alignItems: "center",
+        alignItems: "flex-start",
       }}
       onPress={() => {
         router.push({
@@ -40,6 +41,11 @@ const NewsItem = ({ newItem }: NewsItemProps) => {
         >
           {newItem.title}
         </Text>
+        <RelatedStockBadges
+          maxVisible={3}
+          stocks={newItem.related_stocks}
+          style={{ marginBottom: 4 }}
+        />
         <Text
           typography="bodySmall"
           numberOfLines={1}

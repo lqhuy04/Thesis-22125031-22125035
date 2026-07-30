@@ -29,11 +29,134 @@ class NewsExtraction(BaseModel):
 
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-ARTICLE_LIST_FIELDS = "id,title,time,thumbnail,source"
+ARTICLE_LIST_FIELDS = "id,title,time,thumbnail,source,article_type"
 
 
 class ArticlesService:
     """Service for news database operations"""
+
+    @staticmethod
+    def _attach_related_stocks(article_rows: List[dict]) -> List[dict]:
+        """
+        Attach related stocks to stock-type articles using batched queries.
+        Non-stock articles always receive an empty list.
+        """
+        payloads = [
+            {
+                **row,
+                "related_stocks": [],
+            }
+            for row in article_rows
+        ]
+        stock_article_ids = [
+            str(row.get("id"))
+            for row in payloads
+            if row.get("id") and row.get("article_type") == "stock"
+        ]
+        if not stock_article_ids:
+            return payloads
+
+        links: List[dict] = []
+        for batch_start in range(0, len(stock_article_ids), 100):
+            article_id_batch = stock_article_ids[batch_start:batch_start + 100]
+            range_start = 0
+
+            while True:
+                link_result = (
+                    supabase.table("Article_Stock")
+                    .select("article_id,stock_id")
+                    .in_("article_id", article_id_batch)
+                    .range(range_start, range_start + 999)
+                    .execute()
+                )
+                link_rows = link_result.data or []
+                links.extend(link_rows)
+
+                if len(link_rows) < 1000:
+                    break
+                range_start += 1000
+
+        stock_ids = list(dict.fromkeys(
+            str(row.get("stock_id"))
+            for row in links
+            if row.get("stock_id")
+        ))
+        if not stock_ids:
+            return payloads
+
+        stocks: List[dict] = []
+        prices: List[dict] = []
+        for batch_start in range(0, len(stock_ids), 200):
+            stock_id_batch = stock_ids[batch_start:batch_start + 200]
+            stock_result = (
+                supabase.table("Stock")
+                .select("id,stock_symbol")
+                .in_("id", stock_id_batch)
+                .execute()
+            )
+            price_result = (
+                supabase.table("Current_Stock_Price")
+                .select("stock_id,per_price_change")
+                .in_("stock_id", stock_id_batch)
+                .execute()
+            )
+            stocks.extend(stock_result.data or [])
+            prices.extend(price_result.data or [])
+
+        symbol_by_stock_id = {
+            str(row.get("id")): str(row.get("stock_symbol") or "").upper()
+            for row in stocks
+            if row.get("id") and row.get("stock_symbol")
+        }
+
+        def to_optional_float(value) -> Optional[float]:
+            if value is None or value == "":
+                return None
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        price_change_by_stock_id = {
+            str(row.get("stock_id")): to_optional_float(
+                row.get("per_price_change")
+            )
+            for row in prices
+            if row.get("stock_id")
+        }
+
+        stocks_by_article: dict[str, dict[str, dict]] = {}
+        for link in links:
+            article_id = str(link.get("article_id") or "")
+            stock_id = str(link.get("stock_id") or "")
+            symbol = symbol_by_stock_id.get(stock_id, "")
+            if not article_id or not symbol:
+                continue
+
+            stocks_by_article.setdefault(article_id, {})[symbol] = {
+                "symbol": symbol,
+                "per_price_change": price_change_by_stock_id.get(stock_id),
+            }
+
+        for payload in payloads:
+            article_id = str(payload.get("id") or "")
+            related_by_symbol = stocks_by_article.get(article_id, {})
+            payload["related_stocks"] = sorted(
+                related_by_symbol.values(),
+                key=lambda item: item["symbol"],
+            )
+
+        return payloads
+
+    @staticmethod
+    def _to_list_items(article_rows: List[dict]) -> List[ArticleListItemResponse]:
+        items: List[ArticleListItemResponse] = []
+        for payload in ArticlesService._attach_related_stocks(article_rows):
+            try:
+                items.append(ArticleListItemResponse(**payload))
+            except Exception:
+                continue
+        return items
 
     @staticmethod
     def get_articles(
@@ -52,10 +175,7 @@ class ArticlesService:
                 normalized_limit = max(1, limit)
                 query = query.range(offset, offset + normalized_limit - 1)
             result = query.execute()
-            return [
-                ArticleListItemResponse(**item)
-                for item in (result.data or [])
-            ]
+            return ArticlesService._to_list_items(result.data or [])
 
         except Exception as e:
             print(f"Error getting news: {e}")
@@ -75,7 +195,10 @@ class ArticlesService:
             )
             if not result.data:
                 return None
-            return ArticlesResponse(**result.data[0])
+            payload = ArticlesService._attach_related_stocks(
+                [result.data[0]]
+            )[0]
+            return ArticlesResponse(**payload)
 
         except Exception as e:
             print(f"Error getting article detail for id={article_id}: {e}")
@@ -111,8 +234,6 @@ class ArticlesService:
             if not result.data:
                 return []
 
-            # Bước 3: Lấy danh sách article_id từ kết quả trên
-            article_ids = []
             article_map = {}
             for item in result.data:
                 article = item.get("Article")
@@ -120,52 +241,49 @@ class ArticlesService:
                     continue
                 article_id = str(article.get("id") or "")
                 if article_id:
-                    article_ids.append(article_id)
                     article_map[article_id] = article
 
-            if not article_ids:
+            if not article_map:
                 return []
 
-            # Bước 4: Đếm số stock được tag cho mỗi article_id
-            # Chỉ giữ lại article nào chỉ có đúng 1 stock tag
-            count_result = (
-                supabase.table("Article_Stock")
-                .select("article_id")
-                .in_("article_id", article_ids)
-                .execute()
-            )
-
-            from collections import Counter
-            tag_counts = Counter(
-                str(row["article_id"]) for row in count_result.data
-            )
-            exclusive_ids = {aid for aid, count in tag_counts.items() if count == 1}
-
-            # Bước 5: Build response chỉ từ exclusive articles
-            articles = []
             article_model = (
                 ArticleListItemResponse
                 if summary_only
                 else ArticlesResponse
             )
-            for article_id, article in article_map.items():
-                if article_id not in exclusive_ids:
-                    continue
+            validated_articles = []
+            for article in article_map.values():
                 try:
-                    articles.append(article_model(**article))
+                    validated_articles.append(
+                        (article_model(**article), article)
+                    )
                 except Exception:
                     continue
 
-            articles.sort(
-                key=lambda item: (
-                    item.time.timestamp() if item.time else float("-inf"),
-                    item.id,
+            validated_articles.sort(
+                key=lambda entry: (
+                    entry[0].time.timestamp()
+                    if entry[0].time
+                    else float("-inf"),
+                    entry[0].id,
                 ),
                 reverse=True,
             )
+
             if limit is not None:
-                return articles[offset:offset + max(1, limit)]
-            return articles[offset:]
+                selected = validated_articles[
+                    offset:offset + max(1, limit)
+                ]
+            else:
+                selected = validated_articles[offset:]
+
+            enriched_payloads = ArticlesService._attach_related_stocks(
+                [payload for _, payload in selected]
+            )
+            return [
+                article_model(**payload)
+                for payload in enriched_payloads
+            ]
 
         except Exception as e:
             print(f"Error getting news: {e}")
@@ -195,14 +313,7 @@ class ArticlesService:
             if not result.data:
                 return []
 
-            macro_items = []
-            for article in result.data:
-                try:
-                    macro_items.append(ArticleListItemResponse(**article))
-                except Exception:
-                    continue
-
-            return macro_items
+            return ArticlesService._to_list_items(result.data)
 
         except Exception as e:
             print(f"Error getting macro news: {e}")
@@ -255,14 +366,7 @@ class ArticlesService:
             if not articles_result.data:
                 return []
 
-            articles: List[ArticleListItemResponse] = []
-            for item in articles_result.data:
-                try:
-                    articles.append(ArticleListItemResponse(**item))
-                except Exception:
-                    continue
-
-            return articles
+            return ArticlesService._to_list_items(articles_result.data)
 
         except Exception as e:
             print(f"Error getting news by category_id={category_id}: {e}")
@@ -313,7 +417,7 @@ class ArticlesService:
                 else 500
             )
             scan_offset = 0
-            articles: List[ArticleListItemResponse] = []
+            articles: List[dict] = []
 
             while True:
                 article_result = (
@@ -354,7 +458,8 @@ class ArticlesService:
                     if str(payload.get("id")) not in linked_article_ids:
                         continue
                     try:
-                        articles.append(ArticleListItemResponse(**payload))
+                        ArticleListItemResponse(**payload)
+                        articles.append(payload)
                     except Exception:
                         continue
 
@@ -362,17 +467,22 @@ class ArticlesService:
                         target_count is not None
                         and len(articles) >= target_count
                     ):
-                        return articles[requested_offset:target_count]
+                        return ArticlesService._to_list_items(
+                            articles[requested_offset:target_count]
+                        )
 
                 if len(article_rows) < page_size:
                     break
                 scan_offset += page_size
 
             if normalized_limit is not None:
-                return articles[
+                selected_articles = articles[
                     requested_offset:requested_offset + normalized_limit
                 ]
-            return articles[requested_offset:]
+            else:
+                selected_articles = articles[requested_offset:]
+
+            return ArticlesService._to_list_items(selected_articles)
 
         except Exception as e:
             print(f"Error getting business articles: {e}")

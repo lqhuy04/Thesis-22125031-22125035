@@ -24,9 +24,19 @@ class ArticlesCreate(ArticlesBase):
     pass
 
 
+class RelatedStockResponse(BaseModel):
+    """Stock ticker linked to an article and its latest percentage change."""
+    symbol: str = Field(..., description="Related stock symbol")
+    per_price_change: Optional[float] = Field(
+        None,
+        description="Latest stock price percentage change",
+    )
+
+
 class ArticlesResponse(ArticlesBase):
     """Schema for Articles response"""
     id: str = Field(..., description="Unique Articles identifier")
+    related_stocks: List[RelatedStockResponse] = Field(default_factory=list)
     
     class Config:
         from_attributes = True
@@ -39,6 +49,7 @@ class ArticleListItemResponse(BaseModel):
     time: Optional[datetime] = Field(None, description="Publication time")
     thumbnail: Optional[str] = Field(None, description="Article image URL")
     source: Optional[str] = Field(None, description="Article source")
+    related_stocks: List[RelatedStockResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

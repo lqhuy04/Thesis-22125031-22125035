@@ -275,7 +275,7 @@ export const getAllStocks = async (
   }
 };
 
-export type TodayHighlightNews = New & {
+export type TodayHighlightNews = Omit<New, "related_stocks"> & {
   sentiment?: string | null;
 };
 

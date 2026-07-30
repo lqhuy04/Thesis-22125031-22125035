@@ -17,6 +17,7 @@ import { New } from "@/helpers/DetailHelpers";
 import { getNewsByCategoryId } from "@/helpers/MarketHelpers";
 import NewsItem from "../ui/NewsItem";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import RelatedStockBadges from "../ui/RelatedStockBadges";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const ITEM_WIDTH = SCREEN_WIDTH - 48;
@@ -247,6 +248,11 @@ const CategoryContent = ({
         >
           {featured.title}
         </Text>
+        <RelatedStockBadges
+          maxVisible={3}
+          stocks={featured.related_stocks}
+          style={{ marginTop: 8 }}
+        />
         <Text
           typography="bodySmall"
           numberOfLines={2}

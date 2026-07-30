@@ -22,6 +22,7 @@ import { router } from "expo-router";
 import { getBusinessNews } from "@/helpers/MarketHelpers";
 import NewsItem from "../ui/NewsItem";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import RelatedStockBadges from "../ui/RelatedStockBadges";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const ITEM_WIDTH = SCREEN_WIDTH - 48;
@@ -314,6 +315,11 @@ const BusinessNewsSection = ({ registerRefresh }: Props) => {
           >
             {articles[0].title}
           </Text>
+          <RelatedStockBadges
+            maxVisible={3}
+            stocks={articles[0].related_stocks}
+            style={{ marginTop: 8 }}
+          />
           <Text
             typography="bodySmall"
             numberOfLines={2}
