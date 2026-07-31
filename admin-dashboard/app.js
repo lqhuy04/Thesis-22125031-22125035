@@ -15,8 +15,11 @@ const els = {
   exitOnScoreDrop: document.getElementById("exitOnScoreDrop"),
   runBacktestBtn: document.getElementById("runBacktestBtn"),
 
-  // Mode + data selection
-  backtestModeControl: document.getElementById("backtestModeControl"),
+  // Backtest flow + data selection
+  backtestFlowControl: document.getElementById("backtestFlowControl"),
+  singleIndicatorField: document.getElementById("singleIndicatorField"),
+  singleIndicatorSelect: document.getElementById("singleIndicatorSelect"),
+  backtestFlowSummary: document.getElementById("backtestFlowSummary"),
   dataSelectionPanel: document.getElementById("dataSelectionPanel"),
   dsNews: document.getElementById("dsNews"),
   dsFundamental: document.getElementById("dsFundamental"),
@@ -44,11 +47,20 @@ const els = {
   statWinRate: document.getElementById("statWinRate"),
   statTotalTrades: document.getElementById("statTotalTrades"),
   statSharpe: document.getElementById("statSharpe"),
+  backtestConfigCard: document.getElementById("backtestConfigCard"),
+  vizFlowTitle: document.getElementById("vizFlowTitle"),
+  vizConfigBadges: document.getElementById("vizConfigBadges"),
   vizSymbol: document.getElementById("vizSymbol"),
   chartLegend: document.getElementById("chartLegend"),
+  priceIndicatorTags: document.getElementById("priceIndicatorTags"),
   priceChart: document.getElementById("priceChart"),
+  indicatorChartsGrid: document.getElementById("indicatorChartsGrid"),
+  rsiChartBox: document.getElementById("rsiChartBox"),
   rsiChart: document.getElementById("rsiChart"),
+  macdChartBox: document.getElementById("macdChartBox"),
   macdChart: document.getElementById("macdChart"),
+  kdjChartBox: document.getElementById("kdjChartBox"),
+  kdjChart: document.getElementById("kdjChart"),
   tradeLogsBody: document.getElementById("tradeLogsBody"),
   tradeDetailPanel: document.getElementById("tradeDetailPanel"),
   detailIndex: document.getElementById("detailIndex"),
@@ -65,6 +77,10 @@ const els = {
 
   // Comparison (Full vs Baseline) + Agent report
   comparisonCard: document.getElementById("comparisonCard"),
+  comparisonTitle: document.getElementById("comparisonTitle"),
+  pipelineColumnTitle: document.getElementById("pipelineColumnTitle"),
+  baselineColumnTitle: document.getElementById("baselineColumnTitle"),
+  comparisonDeltaTitle: document.getElementById("comparisonDeltaTitle"),
   comparisonBody: document.getElementById("comparisonBody"),
   agentReportCard: document.getElementById("agentReportCard"),
   agentReportCount: document.getElementById("agentReportCount"),
@@ -124,6 +140,7 @@ let charts = {
   price: null,
   rsi: null,
   macd: null,
+  kdj: null,
   candlestickSeries: null,
   tpSLSeries: [] // Keep references to cleanup TP/SL lines
 };
@@ -318,10 +335,27 @@ function initTabs() {
 // BACKTEST EXECUTION CONTROLLER
 // ─────────────────────────────────────────────────────────────────────────────
 const DS_TECH_KEYS = ["ma", "boll", "rsi", "macd", "kdj"];
+const TECH_INDICATOR_LABELS = {
+  ma: "MA Crossover",
+  boll: "Bollinger Bands",
+  rsi: "RSI",
+  macd: "MACD",
+  kdj: "KDJ",
+};
+const BACKTEST_FLOW_SUMMARIES = {
+  full: "Full pipeline: kỹ thuật 5/5 + tin tức + cơ bản; trọng số mid-term là kỹ thuật 40%, tin tức 20%, cơ bản 40%.",
+  technical_all: "Technical-only: dùng cả 5 chỉ báo; không gọi nhánh tin tức và cơ bản.",
+  technical_single: "Single-indicator AI pipeline: chỉ dùng một chỉ báo kỹ thuật đã chọn.",
+  custom: "Tùy chỉnh nguồn dữ liệu, chỉ báo kỹ thuật và trọng số phân tích.",
+};
+
+function getBacktestFlow() {
+  const activeBtn = els.backtestFlowControl?.querySelector(".seg-btn.active");
+  return activeBtn ? activeBtn.dataset.flow : "full";
+}
 
 function getBacktestMode() {
-  const activeBtn = els.backtestModeControl?.querySelector(".seg-btn.active");
-  return activeBtn ? activeBtn.dataset.mode : "auto";
+  return getBacktestFlow() === "full" ? "auto" : "manual";
 }
 
 function readChecks(selector, keys) {
@@ -425,35 +459,126 @@ function updateDsCounts() {
   if (els.dsTechCount) els.dsTechCount.textContent = `${techOn}/${DS_TECH_KEYS.length}`;
 }
 
-function initDataSelectionControls() {
-  if (!els.backtestModeControl) return;
+function setTechnicalSelection(selectedKeys) {
+  const selected = new Set(selectedKeys);
+  document.querySelectorAll(".ds-tech").forEach((checkbox) => {
+    checkbox.checked = selected.has(checkbox.value);
+  });
+  updateDsCounts();
+}
 
-  els.backtestModeControl.querySelectorAll(".seg-btn").forEach((btn) => {
+function setWeightValues(news, technical, fundamental) {
+  if (els.dsWeightNews) els.dsWeightNews.value = news;
+  if (els.dsWeightTechnical) els.dsWeightTechnical.value = technical;
+  if (els.dsWeightFundamental) els.dsWeightFundamental.value = fundamental;
+}
+
+function setBacktestControlsLocked(locked) {
+  if (els.dsNews) els.dsNews.disabled = locked;
+  if (els.dsFundamental) els.dsFundamental.disabled = locked;
+  document.querySelectorAll(".ds-tech").forEach((checkbox) => {
+    checkbox.disabled = locked;
+  });
+
+  if (locked) {
+    [els.dsWeightNews, els.dsWeightTechnical, els.dsWeightFundamental]
+      .filter(Boolean)
+      .forEach((input) => { input.disabled = true; });
+  }
+}
+
+function applyBacktestFlow(flow) {
+  const normalizedFlow = BACKTEST_FLOW_SUMMARIES[flow] ? flow : "full";
+  els.backtestFlowControl?.querySelectorAll(".seg-btn").forEach((button) => {
+    button.classList.toggle("active", button.dataset.flow === normalizedFlow);
+  });
+
+  const isFull = normalizedFlow === "full";
+  const isSingle = normalizedFlow === "technical_single";
+  const isCustom = normalizedFlow === "custom";
+
+  if (els.dataSelectionPanel) {
+    els.dataSelectionPanel.style.display = isFull ? "none" : "flex";
+  }
+  if (els.singleIndicatorField) {
+    els.singleIndicatorField.style.display = isSingle ? "grid" : "none";
+  }
+
+  if (normalizedFlow === "full") {
+    if (els.dsNews) els.dsNews.checked = true;
+    if (els.dsFundamental) els.dsFundamental.checked = true;
+    setTechnicalSelection(DS_TECH_KEYS);
+    setWeightValues(20, 40, 40);
+  } else if (normalizedFlow === "technical_all") {
+    if (els.dsNews) els.dsNews.checked = false;
+    if (els.dsFundamental) els.dsFundamental.checked = false;
+    setTechnicalSelection(DS_TECH_KEYS);
+    setWeightValues(0, 100, 0);
+  } else if (normalizedFlow === "technical_single") {
+    if (els.dsNews) els.dsNews.checked = false;
+    if (els.dsFundamental) els.dsFundamental.checked = false;
+    setTechnicalSelection([els.singleIndicatorSelect?.value || "rsi"]);
+    setWeightValues(0, 100, 0);
+  }
+
+  setBacktestControlsLocked(!isCustom);
+  if (isCustom) {
+    redistributeWeights(
+      {
+        news: els.dsWeightNews,
+        technical: els.dsWeightTechnical,
+        fundamental: els.dsWeightFundamental,
+      },
+      {
+        news: els.dsNews?.checked !== false,
+        technical: true,
+        fundamental: els.dsFundamental?.checked !== false,
+      },
+    );
+  }
+
+  if (els.singleIndicatorSelect) {
+    els.singleIndicatorSelect.disabled = !isSingle;
+  }
+  if (els.backtestFlowSummary) {
+    els.backtestFlowSummary.textContent = BACKTEST_FLOW_SUMMARIES[normalizedFlow];
+  }
+  updateDsCounts();
+}
+
+function initDataSelectionControls() {
+  if (!els.backtestFlowControl) return;
+
+  els.backtestFlowControl.querySelectorAll(".seg-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      els.backtestModeControl.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      const isManual = btn.dataset.mode === "manual";
-      if (els.dataSelectionPanel) {
-        els.dataSelectionPanel.style.display = isManual ? "flex" : "none";
-      }
+      applyBacktestFlow(btn.dataset.flow);
     });
   });
 
   bindRequiredTechnical(".ds-tech", updateDsCounts);
+
+  els.singleIndicatorSelect?.addEventListener("change", () => {
+    if (getBacktestFlow() === "technical_single") {
+      setTechnicalSelection([els.singleIndicatorSelect.value]);
+    }
+  });
 
   const weightInputs = {
     news: els.dsWeightNews,
     technical: els.dsWeightTechnical,
     fundamental: els.dsWeightFundamental,
   };
-  const updateSourceWeights = () => redistributeWeights(weightInputs, {
-    news: els.dsNews?.checked !== false,
-    technical: true,
-    fundamental: els.dsFundamental?.checked !== false,
-  });
+  const updateSourceWeights = () => {
+    if (getBacktestFlow() !== "custom") return;
+    redistributeWeights(weightInputs, {
+      news: els.dsNews?.checked !== false,
+      technical: true,
+      fundamental: els.dsFundamental?.checked !== false,
+    });
+  };
   els.dsNews?.addEventListener("change", updateSourceWeights);
   els.dsFundamental?.addEventListener("change", updateSourceWeights);
-  updateDsCounts();
+  applyBacktestFlow(getBacktestFlow());
 }
 
 async function runBacktest() {
@@ -830,6 +955,108 @@ async function loadCloudHistory() {
 // ─────────────────────────────────────────────────────────────────────────────
 // LIGHTWEIGHT CHARTS VISUALIZATION RENDERER
 // ─────────────────────────────────────────────────────────────────────────────
+function normalizeBacktestConfiguration(vizData) {
+  const raw = vizData?.configuration || {};
+  const reports = Array.isArray(vizData?.agent_reports) ? vizData.agent_reports : [];
+  const sampleReport = reports.find((report) => report && !report.error) || {};
+  const reportTechnical = sampleReport?.agent_breakdown?.technical_agent?.indicators;
+  const hasIndicatorMetadata = Array.isArray(raw.selected_indicators);
+  const selectedIndicators = hasIndicatorMetadata
+    ? raw.selected_indicators.filter((name) => DS_TECH_KEYS.includes(name))
+    : (reportTechnical && typeof reportTechnical === "object"
+      ? DS_TECH_KEYS.filter((name) => Object.prototype.hasOwnProperty.call(reportTechnical, name))
+      : [...DS_TECH_KEYS]);
+  const reportSources = Array.isArray(sampleReport.data_sources_used)
+    ? sampleReport.data_sources_used
+    : [];
+  const dataSources = Array.isArray(raw.data_sources) && raw.data_sources.length
+    ? raw.data_sources
+    : (reportSources.length ? reportSources : ["technical", "article", "fundamental"]);
+  const weights = raw.weights && typeof raw.weights === "object"
+    ? raw.weights
+    : { news: 0.20, technical: 0.40, fundamental: 0.40 };
+
+  return {
+    mode: raw.mode || "legacy",
+    period: raw.period || "mid_term",
+    interval: raw.interval || "1d",
+    dataSources,
+    selectedIndicators: selectedIndicators.length ? selectedIndicators : [...DS_TECH_KEYS],
+    weights,
+    hasMetadata: Object.keys(raw).length > 0,
+  };
+}
+
+function backtestFlowPresentation(configuration) {
+  const sources = new Set(configuration.dataSources);
+  const indicators = configuration.selectedIndicators;
+  const technicalOnly = sources.size === 1 && sources.has("technical");
+
+  if (configuration.mode === "auto") {
+    return {
+      title: "Full pipeline — Kỹ thuật + Tin tức + Cơ bản",
+      pipelineLabel: "Full Pipeline (AI)",
+      baselineLabel: "Technical Baseline (5/5)",
+    };
+  }
+  if (technicalOnly && indicators.length === DS_TECH_KEYS.length) {
+    return {
+      title: "Technical-only — 5/5 chỉ báo",
+      pipelineLabel: "Technical AI (5/5)",
+      baselineLabel: "Engine-only (5/5)",
+    };
+  }
+  if (technicalOnly && indicators.length === 1) {
+    const indicatorLabel = TECH_INDICATOR_LABELS[indicators[0]] || indicators[0];
+    return {
+      title: `Technical-only — ${indicatorLabel}`,
+      pipelineLabel: `Technical AI (${indicatorLabel})`,
+      baselineLabel: `Engine-only (${indicatorLabel})`,
+    };
+  }
+  if (!configuration.hasMetadata) {
+    return {
+      title: "Backtest cũ — không có metadata cấu hình",
+      pipelineLabel: "Pipeline AI",
+      baselineLabel: "Baseline kỹ thuật",
+    };
+  }
+  return {
+    title: "Pipeline tùy chỉnh",
+    pipelineLabel: "Custom Pipeline (AI)",
+    baselineLabel: "Technical Baseline",
+  };
+}
+
+function sourceLabel(source) {
+  return {
+    technical: "Kỹ thuật",
+    article: "Tin tức",
+    fundamental: "Cơ bản",
+  }[source] || source;
+}
+
+function renderBacktestConfiguration(configuration) {
+  const presentation = backtestFlowPresentation(configuration);
+  els.vizFlowTitle.textContent = presentation.title;
+  const sourceBadges = configuration.dataSources.map(
+    (source) => `<span class="config-badge">${escapeHtml(sourceLabel(source))}</span>`,
+  );
+  const indicatorNames = configuration.selectedIndicators
+    .map((name) => TECH_INDICATOR_LABELS[name] || name)
+    .join(", ");
+  const indicatorBadge = `<span class="config-badge">Chỉ báo: ${escapeHtml(indicatorNames)}</span>`;
+  const periodBadge = `<span class="config-badge">mid-term · ${escapeHtml(configuration.interval)}</span>`;
+  const weights = configuration.weights;
+  const weightBadge = `<span class="config-badge">Trọng số Kỹ thuật/Tin tức/Cơ bản: ${Math.round((weights.technical || 0) * 100)}/${Math.round((weights.news || 0) * 100)}/${Math.round((weights.fundamental || 0) * 100)}%</span>`;
+  els.vizConfigBadges.innerHTML = [
+    ...sourceBadges,
+    indicatorBadge,
+    weightBadge,
+    periodBadge,
+  ].join("");
+}
+
 async function renderVisualization(vizData) {
   // 1. Show panel & scroll to view
   els.vizWrapper.style.display = "block";
@@ -844,15 +1071,41 @@ async function renderVisualization(vizData) {
   els.statTotalTrades.innerText = vizData.metrics.volume.n_trades;
   els.statSharpe.innerText = vizData.metrics.risk.sharpe_ratio.toFixed(2);
   els.vizSymbol.innerText = vizData.symbol;
+  const configuration = normalizeBacktestConfiguration(vizData);
+  renderBacktestConfiguration(configuration);
 
   // 2b. Comparison table (Full vs Baseline) + Agent report panel
-  renderComparison(vizData);
-  renderAgentReports(vizData);
+  renderComparison(vizData, configuration);
+  renderAgentReports(vizData, configuration);
 
   // 3. Clear existing charts divs (destroys old graphs completely)
   els.priceChart.innerHTML = "";
   els.rsiChart.innerHTML = "";
   els.macdChart.innerHTML = "";
+  els.kdjChart.innerHTML = "";
+  const enabledIndicators = new Set(configuration.selectedIndicators);
+  const hasData = (value) => Array.isArray(value) && value.length > 0;
+  const showMa = enabledIndicators.has("ma") && hasData(vizData.sma20_data);
+  const showBoll = enabledIndicators.has("boll") && hasData(vizData.bb_upper_data);
+  const showRsi = enabledIndicators.has("rsi") && hasData(vizData.rsi_data);
+  const showMacd = enabledIndicators.has("macd") && hasData(vizData.macd_line_data);
+  const showKdj = enabledIndicators.has("kdj") && hasData(vizData.kdj_k_data);
+  els.rsiChartBox.style.display = showRsi ? "flex" : "none";
+  els.macdChartBox.style.display = showMacd ? "flex" : "none";
+  els.kdjChartBox.style.display = showKdj ? "flex" : "none";
+  els.indicatorChartsGrid.style.display = (showRsi || showMacd || showKdj)
+    ? "grid"
+    : "none";
+
+  const priceTags = [];
+  if (showMa) {
+    priceTags.push('<span class="indicator-tag tag-sma20">SMA 20</span>');
+    priceTags.push('<span class="indicator-tag tag-sma50">SMA 50</span>');
+  }
+  if (showBoll) {
+    priceTags.push('<span class="indicator-tag">Bollinger Bands</span>');
+  }
+  els.priceIndicatorTags.innerHTML = priceTags.join("");
   els.tradeDetailPanel.style.display = "none";
   charts.tpSLSeries.forEach(s => {
     try { s.setData([]); } catch (e) { }
@@ -866,7 +1119,9 @@ async function renderVisualization(vizData) {
   // Thêm dòng này để đảm bảo browser đã render layout
   await new Promise(resolve => requestAnimationFrame(resolve));
   const containerWidth = els.priceChart.clientWidth || els.priceChart.offsetWidth || 600;
-  const subContainerWidth = els.rsiChart.clientWidth || els.rsiChart.offsetWidth || (containerWidth / 2 - 8);
+  const getSubchartWidth = (element) => (
+    element.clientWidth || element.offsetWidth || (containerWidth / 2 - 8)
+  );
 
   // 4. Initialize Price Chart
   const priceChart = LightweightCharts.createChart(els.priceChart, {
@@ -909,25 +1164,41 @@ async function renderVisualization(vizData) {
   });
   volumeSeries.setData(vizData.volume_data);
 
-  // Indicators: SMA 20
-  const sma20Series = priceChart.addLineSeries({
-    color: "#3b82f6",
-    lineWidth: 1.5,
-    title: "SMA 20",
-  });
-  sma20Series.setData(vizData.sma20_data);
+  if (showMa) {
+    const sma20Series = priceChart.addLineSeries({
+      color: "#3b82f6",
+      lineWidth: 1.5,
+      title: "SMA 20",
+    });
+    sma20Series.setData(vizData.sma20_data || []);
 
-  // Indicators: SMA 50
-  const sma50Series = priceChart.addLineSeries({
-    color: "#f59e0b",
-    lineWidth: 1.5,
-    title: "SMA 50",
-  });
-  sma50Series.setData(vizData.sma50_data);
+    const sma50Series = priceChart.addLineSeries({
+      color: "#f59e0b",
+      lineWidth: 1.5,
+      title: "SMA 50",
+    });
+    sma50Series.setData(vizData.sma50_data || []);
+  }
 
-  // 5. Initialize RSI Subchart
-  const rsiChart = LightweightCharts.createChart(els.rsiChart, {
-    width: subContainerWidth,
+  if (showBoll) {
+    [
+      [vizData.bb_upper_data, "#38bdf8", "Bollinger Upper"],
+      [vizData.bb_middle_data, "rgba(56, 189, 248, 0.55)", "Bollinger Middle"],
+      [vizData.bb_lower_data, "#38bdf8", "Bollinger Lower"],
+    ].forEach(([data, color, title]) => {
+      const series = priceChart.addLineSeries({
+        color,
+        lineWidth: 1,
+        title,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+      series.setData(data || []);
+    });
+  }
+
+  const createSubchart = (element) => LightweightCharts.createChart(element, {
+    width: getSubchartWidth(element),
     height: 180,
     layout: {
       backgroundColor: "#0f172a",
@@ -942,86 +1213,83 @@ async function renderVisualization(vizData) {
     timeScale: { borderColor: "rgba(51, 65, 85, 0.5)" },
   });
 
-  const rsiSeries = rsiChart.addLineSeries({
-    color: "#a855f7",
-    lineWidth: 1.5,
-  });
-  rsiSeries.setData(vizData.rsi_data);
+  let rsiChart = null;
+  if (showRsi) {
+    rsiChart = createSubchart(els.rsiChart);
+    const rsiData = vizData.rsi_data || [];
+    const rsiSeries = rsiChart.addLineSeries({
+      color: "#a855f7",
+      lineWidth: 1.5,
+    });
+    rsiSeries.setData(rsiData);
 
-  // Add RSI standard thresholds (30 / 70)
-  const rsiUpper = rsiChart.addLineSeries({
-    color: "rgba(168, 85, 247, 0.25)",
-    lineWidth: 1,
-    lineStyle: 1, // Dashed
-  });
-  rsiUpper.setData(vizData.rsi_data.map(d => ({ time: d.time, value: 70 })));
+    const rsiUpper = rsiChart.addLineSeries({
+      color: "rgba(168, 85, 247, 0.25)",
+      lineWidth: 1,
+      lineStyle: 1,
+    });
+    rsiUpper.setData(rsiData.map(d => ({ time: d.time, value: 70 })));
 
-  const rsiLower = rsiChart.addLineSeries({
-    color: "rgba(168, 85, 247, 0.25)",
-    lineWidth: 1,
-    lineStyle: 1, // Dashed
-  });
-  rsiLower.setData(vizData.rsi_data.map(d => ({ time: d.time, value: 30 })));
+    const rsiLower = rsiChart.addLineSeries({
+      color: "rgba(168, 85, 247, 0.25)",
+      lineWidth: 1,
+      lineStyle: 1,
+    });
+    rsiLower.setData(rsiData.map(d => ({ time: d.time, value: 30 })));
+  }
 
+  let macdChart = null;
+  if (showMacd) {
+    macdChart = createSubchart(els.macdChart);
+    const macdLineSeries = macdChart.addLineSeries({
+      color: "#2563eb",
+      lineWidth: 1,
+    });
+    macdLineSeries.setData(vizData.macd_line_data || []);
 
-  // 6. Initialize MACD Subchart
-  const macdChart = LightweightCharts.createChart(els.macdChart, {
-    width: subContainerWidth,
-    height: 180,
-    layout: {
-      backgroundColor: "#0f172a",
-      textColor: "#94a3b8",
-      fontFamily: "'Outfit', sans-serif",
-    },
-    grid: {
-      vertLines: { color: "rgba(30, 41, 59, 0.5)" },
-      horzLines: { color: "rgba(30, 41, 59, 0.5)" },
-    },
-    rightPriceScale: { borderColor: "rgba(51, 65, 85, 0.5)" },
-    timeScale: { borderColor: "rgba(51, 65, 85, 0.5)" },
-  });
+    const macdSignalSeries = macdChart.addLineSeries({
+      color: "#ea580c",
+      lineWidth: 1,
+    });
+    macdSignalSeries.setData(vizData.macd_signal_data || []);
 
-  const macdLineSeries = macdChart.addLineSeries({
-    color: "#2563eb",
-    lineWidth: 1,
-  });
-  macdLineSeries.setData(vizData.macd_line_data);
+    const macdHistSeries = macdChart.addHistogramSeries({
+      color: "#26a69a",
+    });
+    macdHistSeries.setData(vizData.macd_hist_data || []);
+  }
 
-  const macdSignalSeries = macdChart.addLineSeries({
-    color: "#ea580c",
-    lineWidth: 1,
-  });
-  macdSignalSeries.setData(vizData.macd_signal_data);
+  let kdjChart = null;
+  if (showKdj) {
+    kdjChart = createSubchart(els.kdjChart);
+    [
+      [vizData.kdj_k_data, "#38bdf8", "K"],
+      [vizData.kdj_d_data, "#f59e0b", "D"],
+      [vizData.kdj_j_data, "#f472b6", "J"],
+    ].forEach(([data, color, title]) => {
+      const series = kdjChart.addLineSeries({
+        color,
+        lineWidth: 1.25,
+        title,
+      });
+      series.setData(data || []);
+    });
+  }
 
-  const macdHistSeries = macdChart.addHistogramSeries({
-    color: "#26a69a",
-  });
-  macdHistSeries.setData(vizData.macd_hist_data);
-
-  // 7. Synchronize Visible Scale / Ranges across charts using logical range for perfect alignment & smooth dragging
+  // Synchronize only the charts enabled by the selected indicators.
+  const synchronizedCharts = [priceChart, rsiChart, macdChart, kdjChart].filter(Boolean);
   let isScaling = false;
-  priceChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-    if (isScaling || !range) return;
-    isScaling = true;
-    rsiChart.timeScale().setVisibleLogicalRange(range);
-    macdChart.timeScale().setVisibleLogicalRange(range);
-    isScaling = false;
-  });
-
-  rsiChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-    if (isScaling || !range) return;
-    isScaling = true;
-    priceChart.timeScale().setVisibleLogicalRange(range);
-    macdChart.timeScale().setVisibleLogicalRange(range);
-    isScaling = false;
-  });
-
-  macdChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-    if (isScaling || !range) return;
-    isScaling = true;
-    priceChart.timeScale().setVisibleLogicalRange(range);
-    rsiChart.timeScale().setVisibleLogicalRange(range);
-    isScaling = false;
+  synchronizedCharts.forEach((sourceChart) => {
+    sourceChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (isScaling || !range) return;
+      isScaling = true;
+      synchronizedCharts.forEach((targetChart) => {
+        if (targetChart !== sourceChart) {
+          targetChart.timeScale().setVisibleLogicalRange(range);
+        }
+      });
+      isScaling = false;
+    });
   });
 
   // 8. Crosshair Legend Update
@@ -1123,15 +1391,9 @@ async function renderVisualization(vizData) {
       els.detailExitReason.innerText = trade.exit_reason;
 
       const confBadge = els.detailConfidence;
-      confBadge.innerText = trade.confidence.toUpperCase();
-      confBadge.className = "badge";
-      if (trade.confidence === "high") {
-        confBadge.classList.add("ok");
-      } else if (trade.confidence === "medium") {
-        confBadge.classList.add("running");
-      } else {
-        confBadge.classList.add("error");
-      }
+      const tradeConfidence = confidenceInfo(trade.confidence);
+      confBadge.innerText = tradeConfidence.text;
+      confBadge.className = `badge ${tradeConfidence.cls}`;
 
       // Zoom/Focus chart viewport around the trade dates
       const entryTime = trade.entry_time;
@@ -1150,6 +1412,7 @@ async function renderVisualization(vizData) {
   charts.price = priceChart;
   charts.rsi = rsiChart;
   charts.macd = macdChart;
+  charts.kdj = kdjChart;
   charts.candlestickSeries = candlestickSeries;
 }
 
@@ -1166,7 +1429,7 @@ function fmtNum(v) {
   return Number(v).toFixed(2);
 }
 
-function renderComparison(vizData) {
+function renderComparison(vizData, configuration) {
   const baseline = vizData.baseline;
   if (!baseline || !baseline.metrics || Object.keys(baseline.metrics).length === 0) {
     els.comparisonCard.style.display = "none";
@@ -1175,6 +1438,11 @@ function renderComparison(vizData) {
 
   const full = vizData.metrics;
   const base = baseline.metrics;
+  const presentation = backtestFlowPresentation(configuration);
+  els.comparisonTitle.textContent = `So sánh: ${presentation.pipelineLabel} vs ${presentation.baselineLabel}`;
+  els.pipelineColumnTitle.textContent = presentation.pipelineLabel;
+  els.baselineColumnTitle.textContent = presentation.baselineLabel;
+  els.comparisonDeltaTitle.textContent = `${presentation.pipelineLabel} − ${presentation.baselineLabel}`;
 
   const rows = [
     { label: "Số giao dịch", get: (m) => m?.volume?.n_trades, kind: "int" },
@@ -1255,6 +1523,12 @@ function scoreOutOf100(value) {
     : "--";
 }
 
+function sourceScoreDisplay(configuration, source, value) {
+  return configuration.dataSources.includes(source)
+    ? scoreOutOf100(value)
+    : "Tắt";
+}
+
 function escapeHtml(str) {
   return String(str ?? "")
     .replace(/&/g, "&amp;")
@@ -1267,7 +1541,7 @@ function analysisSection(title, text) {
   return `<div class="agent-sub-block"><h4>${title}</h4><p class="agent-analysis-text">${escapeHtml(text)}</p></div>`;
 }
 
-function renderAgentReportDetail(report) {
+function renderAgentReportDetail(report, configuration) {
   const rec = recommendationText(report);
   const conf = confidenceInfo(report.confidence);
   const analysis = report.analysis;
@@ -1284,8 +1558,11 @@ function renderAgentReportDetail(report) {
       : "--");
 
   const sources = Array.isArray(report.data_sources_used) && report.data_sources_used.length
-    ? report.data_sources_used.join(", ")
+    ? report.data_sources_used.map(sourceLabel).join(", ")
     : "--";
+  const indicatorNames = configuration.selectedIndicators
+    .map((name) => TECH_INDICATOR_LABELS[name] || name)
+    .join(", ");
 
   // analysis là object {technical, fundamental, news, summary} từ aggregator.
   // Phòng trường hợp file cũ lưu analysis dạng chuỗi.
@@ -1314,19 +1591,20 @@ function renderAgentReportDetail(report) {
     <ul class="detail-list">
       <li><span class="lbl">Điểm tổng:</span> <span class="val">${totalScore}</span></li>
       <li><span class="lbl">Điểm kỹ thuật:</span> <span class="val">${technicalScore}</span></li>
-      <li><span class="lbl">Điểm cơ bản:</span> <span class="val">${scoreOutOf100(score.fundamental)}</span></li>
-      <li><span class="lbl">Điểm tin tức:</span> <span class="val">${scoreOutOf100(score.news)}</span></li>
+      <li><span class="lbl">Điểm cơ bản:</span> <span class="val">${sourceScoreDisplay(configuration, "fundamental", score.fundamental)}</span></li>
+      <li><span class="lbl">Điểm tin tức:</span> <span class="val">${sourceScoreDisplay(configuration, "article", score.news)}</span></li>
       <li><span class="lbl">Giá vào:</span> <span class="val">${report.entry_price ?? "--"}</span></li>
       <li><span class="lbl">Take Profit:</span> <span class="val text-green">${report.take_profit_price ?? "--"}</span></li>
       <li><span class="lbl">Stop Loss:</span> <span class="val text-red">${report.stop_loss_price ?? "--"}</span></li>
       <li><span class="lbl">Nến giữ tối đa:</span> <span class="val">${report.max_hold_candles ?? "--"}</span></li>
       <li><span class="lbl">Nguồn dữ liệu:</span> <span class="val">${escapeHtml(sources)}</span></li>
+      <li><span class="lbl">Chỉ báo:</span> <span class="val">${escapeHtml(indicatorNames)}</span></li>
     </ul>
     ${analysisHtml}
   `;
 }
 
-function renderAgentReports(vizData) {
+function renderAgentReports(vizData, configuration) {
   // Chỉ hiển thị report cho các tín hiệu được khuyến nghị Mua.
   const reports = (Array.isArray(vizData.agent_reports) ? vizData.agent_reports : [])
     .filter((report) => isBuyRecommendation(report));
@@ -1357,7 +1635,7 @@ function renderAgentReports(vizData) {
     item.addEventListener("click", () => {
       document.querySelectorAll("#agentReportList .agent-report-item").forEach((el) => el.classList.remove("selected"));
       item.classList.add("selected");
-      renderAgentReportDetail(report);
+      renderAgentReportDetail(report, configuration);
     });
 
     els.agentReportList.appendChild(item);
@@ -1386,9 +1664,15 @@ window.addEventListener("resize", () => {
     const w = els.priceChart.offsetWidth || els.priceChart.clientWidth;
     if (!w) return;
     charts.price.resize(w, 450);
-    const subW = els.rsiChart.offsetWidth || els.rsiChart.clientWidth || (w / 2 - 8);
-    if (charts.rsi) charts.rsi.resize(subW, 180);
-    if (charts.macd) charts.macd.resize(subW, 180);
+    [
+      [charts.rsi, els.rsiChart],
+      [charts.macd, els.macdChart],
+      [charts.kdj, els.kdjChart],
+    ].forEach(([chart, element]) => {
+      if (!chart) return;
+      const subW = element.offsetWidth || element.clientWidth || (w / 2 - 8);
+      chart.resize(subW, 180);
+    });
   }
 });
 

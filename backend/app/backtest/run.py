@@ -51,6 +51,7 @@ def run_full_backtest(
     scored_1d = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1d))
 
     pipeline = BacktestPipeline(symbol, trade_config, mode=mode, data_selection=data_selection)
+    backtest_configuration = pipeline.configuration()
     if evaluation_start_date:
         evaluation_start = pd.to_datetime(evaluation_start_date)
         scored_1d = scored_1d[
@@ -203,6 +204,7 @@ def run_full_backtest(
             engine_trades=engine_trades,
             engine_metrics=engine_metrics,
             pipeline_results=pipeline_results,
+            configuration=backtest_configuration,
         )
 
         visualization_file = f"/api/agentic/backtests/local/{json_output_filename}"
@@ -214,6 +216,7 @@ def run_full_backtest(
             engine_trades=engine_trades,
             engine_metrics=engine_metrics,
             pipeline_results=pipeline_results,
+            configuration=backtest_configuration,
         )
         print(f"Visualization JSON file created: {json_output_path}")
 
@@ -253,6 +256,7 @@ def run_full_backtest(
         print(f"Failed to update VN30 aggregate stats: {e}")
 
     result = {
+        "configuration": backtest_configuration,
         "pipeline_results": pipeline_results,
         "full_trades": full_trades,
         "engine_trades": engine_trades,

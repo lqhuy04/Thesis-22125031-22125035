@@ -127,12 +127,27 @@
               <!-- Mode + Data selection (giống app mobile) -->
               <div class="data-selection-block">
                 <div class="ds-mode-row">
-                  <span class="switch-text" style="font-weight: 600;">Chế độ phân tích AI</span>
-                  <div class="seg-control" id="backtestModeControl">
-                    <button type="button" class="seg-btn active" data-mode="auto">Tự động</button>
-                    <button type="button" class="seg-btn" data-mode="manual">Tùy chỉnh</button>
+                  <span class="switch-text" style="font-weight: 600;">Luồng backtest</span>
+                  <div class="seg-control flow-seg-control" id="backtestFlowControl">
+                    <button type="button" class="seg-btn active" data-flow="full">Full pipeline</button>
+                    <button type="button" class="seg-btn" data-flow="technical_all">Technical 5/5</button>
+                    <button type="button" class="seg-btn" data-flow="technical_single">Một chỉ báo</button>
+                    <button type="button" class="seg-btn" data-flow="custom">Tùy chỉnh</button>
                   </div>
                 </div>
+
+                <div id="singleIndicatorField" class="single-indicator-field" style="display: none;">
+                  <label for="singleIndicatorSelect">Chỉ báo dùng cho backtest</label>
+                  <select id="singleIndicatorSelect">
+                    <option value="ma">MA Crossover</option>
+                    <option value="boll">Bollinger Bands</option>
+                    <option value="rsi" selected>RSI</option>
+                    <option value="macd">MACD</option>
+                    <option value="kdj">KDJ</option>
+                  </select>
+                </div>
+
+                <p id="backtestFlowSummary" class="flow-summary"></p>
 
                 <div id="dataSelectionPanel" class="ds-panel" style="display: none;">
                   <p class="ds-hint">Chọn dữ liệu AI được phép phân tích (chỉ áp dụng ở chế độ Tùy chỉnh).</p>
@@ -277,6 +292,14 @@
 
         <!-- Main Visualization Panel (shown when data is loaded) -->
         <section class="viz-wrapper" id="vizWrapper" style="display: none; margin-top: 18px;">
+          <section class="backtest-config-card card" id="backtestConfigCard">
+            <div>
+              <p class="kicker">Cấu hình đã chạy</p>
+              <h2 id="vizFlowTitle">--</h2>
+            </div>
+            <div class="config-badges" id="vizConfigBadges"></div>
+          </section>
+
           <!-- Stats Summary Dashboard -->
           <div class="stats-grid">
             <div class="stat-card card">
@@ -300,7 +323,7 @@
           <!-- Comparison: Full Pipeline (AI) vs Baseline (Technical-only) -->
           <section class="comparison-card card" id="comparisonCard" style="display: none; margin-bottom: 18px;">
             <div class="result-header">
-              <h2>So sánh: Full Pipeline (AI) vs Baseline (Kỹ thuật)</h2>
+              <h2 id="comparisonTitle">So sánh pipeline AI và baseline kỹ thuật</h2>
               <span class="hint" style="margin: 0;">Baseline = cùng tín hiệu kỹ thuật nhưng KHÔNG qua LLM</span>
             </div>
             <div class="table-responsive">
@@ -308,9 +331,9 @@
                 <thead>
                   <tr>
                     <th>Chỉ số</th>
-                    <th style="text-align: right;">Full Pipeline (AI)</th>
-                    <th style="text-align: right;">Baseline (Kỹ thuật)</th>
-                    <th style="text-align: right;">Chênh lệch (AI − Baseline)</th>
+                    <th id="pipelineColumnTitle" style="text-align: right;">Pipeline AI</th>
+                    <th id="baselineColumnTitle" style="text-align: right;">Baseline (Kỹ thuật)</th>
+                    <th id="comparisonDeltaTitle" style="text-align: right;">Chênh lệch</th>
                   </tr>
                 </thead>
                 <tbody id="comparisonBody">
@@ -325,14 +348,11 @@
             <!-- Charts Column (left/top) -->
             <div class="charts-column">
               <!-- Main Price Candlestick Chart -->
-              <div class="chart-box card">
+              <div class="chart-box card" id="priceChartBox">
                 <div class="chart-header">
                   <div class="chart-title-group">
                     <span class="chart-title">Biểu đồ giá & Tín hiệu (<span id="vizSymbol">--</span>)</span>
-                    <div class="chart-indicator-tags">
-                      <span class="indicator-tag tag-sma20">SMA 20</span>
-                      <span class="indicator-tag tag-sma50">SMA 50</span>
-                    </div>
+                    <div class="chart-indicator-tags" id="priceIndicatorTags"></div>
                   </div>
                   <div class="chart-legend" id="chartLegend">O: -- | H: -- | L: -- | C: --</div>
                 </div>
@@ -340,14 +360,18 @@
               </div>
               
               <!-- Indicator Subcharts -->
-              <div class="sub-charts-grid">
-                <div class="chart-box card">
+              <div class="sub-charts-grid" id="indicatorChartsGrid">
+                <div class="chart-box card" id="rsiChartBox">
                   <span class="chart-title indicator-title">RSI (14)</span>
                   <div id="rsiChart" class="chart-canvas sub-chart"></div>
                 </div>
-                <div class="chart-box card">
+                <div class="chart-box card" id="macdChartBox">
                   <span class="chart-title indicator-title">MACD</span>
                   <div id="macdChart" class="chart-canvas sub-chart"></div>
+                </div>
+                <div class="chart-box card" id="kdjChartBox">
+                  <span class="chart-title indicator-title">KDJ</span>
+                  <div id="kdjChart" class="chart-canvas sub-chart"></div>
                 </div>
               </div>
             </div>

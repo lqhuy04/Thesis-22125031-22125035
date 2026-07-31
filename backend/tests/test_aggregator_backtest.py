@@ -1,4 +1,5 @@
 import unittest
+from threading import Barrier
 from unittest.mock import patch
 
 import pandas as pd
@@ -225,6 +226,171 @@ class V2BacktestPipelineTests(unittest.TestCase):
         self.assertFalse(result["buy"])
         self.assertEqual(result["recommendation"], "Chờ")
         self.assertEqual(result["data_sources_used"], ["technical"])
+
+    def test_enabled_source_chains_run_concurrently_before_recommendation(self):
+        source_barrier = Barrier(3)
+
+        def source_result(name, value):
+            def run(_state):
+                source_barrier.wait(timeout=2)
+                return _agent_result(name, value)
+
+            return run
+
+        def analysis_result(source_name, analysis_name):
+            def run(state):
+                self.assertIn(source_name, state["agent_results"])
+                return _agent_result(
+                    analysis_name,
+                    {"score": 0.5, "analysis": analysis_name},
+                )
+
+            return run
+
+        def recommend(state):
+            self.assertTrue(
+                {
+                    "technical_analysis_agent",
+                    "article_analysis_agent",
+                    "fundamental_analysis_agent",
+                }.issubset(state["agent_results"])
+            )
+            return _agent_result(
+                "recommendation_agent",
+                {"buy": False, "score": 0.5},
+            )
+
+        with (
+            patch(
+                "app.backtest.pipeline.technical_agent",
+                side_effect=source_result(
+                    "technical_agent",
+                    {"total_score": 3, "max_score": 5},
+                ),
+            ),
+            patch(
+                "app.backtest.pipeline.technical_analysis_agent",
+                side_effect=analysis_result(
+                    "technical_agent",
+                    "technical_analysis_agent",
+                ),
+            ),
+            patch(
+                "app.backtest.pipeline.article_agent",
+                side_effect=source_result("article_agent", "article data"),
+            ),
+            patch(
+                "app.backtest.pipeline.article_analysis_agent",
+                side_effect=analysis_result(
+                    "article_agent",
+                    "article_analysis_agent",
+                ),
+            ),
+            patch(
+                "app.backtest.pipeline.fundamental_agent",
+                side_effect=source_result(
+                    "fundamental_agent",
+                    "fundamental data",
+                ),
+            ),
+            patch(
+                "app.backtest.pipeline.fundamental_analysis_agent",
+                side_effect=analysis_result(
+                    "fundamental_agent",
+                    "fundamental_analysis_agent",
+                ),
+            ),
+            patch(
+                "app.backtest.pipeline.recommendation_agent",
+                side_effect=recommend,
+            ),
+            patch(
+                "app.backtest.pipeline.aggregator_agent",
+                return_value={
+                    "final_output": {
+                        "buy": False,
+                        "score": {"total": 0.5},
+                        "confidence": 0.5,
+                    }
+                },
+            ),
+        ):
+            result = self.pipeline.run_pipeline_at(
+                "2023-05-04",
+                interval="1d",
+            )
+
+        self.assertFalse(result["buy"])
+        self.assertEqual(
+            result["data_sources_used"],
+            ["technical", "article", "fundamental"],
+        )
+
+    def test_configuration_describes_full_pipeline(self):
+        self.assertEqual(
+            self.pipeline.configuration(),
+            {
+                "mode": "auto",
+                "period": "mid_term",
+                "interval": "1d",
+                "data_sources": [
+                    "technical",
+                    "article",
+                    "fundamental",
+                ],
+                "selected_indicators": [
+                    "ma",
+                    "boll",
+                    "rsi",
+                    "macd",
+                    "kdj",
+                ],
+                "weights": {
+                    "news": 0.20,
+                    "technical": 0.40,
+                    "fundamental": 0.40,
+                },
+            },
+        )
+
+    def test_configuration_describes_single_indicator_pipeline(self):
+        pipeline = BacktestPipeline(
+            symbol="ACB",
+            trade_config={"max_hold_candles": 20},
+            mode="manual",
+            data_selection={
+                "news": False,
+                "fundamental": False,
+                "technical": {
+                    "ma": False,
+                    "boll": False,
+                    "rsi": True,
+                    "macd": False,
+                    "kdj": False,
+                },
+                "weight": {
+                    "news": 0.0,
+                    "technical": 1.0,
+                    "fundamental": 0.0,
+                },
+            },
+        )
+
+        self.assertEqual(
+            pipeline.configuration(),
+            {
+                "mode": "manual",
+                "period": "mid_term",
+                "interval": "1d",
+                "data_sources": ["technical"],
+                "selected_indicators": ["rsi"],
+                "weights": {
+                    "news": 0.0,
+                    "technical": 1.0,
+                    "fundamental": 0.0,
+                },
+            },
+        )
 
     def test_manual_indicator_scores_are_normalized_to_zero_five_scale(self):
         pipeline = BacktestPipeline(

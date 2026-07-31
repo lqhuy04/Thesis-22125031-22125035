@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Callable
 
@@ -95,6 +96,47 @@ class BacktestPipeline:
             return self.data_selection.get("fundamental") is True
         return False
 
+    def selected_indicators(self) -> list[str]:
+        """Return the effective technical indicators in display order."""
+        if self.mode == "auto":
+            return list(SCORE_COLUMN_BY_INDICATOR)
+
+        technical = self.data_selection.get("technical") or {}
+        return [
+            name
+            for name in SCORE_COLUMN_BY_INDICATOR
+            if technical.get(name) is True
+        ]
+
+    def configuration(self) -> dict[str, Any]:
+        """Describe the effective historical pipeline for reports and the UI."""
+        data_sources = ["technical"]
+        if self._source_enabled("article"):
+            data_sources.append("article")
+        if self._source_enabled("fundamental"):
+            data_sources.append("fundamental")
+
+        default_weights = {
+            "news": 0.20,
+            "technical": 0.40,
+            "fundamental": 0.40,
+        }
+        requested_weights = self.data_selection.get("weight")
+        weights = (
+            requested_weights
+            if self.mode == "manual" and isinstance(requested_weights, dict)
+            else default_weights
+        )
+
+        return {
+            "mode": self.mode,
+            "period": "mid_term",
+            "interval": "1d",
+            "data_sources": data_sources,
+            "selected_indicators": self.selected_indicators(),
+            "weights": weights,
+        }
+
     @staticmethod
     def _apply_agent(state: AgentState, agent: AgentCallable) -> None:
         result = agent(state)
@@ -124,6 +166,38 @@ class BacktestPipeline:
         }
         self._cache[cache_key] = chain_results
 
+    def _run_source_chain(
+        self,
+        state: AgentState,
+        source_agent: AgentCallable,
+        analysis_agent: AgentCallable,
+        cache_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Run one dependent source/analysis chain on isolated state.
+
+        Each source branch receives its own ``agent_results`` dictionary so the
+        three backtest branches can execute concurrently without mutating the
+        shared state. Their results are merged only after every enabled branch
+        has completed.
+        """
+        branch_state: AgentState = {
+            **state,
+            "agent_results": {},
+        }
+
+        if cache_key is None:
+            self._apply_agent(branch_state, source_agent)
+            self._apply_agent(branch_state, analysis_agent)
+        else:
+            self._apply_cached_chain(
+                branch_state,
+                cache_key=cache_key,
+                source_agent=source_agent,
+                analysis_agent=analysis_agent,
+            )
+
+        return dict(branch_state["agent_results"])
+
     def run_pipeline_at(
         self,
         date: str,
@@ -137,24 +211,52 @@ class BacktestPipeline:
         state = self._build_state(date)
         article_from_date = state["plan"]["article"]["from_date"]
 
-        self._apply_agent(state, technical_agent)
-        self._apply_agent(state, technical_analysis_agent)
+        source_chains: list[
+            tuple[AgentCallable, AgentCallable, str | None]
+        ] = [
+            (
+                technical_agent,
+                technical_analysis_agent,
+                None,
+            )
+        ]
 
         if self._source_enabled("article"):
-            self._apply_cached_chain(
-                state,
-                cache_key=f"article:{article_from_date}:{date}",
-                source_agent=article_agent,
-                analysis_agent=article_analysis_agent,
+            source_chains.append(
+                (
+                    article_agent,
+                    article_analysis_agent,
+                    f"article:{article_from_date}:{date}",
+                )
             )
 
         if self._source_enabled("fundamental"):
-            self._apply_cached_chain(
-                state,
-                cache_key=f"fundamental:{date[:4]}",
-                source_agent=fundamental_agent,
-                analysis_agent=fundamental_analysis_agent,
+            source_chains.append(
+                (
+                    fundamental_agent,
+                    fundamental_analysis_agent,
+                    f"fundamental:{date[:4]}",
+                )
             )
+
+        with ThreadPoolExecutor(
+            max_workers=len(source_chains),
+            thread_name_prefix="backtest-source",
+        ) as executor:
+            futures = [
+                executor.submit(
+                    self._run_source_chain,
+                    state,
+                    source_agent,
+                    analysis_agent,
+                    cache_key,
+                )
+                for source_agent, analysis_agent, cache_key in source_chains
+            ]
+
+            # Merge in a stable branch order after all work has been submitted.
+            for future in futures:
+                state["agent_results"].update(future.result())
 
         self._apply_agent(state, recommendation_agent)
         aggregate_result = aggregator_agent(state)
@@ -278,15 +380,7 @@ class BacktestPipeline:
         fewer than five indicators, matching the normalized score used by
         technical_analysis_agent and recommendation_agent.
         """
-        if self.mode == "auto":
-            selected = list(SCORE_COLUMN_BY_INDICATOR)
-        else:
-            technical = self.data_selection.get("technical") or {}
-            selected = [
-                name
-                for name in SCORE_COLUMN_BY_INDICATOR
-                if technical.get(name) is True
-            ]
+        selected = self.selected_indicators()
 
         if not selected:
             raise ValueError(

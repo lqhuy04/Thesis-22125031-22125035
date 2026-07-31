@@ -15,6 +15,7 @@ def get_backtest_visualization_data(
     engine_trades: list[dict[str, Any]] | None = None,
     engine_metrics: dict[str, Any] | None = None,
     pipeline_results: list[dict[str, Any]] | None = None,
+    configuration: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
     Extracts and prepares all visualization data required for interactive charts.
@@ -75,6 +76,12 @@ def get_backtest_visualization_data(
     macd_line_data = []
     macd_signal_data = []
     macd_hist_data = []
+    bb_upper_data = []
+    bb_middle_data = []
+    bb_lower_data = []
+    kdj_k_data = []
+    kdj_d_data = []
+    kdj_j_data = []
 
     for _, row in data.iterrows():
         t = row["time"]
@@ -94,6 +101,18 @@ def get_backtest_visualization_data(
                 "value": float(row["macd_histogram"]),
                 "color": "#26a69a" if row["macd_histogram"] >= 0 else "#ef5350"
             })
+        if pd.notna(row.get("bb_upper")):
+            bb_upper_data.append({"time": t, "value": float(row["bb_upper"])})
+        if pd.notna(row.get("bb_middle")):
+            bb_middle_data.append({"time": t, "value": float(row["bb_middle"])})
+        if pd.notna(row.get("bb_lower")):
+            bb_lower_data.append({"time": t, "value": float(row["bb_lower"])})
+        if pd.notna(row.get("kdj_k")):
+            kdj_k_data.append({"time": t, "value": float(row["kdj_k"])})
+        if pd.notna(row.get("kdj_d")):
+            kdj_d_data.append({"time": t, "value": float(row["kdj_d"])})
+        if pd.notna(row.get("kdj_j")):
+            kdj_j_data.append({"time": t, "value": float(row["kdj_j"])})
 
     # Prepare trade markers and lines
     # Map dates to their formatted string representation for matching
@@ -159,10 +178,17 @@ def get_backtest_visualization_data(
         "macd_line_data": macd_line_data,
         "macd_signal_data": macd_signal_data,
         "macd_hist_data": macd_hist_data,
+        "bb_upper_data": bb_upper_data,
+        "bb_middle_data": bb_middle_data,
+        "bb_lower_data": bb_lower_data,
+        "kdj_k_data": kdj_k_data,
+        "kdj_d_data": kdj_d_data,
+        "kdj_j_data": kdj_j_data,
         "trades": formatted_trades,
         "metrics": metrics,
         "baseline": baseline,
         "agent_reports": pipeline_results or [],
+        "configuration": configuration or {},
     }
 
 
@@ -175,6 +201,7 @@ def generate_backtest_json(
     engine_trades: list[dict[str, Any]] | None = None,
     engine_metrics: dict[str, Any] | None = None,
     pipeline_results: list[dict[str, Any]] | None = None,
+    configuration: dict[str, Any] | None = None,
 ) -> None:
     """
     Saves a sanitized JSON file containing all interactive visualization details.
@@ -187,6 +214,7 @@ def generate_backtest_json(
         engine_trades=engine_trades,
         engine_metrics=engine_metrics,
         pipeline_results=pipeline_results,
+        configuration=configuration,
     )
     
     def _sanitize(val: Any) -> Any:
