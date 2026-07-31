@@ -92,21 +92,21 @@ class InputGuardTests(unittest.TestCase):
                     BacktestPipelineRequest.model_fields,
                 )
 
-    def test_backtest_transaction_cost_is_internal_and_defaults_to_1_5_percent(
+    def test_backtest_transaction_cost_is_internal_and_defaults_to_0_15_percent(
         self,
     ):
         self.assertNotIn(
             "transaction_cost_pct",
             BacktestPipelineRequest.model_fields,
         )
-        self.assertEqual(DEFAULT_TRANSACTION_COST_PCT, 0.015)
+        self.assertEqual(DEFAULT_TRANSACTION_COST_PCT, 0.0015)
         simulator = TradeSimulator(max_hold_candles=20)
-        self.assertEqual(simulator.transaction_cost_pct, 0.015)
+        self.assertEqual(simulator.transaction_cost_pct, 0.0015)
         self.assertEqual(
             signature(run_full_backtest)
             .parameters["transaction_cost_pct"]
             .default,
-            0.015,
+            0.0015,
         )
 
     def test_stock_analysis_requires_at_least_one_technical_indicator(self):

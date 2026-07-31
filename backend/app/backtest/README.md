@@ -111,6 +111,6 @@ pipeline với baseline engine-only của các mã hiện có trong file.
   many technical indicators are selected.
 - `/analyze` and backtest use the same deterministic implementation for all
   five technical scoring rules.
-- Transaction cost is fixed by the backend at 0.015 (1.5%) per side and is not
+- Transaction cost is fixed by the backend at 0.0015 (0.15%) per side and is not
   exposed in the API request.
 - Requires working LLM configuration and data access via MarketService.

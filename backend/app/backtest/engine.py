@@ -12,7 +12,7 @@ from app.services.technical_indicators_service import (
     TechnicalIndicatorsService,
 )
 
-DEFAULT_TRANSACTION_COST_PCT = 0.015
+DEFAULT_TRANSACTION_COST_PCT = 0.0015
 
 
 class IndicatorEngine:
