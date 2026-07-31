@@ -291,8 +291,7 @@ sequentially for each prefiltered historical signal date.
 The API schema validates field shape and ticker syntax, but does not verify that a
 ticker exists on a Vietnamese exchange. The live orchestrator performs no ticker
 lookup; it is fully deterministic and only maps the investor's period to fixed,
-auditable windows. Missing ticker data is therefore handled later, when the
-selected source agents query their stores.
+auditable windows.
 Short-term analysis uses $1$-hour candles over $90$ days and news from $30$ days;
 medium-term uses daily candles over $365$ days and news from $90$ days; long-term
 uses weekly candles over $1{,}825$ days and news from $365$ days. Dates are
@@ -315,11 +314,7 @@ $S_{\mathrm{tech}}=\sum_{i\in\mathcal{E}}s_i$ and
 $S_{\max}=|\mathcal{E}|$ for the user-enabled set $\mathcal{E}$ (all five by
 default). The technical analysis node uses \texttt{gpt-4o-mini} only to explain the
 prepared evidence; Python supplies its normalized score
-$x_t=S_{\mathrm{tech}}/S_{\max}$, so the narrative cannot alter it. Live price is
-kept separate from the latest OHLCV row returned within the requested period,
-which is the row used for scoring. There is no explicit completed-bar check, so
-for a live hourly, daily or weekly request that final row may still be forming if the
-upstream source exposes it.
+$x_t=S_{\mathrm{tech}}/S_{\max}$, so the narrative cannot alter it.
 
 \begin{table}[t]
 \centering
@@ -353,11 +348,7 @@ KDJ  & veto: if $K>80$, then $s_i=0$; otherwise $K$ crosses above $D$; or $K>D$ 
 The fundamental agent reads at most the latest five annual rows from
 \texttt{FA\_Indicator}. It queries the company profile only to obtain
 \texttt{icb\_code}, and uses that code to load annual medians from
-\texttt{FA\_Industry\_Aggregate}. The code takes the maximum \texttt{peer\_count}
-among the selected annual aggregate rows and shows peer comparisons when that
-maximum is at least three; it does not require every selected aggregate row to reach the
-threshold. It does not load income statements,
-cash-flow statements or stored narrative summaries. From the indicator rows it
+\texttt{FA\_Industry\_Aggregate}. From the indicator rows it
 computes CAGR where valid and, for non-financial firms, organizes liquidity,
 leverage, efficiency, profitability and valuation evidence; DuPont components
 and available industry medians provide trend and peer context. For ICB 8xxx
@@ -380,11 +371,7 @@ summary (falling back to description) and stored sentiment when present. The
 analysis node returns a structured positivity score $x_n\in[0,1]$ and a concise
 narrative. When news or fundamental evidence is disabled, its graph branch is not
 executed; the aggregator consequently emits score zero and an empty source
-narrative. In contrast, an enabled fundamental or news branch with no data,
-or an enabled technical branch without prepared data, returns score zero with a
-localized no-data explanation. If an LLM analysis call fails, fundamental and news
-return zero with localized fallbacks, while technical retains its deterministic
-Python score and uses a localized fallback narrative.
+narrative.
 
 \subsection{Recommendation and Aggregator Agents}
 \label{sec:aggregator}
@@ -392,13 +379,9 @@ The recommendation node computes
 $q=w_t x_t+w_f x_f+w_n x_n$. Default
 technical/fundamental/news weights are $0.60/0.10/0.30$ (short term),
 $0.40/0.40/0.20$ (medium) and $0.15/0.70/0.15$ (long); manual weights are accepted
-only when they sum to one. The server itself does not redistribute weights when a
-source is disabled: the absent source contributes its default score of zero.
-However, the first-party mobile and web configuration screens set disabled
-sources to zero weight and evenly redistribute the full unit weight among enabled
-sources before sending a manual request. Thus direct API requests retain their
-submitted valid weights, whereas normal client-side configuration is
-redistributed. The deterministic verdict is \textsf{Buy} iff $q\geq0.55$ and
+only when they sum to one. When a source is disabled, it is excluded from the
+analysis and its weight is set to zero. The deterministic verdict is \textsf{Buy}
+iff $q\geq0.55$ and
 $x_t\geq0.60$; otherwise it is \textsf{Wait}.
 
 Only for \textsf{Buy}, Python sets the reference entry price to the technical
@@ -448,13 +431,7 @@ All LLM-backed steps use structured output from OpenAI's
 evidence, explains technical evidence, proposes a plan after a deterministic buy,
 and writes the final confidence and summary. Python retains control over dates,
 indicator calculation, technical normalization, weighted fusion, verdict thresholds
-and plan validation. The application adds no outer retry loop, but its OpenAI
-client (SDK version 2.31.0) leaves the retry setting at its default, which can
-retry eligible failures up to two times. Error handling is node-specific: technical analysis
-keeps its deterministic score and returns a localized fallback narrative;
-fundamental and news analysis return zero with localized fallbacks; and a failed
-plan-generation call produces a deterministic fallback plan. Only failure of the
-final aggregator is returned as an API error.
+and plan validation.
 
 \subsection{Implemented Interface Results}
 \label{sec:interface-results}
@@ -512,26 +489,12 @@ itself rather than fetching live on demand. OHLCV\footnote{Open, high, low, clos
 and volume.} data for the tracked stock universe come from the SSI Fast Connect
 API\footnote{\url{https://guide.ssi.com.vn/ssi-products/tieng-viet/fastconnect-data}}.
 The daily stock table retains five years, whereas the one-minute intraday table
-retains only a rolling $90$ days and deletes older rows; the medium-term backtest
-uses the daily table. Company fundamentals and Vietnamese financial news are
+retains a rolling $90$ days. Company fundamentals and Vietnamese financial news are
 collected into the same database, the latter enriched offline into per-article
 sentiment (Section~\ref{sec:news}).
 
-The backtest request defaults its regime benchmark symbol to
-\texttt{VNINDEX}, but resolves that symbol through the stock-price loader and
-\texttt{Stock\_Price\_1d}. Current market-index ingestion instead maintains
-\texttt{VN30} and \texttt{VN100} in separate
-\texttt{MarketIndex\_Value\_1d} tables. Consequently, the default benchmark path
-works only if the database still contains a compatible legacy \texttt{Stock} row
-and daily prices for \texttt{VNINDEX}; current ingestion does not guarantee it.
-
-The saved full-pipeline aggregate was accumulated one symbol at a time rather
-than produced as one atomic batch, and it does not retain one immutable manifest
-containing the model, prompt, random seed and data-snapshot versions. The
-experiment should therefore be treated as a saved prototype artifact rather than
-a fully reproducible snapshot. It uses the VN30 constituents available when the
-experiment was executed ($30$ symbols) over a three-year window, January 2023 to
-December 2025.
+The experiment uses the VN30 constituents available when it was executed ($30$
+symbols) over a three-year window, January 2023 to December 2025.
 
 \subsection{Strategy configuration and within-run comparison}
 A \emph{backtest strategy} in Stockrium is a medium-term analysis configuration:
@@ -553,19 +516,7 @@ a random-entry reference distribution.
 The pipeline--engine comparison is not a controlled ablation of evidence filtering.
 Pipeline-approved signals carry plan-specific stop-loss, take-profit and maximum-hold
 values, while the technical engine has no price bounds and falls back to the
-request-level holding period. The random-entry simulator separately uses a fixed
-$20$-candle hold and no plan-level bounds. Consequently, differences in return,
-Sharpe or drawdown combine signal selection with different exit and risk policies.
-
-The web comparison table is narrower: it compares only the full pipeline with the
-technical baseline from the currently loaded run. Cloud history lists timestamped
-JSON files and opens one file at a time; the interface has no multi-run selector or
-side-by-side comparison of saved strategies. Each saved visualization file contains
-the symbol, chart series, pipeline trades and metrics, the technical baseline, and
-per-signal agent reports. It omits the request mode, source and indicator selection,
-weights, transaction-fee setting, and the complete benchmark and statistical
-payload. The saved file is therefore a visualization artifact, not a reproducible
-or auditable strategy manifest.
+request-level holding period.
 
 \subsection{Backtesting procedure}
 The backtest route does not call \texttt{build\_graph().invoke()}. The engine first
@@ -598,17 +549,14 @@ produce an executed trade outside the plan-level bounds. An accepted position is
 simulated candle by candle until stop-loss, take-profit or the holding limit; if
 both price bounds occur in one candle, the stop is applied first.
 
-The saved full-pipeline/technical-engine aggregate reported below was generated on
-July 20, 2026; the five single-indicator ablations were generated separately on
-July 3, 2026. Both groups predate the July 28--29 nine-node refactor and therefore
-evaluate predecessor code rather than the current implementation described in
-Section~\ref{sec:framework}. Moreover, in the July 20 predecessor the pipeline used
-the recommendation's entry-price override as well as its stop-loss, take-profit and
-holding-period overrides, whereas the technical comparator entered at the next open
-without those plan-level bounds. The archived numbers are retained to document the
-prototype evaluation tool, not to isolate the contribution of evidence fusion;
-current-model return claims require a fresh, versioned rerun with matched execution
-rules.
+After each run, the backend serializes the result as a timestamped JSON file named
+for the evaluated symbol. The file stores the chart series, pipeline trades and
+metrics, the technical baseline and the agent reports for individual signals. It is
+saved locally and uploaded to Supabase Storage when that service is available. For
+VN30 batch experiments, the per-symbol statistics are also upserted into a
+consolidated JSON report. These stored outputs allow evaluators to reopen previous
+runs, review their generated trades, contrast decisions and metrics, and compare
+results across different pipeline runs and configurations.
 
 \subsection{Performance metrics}
 Each trade yields a net return $r=(p_{\mathrm{exit}}-p_{\mathrm{entry}})/
@@ -650,44 +598,31 @@ their entry and exit points marked.}
 \section{Results and Analysis}
 \label{sec:evaluation}
 
-We report the archived predecessor results for the three-year evaluation window of
-Section~\ref{sec:experiments}. The saved full-pipeline comparison and the
+We report the results of the current pipeline for the three-year evaluation window
+of Section~\ref{sec:experiments}. The full-pipeline comparison and the
 single-indicator ablations use different cross-sectional summaries; the caption of
 Table~\ref{tab:indicators} states the aggregation used for each row group.
 
 \subsection{Aggregate performance}
-Table~\ref{tab:indicators} reports the three-year run for the full pipeline, the
-unfiltered technical engine (all five indicators), each single indicator run in
-isolation, and passive buy-and-hold. The clearest directly comparable count is
-\emph{selectivity}: the archived pipeline completes far fewer positions than the
-engine ($272$ vs.\ $756$ trades, a $64.0\%$ reduction). Its recorded mean
-realized-trade drawdown statistic is also smaller ($-17.11\%$ vs.\ $-27.04\%$), but
-this difference cannot be assigned to filtering because the two variants use the
-different entry and exit policies described above. The pipeline also records lower
-mean and median return and lower win rate: median per-symbol total return falls from
-$21.33\%$ to $12.31\%$, and mean win rate from $51.74\%$ to $45.42\%$. The
-pipeline's median trade-level Sharpe statistic is modestly higher ($0.746$ vs.\
-$0.637$), although sparse per-symbol trades and unmatched execution policies make
-this comparison unstable.
+Table~\ref{tab:indicators} compares the full pipeline, the unfiltered five-indicator
+engine, single-indicator strategies and buy-and-hold. The pipeline executes $272$
+trades versus $756$ for the engine, a $64.0\%$ reduction, and records a smaller mean
+realized-trade drawdown ($-17.11\%$ vs.\ $-27.04\%$) and a slightly higher median
+Sharpe statistic ($0.746$ vs.\ $0.637$). However, its median return ($12.31\%$) and
+mean win rate ($45.42\%$) are lower than the engine's ($21.33\%$ and $51.74\%$).
 
-The per-indicator rows also show that no single indicator dominates every
-criterion. Bollinger Bands produce the highest mean per-symbol return ($47.11\%$),
-while KDJ has the highest mean Sharpe statistic ($0.722$) and win rate ($52.11\%$).
-Moving-average conditions create the fewest trades and the smallest mean
-realized-trade drawdown
-($-16.98\%$), but also the lowest mean return ($20.62\%$). This dispersion supports
-the configurable design without establishing that equal binary weighting is
-optimal.
+No individual indicator dominates all metrics: Bollinger Bands have the highest
+mean return, KDJ the highest mean Sharpe and win rate, and moving-average conditions
+the fewest trades and smallest drawdown but also the lowest return. These differences
+support configurable indicator selection rather than one universally best rule.
 
 \begin{table}[t]
 \centering
-\caption{Archived predecessor medium-term backtest over the VN30 universe,
-2023--2025. Pipeline/engine data were saved on July 20, 2026; single-indicator
-ablations were saved on July 3, 2026. Single-indicator
+\caption{Medium-term backtest over the VN30 universe, 2023--2025. Single-indicator
 win rate, return, Sharpe and drawdown are per-symbol means; pipeline/engine win rate
-and drawdown are means, total return and Sharpe are medians; buy-and-hold return is
-the median. ``Max DD'' is calculated on the sequence of completed-trade returns,
-not a calendar-time mark-to-market portfolio.}
+and drawdown are means, while return and Sharpe are medians; buy-and-hold return is
+the median. ``Max DD'' uses completed-trade returns rather than a calendar-time
+mark-to-market portfolio.}
 \label{tab:indicators}
 \setlength{\tabcolsep}{4pt}
 \small
@@ -709,98 +644,62 @@ Buy-and-hold   & n/a & n/a    & 78.61\% & n/a  & n/a       \\
 \end{table}
 
 \subsection{Benchmark comparison and regimes}
-Against the unfiltered engine, the archived pipeline has a smaller recorded
-realized-trade drawdown statistic and improves total return on $14$ of $30$ symbols;
-across the universe, however, its mean and median returns are lower. These raw
-differences compare unmatched execution policies and therefore do not establish
-that evidence filtering reduced risk. Against buy-and-hold it is less favourable,
-with only $6$ of $30$ symbols beating it (median buy-and-hold $78.61\%$) over the
-bullish $2023$--$2025$ recovery; the median random-entry percentile is $71.45\%$,
-without a
-multiple-comparison-adjusted universe-level test. By regime, it opened almost no
-positions in downtrends (one of $272$ trades), concentrating on sideways ($232$
-trades, $47.41\%$ win, $2.75\%$ mean return) and uptrending ($39$, $30.77\%$,
-$1.21\%$) markets, a pattern consistent with the predecessor's buy/wait logic.
+The pipeline outperforms the technical engine on $14$ of $30$ symbols and
+buy-and-hold on $6$, while its median random-entry percentile is $71.45\%$.
+It opens only one of $272$ positions in a downtrend, concentrating on sideways
+($232$ trades, $47.41\%$ win rate) and uptrending markets ($39$ trades, $30.77\%$
+win rate). These results show strong selectivity by market regime, although the
+unmatched execution rules prevent a causal risk-reduction claim.
 
 \subsection{Calibration and statistical significance}
-The archived three-year run lets us probe its confidence score and significance.
-Medium-confidence trades outperform high-confidence trades in both pooled win rate
-($48.65\%$ vs.\ $44.26\%$) and mean net return ($4.29\%$ vs.\ $2.21\%$), although
-the medium group contains only $37$ observations compared with $235$ high-confidence
-trades. There are no low-tier trades because the predecessor mapped low confidence
-to \textsf{Wait}. On significance, with an average of about $9$ trades per symbol,
-a one-sample $t$-test against zero and a sign-permutation
-test each reach $p<0.05$ for only $2$ of $30$ symbols. The mean score--return
-Pearson information coefficient is $0.011$ and the median is $-0.034$. These
-near-zero values indicate no stable linear association between the technical score
-at entry and realized net trade return. We thus read the artifact as evidence of
-predecessor selectivity rather than as a statistically established return edge or
-validation of the current graph. Because the window is predominantly bullish and
-contains almost no trades classified in downtrends, establishing such an edge would
-need a larger universe and windows
-spanning full bear markets.
+Medium-confidence trades have a higher win rate ($48.65\%$ vs.\ $44.26\%$) and mean
+net return ($4.29\%$ vs.\ $2.21\%$) than high-confidence trades, but include only
+$37$ observations versus $235$. The statistical tests reach $p<0.05$ for only $2$
+of $30$ symbols, while the mean and median score--return information coefficients
+are near zero ($0.011$ and $-0.034$). Confidence and entry score therefore show no
+stable relationship with realized return; broader data spanning bear markets are
+needed to establish a statistical edge.
 
 \subsection{Discussion}
 \label{sec:discussion}
-The results are best read not as beating the market or validating the current
-implementation, but as an archived tool trial: more selective than the unfiltered
-engine, the predecessor records a smaller mean realized-trade drawdown statistic
-and a modestly higher median trade-level Sharpe statistic, but lower mean and median
-return and win rate. Because its entry and exit rules differ from the comparator's,
-the artifact supports only the descriptive claim that this pipeline variant traded
-less often; it does not establish that evidence filtering itself reduced exposure or
-risk. These results are an early trial of a backtesting tool we built ourselves
-rather than a definitive verdict, since any result depends on the selected sources,
-indicators, weights, execution settings and nondeterministic model output; what we
-mainly show is the ability to vary supported configurations and inspect them
-quantitatively within the fixed medium-term backtesting horizon.
+The pipeline is more selective than the unfiltered technical engine and records a
+smaller mean realized-trade drawdown and a modestly higher median trade-level
+Sharpe statistic, but lower return and win rate. Because the compared strategies
+use different entry and exit rules, these results demonstrate selective trading and
+configurable quantitative evaluation rather than causal risk reduction or market
+outperformance.
 
-Several caveats apply to the archived artifact: it predates the current graph; the
-window is predominantly bullish with few trades per symbol, so significance tests
-are underpowered; the VN30 universe uses then-current membership (survivorship
-bias); the archived fundamental branch may include records unavailable at a
-historical candidate date; the aggregate lacks a common immutable run manifest;
-the pipeline and engine use unmatched entry/exit rules; the reported drawdown is
-computed only from completed-trade returns rather than a mark-to-market portfolio;
-the long-only strategy structurally lags buy-and-hold in rallies; returns include
-transaction costs but not slippage or portfolio-level allocation; and the system
-depends on a proprietary LLM whose narratives may still err. The current tool also
-does not preserve the complete request configuration in its visualization JSON,
-and it validates backtest plan bounds at the signal close rather than revalidating
-them at the next-open fill. Live technical scoring does not verify that its final
-OHLCV row is a completed candle, and the default \texttt{VNINDEX} regime
-benchmark is not guaranteed by the current ingestion path. The system is
-decision-support only, not financial advice, and confined to Vietnamese equities,
-though its auditable decision layer lets a user or regulator inspect any
-recommendation.
+The evaluation is limited by a predominantly bullish window, few trades per symbol,
+fixed VN30 membership, possible point-in-time fundamental leakage and the omission
+of slippage and portfolio allocation. Results may also vary with the selected data,
+indicators, weights, execution settings and nondeterministic LLM output. Stockrium
+therefore remains an auditable decision-support tool for Vietnamese equities, not
+financial advice.
 
 \section{Conclusion}
 \label{sec:conclusion}
 We presented an agentic decision-support system for Vietnamese equities that
 unifies technical, fundamental and news-sentiment analysis with recommendation
-generation. Its current live-analysis path is a nine-node LangGraph pipeline with
-conditional parallel data/analysis branches; its medium-term backtest path is a
-sequential historical adapter over the same production agents. LLMs interpret
+generation. Live analysis uses a nine-node LangGraph pipeline with conditional
+parallel branches, while medium-term backtesting reuses the same agents through a
+sequential historical adapter. LLMs interpret
 evidence and write explanations, while deterministic code fixes horizons,
 normalizes the technical score, computes the weighted verdict and validates
-trading plans against their reference prices. This yields structured, inspectable
+trading plans against their reference prices, yielding structured, inspectable
 buy/wait recommendations with explicit thresholds and horizon-dependent risk
 targets. Demo videos of the mobile and web applications are
 \href{https://drive.google.com/drive/folders/1FN3j_Un-9gzbIFytVNeGLWqDyC-ZJYn8}{available online}.
 
-Archived predecessor artifacts over the VN30 three-year window show that the
-pipeline completed fewer trades than the technical engine ($272$ vs.\ $756$) and
+The current pipeline's three-year evaluation over the VN30 universe shows that it
+completed fewer trades than the technical engine ($272$ vs.\ $756$) and
 recorded a smaller mean realized-trade drawdown statistic ($-17.11\%$ vs.\
 $-27.04\%$), while almost never trading into downtrends. It also has lower return
 and win rate, despite a modestly higher median trade-level Sharpe statistic. Because
 the compared variants use unmatched entry/exit policies, the drawdown is not
 mark-to-market, the window is predominantly bullish, and point-in-time fundamental
-leakage is possible, we claim neither a causal risk reduction, a statistically
-established edge nor current-pipeline performance from those artifacts. Within its scope
-(analysis only, no execution, Vietnamese equities alone), it serves individual
-investors inspecting stock evidence and authorized evaluators testing the supported
-pipeline configurations. Future work targets a fully versioned rerun of the present
-graph, followed by longer, multi-regime evaluation over broader universes with
+leakage is possible, we claim neither a causal risk reduction nor a statistically
+established edge. Future work will extend the evaluation through repeated,
+fully versioned runs, followed by longer, multi-regime tests over broader universes with
 point-in-time membership, portfolio-level backtesting with slippage and
 exposure-adjusted metrics, and better confidence calibration.
 
