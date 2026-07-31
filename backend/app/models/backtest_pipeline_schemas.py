@@ -46,11 +46,12 @@ class BacktestPipelineRequest(BaseModel):
         le=200,
         description="Maximum holding period in candles",
     )
-    min_signal_score: int = Field(
+    min_signal_score: Literal[3] = Field(
         default=3,
-        ge=1,
-        le=5,
-        description="Minimum technical total_score required to trigger a BUY signal",
+        description=(
+            "Compatibility field fixed at 3/5, equivalent to the production "
+            "technical threshold of 0.6"
+        ),
     )
     exit_on_score_drop: bool = Field(
         default=False,
@@ -65,10 +66,4 @@ class BacktestPipelineRequest(BaseModel):
     use_intraday: bool = Field(
         default=True,
         description="Legacy compatibility field; ignored by daily v2 backtest",
-    )
-    transaction_cost_pct: float = Field(
-        default=0.0015,
-        ge=0.0,
-        le=0.05,
-        description="Transaction cost per side as a decimal (0.0015 = 0.15%). Applied both at entry and exit.",
     )

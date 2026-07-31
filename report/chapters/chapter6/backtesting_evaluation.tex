@@ -4,9 +4,9 @@
 \subsection{VN30 Experimental Configuration}
 \label{subsec:backtest-vn30-configuration}
 
-Two saved experiment groups are available. The complete agentic AI pipeline report contains 30 symbols and was accumulated between July~18 and July~20, 2026. The requested daily interval is January~1, 2023 through December~31, 2025, with a 20-candle maximum hold and the default cost of 0.15\% per side. The artifact stores full-pipeline and engine-only performance, buy-and-hold and random comparisons, statistical tests, walk-forward summaries, regime results, and confidence calibration. It is updated one symbol at a time rather than written from one atomic batch, so the per-symbol completion timestamps span the full execution period.
+Two saved experiment groups are available. The complete agentic AI pipeline report contains 30 symbols and was accumulated between July~18 and July~20, 2026. The requested daily interval is January~1, 2023 through December~31, 2025, with a 20-candle maximum hold and the default cost of 0.15\% per side. The artifact stores full-pipeline and engine-only performance, buy-and-hold and random comparisons, statistical tests, regime results, and confidence calibration. It is updated one symbol at a time rather than written from one atomic batch, so the per-symbol completion timestamps span the full execution period.
 
-The second group isolates each technical indicator. These ablations use the 30 symbols returned by the current VN30 lookup, daily data from January~1, 2023 through December~31, 2025, a 20-candle maximum hold, no language-model calls, and the default cost of 0.15\% per side. Each binary indicator score replaces the combined score, and a transition to one creates a candidate. All 30 symbols completed each of the five ablations.
+The second group isolates each technical indicator. These ablations use the 30 symbols returned by the current VN30 lookup, daily data from January~1, 2023 through December~31, 2025, a 20-candle maximum hold, no language-model calls, and the default cost of 0.15\% per side. Each binary indicator score replaces the combined score, and every eligible date with score one creates a candidate. All 30 symbols completed each of the five ablations.
 
 The universe is the VN30 list available when the experiments were executed, not a date-reconstructed historical membership list. The results therefore describe the selected large-cap stock set and are not a survivorship-bias-free replication of the index.
 
@@ -47,7 +47,7 @@ Only two of the 30 one-sample $t$-tests and two sign-permutation tests are signi
 
 The score--return information coefficient reinforces this caution. Correlating the technical score at trade entry with the realized trade return gives a mean information coefficient of 0.011 and a median of $-0.034$ across the 30 symbols; the coefficient is positive for 12 securities, negative for 16, flat for one, and unavailable for the zero-trade MSN result. Only two coefficients are significant at the unadjusted 5\% level. The most extreme coefficient, $-1.000$ for VPL, comes from only two trades and has a $p$-value of 1.0; HPG's significant coefficient of 0.978 is likewise based on only four trades. The entry score therefore exhibits, at best, a weak and statistically unreliable monotonic relationship with subsequent return, which is consistent with interpreting the pipeline as an exposure filter rather than a return-ranking signal.
 
-\subsection{Confidence, Regime, and Walk-Forward Results}
+\subsection{Confidence and Regime Results}
 \label{subsec:backtest-robustness-results}
 
 Table~\ref{tab:backtest-confidence-results} pools confidence-tier outcomes. Medium-confidence trades outperform high-confidence trades in both win rate and mean net return, although the medium group contains only 37 observations. The Buy gate prevents low-confidence trades from being executed, so the accepted-trade sample cannot provide a calibration curve across the full confidence range or support a monotonic confidence claim.
@@ -70,8 +70,6 @@ Table~\ref{tab:backtest-confidence-results} pools confidence-tier outcomes. Medi
 \end{table}
 
 Regime grouping assigns 232 trades to sideways conditions, 39 to uptrends, and only one to a downtrend. Sideways trades record a 47.41\% win rate and 2.75\% mean return; uptrend trades record a 30.77\% win rate and 1.21\% mean return. The single downtrend trade loses 6.62\%, but one observation cannot support a meaningful regime conclusion.
-
-Across symbols, the mean fraction of profitable walk-forward windows is 14.44\% and the median is 14.29\%. Most windows contain zero or one trade, causing the implemented Sharpe statistic to be zero. The walk-forward results reveal instability and sparse sampling rather than supporting a strong out-of-window performance claim.
 
 \subsection{Single-Indicator Ablation}
 \label{subsec:backtest-indicator-ablation-results}

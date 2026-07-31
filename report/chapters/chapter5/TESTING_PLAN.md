@@ -38,7 +38,7 @@ The final chapter must report actual results. Planned tests, unexecuted cases, a
 - deterministic technical indicators and score calculation;
 - AI-analysis configuration, structured response, confidence calculation, and decision threshold;
 - chat-session ownership and deletion;
-- backtesting parity gate, next-open execution, exit rules, and transaction costs.
+- shared technical scoring, next-open execution, exit rules, and transaction costs.
 
 ### P1 — Important
 
@@ -147,8 +147,8 @@ The matrix below is the minimum useful thesis scope. Detailed steps should be re
 | AGENT-04 | Horizon | Short-, medium-, and long-horizon profiles | Planning and holding constraints match the selected horizon | P0 | Integration with mocks |
 | AGENT-05 | Failure | Specialist timeout, malformed output, or no evidence | Defined fallback or safe error; no unsupported recommendation | P0 | Fault injection |
 | CHAT-01 | Conversation | Seed, follow up, reopen history, and delete | Ordered owner-only history and complete deletion | P1 | API + E2E |
-| BACK-01 | Parity | Known candles through production and vectorized scorers | Sampled scores match exactly and parity passes | P0 | Integration |
-| BACK-02 | Timing | Score crosses threshold on candle t | One candidate and entry at candle t+1 open | P0 | Unit test |
+| BACK-01 | Shared scoring | Known indicator values through the shared scorer and both adapters | Production output and backtest score columns use the shared rule results | P0 | Unit/integration |
+| BACK-02 | Timing | Score meets threshold on candle t | One candidate and entry at candle t+1 open | P0 | Unit test |
 | BACK-03 | Rules | Take-profit, stop-loss, score exit, max hold, final liquidation | Correct reason, date, price, cost, and return | P0 | Parameterized unit |
 | BACK-04 | Edges | Same-bar TP/SL, gap, final signal, no candidates, missing benchmark | Conservative documented behavior and no invalid trade | P0 | Unit/integration |
 | BACK-05 | Artifacts | Complete backtest and result listing | Decisions, trades, metrics, tests, plots, and stored file agree | P1 | Integration |
@@ -266,7 +266,7 @@ If time is limited, complete P0 backend/API tests, three core mobile E2E flows, 
    - user-owned resources.
 4. **Agentic and Backtesting Correctness Testing**
    - branch selection, weights, typed output, confidence boundary;
-   - parity, timing, exits, costs, and failure cases.
+   - shared scoring, timing, exits, costs, and failure cases.
 5. **Mobile Application and End-to-End Testing**
    - component and routing results;
    - critical end-to-end flows;

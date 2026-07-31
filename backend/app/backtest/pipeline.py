@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Callable
 
 import pandas as pd
 
+from agentic_ai_v2.analyze.agents.orchestrator import build_analysis_plan
 from agentic_ai_v2.analyze.agents.aggregator import aggregator_agent
 from agentic_ai_v2.analyze.agents.article import article_agent
 from agentic_ai_v2.analyze.agents.article_analysis import (
@@ -15,22 +16,24 @@ from agentic_ai_v2.analyze.agents.fundamental import fundamental_agent
 from agentic_ai_v2.analyze.agents.fundamental_analysis import (
     fundamental_analysis_agent,
 )
-from agentic_ai_v2.analyze.agents.recommendation import recommendation_agent
+from agentic_ai_v2.analyze.agents.recommendation import (
+    TECHNICAL_SCORE_THRESHOLD,
+    recommendation_agent,
+)
 from agentic_ai_v2.analyze.agents.technical import technical_agent
 from agentic_ai_v2.analyze.agents.technical_analysis import (
     technical_analysis_agent,
 )
 from agentic_ai_v2.analyze.state import AgentState
+from agentic_ai_v2.analyze.technical_scoring import (
+    SCORE_COLUMN_BY_INDICATOR,
+)
 
 
 AgentCallable = Callable[[AgentState], dict]
-_SCORE_COLUMN_BY_INDICATOR = {
-    "ma": "ma_score",
-    "boll": "boll_score",
-    "rsi": "rsi_score",
-    "macd": "macd_score",
-    "kdj": "kdj_score",
-}
+TECHNICAL_SIGNAL_SCORE = (
+    TECHNICAL_SCORE_THRESHOLD * len(SCORE_COLUMN_BY_INDICATOR)
+)
 
 
 class BacktestPipeline:
@@ -56,31 +59,16 @@ class BacktestPipeline:
     def _build_state(
         self,
         date: str,
-        interval: str,
-        lookback_days: int,
     ) -> AgentState:
-        end_date = datetime.strptime(date, "%Y-%m-%d")
-        start_date = end_date - timedelta(days=lookback_days)
-        from_date = start_date.strftime("%Y-%m-%d")
-
-        plan = {
-            "technical": {
-                "interval": interval,
-                "from_date": from_date,
-                "to_date": date,
-                # Never read Current_Stock_Price in a historical simulation.
-                # technical_agent will use the final candle at/before `date`.
-                "use_current_price": False,
-            },
-            "article": {
-                "from_date": from_date,
-                "to_date": date,
-            },
-            "fundamental": {
-                # fundamental_agent conservatively excludes annual rows from
-                # the simulated year and all future years.
-                "as_of_date": date,
-            },
+        analysis_date = datetime.strptime(date, "%Y-%m-%d").date()
+        plan = build_analysis_plan("mid_term", as_of_date=analysis_date)
+        # Never read Current_Stock_Price in a historical simulation.
+        # technical_agent will use the final candle at/before `date`.
+        plan["technical"]["use_current_price"] = False
+        plan["fundamental"] = {
+            # fundamental_agent conservatively excludes annual rows from
+            # the simulated year and all future years.
+            "as_of_date": date,
         }
 
         return {
@@ -140,15 +128,14 @@ class BacktestPipeline:
         self,
         date: str,
         interval: str,
-        lookback_days: int,
     ) -> dict[str, Any]:
         if interval != "1d":
             raise ValueError(
                 "Backtest v2 hiện chỉ hỗ trợ interval 1d / period mid_term."
             )
 
-        state = self._build_state(date, interval, lookback_days)
-        from_date = state["plan"]["technical"]["from_date"]
+        state = self._build_state(date)
+        article_from_date = state["plan"]["article"]["from_date"]
 
         self._apply_agent(state, technical_agent)
         self._apply_agent(state, technical_analysis_agent)
@@ -156,7 +143,7 @@ class BacktestPipeline:
         if self._source_enabled("article"):
             self._apply_cached_chain(
                 state,
-                cache_key=f"article:{from_date}:{date}",
+                cache_key=f"article:{article_from_date}:{date}",
                 source_agent=article_agent,
                 analysis_agent=article_analysis_agent,
             )
@@ -234,7 +221,6 @@ class BacktestPipeline:
         self,
         dates: list[str],
         interval: str,
-        lookback_days: int,
         delay_seconds: float = 0.5,
     ) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
@@ -245,7 +231,6 @@ class BacktestPipeline:
                 result = self.run_pipeline_at(
                     date,
                     interval,
-                    lookback_days,
                 )
                 recommendation = result.get("recommendation")
                 confidence = result.get("confidence")
@@ -266,17 +251,17 @@ class BacktestPipeline:
     def filter_signal_dates(
         self,
         df: pd.DataFrame,
-        min_score: int = 3,
     ) -> list[str]:
         selected_frame = self.apply_technical_selection(df)
-        total_score = selected_frame["total_score"]
-        mask = (total_score >= min_score) & (
-            total_score.shift(1) < min_score
-        )
+        # A candidate is executable only when the following candle exists for
+        # the next-open entry used by SignalGenerator and TradeSimulator.
+        executable_frame = selected_frame.iloc[:-1]
+        total_score = executable_frame["total_score"]
+        mask = total_score >= TECHNICAL_SIGNAL_SCORE
         dates = (
-            selected_frame.loc[mask, "datetime"]
-            if "datetime" in selected_frame.columns
-            else selected_frame.index[mask]
+            executable_frame.loc[mask, "datetime"]
+            if "datetime" in executable_frame.columns
+            else executable_frame.index[mask]
         )
         return [
             pd.to_datetime(date).strftime("%Y-%m-%d")
@@ -289,17 +274,17 @@ class BacktestPipeline:
     ) -> pd.DataFrame:
         """Normalize selected indicator scores back onto the legacy 0–5 scale.
 
-        ``min_signal_score=3`` therefore keeps its old meaning (60%) even when
-        manual mode enables fewer than five indicators, matching the normalized
-        score used by technical_analysis_agent and recommendation_agent.
+        The fixed production threshold remains 60% even when manual mode enables
+        fewer than five indicators, matching the normalized score used by
+        technical_analysis_agent and recommendation_agent.
         """
         if self.mode == "auto":
-            selected = list(_SCORE_COLUMN_BY_INDICATOR)
+            selected = list(SCORE_COLUMN_BY_INDICATOR)
         else:
             technical = self.data_selection.get("technical") or {}
             selected = [
                 name
-                for name in _SCORE_COLUMN_BY_INDICATOR
+                for name in SCORE_COLUMN_BY_INDICATOR
                 if technical.get(name) is True
             ]
 
@@ -309,7 +294,7 @@ class BacktestPipeline:
             )
 
         score_columns = [
-            _SCORE_COLUMN_BY_INDICATOR[name]
+            SCORE_COLUMN_BY_INDICATOR[name]
             for name in selected
         ]
         missing_columns = [
@@ -326,7 +311,7 @@ class BacktestPipeline:
         output = df.copy()
         selected_total = output[score_columns].sum(axis=1)
         output["total_score"] = selected_total * (
-            len(_SCORE_COLUMN_BY_INDICATOR) / len(score_columns)
+            len(SCORE_COLUMN_BY_INDICATOR) / len(score_columns)
         )
 
         # Preserve the 50-candle warm-up boundary created by ScoringEngine.

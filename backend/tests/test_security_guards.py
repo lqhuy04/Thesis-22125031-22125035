@@ -1,4 +1,5 @@
 import unittest
+from inspect import signature
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -11,6 +12,8 @@ from app.models.agentic_schemas import (
 )
 from app.models.auth_schemas import LoginRequest, VerifyOTPRequest
 from app.models.backtest_pipeline_schemas import BacktestPipelineRequest
+from app.backtest.engine import DEFAULT_TRANSACTION_COST_PCT, TradeSimulator
+from app.backtest.run import run_full_backtest
 from app.utils.otp import OTPService
 
 
@@ -75,6 +78,34 @@ class InputGuardTests(unittest.TestCase):
                     "fundamental": 0.4,
                 },
             },
+        )
+
+    def test_backtest_technical_threshold_is_fixed_at_sixty_percent(self):
+        request = BacktestPipelineRequest(symbol="FPT")
+        self.assertEqual(request.min_signal_score, 3)
+
+        for score in (1, 2, 4, 5):
+            with self.subTest(score=score), self.assertRaises(ValidationError):
+                BacktestPipelineRequest(
+                    symbol="FPT",
+                    min_signal_score=score,
+                )
+
+    def test_backtest_transaction_cost_is_internal_and_defaults_to_1_5_percent(
+        self,
+    ):
+        self.assertNotIn(
+            "transaction_cost_pct",
+            BacktestPipelineRequest.model_fields,
+        )
+        self.assertEqual(DEFAULT_TRANSACTION_COST_PCT, 0.015)
+        simulator = TradeSimulator(max_hold_candles=20)
+        self.assertEqual(simulator.transaction_cost_pct, 0.015)
+        self.assertEqual(
+            signature(run_full_backtest)
+            .parameters["transaction_cost_pct"]
+            .default,
+            0.015,
         )
 
     def test_stock_analysis_requires_at_least_one_technical_indicator(self):

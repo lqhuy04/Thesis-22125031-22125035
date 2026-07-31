@@ -10,9 +10,18 @@ app/services/backtest_pipeline_service.py.
 - Generates technical signals, then runs the v2 source, analysis,
   recommendation, and aggregator agents only on signal dates.
 - Simulates trades and calculates metrics, benchmarks, and statistical tests.
-- Runs walk-forward validation, regime analysis, and confidence calibration.
+- Runs regime analysis and confidence calibration.
 - Uses the daily/mid-term v2 configuration. Historical recommendations use the
   final daily candle at each simulated date, never `Current_Stock_Price`.
+
+## Supported Evaluation Flows
+
+1. Full `/analyze` pipeline: technical, article, fundamental, recommendation,
+   and aggregator agents.
+2. Technical-only baseline: all five indicators combined, without LLM agents.
+3. Single-indicator technical ablations: RSI, MACD, KDJ, Bollinger Bands, and
+   moving-average conditions, run with:
+   `python -m app.backtest.single_indicator_backtest`.
 
 ## Key Entry Point
 
@@ -70,7 +79,6 @@ Example payload:
   "end_date": "2024-12-31",
   "market_symbol": "VNINDEX",
   "max_hold_candles": 20,
-  "min_signal_score": 4,
   "exit_on_score_drop": false,
   "one_minute_lookback_days": 30,
   "use_intraday": false
@@ -91,8 +99,7 @@ Nội dung mỗi mã (`vn30_stats.py` → `build_symbol_stats`):
    percentile/p-value so với chiến lược ngẫu nhiên.
 4. `statistical_tests` — ttest, permutation, information_coefficient (ic + p_value),
    confidence_vs_outcome_anova (f_stat, p_value, group_means).
-5. `walk_forward` — avg_sharpe, std_sharpe, consistent_wins + return từng window.
-6. `regime` / `confidence_calibration` — win_rate / avg_return / n_trades theo nhóm.
+5. `regime` / `confidence_calibration` — win_rate / avg_return / n_trades theo nhóm.
 
 Phần `aggregate` tổng hợp profit toàn rổ (mean / median / compounded) và so sánh
 pipeline với baseline engine-only của các mã hiện có trong file.
@@ -100,6 +107,11 @@ pipeline với baseline engine-only của các mã hiện có trong file.
 ## Notes
 
 - The v2 LLM analysis/recommendation calls happen only on technical signal
-  dates (to reduce cost).
+  dates where the normalized technical score is at least 0.6. This threshold is
+  fixed to match the production recommendation rule and is independent of how
+  many technical indicators are selected.
+- `/analyze` and backtest use the same deterministic implementation for all
+  five technical scoring rules.
+- Transaction cost is fixed by the backend at 0.015 (1.5%) per side and is not
+  exposed in the API request.
 - Requires working LLM configuration and data access via MarketService.
-- Parity checks must pass before the full backtest runs.

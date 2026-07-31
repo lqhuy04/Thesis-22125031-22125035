@@ -440,8 +440,8 @@ horizon. Indicators at bar $i$ use only data up to $i$, article evidence is boun
 by the candidate date, annual fundamental rows from the simulated year or later are
 excluded, and entry fills at the open of bar $i{+}1$. This annual-year rule is
 conservative because the database lacks filing timestamps. To bound LLM cost, the
-nine-node pipeline is invoked only when the vectorized engine's score crosses its
-threshold. A \textsf{Buy} is simulated candle by candle until stop-loss,
+nine-node pipeline is invoked only when the shared technical score meets its
+fixed threshold. A \textsf{Buy} is simulated candle by candle until stop-loss,
 take-profit or the holding limit; if both bounds occur in one candle, the stop is
 applied first.
 
@@ -552,9 +552,8 @@ Medium-confidence trades outperform high-confidence trades in both pooled win ra
 ($48.65\%$ vs.\ $44.26\%$) and mean net return ($4.29\%$ vs.\ $2.21\%$), although
 the medium group contains only $37$ observations compared with $235$ high-confidence
 trades. There are no low-tier trades because the predecessor mapped low confidence
-to \textsf{Wait}. Across symbols, the mean fraction of profitable walk-forward windows
-is $14.44\%$ and the median is $14.29\%$. On significance, with an average of about
-$9$ trades per symbol, a one-sample $t$-test against zero and a sign-permutation
+to \textsf{Wait}. On significance, with an average of about $9$ trades per symbol,
+a one-sample $t$-test against zero and a sign-permutation
 test each reach $p<0.05$ for only $2$ of $30$ symbols. The mean score--return
 information coefficient is $0.011$ and the median is $-0.034$, both indicating at
 best a weak and statistically unreliable monotonic relationship. We

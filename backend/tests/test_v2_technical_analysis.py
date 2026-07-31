@@ -7,14 +7,14 @@ import pandas as pd
 from agentic_ai_v2.analyze.agents.technical import (
     _fetch_current_price,
     _format_output,
-    _score_kdj,
     technical_agent,
 )
+from agentic_ai_v2.analyze.technical_scoring import score_kdj
 
 
 class V2TechnicalAnalysisKDJTests(unittest.TestCase):
     def test_overbought_kdj_scores_zero_even_with_bullish_cross(self):
-        score, reason = _score_kdj(
+        score, reason = score_kdj(
             pd.Series(
                 {
                     "kdj_k": 85.0,
@@ -35,7 +35,7 @@ class V2TechnicalAnalysisKDJTests(unittest.TestCase):
         self.assertIn("quá mua", reason)
 
     def test_oversold_recovery_scores_one(self):
-        score, reason = _score_kdj(
+        score, reason = score_kdj(
             pd.Series(
                 {
                     "kdj_k": 18.0,
@@ -56,7 +56,7 @@ class V2TechnicalAnalysisKDJTests(unittest.TestCase):
         self.assertIn("quá bán", reason)
 
     def test_bullish_cross_outside_overbought_zone_scores_one(self):
-        score, reason = _score_kdj(
+        score, reason = score_kdj(
             pd.Series(
                 {
                     "kdj_k": 55.0,

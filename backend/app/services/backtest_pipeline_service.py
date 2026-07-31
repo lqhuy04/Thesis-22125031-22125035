@@ -110,7 +110,6 @@ def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
         market_df=market_df,
         symbol=symbol,
         evaluation_start_date=request.start_date,
-        min_signal_score=request.min_signal_score,
         mode=request.mode,
         data_selection=effective_selection,
         **trade_config,

@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from app.backtest.engine import (
+    DEFAULT_TRANSACTION_COST_PCT,
     IndicatorEngine,
     MetricsCalculator,
     ScoringEngine,
@@ -32,7 +33,6 @@ from app.utils.market_index import get_index_symbols
 
 START_DATE = "2023-01-01"
 END_DATE = "2025-12-31"
-TRANSACTION_COST_PCT = 0.0015
 MAX_HOLD_CANDLES = 20
 
 INDICATORS = {
@@ -61,7 +61,10 @@ def _backtest_symbol_for_indicator(df_1d: pd.DataFrame, score_column: str) -> di
     indicator_engine = IndicatorEngine()
     scoring_engine = ScoringEngine()
     signal_generator = SignalGenerator()
-    simulator = TradeSimulator(max_hold_candles=MAX_HOLD_CANDLES, transaction_cost_pct=TRANSACTION_COST_PCT)
+    simulator = TradeSimulator(
+        max_hold_candles=MAX_HOLD_CANDLES,
+        transaction_cost_pct=DEFAULT_TRANSACTION_COST_PCT,
+    )
     metrics_calc = MetricsCalculator()
 
     scored = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1d))
@@ -162,7 +165,7 @@ def run_single_indicator_backtests(
             "start_date": start_date,
             "end_date": end_date,
             "max_hold_candles": MAX_HOLD_CANDLES,
-            "transaction_cost_pct": TRANSACTION_COST_PCT,
+            "transaction_cost_pct": DEFAULT_TRANSACTION_COST_PCT,
             "generated_at": datetime.now().isoformat(),
             "symbols_tested": len(symbols),
             "symbols_succeeded": len(per_symbol),

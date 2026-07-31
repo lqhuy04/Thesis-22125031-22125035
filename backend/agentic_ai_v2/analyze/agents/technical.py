@@ -1,13 +1,17 @@
 """Technical-data preparation node for the v2 analysis graph."""
 
 import logging
-import math
 from datetime import date
 from typing import Any
 
 import pandas as pd
 
 from agentic_ai_v2.analyze.state import AgentState
+from agentic_ai_v2.analyze.technical_scoring import (
+    TECHNICAL_INDICATORS,
+    score_indicators,
+    to_finite_float,
+)
 from app.services.market_service import MarketService
 from app.services.technical_indicators_service import TechnicalIndicatorsService
 
@@ -18,7 +22,6 @@ _INTERVAL_SOURCE_TABLE = {
     "1d": "Stock_Price_1d",
     "1w": "Stock_Price_1d",
 }
-_TECHNICAL_INDICATORS = {"ma", "boll", "rsi", "macd", "kdj"}
 _PRICE_COLUMNS = ["open", "high", "low", "close", "volume"]
 
 
@@ -35,24 +38,14 @@ def _parse_plan_date(value: Any, field_name: str) -> date:
 
 def _selected_indicators(state: AgentState) -> set[str]:
     if state.get("mode") == "auto":
-        return set(_TECHNICAL_INDICATORS)
+        return set(TECHNICAL_INDICATORS)
 
     selection = (state.get("data_selection") or {}).get("technical") or {}
     return {
         indicator
-        for indicator in _TECHNICAL_INDICATORS
+        for indicator in TECHNICAL_INDICATORS
         if selection.get(indicator) is True
     }
-
-
-def _to_float(value: Any) -> float | None:
-    if value is None:
-        return None
-    try:
-        parsed = float(value)
-    except (TypeError, ValueError):
-        return None
-    return parsed if math.isfinite(parsed) else None
 
 
 def _fetch_current_price(symbol: str) -> float | None:
@@ -62,7 +55,7 @@ def _fetch_current_price(symbol: str) -> float | None:
     stored unit can differ from Current_Stock_Price.
     """
     price_data = MarketService.get_current_stock_price(symbol)
-    current_price_vnd = _to_float(price_data.get("CurrentPrice"))
+    current_price_vnd = to_finite_float(price_data.get("CurrentPrice"))
     if current_price_vnd is None or current_price_vnd <= 0:
         return None
     return current_price_vnd
@@ -113,156 +106,6 @@ def _attach_indicators(frame: pd.DataFrame) -> pd.DataFrame:
     return output
 
 
-def _score_rsi(current: pd.Series, previous: pd.Series) -> tuple[int, str]:
-    value = _to_float(current.get("rsi_14"))
-    previous_value = _to_float(previous.get("rsi_14"))
-    if value is None or previous_value is None:
-        return 0, "Không đủ dữ liệu RSI."
-    if previous_value < 50 <= value:
-        return 1, f"RSI vượt 50 từ dưới lên ({previous_value:.2f} → {value:.2f})."
-    if 50 <= value <= 70 and value > previous_value:
-        return 1, f"RSI trong vùng động lượng tăng và đang đi lên ({value:.2f})."
-    if value < 35 and value > previous_value:
-        return 1, f"RSI hồi phục từ vùng quá bán ({previous_value:.2f} → {value:.2f})."
-    if value >= 70:
-        return 0, f"RSI ở vùng quá mua ({value:.2f})."
-    return 0, f"RSI chưa xác nhận động lượng tăng ({value:.2f})."
-
-
-def _score_ma(current: pd.Series, previous: pd.Series) -> tuple[int, str]:
-    sma20 = _to_float(current.get("sma_20"))
-    sma50 = _to_float(current.get("sma_50"))
-    previous_sma20 = _to_float(previous.get("sma_20"))
-    previous_sma50 = _to_float(previous.get("sma_50"))
-    close = _to_float(current.get("close"))
-
-    if None in (sma20, sma50, previous_sma20, previous_sma50, close):
-        return 0, "Không đủ dữ liệu MA."
-    if previous_sma20 < previous_sma50 and sma20 >= sma50:
-        return 1, "SMA20 vừa cắt lên SMA50 (Golden Cross)."
-    if (
-        sma20 > sma50
-        and sma20 - sma50 > previous_sma20 - previous_sma50
-    ):
-        return 1, "SMA20 trên SMA50 và khoảng cách đang mở rộng."
-    if close > sma20 > sma50:
-        return 1, "Giá trên SMA20 và SMA20 trên SMA50."
-    if sma20 < sma50:
-        return 0, "SMA20 dưới SMA50, xu hướng trung hạn còn yếu."
-    return 0, "MA chưa có tín hiệu tăng rõ ràng."
-
-
-def _score_boll(current: pd.Series, previous: pd.Series) -> tuple[int, str]:
-    close = _to_float(current.get("close"))
-    previous_close = _to_float(previous.get("close"))
-    upper = _to_float(current.get("bb_upper"))
-    middle = _to_float(current.get("bb_middle"))
-    lower = _to_float(current.get("bb_lower"))
-    previous_middle = _to_float(previous.get("bb_middle"))
-
-    if None in (
-        close,
-        previous_close,
-        upper,
-        middle,
-        lower,
-        previous_middle,
-    ):
-        return 0, "Không đủ dữ liệu Bollinger Bands."
-    if previous_close < previous_middle and close >= middle:
-        return 1, "Giá vừa vượt lên trên đường giữa Bollinger."
-    if close > middle and close - middle > previous_close - previous_middle:
-        return 1, "Giá trên đường giữa Bollinger và động lượng đang mở rộng."
-    if close <= lower and close > previous_close:
-        return 1, "Giá đang hồi phục tại vùng biên dưới Bollinger."
-    if close > upper:
-        return 0, "Giá vượt biên trên Bollinger, rủi ro quá mua."
-    return 0, "Bollinger Bands chưa có tín hiệu tăng rõ ràng."
-
-
-def _score_macd(current: pd.Series, previous: pd.Series) -> tuple[int, str]:
-    macd = _to_float(current.get("macd"))
-    signal = _to_float(current.get("macd_signal"))
-    histogram = _to_float(current.get("macd_histogram"))
-    previous_macd = _to_float(previous.get("macd"))
-    previous_signal = _to_float(previous.get("macd_signal"))
-    previous_histogram = _to_float(previous.get("macd_histogram"))
-
-    if None in (
-        macd,
-        signal,
-        histogram,
-        previous_macd,
-        previous_signal,
-        previous_histogram,
-    ):
-        return 0, "Không đủ dữ liệu MACD."
-    if previous_macd < previous_signal and macd >= signal:
-        return 1, "MACD vừa cắt lên Signal."
-    if macd > signal and histogram > previous_histogram:
-        return 1, "MACD trên Signal và histogram đang mở rộng."
-    if previous_histogram < 0 <= histogram:
-        return 1, "MACD histogram vừa chuyển sang dương."
-    if macd < signal:
-        return 0, "MACD dưới Signal."
-    return 0, "MACD chưa có tín hiệu tăng rõ ràng."
-
-
-def _score_kdj(current: pd.Series, previous: pd.Series) -> tuple[int, str]:
-    k = _to_float(current.get("kdj_k"))
-    d = _to_float(current.get("kdj_d"))
-    j = _to_float(current.get("kdj_j"))
-    previous_k = _to_float(previous.get("kdj_k"))
-    previous_d = _to_float(previous.get("kdj_d"))
-    previous_j = _to_float(previous.get("kdj_j"))
-
-    if None in (k, d, j, previous_k, previous_d, previous_j):
-        return 0, "Không đủ dữ liệu KDJ."
-    if k > 80:
-        return 0, "KDJ ở vùng quá mua."
-    if k < 20 and k > previous_k:
-        return 1, "K hồi phục từ vùng quá bán."
-    if previous_k < previous_d and k >= d:
-        return 1, "K vừa cắt lên D."
-    if k > d and j > previous_j:
-        return 1, "K trên D và J đang tăng."
-    return 0, "KDJ chưa có tín hiệu tăng rõ ràng."
-
-
-def _indicator_result(
-    name: str,
-    current: pd.Series,
-    previous: pd.Series,
-) -> dict:
-    scorers = {
-        "rsi": _score_rsi,
-        "ma": _score_ma,
-        "boll": _score_boll,
-        "macd": _score_macd,
-        "kdj": _score_kdj,
-    }
-    value_fields = {
-        "rsi": ("rsi_14",),
-        "ma": ("sma_20", "sma_50"),
-        "boll": ("bb_upper", "bb_middle", "bb_lower"),
-        "macd": ("macd", "macd_signal", "macd_histogram"),
-        "kdj": ("kdj_k", "kdj_d", "kdj_j"),
-    }
-    score, reason = scorers[name](current, previous)
-
-    return {
-        "value": {
-            field: {
-                "current": _to_float(current.get(field)),
-                "previous": _to_float(previous.get(field)),
-            }
-            for field in value_fields[name]
-        },
-        "score": score,
-        "reason": reason,
-    }
-
-
 def _format_output(
     symbol: str,
     interval: str,
@@ -289,11 +132,11 @@ def _format_output(
 
     current = frame.iloc[current_position]
     previous = frame.iloc[current_position - 1]
-    indicator_results = {
-        name: _indicator_result(name, current, previous)
-        for name in ("ma", "boll", "rsi", "macd", "kdj")
-        if name in selected_indicators
-    }
+    indicator_results = score_indicators(
+        current,
+        previous,
+        selected_indicators,
+    )
     total_score = sum(
         result["score"] for result in indicator_results.values()
     )
@@ -316,7 +159,7 @@ def _format_output(
             "value": (
                 current_price
                 if current_price is not None
-                else _to_float(current.get("close"))
+                else to_finite_float(current.get("close"))
             ),
             "time": (
                 None

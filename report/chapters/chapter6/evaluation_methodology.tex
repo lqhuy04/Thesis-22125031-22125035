@@ -7,22 +7,22 @@ Three evaluation questions guide the chapter:
 
 \begin{enumerate}
     \item \textbf{EQ1: Comparative performance.} How does the complete agentic AI pipeline compare with the engine-only technical strategy, passive buy-and-hold exposure, and random entry timing?
-    \item \textbf{EQ2: Robustness and calibration.} Are results consistent across VN30 securities, technical indicators, confidence tiers, rolling windows, and market regimes?
+    \item \textbf{EQ2: Robustness and calibration.} Are results consistent across VN30 securities, technical indicators, confidence tiers, and market regimes?
     \item \textbf{EQ3: Statistical and practical validity.} Are observed returns statistically distinguishable from simple alternatives, and which data or simulation limitations constrain interpretation?
 \end{enumerate}
 
 \subsection{Evidence Sources}
 \label{subsec:evaluation-evidence-sources}
 
-The primary evidence consists of JSON artifacts produced by the backtesting framework described in Section~\ref{sec:backtesting-framework}. The complete-pipeline artifact contains 30 securities with pipeline and engine-only metrics, buy-and-hold and random comparisons, statistical tests, confidence summaries, regime results, and rolling walk-forward windows. Five additional artifacts contain engine-only ablations for RSI, MACD, KDJ, Bollinger Bands, and moving-average conditions over the explicitly recorded period from January~1, 2023 to December~31, 2025.
+The primary evidence consists of JSON artifacts produced by the backtesting framework described in Section~\ref{sec:backtesting-framework}. The complete-pipeline artifact contains 30 securities with pipeline and engine-only metrics, buy-and-hold and random comparisons, statistical tests, confidence summaries, and regime results. Five additional artifacts contain engine-only ablations for RSI, MACD, KDJ, Bollinger Bands, and moving-average conditions over the explicitly recorded period from January~1, 2023 to December~31, 2025.
 
-Source inspection is used only to establish how the artifacts were produced: technical threshold crossings generate candidate dates; approval by the agentic AI pipeline filters candidates; execution begins at the next open; stop loss is checked before take profit within a daily candle; and 0.15\% transaction cost is deducted on each side. This inspection is necessary because an evaluation is meaningful only when the execution assumptions behind its metrics are stated clearly.
+Source inspection is used only to establish how the artifacts were produced: every date meeting the fixed technical threshold becomes a candidate; approval by the agentic AI pipeline filters candidates; execution begins at the next open; stop loss is checked before take profit within a daily candle; and 0.15\% transaction cost is deducted on each side. This inspection is necessary because an evaluation is meaningful only when the execution assumptions behind its metrics are stated clearly.
 
 \subsection{Measures and Comparisons}
 \label{subsec:evaluation-measures-comparisons}
 
 Performance is summarized by trade count, win rate, total return, maximum drawdown, and the implemented trade-level Sharpe statistic. Cross-sectional means and medians are reported separately because a small number of securities contain sparse or extreme values. The full pipeline is compared with the same technical engine before language-model filtering, which isolates the incremental effect of article, fundamental, aggregation, confidence, and veto stages.
 
-Buy-and-hold provides a passive same-security reference. The random-entry benchmark places pipeline return within 1,000 simulations using randomly selected entry dates and the same requested trade count. One-sample $t$-tests and sign-permutation tests examine whether per-trade outcomes differ from zero. Confidence groups, VN-Index regimes, and walk-forward windows provide robustness views. Single-indicator ablations show whether results depend disproportionately on one technical perspective.
+Buy-and-hold provides a passive same-security reference. The random-entry benchmark places pipeline return within 1,000 simulations using randomly selected entry dates and the same requested trade count. One-sample $t$-tests and sign-permutation tests examine whether per-trade outcomes differ from zero. Confidence groups and VN-Index regimes provide robustness views. Single-indicator ablations show whether results depend disproportionately on one technical perspective.
 
 Repeated historical comparisons can produce backtest overfitting \cite{bailey2017pbo}. Accordingly, this chapter reports unfavorable and non-significant results, distinguishes descriptive metrics from statistical evidence, and treats limitations in point-in-time data, universe construction, execution, and experiment metadata as part of the findings rather than as implementation details to omit.

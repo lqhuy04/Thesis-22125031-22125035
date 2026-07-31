@@ -171,7 +171,7 @@ where $m$ is the number of selected perspectives. A candidate positive technical
 
 Equation~\ref{eq:technical-score}, its binary point assignment, and the 60\% qualification threshold are author-defined Stockrium rules. They combine conventional indicators into an inspectable prototype score; they are not a published forecasting model or an empirically calibrated probability.
 
-The formulas above describe the service used for current application analysis and chart data, implemented with NumPy and pandas. The historical backtesting engine presently uses the same indicator periods and scoring concepts but different numerical conventions for EMA/RSI initialization, Bollinger standard deviation, and KDJ smoothing. Exact live and backtest values can therefore differ near a threshold; the implementations must be standardized before strict indicator-parity claims are made. The available indicator set and conventional function families are also documented by TA-Lib \cite{talibFunctions2026}, but the active Stockrium service does not depend on the TA-Lib package.
+The formulas above describe the NumPy- and pandas-based service used for current application analysis, chart data, and historical backtesting. Both production analysis and backtesting call this indicator service and the same deterministic scoring module, so their indicator conventions and binary scoring rules are maintained in one place. The available indicator set and conventional function families are also documented by TA-Lib \cite{talibFunctions2026}, but the active Stockrium service does not depend on the TA-Lib package.
 
 \subsection{Fundamental Analysis}
 \label{subsec:fundamental-analysis-foundations}

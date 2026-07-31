@@ -37,13 +37,12 @@ def build_symbol_stats(
     full_metrics: dict[str, Any],
     engine_metrics: dict[str, Any],
     benchmarks: dict[str, Any],
-    walk_forward: dict[str, Any],
     regime: dict[str, Any],
     confidence: dict[str, Any],
     stats: dict[str, Any],
     full_trades: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Rút gọn output của run_full_backtest thành thống kê 6 nhóm cho 1 mã."""
+    """Rút gọn output của run_full_backtest thành thống kê cho một mã."""
 
     vol = full_metrics.get("volume", {})
     pnl = full_metrics.get("pnl", {})
@@ -131,27 +130,7 @@ def build_symbol_stats(
         },
     }
 
-    # 4. Walk-forward
-    wf_summary = walk_forward.get("summary", {})
-    wf_windows = []
-    for window in walk_forward.get("windows", []):
-        w_metrics = window.get("metrics", {})
-        wf_windows.append({
-            "window_start": window.get("window_start"),
-            "window_end": window.get("window_end"),
-            "total_return": _f(w_metrics.get("pnl", {}).get("total_return")),
-            "sharpe_ratio": _f(w_metrics.get("risk", {}).get("sharpe_ratio")),
-            "n_trades": int(w_metrics.get("volume", {}).get("n_trades", 0)),
-        })
-    walk_forward_summary = {
-        "n_windows": int(wf_summary.get("n_windows", 0)),
-        "avg_sharpe": _f(wf_summary.get("avg_sharpe")),
-        "std_sharpe": _f(wf_summary.get("std_sharpe")),
-        "consistent_wins": _f(wf_summary.get("consistent_wins")),
-        "windows": wf_windows,
-    }
-
-    # 5. Regime analysis
+    # 4. Regime analysis
     regime_metrics = regime.get("regime_metrics", {})
     regime_out: dict[str, Any] = {}
     for name in ["uptrend", "downtrend", "sideway"]:
@@ -162,7 +141,7 @@ def build_symbol_stats(
             "n_trades": int(m.get("n_trades", 0)),
         }
 
-    # 6. Confidence calibration
+    # 5. Confidence calibration
     conf_summary = confidence.get("confidence_summary", {})
     confidence_out: dict[str, Any] = {}
     for tier in ["high", "medium", "low"]:
@@ -178,7 +157,6 @@ def build_symbol_stats(
         "baseline_engine_performance": baseline_engine_performance,
         "benchmark": benchmark,
         "statistical_tests": statistical_tests,
-        "walk_forward": walk_forward_summary,
         "regime": regime_out,
         "confidence_calibration": confidence_out,
     }
@@ -260,6 +238,11 @@ def update_vn30_stats_file(
                 report = loaded
         except (json.JSONDecodeError, OSError):
             report = {"symbols": {}}
+
+    # Remove the retired walk-forward section from legacy aggregate files.
+    for existing_entry in report["symbols"].values():
+        if isinstance(existing_entry, dict):
+            existing_entry.pop("walk_forward", None)
 
     now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
     symbol_entry = dict(symbol_stats)

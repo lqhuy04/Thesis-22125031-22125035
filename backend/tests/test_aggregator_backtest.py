@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pandas as pd
 
+from app.backtest.engine import SignalGenerator
 from app.backtest.pipeline import BacktestPipeline
 
 
@@ -104,11 +105,18 @@ class V2BacktestPipelineTests(unittest.TestCase):
         result = self.pipeline.run_pipeline_at(
             "2023-05-04",
             interval="1d",
-            lookback_days=252,
         )
 
         state = technical.call_args.args[0]
         self.assertFalse(state["plan"]["technical"]["use_current_price"])
+        self.assertEqual(
+            state["plan"]["technical"]["from_date"],
+            "2022-05-04",
+        )
+        self.assertEqual(
+            state["plan"]["article"]["from_date"],
+            "2023-02-03",
+        )
         self.assertEqual(
             state["plan"]["fundamental"]["as_of_date"],
             "2023-05-04",
@@ -208,7 +216,6 @@ class V2BacktestPipelineTests(unittest.TestCase):
         result = pipeline.run_pipeline_at(
             "2023-05-04",
             interval="1d",
-            lookback_days=252,
         )
 
         article.assert_not_called()
@@ -237,20 +244,52 @@ class V2BacktestPipelineTests(unittest.TestCase):
         frame = pd.DataFrame(
             {
                 "datetime": pd.to_datetime(
-                    ["2023-05-03", "2023-05-04"]
+                    ["2023-05-03", "2023-05-04", "2023-05-05"]
                 ),
-                "rsi_score": [0, 1],
-                "total_score": [0.0, 1.0],
+                "rsi_score": [0, 1, 1],
+                "total_score": [0.0, 1.0, 1.0],
             }
         )
 
         selected = pipeline.apply_technical_selection(frame)
 
-        self.assertEqual(selected["total_score"].tolist(), [0.0, 5.0])
+        self.assertEqual(selected["total_score"].tolist(), [0.0, 5.0, 5.0])
         self.assertEqual(
-            pipeline.filter_signal_dates(frame, min_score=3),
+            pipeline.filter_signal_dates(frame),
             ["2023-05-04"],
         )
+
+    def test_all_five_indicators_use_fixed_sixty_percent_threshold(self):
+        frame = pd.DataFrame(
+            {
+                "datetime": pd.to_datetime(
+                    [
+                        "2023-05-03",
+                        "2023-05-04",
+                        "2023-05-05",
+                        "2023-05-06",
+                    ]
+                ),
+                "ma_score": [0, 1, 1, 0],
+                "boll_score": [1, 1, 1, 0],
+                "rsi_score": [1, 1, 1, 0],
+                "macd_score": [0, 0, 1, 0],
+                "kdj_score": [0, 0, 0, 0],
+                "total_score": [2.0, 3.0, 4.0, 0.0],
+                "open": [20.0, 21.0, 22.0, 23.0],
+            }
+        )
+
+        self.assertEqual(
+            self.pipeline.filter_signal_dates(frame),
+            ["2023-05-04", "2023-05-05"],
+        )
+
+        signaled = SignalGenerator().generate_signals(frame, min_score=3.0)
+        self.assertTrue(pd.isna(signaled.iloc[0]["signal"]))
+        self.assertEqual(signaled.iloc[1]["signal"], "BUY")
+        self.assertEqual(signaled.iloc[2]["signal"], "BUY")
+        self.assertTrue(pd.isna(signaled.iloc[3]["signal"]))
 
 
 if __name__ == "__main__":

@@ -33,10 +33,13 @@ def _today_in_vietnam() -> date:
     return datetime.now(_VIETNAM_TIMEZONE).date()
 
 
-def _build_plan(period: InvestmentPeriod, today: date | None = None) -> dict:
-    """Build technical and article date ranges from the investment horizon."""
+def build_analysis_plan(
+    period: InvestmentPeriod,
+    as_of_date: date | None = None,
+) -> dict:
+    """Build source date ranges for an investment horizon and analysis date."""
     rule = _PERIOD_RULES[period]
-    to_date = today or _today_in_vietnam()
+    to_date = as_of_date or _today_in_vietnam()
 
     technical_from_date = to_date - timedelta(
         days=rule["technical_lookback_days"]
@@ -62,4 +65,4 @@ def orchestrator_agent(state: AgentState) -> dict:
     """Create the analysis plan from risk_appetite.period."""
     period = state["risk_appetite"]["period"]
 
-    return {"plan": _build_plan(period)}
+    return {"plan": build_analysis_plan(period)}

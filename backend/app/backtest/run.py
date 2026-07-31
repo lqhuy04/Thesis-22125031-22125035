@@ -8,34 +8,17 @@ import pandas as pd
 
 logger = logging.getLogger(__name__)
 
-from agentic_ai_v2.analyze.agents.technical import technical_agent
-from agentic_ai_v2.analyze.state import AgentState
-
-from .engine import IndicatorEngine, ScoringEngine, SignalGenerator, TradeSimulator, MetricsCalculator
-from .pipeline import BacktestPipeline
-from .experiments import walk_forward, run_benchmarks, regime_analysis, confidence_calibration
+from .engine import (
+    DEFAULT_TRANSACTION_COST_PCT,
+    IndicatorEngine,
+    MetricsCalculator,
+    ScoringEngine,
+    SignalGenerator,
+    TradeSimulator,
+)
+from .pipeline import BacktestPipeline, TECHNICAL_SIGNAL_SCORE
+from .experiments import run_benchmarks, regime_analysis, confidence_calibration
 from .stats import ttest_returns, permutation_test, confidence_vs_outcome_test
-from .validate import run_parity_suite
-
-
-def _build_state(symbol: str, from_date: str, to_date: str) -> AgentState:
-    return {
-        "mode": "auto",
-        "user_input": "Backtest parity check",
-        "risk_appetite": {"period": "mid_term"},
-        "symbol": symbol,
-        "plan": {
-            "technical": {
-                "interval": "1d",
-                "from_date": from_date,
-                "to_date": to_date,
-                "use_current_price": False,
-            }
-        },
-        "agent_results": {},
-        "final_output": None,
-        "error": None,
-    }
 
 
 def run_full_backtest(
@@ -44,9 +27,8 @@ def run_full_backtest(
     market_df: pd.DataFrame,
     symbol: str,
     max_hold_candles: int = 20,
-    min_signal_score: int = 3,
     exit_on_score_drop: bool = False,
-    transaction_cost_pct: float = 0.0015,
+    transaction_cost_pct: float = DEFAULT_TRANSACTION_COST_PCT,
     mode: str = "auto",
     data_selection: dict | None = None,
     evaluation_start_date: str | None = None,
@@ -61,26 +43,10 @@ def run_full_backtest(
     }
 
     if len(df_1d) <= 50:
-        raise ValueError("Insufficient data: need more than 50 candles for parity check")
-
-    scored_1d_for_parity = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1d))
-
-    sample_count = min(10, len(df_1d) - 50)
-    sample_indices = np.linspace(50, len(df_1d) - 1, num=sample_count, dtype=int)
-    parity_start = pd.to_datetime(df_1d["datetime"].min()).strftime("%Y-%m-%d")
-    live_outputs: list[dict[str, Any]] = []
-    for idx in sample_indices:
-        date_str = pd.to_datetime(df_1d.iloc[idx]["datetime"]).strftime("%Y-%m-%d")
-        state = _build_state(symbol, parity_start, date_str)
-        output = technical_agent(state)
-        live_outputs.append({
-            "candle_index": idx,
-            "live_output": output.get("agent_results", {}).get("technical_agent", {}),
-        })
-
-    parity_report = run_parity_suite(live_outputs, scored_1d_for_parity)
-    if parity_report["pass_rate"] < 1.0:
-        raise ValueError("Parity check failed: scoring parity < 100%")
+        raise ValueError(
+            "Insufficient data: need more than 50 candles "
+            "for technical indicators"
+        )
 
     scored_1d = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1d))
 
@@ -95,10 +61,13 @@ def run_full_backtest(
                 "No daily candles remain in the requested backtest period"
             )
     scored_1d = pipeline.apply_technical_selection(scored_1d)
-    signal_dates_1d = pipeline.filter_signal_dates(scored_1d, min_score=min_signal_score)
+    signal_dates_1d = pipeline.filter_signal_dates(scored_1d)
 
     print(f"Goi LLM cho {len(signal_dates_1d)} signal dates tren 1d...")
-    pipeline_results = pipeline.run_pipeline_batch(signal_dates_1d, interval="1d", lookback_days=252)
+    pipeline_results = pipeline.run_pipeline_batch(
+        signal_dates_1d,
+        interval="1d",
+    )
 
     approved_dates = {
         result.get("date")
@@ -110,7 +79,10 @@ def run_full_backtest(
     stop_loss_map = {result.get("date"): result.get("stop_loss_price") for result in pipeline_results}
     max_hold_map = {result.get("date"): result.get("max_hold_candles") for result in pipeline_results}
 
-    signaled_full = signal_generator.generate_signals(scored_1d, min_score=min_signal_score)
+    signaled_full = signal_generator.generate_signals(
+        scored_1d,
+        min_score=TECHNICAL_SIGNAL_SCORE,
+    )
     date_labels = pd.to_datetime(signaled_full["datetime"]).dt.strftime("%Y-%m-%d")
     allowed_mask = (signaled_full["signal"] == "BUY") & date_labels.isin(approved_dates)
     signaled_full.loc[:, "signal"] = None
@@ -123,20 +95,16 @@ def run_full_backtest(
     simulator = TradeSimulator(**trade_config)
     full_trades = simulator.run(signaled_full)
 
-    signaled_engine = signal_generator.generate_signals(scored_1d, min_score=min_signal_score)
+    signaled_engine = signal_generator.generate_signals(
+        scored_1d,
+        min_score=TECHNICAL_SIGNAL_SCORE,
+    )
     engine_trades = simulator.run(signaled_engine)
 
     metrics_calc = MetricsCalculator()
     full_metrics = metrics_calc.calculate(full_trades)
     engine_metrics = metrics_calc.calculate(engine_trades)
 
-    walk_forward_results = walk_forward(
-        scored_1d,
-        pipeline,
-        interval="1d",
-        min_score=min_signal_score,
-        **trade_config,
-    )
     benchmark_results = run_benchmarks(scored_1d, full_trades, engine_trades, transaction_cost_pct=transaction_cost_pct)
     regime_results = regime_analysis(scored_1d, market_df, pipeline_results, full_trades)
     confidence_results = confidence_calibration(pipeline_results, full_trades)
@@ -202,16 +170,6 @@ def run_full_backtest(
     print(
         f"ANOVA p-value:         {stats_results['confidence_vs_outcome']['p_value']:.3f} "
         f"(significant: {'yes' if stats_results['confidence_vs_outcome']['significant'] else 'no'})"
-    )
-
-    print("\n[WALK-FORWARD — 1D]")
-    print(f"Windows tested:        {walk_forward_results['summary']['n_windows']}")
-    print(
-        f"Consistent wins:       {_pct(walk_forward_results['summary']['consistent_wins'])}"
-    )
-    print(
-        f"Avg Sharpe:            {walk_forward_results['summary']['avg_sharpe']:.2f} "
-        f"± {walk_forward_results['summary']['std_sharpe']:.2f}"
     )
 
     print("\n[REGIME ANALYSIS]")
@@ -283,7 +241,6 @@ def run_full_backtest(
             full_metrics=full_metrics,
             engine_metrics=engine_metrics,
             benchmarks=benchmark_results,
-            walk_forward=walk_forward_results,
             regime=regime_results,
             confidence=confidence_results,
             stats=stats_results,
@@ -296,13 +253,11 @@ def run_full_backtest(
         print(f"Failed to update VN30 aggregate stats: {e}")
 
     result = {
-        "parity_report": parity_report,
         "pipeline_results": pipeline_results,
         "full_trades": full_trades,
         "engine_trades": engine_trades,
         "full_metrics": full_metrics,
         "engine_metrics": engine_metrics,
-        "walk_forward": walk_forward_results,
         "benchmarks": benchmark_results,
         "regime": regime_results,
         "confidence": confidence_results,

@@ -26,9 +26,7 @@ const els = {
   startDate: document.getElementById("startDate"),
   endDate: document.getElementById("endDate"),
   marketSymbol: document.getElementById("marketSymbol"),
-  minSignalScore: document.getElementById("minSignalScore"),
   maxHoldCandles: document.getElementById("maxHoldCandles"),
-  transCost: document.getElementById("transCost"),
   exitOnScoreDrop: document.getElementById("exitOnScoreDrop"),
   runBacktestBtn: document.getElementById("runBacktestBtn"),
 
@@ -592,9 +590,7 @@ function getBacktestParams(symbolOverride = null) {
     start_date: els.startDate.value || null,
     end_date: els.endDate.value || null,
     market_symbol: els.marketSymbol.value.trim().toUpperCase() || "VNINDEX",
-    min_signal_score: parseInt(els.minSignalScore.value) || 3,
     max_hold_candles: parseInt(els.maxHoldCandles.value) || 20,
-    transaction_cost_pct: parseFloat(els.transCost.value) || 0.0015,
     exit_on_score_drop: els.exitOnScoreDrop.checked,
     mode,
   };

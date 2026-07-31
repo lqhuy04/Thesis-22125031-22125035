@@ -4,116 +4,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .engine import ScoringEngine, SignalGenerator, TradeSimulator, MetricsCalculator
-from .pipeline import BacktestPipeline
+from .engine import DEFAULT_TRANSACTION_COST_PCT, TradeSimulator
 from .stats import confidence_tier
-
-
-def _resolve_walk_forward_params(
-    n: int,
-    interval: str,
-    train_window: int | None,
-    test_window: int | None,
-    step: int | None,
-) -> tuple[int, int, int]:
-    """Pick walk-forward window sizes, shrinking to fit limited data.
-
-    Explicit values are respected. Otherwise interval-aware defaults are used
-    when there's enough history; when the series is shorter than one full
-    (train + test) span — common for the limited per-symbol backtest windows —
-    the auto-chosen sizes scale down (~50% train / 15% test / step = test of the
-    series) so a few windows still fit instead of producing zero.
-    """
-    defaults = {
-        "1d": (252, 63, 21),
-        "1h": (180, 45, 15),
-        "1m": (240, 60, 20),
-    }
-    base_train, base_test, base_step = defaults.get(interval, (252, 63, 21))
-
-    train = base_train if train_window is None else train_window
-    test = base_test if test_window is None else test_window
-    stp = base_step if step is None else step
-
-    # Only shrink the windows we were left to choose (don't override explicit args).
-    if train + test > n and (train_window is None or test_window is None):
-        if train_window is None:
-            train = max(int(n * 0.5), 20)
-        if test_window is None:
-            test = max(int(n * 0.15), 5)
-        if step is None:
-            stp = max(test, 1)
-        # Guarantee at least one window if the scaled train is still too long.
-        if train + test > n and train_window is None:
-            train = max(n - test - 1, 10)
-    return train, test, stp
-
-
-def walk_forward(
-    df: pd.DataFrame,
-    pipeline: BacktestPipeline,
-    interval: str = "1d",
-    train_window: int | None = None,
-    test_window: int | None = None,
-    step: int | None = None,
-    min_score: int = 3,
-    **trade_config: Any,
-) -> dict[str, Any]:
-    train_window, test_window, step = _resolve_walk_forward_params(
-        len(df), interval, train_window, test_window, step
-    )
-
-    windows: list[dict[str, Any]] = []
-    scorer = ScoringEngine()
-    signal_gen = SignalGenerator()
-    simulator = TradeSimulator(**trade_config)
-    metrics_calc = MetricsCalculator()
-
-    start = train_window
-    while start + test_window <= len(df):
-        test_df = df.iloc[start : start + test_window].copy()
-        scored = pipeline.apply_technical_selection(
-            scorer.score_dataframe(test_df)
-        )
-        signaled = signal_gen.generate_signals(scored, min_score=min_score)
-
-        signal_dates = pipeline.filter_signal_dates(signaled, min_score=min_score)
-        pipeline_results = pipeline.run_pipeline_batch(signal_dates, interval=interval, lookback_days=train_window)
-        approved_dates = {
-            result.get("date")
-            for result in pipeline_results
-            if result.get("buy") is True
-        }
-
-        date_labels = pd.to_datetime(signaled["datetime"]).dt.strftime("%Y-%m-%d")
-        signal_mask = (signaled["signal"] == "BUY") & date_labels.isin(approved_dates)
-        signaled.loc[:, "signal"] = None
-        signaled.loc[signal_mask, "signal"] = "BUY"
-
-        trades = simulator.run(signaled)
-        metrics = metrics_calc.calculate(trades)
-
-        window_info = {
-            "window_start": str(pd.to_datetime(test_df.iloc[0]["datetime"])),
-            "window_end": str(pd.to_datetime(test_df.iloc[-1]["datetime"])),
-            "metrics": metrics,
-        }
-        windows.append(window_info)
-
-        start += step
-
-    sharpe_values = [w["metrics"]["risk"]["sharpe_ratio"] for w in windows] if windows else []
-    total_returns = [w["metrics"]["pnl"]["total_return"] for w in windows] if windows else []
-    consistent_wins = float(np.mean([ret > 0 for ret in total_returns])) if total_returns else 0.0
-
-    summary = {
-        "n_windows": len(windows),
-        "consistent_wins": consistent_wins,
-        "avg_sharpe": float(np.mean(sharpe_values)) if sharpe_values else 0.0,
-        "std_sharpe": float(np.std(sharpe_values, ddof=1)) if len(sharpe_values) > 1 else 0.0,
-    }
-
-    return {"windows": windows, "summary": summary}
 
 
 def run_benchmarks(
@@ -121,7 +13,7 @@ def run_benchmarks(
     pipeline_trades: list[dict[str, Any]],
     engine_trades: list[dict[str, Any]],
     n_random: int = 1000,
-    transaction_cost_pct: float = 0.0015,
+    transaction_cost_pct: float = DEFAULT_TRANSACTION_COST_PCT,
 ) -> dict[str, Any]:
     pipeline_entries = {t["entry_date"] for t in pipeline_trades}
     engine_entries = {t["entry_date"] for t in engine_trades}
