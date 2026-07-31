@@ -4,10 +4,9 @@ Dashboard web nhỏ gọn để quản trị viên thao tác với API backend.
 
 ## Tính năng
 
-- Tải danh sách mã cổ phiếu từ `GET /api/all-symbol`.
-- Cập nhật giá và tin tức.
-- Chạy backtest pipeline và phân tích AI dành riêng cho admin.
-- Xem kết quả JSON, lịch sử thao tác và biểu đồ.
+- Chạy backtest pipeline cho một mã hoặc rổ VN30 lấy động từ backend.
+- Phân tích AI cho một mã, VN30 hoặc VN100.
+- Xem kết quả JSON, lịch sử backtest và biểu đồ.
 
 ## Đăng nhập admin
 

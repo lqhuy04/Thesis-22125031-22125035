@@ -80,15 +80,16 @@ class InputGuardTests(unittest.TestCase):
             },
         )
 
-    def test_backtest_technical_threshold_is_fixed_at_sixty_percent(self):
-        request = BacktestPipelineRequest(symbol="FPT")
-        self.assertEqual(request.min_signal_score, 3)
-
-        for score in (1, 2, 4, 5):
-            with self.subTest(score=score), self.assertRaises(ValidationError):
-                BacktestPipelineRequest(
-                    symbol="FPT",
-                    min_signal_score=score,
+    def test_backtest_legacy_configuration_fields_are_removed(self):
+        for field_name in (
+            "min_signal_score",
+            "one_minute_lookback_days",
+            "use_intraday",
+        ):
+            with self.subTest(field_name=field_name):
+                self.assertNotIn(
+                    field_name,
+                    BacktestPipelineRequest.model_fields,
                 )
 
     def test_backtest_transaction_cost_is_internal_and_defaults_to_1_5_percent(

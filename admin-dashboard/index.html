@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260727-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260731-1" />
     <!-- Lightweight Charts library from TradingView -->
     <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
   </head>
@@ -28,7 +28,7 @@
         <p class="kicker">Stockrium Admin</p>
         <h1>Bảng điều khiển Stockrium</h1>
         <p class="subtitle">
-          Cập nhật giá & tin tức nhanh, chạy backtest pipeline của mô hình AI, và xem trực quan hóa biểu đồ TradingView tương tác từ dữ liệu backtest.
+          Chạy pipeline phân tích AI, backtest dữ liệu lịch sử và xem trực quan hóa biểu đồ TradingView tương tác.
         </p>
       </section>
 
@@ -64,86 +64,13 @@
 
       <!-- Tabs Navigation -->
       <nav class="tabs-nav card fade-in fade-delay-1">
-        <button id="tab-data-btn" class="tab-btn" type="button" style="display: none;">Cập nhật dữ liệu</button>
         <button id="tab-backtest-btn" class="tab-btn active"  type="button">Chạy Backtest & Trực quan hóa</button>
         <button id="tab-analyze-btn" class="tab-btn" type="button">Phân tích AI</button>
         <span id="adminAuthBadge" class="badge" style="margin-left: auto; align-self: center;">Chưa đăng nhập</span>
         <button id="adminLogoutBtn" class="btn btn-ghost" type="button">Đăng xuất</button>
       </nav>
 
-      <!-- Tab 1: Data Update Content -->
-      <div id="data-tab-content" class="tab-content active fade-in fade-delay-2" style="display: none;">
-        <section class="controls card">
-          <div class="field">
-            <label for="baseUrl">API Base URL</label>
-            <input
-              id="baseUrl"
-              type="text"
-              value="https://backend-server-production-1625.up.railway.app"
-            />
-            <p class="hint">Backend production trên Railway.</p>
-          </div>
-
-          <div class="symbol-row">
-            <div class="field field-grow">
-              <label for="symbolSelect">Chọn cổ phiếu</label>
-              <select id="symbolSelect">
-                <option value="">-- Chưa tải danh sách mã --</option>
-              </select>
-            </div>
-            <button id="loadSymbolsBtn" class="btn btn-secondary" type="button">
-              Tải danh sách mã
-            </button>
-          </div>
-
-          <div class="switch-row">
-            <label class="switch">
-              <input id="newsBySymbol" type="checkbox" checked />
-              <span class="slider"></span>
-            </label>
-            <span class="switch-text">Cập nhật tin tức theo mã đã chọn</span>
-          </div>
-
-          <div class="actions">
-            <button id="updatePriceBtn" class="btn btn-primary" type="button">
-              Cập nhật giá mới nhất
-            </button>
-            <button id="updateNewsBtn" class="btn btn-accent" type="button">
-              Cập nhật tin tức
-            </button>
-          </div>
-        </section>
-
-        <section class="result-wrap">
-          <article class="result-card card">
-            <div class="result-header">
-              <h2>Kết quả cập nhật giá</h2>
-              <span id="priceStatus" class="badge">Chưa chạy</span>
-            </div>
-            <pre id="priceResult" class="result">Chưa có dữ liệu.</pre>
-          </article>
-
-          <article class="result-card card">
-            <div class="result-header">
-              <h2>Kết quả cập nhật tin tức</h2>
-              <span id="newsStatus" class="badge">Chưa chạy</span>
-            </div>
-            <pre id="newsResult" class="result">Chưa có dữ liệu.</pre>
-          </article>
-        </section>
-
-        <section class="history card">
-          <div class="result-header">
-            <h2>Nhật ký thao tác</h2>
-            <button id="clearLogBtn" class="btn btn-ghost" type="button">Xóa log</button>
-          </div>
-          <ul id="actionLog" class="log-list">
-            <li>Hệ thống sẵn sàng.</li>
-          </ul>
-        </section>
-      </div>
-
-      <!-- Tab 2: Backtest & Visualizations Content -->
+      <!-- Backtest & Visualizations Content -->
       <div id="backtest-tab-content" class="tab-content fade-in fade-delay-2" style="display: block;">
         <div class="backtest-setup-grid">
           <!-- Backtest Parameters Form -->
@@ -161,7 +88,7 @@
                     <input id="vn30Option" type="checkbox" />
                     <span class="slider"></span>
                   </label>
-                  <span class="switch-text" style="font-weight: 600;">Chạy rổ VN30 (30 mã)</span>
+                  <span class="switch-text" style="font-weight: 600;">Chạy rổ VN30</span>
                 </div>
               </div>
 
@@ -314,7 +241,7 @@
         <section class="vn30-progress-card card" id="vn30ProgressCard" style="display: none; margin-top: 18px;">
           <div class="result-header">
             <h2>Tiến trình chạy VN30</h2>
-            <span id="vn30Status" class="badge running">Đang chạy 0/30</span>
+            <span id="vn30Status" class="badge running">Chưa tải danh sách mã</span>
           </div>
           <div class="progress-bar-container">
             <div class="progress-bar" id="vn30ProgressBar" style="width: 0%;"></div>
@@ -498,8 +425,8 @@
               <label>Phạm vi phân tích</label>
               <div class="seg-control" id="analyzeSourceControl">
                 <button type="button" class="seg-btn active" data-source="single">1 mã</button>
-                <button type="button" class="seg-btn" data-source="VN30">Rổ VN30 (30 mã)</button>
-                <button type="button" class="seg-btn" data-source="VN100">Rổ VN100 (100 mã)</button>
+                <button type="button" class="seg-btn" data-source="VN30">Rổ VN30</button>
+                <button type="button" class="seg-btn" data-source="VN100">Rổ VN100</button>
               </div>
             </div>
 
@@ -634,6 +561,6 @@
       </div>
     </main>
 
-    <script src="./app.js?v=20260729-1"></script>
+    <script src="./app.js?v=20260731-1"></script>
   </body>
 </html>

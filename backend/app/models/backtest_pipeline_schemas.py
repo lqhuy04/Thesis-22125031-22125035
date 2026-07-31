@@ -46,24 +46,7 @@ class BacktestPipelineRequest(BaseModel):
         le=200,
         description="Maximum holding period in candles",
     )
-    min_signal_score: Literal[3] = Field(
-        default=3,
-        description=(
-            "Compatibility field fixed at 3/5, equivalent to the production "
-            "technical threshold of 0.6"
-        ),
-    )
     exit_on_score_drop: bool = Field(
         default=False,
         description="Exit when total_score drops below 3",
-    )
-    one_minute_lookback_days: int = Field(
-        default=30,
-        ge=7,
-        le=120,
-        description="Legacy compatibility field; v2 backtest uses daily data",
-    )
-    use_intraday: bool = Field(
-        default=True,
-        description="Legacy compatibility field; ignored by daily v2 backtest",
     )

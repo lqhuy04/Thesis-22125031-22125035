@@ -1,22 +1,7 @@
 // Cache elements
 const els = {
-  baseUrl: document.getElementById("baseUrl"),
-  symbolSelect: document.getElementById("symbolSelect"),
-  newsBySymbol: document.getElementById("newsBySymbol"),
-  loadSymbolsBtn: document.getElementById("loadSymbolsBtn"),
-  updatePriceBtn: document.getElementById("updatePriceBtn"),
-  updateNewsBtn: document.getElementById("updateNewsBtn"),
-  clearLogBtn: document.getElementById("clearLogBtn"),
-  priceResult: document.getElementById("priceResult"),
-  newsResult: document.getElementById("newsResult"),
-  priceStatus: document.getElementById("priceStatus"),
-  newsStatus: document.getElementById("newsStatus"),
-  actionLog: document.getElementById("actionLog"),
-
   // Tabs
-  tabDataBtn: document.getElementById("tab-data-btn"),
   tabBacktestBtn: document.getElementById("tab-backtest-btn"),
-  dataTabContent: document.getElementById("data-tab-content"),
   backtestTabContent: document.getElementById("backtest-tab-content"),
 
   // Backtest Inputs
@@ -129,17 +114,10 @@ const els = {
 // Tokens remain in memory only. Never put credentials or tokens in web storage.
 let adminToken = null;
 let adminRefreshToken = null;
+let apiBaseUrl = "";
 let analyzeSummaryData = [];
 
-let symbolsLoaded = false;
 let vn30SummaryData = []; // Store stats for CSV export
-
-// 30 Tickers in VN30 Index Basket
-const VN30_TICKERS = [
-  "ACB", "BID", "CTG", "DGC", "FPT", "GAS", "GVR", "HDB", "HPG", "LPB",
-  "MBB", "MSN", "MWG", "PLX", "SAB", "SHB", "SSB", "SSI", "STB", "TCB",
-  "TPB", "VCB", "VJC", "VHM", "VIC", "VNM", "VPB", "VRE", "VIB", "VPL"
-];
 
 // Active Chart Instances (for window resize cleanup or updates)
 let charts = {
@@ -155,59 +133,8 @@ function normalizeBaseUrl(raw) {
   return (raw || "").trim().replace(/\/+$/, "");
 }
 
-function now() {
-  return new Date().toLocaleString("vi-VN");
-}
-
 function appendLog(message) {
-  const li = document.createElement("li");
-  li.textContent = `[${now()}] ${message}`;
-  els.actionLog.prepend(li);
-
-  while (els.actionLog.children.length > 50) {
-    els.actionLog.removeChild(els.actionLog.lastChild);
-  }
-}
-
-function setStatus(statusEl, type, text) {
-  statusEl.classList.remove("ok", "error", "running");
-  if (type) {
-    statusEl.classList.add(type);
-  }
-  statusEl.textContent = text;
-}
-
-function formatJson(payload) {
-  try {
-    return JSON.stringify(payload, null, 2);
-  } catch {
-    return String(payload);
-  }
-}
-
-function setResult(preEl, payload) {
-  preEl.textContent = formatJson(payload);
-}
-
-function getSelectedSymbol() {
-  return (els.symbolSelect.value || "").trim().toUpperCase();
-}
-
-function parseSymbolList(payload) {
-  if (!payload || !Array.isArray(payload.data)) {
-    return [];
-  }
-  return payload.data
-    .map((item) => {
-      if (typeof item === "string") {
-        return item.trim().toUpperCase();
-      }
-      if (item && typeof item === "object" && typeof item.symbol === "string") {
-        return item.symbol.trim().toUpperCase();
-      }
-      return "";
-    })
-    .filter(Boolean);
+  console.info(`[Stockrium Admin] ${message}`);
 }
 
 async function requestJson(url, options = {}) {
@@ -239,6 +166,28 @@ async function requestJson(url, options = {}) {
   }
 
   return body;
+}
+
+async function loadUniverseSymbols(baseUrl, universe) {
+  const normalizedUniverse = (universe || "").trim().toUpperCase();
+  const payload = await requestJson(
+    `${baseUrl}/api/agentic/admin-universe/${encodeURIComponent(normalizedUniverse)}`,
+  );
+  const rawSymbols = payload?.data?.symbols;
+  if (!Array.isArray(rawSymbols)) {
+    throw new Error(`Backend không trả về danh sách mã hợp lệ cho rổ ${normalizedUniverse}.`);
+  }
+
+  const symbols = [...new Set(
+    rawSymbols
+      .filter((symbol) => typeof symbol === "string")
+      .map((symbol) => symbol.trim().toUpperCase())
+      .filter(Boolean),
+  )];
+  if (symbols.length === 0) {
+    throw new Error(`Rổ ${normalizedUniverse} không có mã nào (kiểm tra bảng MarketIndex).`);
+  }
+  return symbols;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -276,7 +225,7 @@ async function adminLogin(event) {
   const password = els.adminPassword.value;
   if (!baseUrl || !email || !password) return false;
 
-  els.baseUrl.value = baseUrl;
+  apiBaseUrl = baseUrl;
   els.adminLoginBtn.disabled = true;
   els.adminLoginError.textContent = "";
   setAdminAuthBadge("running", "Đang đăng nhập...");
@@ -316,7 +265,6 @@ async function adminLogin(event) {
     adminRefreshToken = candidateRefreshToken;
     showAdminDashboard(sessionPayload.data.email);
     appendLog("Đăng nhập admin thành công.");
-    if (!symbolsLoaded) loadSymbols();
     loadCloudHistory();
     return true;
   } catch (error) {
@@ -329,7 +277,7 @@ async function adminLogin(event) {
 }
 
 async function adminLogout() {
-  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
+  const baseUrl = apiBaseUrl;
   const refreshToken = adminRefreshToken;
   clearAdminSession("Đã đăng xuất.");
   if (!baseUrl || !refreshToken) return;
@@ -345,138 +293,10 @@ async function adminLogout() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DATA TAB ACTIONS
-// ─────────────────────────────────────────────────────────────────────────────
-async function loadSymbols() {
-  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
-  if (!baseUrl) {
-    appendLog("Không thể tải mã: API Base URL đang trống.");
-    return;
-  }
-
-  els.loadSymbolsBtn.disabled = true;
-  setStatus(els.priceStatus, "running", "Đang tải mã...");
-
-  try {
-    const payload = await requestJson(`${baseUrl}/api/all-symbol`);
-    const symbols = parseSymbolList(payload);
-
-    els.symbolSelect.innerHTML = "";
-    if (symbols.length === 0) {
-      const empty = document.createElement("option");
-      empty.value = "";
-      empty.textContent = "-- Không có mã cổ phiếu --";
-      els.symbolSelect.appendChild(empty);
-      symbolsLoaded = false;
-      appendLog("Tải danh sách mã thành công nhưng không có dữ liệu.");
-    } else {
-      for (const symbol of symbols) {
-        const option = document.createElement("option");
-        option.value = symbol;
-        option.textContent = symbol;
-        els.symbolSelect.appendChild(option);
-      }
-      symbolsLoaded = true;
-      appendLog(`Đã tải ${symbols.length} mã cổ phiếu.`);
-    }
-
-    setStatus(els.priceStatus, "ok", "Tải mã xong");
-  } catch (error) {
-    setStatus(els.priceStatus, "error", "Lỗi tải mã");
-    appendLog(`Lỗi tải danh sách mã: ${error.message}`);
-  } finally {
-    els.loadSymbolsBtn.disabled = false;
-  }
-}
-
-async function updatePrice() {
-  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
-  const symbol = getSelectedSymbol();
-
-  if (!baseUrl) {
-    appendLog("Không thể cập nhật giá: API Base URL đang trống.");
-    return;
-  }
-  if (!symbol) {
-    appendLog("Bạn cần chọn mã cổ phiếu trước khi cập nhật giá.");
-    return;
-  }
-
-  els.updatePriceBtn.disabled = true;
-  setStatus(els.priceStatus, "running", "Đang cập nhật...");
-  appendLog(`Gửi POST /api/price/${symbol}`);
-
-  try {
-    const payload = await requestJson(`${baseUrl}/api/price/${encodeURIComponent(symbol)}`, {
-      method: "POST",
-    });
-
-    setResult(els.priceResult, payload);
-
-    const ok = payload?.result === true || payload?.errorCode === 0;
-    setStatus(els.priceStatus, ok ? "ok" : "error", ok ? "Thành công" : "Có lỗi");
-    appendLog(`Cập nhật giá cho ${symbol}: ${ok ? "thành công" : "thất bại"}.`);
-  } catch (error) {
-    setStatus(els.priceStatus, "error", "Lỗi API");
-    setResult(els.priceResult, { error: error.message });
-    appendLog(`Lỗi cập nhật giá ${symbol}: ${error.message}`);
-  } finally {
-    els.updatePriceBtn.disabled = false;
-  }
-}
-
-async function updateNews() {
-  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
-  const symbol = getSelectedSymbol();
-  const bySymbol = els.newsBySymbol.checked;
-
-  if (!baseUrl) {
-    appendLog("Không thể cập nhật tin tức: API Base URL đang trống.");
-    return;
-  }
-
-  const endpoint = bySymbol && symbol
-    ? `${baseUrl}/api/articles/update?symbol=${encodeURIComponent(symbol)}`
-    : `${baseUrl}/api/articles/update`;
-
-  if (bySymbol && !symbol) {
-    appendLog("Không có mã được chọn, hệ thống sẽ cập nhật tin tức toàn thị trường.");
-  }
-
-  els.updateNewsBtn.disabled = true;
-  setStatus(els.newsStatus, "running", "Đang cập nhật...");
-  appendLog(`Gửi POST ${endpoint.replace(baseUrl, "")}`);
-
-  try {
-    const payload = await requestJson(endpoint, {
-      method: "POST",
-    });
-
-    setResult(els.newsResult, payload);
-
-    const ok = payload?.result === true || payload?.errorCode === 0;
-    setStatus(els.newsStatus, ok ? "ok" : "error", ok ? "Thành công" : "Có lỗi");
-    appendLog(`Cập nhật tin tức: ${ok ? "thành công" : "thất bại"}.`);
-  } catch (error) {
-    setStatus(els.newsStatus, "error", "Lỗi API");
-    setResult(els.newsResult, { error: error.message });
-    appendLog(`Lỗi cập nhật tin tức: ${error.message}`);
-  } finally {
-    els.updateNewsBtn.disabled = false;
-  }
-}
-
-function clearLog() {
-  els.actionLog.innerHTML = "";
-  appendLog("Đã xóa lịch sử log.");
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // TAB SWITCHING
 // ─────────────────────────────────────────────────────────────────────────────
 function initTabs() {
   const tabs = [
-    { btn: els.tabDataBtn, content: els.dataTabContent },
     { btn: els.tabBacktestBtn, content: els.backtestTabContent },
     { btn: els.tabAnalyzeBtn, content: els.analyzeTabContent },
   ];
@@ -637,7 +457,7 @@ function initDataSelectionControls() {
 }
 
 async function runBacktest() {
-  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
+  const baseUrl = apiBaseUrl;
   if (!baseUrl) {
     alert("Không thể chạy backtest: API Base URL đang trống.");
     return;
@@ -652,6 +472,20 @@ async function runBacktest() {
     return;
   }
   els.runBacktestBtn.disabled = true;
+
+  let vn30Tickers = [];
+  if (runVn30) {
+    els.runBacktestBtn.textContent = "Đang tải rổ VN30...";
+    try {
+      vn30Tickers = await loadUniverseSymbols(baseUrl, "VN30");
+    } catch (error) {
+      appendLog(`Lỗi tải rổ VN30: ${error.message}`);
+      alert(`Không thể tải rổ VN30: ${error.message}`);
+      els.runBacktestBtn.disabled = false;
+      els.runBacktestBtn.textContent = "Chạy Backtest Pipeline";
+      return;
+    }
+  }
 
   if (!runVn30) {
     // SINGLE ticker run
@@ -699,17 +533,17 @@ async function runBacktest() {
     els.vn30Logs.textContent = "";
     els.vn30ResultsBody.innerHTML = "";
     vn30SummaryData = [];
-    updateProgressBar(0, 30);
+    updateProgressBar(0, vn30Tickers.length);
 
-    appendLog("Bắt đầu chạy backtest tuần tự rổ VN30 (30 mã)...");
+    appendLog(`Bắt đầu chạy backtest tuần tự rổ VN30 (${vn30Tickers.length} mã)...`);
 
     let completedCount = 0;
-    for (let i = 0; i < VN30_TICKERS.length; i++) {
-      const ticker = VN30_TICKERS[i];
-      updateProgressBar(i, VN30_TICKERS.length, `Đang xử lý ${ticker} (${i + 1}/${VN30_TICKERS.length})...`);
+    for (let i = 0; i < vn30Tickers.length; i++) {
+      const ticker = vn30Tickers[i];
+      updateProgressBar(i, vn30Tickers.length, `Đang xử lý ${ticker} (${i + 1}/${vn30Tickers.length})...`);
 
       const params = { ...baseParams, symbol: ticker };
-      appendVn30Log(`[${i + 1}/30] Khởi động chạy backtest cho ${ticker}...`);
+      appendVn30Log(`[${i + 1}/${vn30Tickers.length}] Khởi động chạy backtest cho ${ticker}...`);
 
       try {
         const payload = await requestJson(`${baseUrl}/api/agentic/backtest`, {
@@ -759,14 +593,14 @@ async function runBacktest() {
       }
 
       completedCount++;
-      updateProgressBar(completedCount, VN30_TICKERS.length, `Đang chạy: ${completedCount}/${VN30_TICKERS.length}`);
+      updateProgressBar(completedCount, vn30Tickers.length, `Đang chạy: ${completedCount}/${vn30Tickers.length}`);
 
       // Delay briefly between sequential API calls to prevent blocking
       await new Promise(resolve => setTimeout(resolve, 300));
     }
 
-    appendVn30Log("🎉 Đã hoàn thành toàn bộ 30 mã VN30!");
-    updateProgressBar(30, 30, "Hoàn tất rổ VN30");
+    appendVn30Log(`🎉 Đã hoàn thành toàn bộ ${vn30Tickers.length} mã VN30!`);
+    updateProgressBar(vn30Tickers.length, vn30Tickers.length, "Hoàn tất rổ VN30");
     appendLog("Chạy batch VN30 hoàn tất.");
     loadCloudHistory();
     els.runBacktestBtn.disabled = false;
@@ -922,7 +756,7 @@ function cloudHistorySortKey(file) {
 }
 
 async function loadCloudHistory() {
-  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
+  const baseUrl = apiBaseUrl;
   if (!baseUrl) return;
 
   els.cloudHistoryList.innerHTML = '<p class="hint">Đang tải lịch sử...</p>';
@@ -1754,7 +1588,7 @@ function updateAnalyzeProgress(current, total, label = "") {
 }
 
 async function runAnalyze() {
-  const baseUrl = normalizeBaseUrl(els.baseUrl.value);
+  const baseUrl = apiBaseUrl;
   if (!baseUrl) {
     alert("Không thể phân tích: API Base URL đang trống.");
     return;
@@ -1813,11 +1647,7 @@ async function runAnalyze() {
       updateAnalyzeProgress(0, 1, "Đang tải danh sách mã...");
 
       els.runAnalyzeBtn.textContent = `Đang tải rổ ${source}...`;
-      const uniPayload = await requestJson(`${baseUrl}/api/agentic/admin-universe/${source}`);
-      const symbols = uniPayload?.data?.symbols || [];
-      if (symbols.length === 0) {
-        throw new Error(`Rổ ${source} không có mã nào (kiểm tra bảng MarketIndex).`);
-      }
+      const symbols = await loadUniverseSymbols(baseUrl, source);
 
       appendLog(`Bắt đầu phân tích rổ ${source} (${symbols.length} mã)...`);
       els.runAnalyzeBtn.textContent = `Đang chạy ${source}...`;
@@ -1884,10 +1714,6 @@ function exportAnalyzeCsv() {
 // ─────────────────────────────────────────────────────────────────────────────
 // INITIALIZATION
 // ─────────────────────────────────────────────────────────────────────────────
-els.loadSymbolsBtn.addEventListener("click", loadSymbols);
-els.updatePriceBtn.addEventListener("click", updatePrice);
-els.updateNewsBtn.addEventListener("click", updateNews);
-els.clearLogBtn.addEventListener("click", clearLog);
 els.runBacktestBtn.addEventListener("click", runBacktest);
 els.exportVn30CsvBtn.addEventListener("click", exportVn30Csv);
 els.refreshCloudHistoryBtn.addEventListener("click", loadCloudHistory);
@@ -1915,7 +1741,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   els.vn30Option.addEventListener("change", (e) => {
     els.backtestSymbol.disabled = e.target.checked;
     if (e.target.checked) {
-      els.backtestSymbol.placeholder = "Chạy tất cả 30 mã VN30";
+      els.backtestSymbol.placeholder = "Danh sách VN30 lấy từ backend";
     } else {
       els.backtestSymbol.placeholder = "Ví dụ: FPT, VNM...";
     }

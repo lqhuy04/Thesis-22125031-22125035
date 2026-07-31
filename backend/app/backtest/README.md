@@ -79,17 +79,16 @@ Example payload:
   "end_date": "2024-12-31",
   "market_symbol": "VNINDEX",
   "max_hold_candles": 20,
-  "exit_on_score_drop": false,
-  "one_minute_lookback_days": 30,
-  "use_intraday": false
+  "exit_on_score_drop": false
 }
 
 ## VN30 Aggregate Stats (local JSON)
 
 Mỗi lần `run_full_backtest` chạy xong sẽ upsert thống kê của mã đó vào MỘT file
-JSON tổng hợp local: `backtest/reports/vn30_stats.json` (key = symbol). Vì admin
-dashboard chạy cả rổ VN30 bằng cách gọi `/api/agentic/backtest` tuần tự cho từng
-mã, file này sẽ tự gom đủ 30 mã sau khi batch chạy xong.
+JSON tổng hợp local: `backtest/reports/vn30_stats.json` (key = symbol). Admin
+dashboard lấy thành phần VN30 hiện tại từ `/api/agentic/admin-universe/VN30`,
+sau đó gọi `/api/agentic/backtest` tuần tự cho từng mã; file này sẽ tự gom các
+mã thuộc rổ sau khi batch chạy xong.
 
 Nội dung mỗi mã (`vn30_stats.py` → `build_symbol_stats`):
 1. `performance` — n_trades, win_rate, total_return, avg_return, annualized_return,
