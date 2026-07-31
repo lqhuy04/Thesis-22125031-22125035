@@ -1,5 +1,7 @@
 from ssi_fc_data.fc_md_stream import MarketDataStream
 from ssi_fc_data.fc_md_client import MarketDataClient
+import contextlib
+import io
 import re
 import os
 import json
@@ -40,6 +42,10 @@ VN_TZ = timezone(timedelta(hours=7))
 
 TABLE        = "Stock_Price_1m"
 SYMBOL_REGEX = re.compile(r'^[A-Z0-9]{3}$')
+
+RECONNECT_INITIAL_SECONDS = 5
+RECONNECT_MAX_SECONDS = 60
+STREAM_STALE_SECONDS = 120
 
 logging.basicConfig(
     level=logging.INFO,
@@ -100,6 +106,86 @@ def _normalize_timestamp(bar: dict) -> str | None:
 def get_target_stocks() -> dict[str, str]:
     """Return the VN100 stock_symbol -> Stock.id mapping."""
     return get_vn100_stock_ids(supabase)
+
+
+def build_subscription_channel(stocks: dict[str, str]) -> str:
+    """Build an SSI OHLCV channel containing only VN100 stock symbols."""
+    symbols = sorted(
+        symbol
+        for symbol in stocks
+        if SYMBOL_REGEX.fullmatch(symbol)
+    )
+    if not symbols:
+        raise ValueError("Cannot subscribe: VN100 stock symbol list is empty")
+
+    skipped = sorted(set(stocks) - set(symbols))
+    if skipped:
+        logger.warning("Skipped invalid SSI symbols from subscription: %s", skipped)
+
+    return "B:" + "-".join(symbols)
+
+
+def is_market_session(now: datetime) -> bool:
+    """Return True while the VN100 cash market should be producing ticks."""
+    if now.weekday() > 4:
+        return False
+
+    current = (now.hour, now.minute)
+    morning_session = (9, 0) <= current < (11, 30)
+    afternoon_session = (13, 0) <= current < (15, 0)
+    return morning_session or afternoon_session
+
+
+def close_stream(stream: MarketDataStream | None) -> None:
+    """Best-effort shutdown for the transport bundled in ssi-fc-data."""
+    if stream is None:
+        return
+
+    connection = getattr(stream, "connection", None)
+    # ssi-fc-data 2.2.2 exposes no working public stop method: Connection.close()
+    # calls a missing transport.close(). Use the transport's supported stop().
+    transport = getattr(connection, "_Connection__transport", None)
+    stop = getattr(transport, "stop", None)
+    if callable(stop):
+        try:
+            stop()
+        except Exception as e:
+            logger.warning("Failed to close old SSI stream cleanly: %s", e)
+
+
+def start_stream(
+    channel: str,
+) -> tuple[MarketDataStream, threading.Event, dict[str, float | bool]]:
+    """Start one SSI stream attempt and expose its disconnect/heartbeat state."""
+    disconnected = threading.Event()
+    heartbeat: dict[str, float | bool] = {
+        "last_message_at": time.monotonic(),
+        "received_message": False,
+    }
+
+    def on_message(message) -> None:
+        heartbeat["last_message_at"] = time.monotonic()
+        heartbeat["received_message"] = True
+        get_market_data(message)
+
+    def on_error(error) -> None:
+        get_error(error)
+        disconnected.set()
+
+    def on_close() -> None:
+        logger.warning("SSI stream connection closed")
+        disconnected.set()
+
+    stream = MarketDataStream(
+        config,
+        MarketDataClient(config),
+        on_close=on_close,
+    )
+    # ssi-fc-data 2.2.2 prints its request headers (including the Bearer token)
+    # during negotiation. Suppress that SDK print so reconnects do not leak it.
+    with contextlib.redirect_stdout(io.StringIO()):
+        stream.start(on_message, on_error, channel)
+    return stream, disconnected, heartbeat
 
 # ═════════════════════════════════════════════════════════════════════════════
 # IN-MEMORY CANDLE BUFFER
@@ -260,41 +346,99 @@ def main():
     global stock_ids_by_symbol
     stock_ids_by_symbol = get_target_stocks()
     if not stock_ids_by_symbol:
-        logger.warning("No VN100 stock symbols loaded from DB; all incoming symbols will be rejected.")
-    else:
-        logger.info(
-            f"Loaded {len(stock_ids_by_symbol)} VN100 stock ids for websocket filtering."
-        )
+        raise RuntimeError("No VN100 stocks loaded from DB; refusing to subscribe to B:ALL")
+
+    reconnect_delay = RECONNECT_INITIAL_SECONDS
+    shutdown = threading.Event()
+    stream: MarketDataStream | None = None
 
     try:
-        mm = MarketDataStream(config, MarketDataClient(config))
-        mm.start(get_market_data, get_error, "B:ALL")
-    except Exception as e:
-        logger.error(f"❌ Failed to start MarketDataStream: {e}", exc_info=True)
-        return
-
-    logger.info("Stream started. Press Ctrl+C to stop.")
-    try:
-        # Run a light loop: flush closed minutes periodically
         last_minute = None
-        while True:
+        while not shutdown.is_set():
             try:
-                now = datetime.now(VN_TZ)
-                current_minute = now.replace(second=0, microsecond=0).isoformat()[:16]
+                refreshed_stocks = get_target_stocks()
+                if refreshed_stocks:
+                    stock_ids_by_symbol = refreshed_stocks
+                else:
+                    logger.warning(
+                        "Failed to refresh VN100 stocks; reusing %d cached symbols",
+                        len(stock_ids_by_symbol),
+                    )
 
-                # Flush closed minutes once per minute (even if no incoming ticks)
-                if current_minute != last_minute:
-                    try:
-                        flush_stale_candles(current_minute)
-                    except Exception as e:
-                        logger.error(f"❌ Error in flush_stale_candles: {e}", exc_info=True)
-                    last_minute = current_minute
+                channel = build_subscription_channel(stock_ids_by_symbol)
+                logger.info(
+                    "Connecting SSI stream for %d VN100 symbols (channel_length=%d)",
+                    len(stock_ids_by_symbol),
+                    len(channel),
+                )
+                stream, disconnected, heartbeat = start_stream(channel)
 
-                time.sleep(1)
+                active_session = False
+                session_started_at = time.monotonic()
+                connection_confirmed = False
+
+                while not shutdown.is_set() and not disconnected.wait(1):
+                    now = datetime.now(VN_TZ)
+                    monotonic_now = time.monotonic()
+                    current_minute = (
+                        now.replace(second=0, microsecond=0).isoformat()[:16]
+                    )
+
+                    # Flush closed minutes once per minute (even if no ticks arrive).
+                    if current_minute != last_minute:
+                        try:
+                            flush_stale_candles(current_minute)
+                        except Exception as e:
+                            logger.error(
+                                "❌ Error in flush_stale_candles: %s",
+                                e,
+                                exc_info=True,
+                            )
+                        last_minute = current_minute
+
+                    if heartbeat["received_message"] and not connection_confirmed:
+                        logger.info("SSI stream is receiving VN100 data")
+                        connection_confirmed = True
+                        reconnect_delay = RECONNECT_INITIAL_SECONDS
+
+                    session_now = is_market_session(now)
+                    if session_now and not active_session:
+                        # Give the feed a fresh grace period at 09:00 and 13:00;
+                        # the lunch break legitimately contains no market ticks.
+                        session_started_at = monotonic_now
+
+                    if session_now:
+                        last_message_at = float(heartbeat["last_message_at"])
+                        watched_since = max(last_message_at, session_started_at)
+                        if monotonic_now - watched_since >= STREAM_STALE_SECONDS:
+                            logger.error(
+                                "No SSI stream messages for %ds during market "
+                                "session; forcing reconnect",
+                                STREAM_STALE_SECONDS,
+                            )
+                            disconnected.set()
+                            break
+
+                    active_session = session_now
             except Exception as e:
-                logger.error(f"❌ Error in main loop: {e}", exc_info=True)
-                time.sleep(5)  # Wait before retrying
+                logger.error("❌ SSI stream attempt failed: %s", e, exc_info=True)
+            finally:
+                close_stream(stream)
+                stream = None
+
+            if shutdown.is_set():
+                break
+
+            logger.warning("Reconnecting SSI stream in %d seconds", reconnect_delay)
+            if shutdown.wait(reconnect_delay):
+                break
+            reconnect_delay = min(
+                reconnect_delay * 2,
+                RECONNECT_MAX_SECONDS,
+            )
     except KeyboardInterrupt:
+        shutdown.set()
+        close_stream(stream)
         if candle_buffer:
             # Only flush completed minutes (do not write the current open minute)
             now = datetime.now(VN_TZ).replace(second=0, microsecond=0).isoformat()[:16]
