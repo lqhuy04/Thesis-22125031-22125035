@@ -14,6 +14,7 @@ import {
 import { Text } from "../ui/Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import { socialLogin } from "@/helpers/AuthenticationHelper";
+import { resolvePostAuthTarget } from "@/helpers/ProfileHelpers";
 import { router } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
 
@@ -62,7 +63,15 @@ const SocialButtons = () => {
     try {
       const res = await socialLogin({ token });
       if (res.status) {
-        router.replace("/Tabs");
+        const nextRoute = await resolvePostAuthTarget();
+        if (nextRoute === "/Tabs") {
+          router.replace("/Tabs");
+        } else {
+          router.replace({
+            pathname: "/RiskAppetite",
+            params: { onboarding: "1" },
+          });
+        }
       } else {
         showError(t("auth.tryAgain"));
       }

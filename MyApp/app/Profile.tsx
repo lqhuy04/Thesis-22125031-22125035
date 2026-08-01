@@ -268,21 +268,31 @@ const Profile = () => {
   ];
 
   const accountItems: MenuItemProps[] = [
-    {
-      label: profile?.has_password
-        ? t("profile.changePass")
-        : t("profile.createPass"),
-      icon: (
-        <MaterialIcons name="password" size={20} color={theme.base.primary} />
-      ),
-      onPress: () =>
-        router.push({
-          pathname: "/ChangePass",
-          params: {
-            data: JSON.stringify({ has_password: profile?.has_password }),
+    // Nhãn phụ thuộc profile.has_password nên chỉ hiện khi profile đã load xong,
+    // tránh người dùng bấm vào khi chưa biết trạng thái mật khẩu thật.
+    ...(profile
+      ? [
+          {
+            label: profile.has_password
+              ? t("profile.changePass")
+              : t("profile.createPass"),
+            icon: (
+              <MaterialIcons
+                name="password"
+                size={20}
+                color={theme.base.primary}
+              />
+            ),
+            onPress: () =>
+              router.push({
+                pathname: "/ChangePass",
+                params: {
+                  data: JSON.stringify({ has_password: profile.has_password }),
+                },
+              }),
           },
-        }),
-    },
+        ]
+      : []),
     {
       label: t("profile.logOut"),
       icon: (

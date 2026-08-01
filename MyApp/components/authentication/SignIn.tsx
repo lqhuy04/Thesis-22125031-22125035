@@ -14,6 +14,7 @@ import {
   resendVerificationEmail,
   signIn,
 } from "@/helpers/AuthenticationHelper";
+import { resolvePostAuthTarget } from "@/helpers/ProfileHelpers";
 import { router } from "expo-router";
 import { Input } from "../ui/Input";
 import SocialButtons from "./SocialButtons";
@@ -44,9 +45,17 @@ const SignInComponent = () => {
     setLoading(true);
     setSubmittedUsername(email);
     signIn({ email, password })
-      .then((response) => {
+      .then(async (response) => {
         if (response.status) {
-          router.replace("/Tabs");
+          const nextRoute = await resolvePostAuthTarget();
+          if (nextRoute === "/Tabs") {
+            router.replace("/Tabs");
+          } else {
+            router.replace({
+              pathname: "/RiskAppetite",
+              params: { onboarding: "1" },
+            });
+          }
         } else {
           if (response.errorCode === 403001) {
             setUnverifiedModal(true);

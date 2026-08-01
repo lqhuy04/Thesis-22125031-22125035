@@ -654,6 +654,7 @@ export default {
     question: "Bạn định đầu tư trong bao lâu?",
     description:
       "Khoảng thời gian này giúp đưa ra chiến thuật đầu tư phù hợp cho bạn.",
+    onboardingHint: "Bạn có thể thay đổi ở trang hồ sơ của mình sau.",
     shortTerm: "Ngắn hạn",
     shortTermDesc: "Dưới 3 tháng",
     midTerm: "Trung hạn",

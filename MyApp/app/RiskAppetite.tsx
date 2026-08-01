@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, TouchableOpacity, View } from "react-native";
+import { Animated, BackHandler, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { Text } from "@/components/ui/Text";
 import ScreenHeader from "@/components/ui/ScreenHeader";
-import { router } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { getRiskAppetite, saveRiskAppetite } from "@/helpers/ProfileHelpers";
 
 type PeriodKey = "short_term" | "mid_term" | "long_term";
@@ -59,7 +59,11 @@ const SkeletonBox = ({
   );
 };
 
-const RiskAppetiteSkeleton = () => {
+const RiskAppetiteSkeleton = ({
+  hiddenBack = false,
+}: {
+  hiddenBack?: boolean;
+}) => {
   const insets = useSafeAreaInsets();
   const { theme } = useTheme();
 
@@ -71,7 +75,7 @@ const RiskAppetiteSkeleton = () => {
         paddingBottom: insets.bottom + 12,
       }}
     >
-      <ScreenHeader title="" />
+      <ScreenHeader title="" hiddenBack={hiddenBack} />
 
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 28 }}>
         <SkeletonBox width="70%" height={28} borderRadius={6} />
@@ -129,10 +133,22 @@ const RiskAppetite = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
   const insets = useSafeAreaInsets();
+  const { onboarding } = useLocalSearchParams<{ onboarding?: string }>();
+  const isOnboarding = onboarding === "1";
 
   const [period, setPeriod] = useState<PeriodKey | "">("");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Bắt buộc setting xong khi mới đăng nhập/mở app: chặn nút back cứng (Android).
+  useEffect(() => {
+    if (!isOnboarding) return;
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => true,
+    );
+    return () => subscription.remove();
+  }, [isOnboarding]);
 
   const PERIOD_OPTIONS: { key: PeriodKey; label: string; desc: string }[] = [
     {
@@ -168,12 +184,16 @@ const RiskAppetite = () => {
     saveRiskAppetite({ period }).then((res) => {
       setSaving(false);
       if (res.status) {
-        router.back();
+        if (isOnboarding) {
+          router.replace("/Tabs");
+        } else {
+          router.back();
+        }
       }
     });
   };
 
-  if (loading) return <RiskAppetiteSkeleton />;
+  if (loading) return <RiskAppetiteSkeleton hiddenBack={isOnboarding} />;
 
   return (
     <View
@@ -183,7 +203,11 @@ const RiskAppetite = () => {
         paddingBottom: insets.bottom + 12,
       }}
     >
-      <ScreenHeader title={t("riskAppetiteScreen.title")} />
+      <Stack.Screen options={{ gestureEnabled: !isOnboarding }} />
+      <ScreenHeader
+        title={t("riskAppetiteScreen.title")}
+        hiddenBack={isOnboarding}
+      />
 
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 28 }}>
         <Text typography="headlineSmall" color={theme.text.primary}>
@@ -196,6 +220,7 @@ const RiskAppetite = () => {
           style={{ marginTop: 6, marginBottom: 28 }}
         >
           {t("riskAppetiteScreen.description")}
+          {isOnboarding && ` ${t("riskAppetiteScreen.onboardingHint")}`}
         </Text>
 
         {PERIOD_OPTIONS.map((option) => {

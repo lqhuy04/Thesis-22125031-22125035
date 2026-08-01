@@ -656,6 +656,7 @@ export default {
     title: "Risk Appetite",
     question: "How long do you plan to invest?",
     description: "This helps us suggest the right investment strategy for you.",
+    onboardingHint: "You can change this later in your profile.",
     shortTerm: "Short-term",
     shortTermDesc: "Under 3 months",
     midTerm: "Mid-term",

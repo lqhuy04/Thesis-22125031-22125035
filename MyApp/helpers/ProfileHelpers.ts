@@ -59,6 +59,15 @@ export const getRiskAppetite = async (): Promise<{
   }
 };
 
+/** Sau khi xác thực xong (mở app sẵn session hoặc vừa đăng nhập), điều hướng
+ * vào RiskAppetite nếu user chưa từng thiết lập, ngược lại vào Tabs bình thường. */
+export const resolvePostAuthTarget = async (): Promise<
+  "/Tabs" | "/RiskAppetite"
+> => {
+  const { status, data } = await getRiskAppetite();
+  return status && data?.period ? "/Tabs" : "/RiskAppetite";
+};
+
 // ----------------------------------------------
 export type FavoriteItem = CurrentPriceData;
 
