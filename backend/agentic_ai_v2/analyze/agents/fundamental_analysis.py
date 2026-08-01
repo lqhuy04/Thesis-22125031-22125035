@@ -10,11 +10,10 @@ from agentic_ai_v2.analyze.language import (
     output_language_instruction,
 )
 from agentic_ai_v2.analyze.state import AgentState
-from agentic_ai_v2.service.openai_service import _get_openai_client
+from agentic_ai_v2.service.deepseek_service import create_structured_completion
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "gpt-4o-mini"
 _MAX_OUTPUT_TOKENS = 1_800
 _NO_DATA_PREFIX = "Không có dữ liệu phân tích cơ bản"
 
@@ -44,9 +43,7 @@ def _call_fundamental_analysis_llm(
     fundamental_text: str,
     language: str = "vi",
 ) -> FundamentalAnalysisOutput:
-    client = _get_openai_client()
-    response = client.beta.chat.completions.parse(
-        model=_MODEL,
+    return create_structured_completion(
         temperature=0.1,
         max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[
@@ -59,12 +56,8 @@ def _call_fundamental_analysis_llm(
             },
             {"role": "user", "content": fundamental_text},
         ],
-        response_format=FundamentalAnalysisOutput,
+        output_model=FundamentalAnalysisOutput,
     )
-    parsed = response.choices[0].message.parsed
-    if parsed is None:
-        raise ValueError("OpenAI returned an empty fundamental analysis")
-    return parsed
 
 
 def fundamental_analysis_agent(state: AgentState) -> dict:

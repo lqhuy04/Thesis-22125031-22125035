@@ -2635,48 +2635,48 @@
     "HDB": {
       "performance": {
         "n_trades": 15,
-        "win_rate": 0.6666666666666666,
-        "total_return": 1.6446990115741267,
-        "avg_return": 0.07391081717634433,
-        "annualized_return": 0.42115328436696586,
-        "max_drawdown": -0.11574533293614277,
-        "sharpe_ratio": 2.2509312721559906,
-        "profit_factor": 4.331814738823481
+        "win_rate": 0.5333333333333333,
+        "total_return": 0.8084580419098917,
+        "avg_return": 0.0449180409049584,
+        "annualized_return": 0.35260131043983645,
+        "max_drawdown": -0.09519987882665623,
+        "sharpe_ratio": 1.6926689713953067,
+        "profit_factor": 3.490157007787649
       },
       "baseline_engine_performance": {
-        "n_trades": 27,
-        "win_rate": 0.7037037037037037,
-        "total_return": 1.641511276157452,
-        "avg_return": 0.03982979454532778,
-        "annualized_return": 0.4205340063647658,
-        "max_drawdown": -0.09829942667030409,
-        "sharpe_ratio": 2.4208459270827283,
-        "profit_factor": 4.140421702133068
+        "n_trades": 20,
+        "win_rate": 0.55,
+        "total_return": 0.48595606603400077,
+        "avg_return": 0.02411341580867255,
+        "annualized_return": 0.22372718288018167,
+        "max_drawdown": -0.21638222653503306,
+        "sharpe_ratio": 1.1268571125232083,
+        "profit_factor": 1.9665574708529
       },
       "benchmark": {
-        "pipeline_return": 1.6446990115741267,
-        "buy_hold_return": 2.6228348377653083,
-        "delta_vs_buy_hold": -0.9781358261911817,
-        "impact_on_returns": 0.0031877354166747196,
-        "agreement_rate": 0.18518518518518517,
-        "cases_llm_filtered_out": 22,
-        "random_percentile_rank": 1.0,
-        "random_p_value": 0.0
+        "pipeline_return": 0.8084580419098917,
+        "buy_hold_return": 1.270756130253095,
+        "delta_vs_buy_hold": -0.4622980883432033,
+        "impact_on_returns": 0.3225019758758909,
+        "agreement_rate": 0.45,
+        "cases_llm_filtered_out": 11,
+        "random_percentile_rank": 0.932,
+        "random_p_value": 0.06799999999999995
       },
       "statistical_tests": {
         "ttest": {
-          "t_stat": 2.2509312721559906,
-          "p_value": 0.04098186931003533,
-          "significant": true
+          "t_stat": 1.692668971395307,
+          "p_value": 0.11264372177010132,
+          "significant": false
         },
         "permutation": {
-          "p_value": 0.047,
-          "percentile_rank": 0.976,
-          "significant": true
+          "p_value": 0.106,
+          "percentile_rank": 0.949,
+          "significant": false
         },
         "information_coefficient": {
-          "ic": -0.033045909466093724,
-          "p_value": 0.9069284949320836,
+          "ic": -0.4943823246433879,
+          "p_value": 0.0610245324517853,
           "interpretation": "negative"
         },
         "confidence_vs_outcome_anova": {
@@ -2684,7 +2684,7 @@
           "p_value": 1.0,
           "significant": false,
           "group_means": {
-            "high": 0.07391081717634433,
+            "high": 0.0449180409049584,
             "medium": 0.0,
             "low": 0.0
           }
@@ -2693,8 +2693,8 @@
       "regime": {
         "uptrend": {
           "win_rate": 0.5,
-          "avg_return": 0.05418518572959488,
-          "n_trades": 4
+          "avg_return": 0.06511070837965664,
+          "n_trades": 2
         },
         "downtrend": {
           "win_rate": 0.0,
@@ -2702,15 +2702,15 @@
           "n_trades": 0
         },
         "sideway": {
-          "win_rate": 0.7272727272727273,
-          "avg_return": 0.08108377406607138,
-          "n_trades": 11
+          "win_rate": 0.5384615384615384,
+          "avg_return": 0.041811476678081744,
+          "n_trades": 13
         }
       },
       "confidence_calibration": {
         "high": {
-          "win_rate": 0.6666666666666666,
-          "avg_return": 0.07391081717634433,
+          "win_rate": 0.5333333333333333,
+          "avg_return": 0.0449180409049584,
           "n_trades": 15
         },
         "medium": {
@@ -2724,7 +2724,7 @@
           "n_trades": 0
         }
       },
-      "updated_at": "2026-07-19 14:32:03"
+      "updated_at": "2026-08-01 11:53:22"
     },
     "SAB": {
       "performance": {
@@ -2823,33 +2823,33 @@
   },
   "aggregate": {
     "pipeline": {
-      "mean_total_return": 0.25662948628666554,
+      "mean_total_return": 0.22875478729785767,
       "median_total_return": 0.12309474795327924,
-      "compounded_return": 0.17232142799846795,
-      "mean_win_rate": 0.4541653960075012,
-      "mean_sharpe": 0.27064104679976503,
-      "mean_max_drawdown": -0.1710767414244652,
+      "compounded_return": 0.15756248293678254,
+      "mean_win_rate": 0.4497209515630568,
+      "mean_sharpe": 0.2520323034410755,
+      "mean_max_drawdown": -0.17039189295414894,
       "total_trades": 272,
       "profitable_symbols": 17
     },
     "baseline_engine": {
-      "mean_total_return": 0.45800492600678694,
+      "mean_total_return": 0.4194864190026719,
       "median_total_return": 0.21326564694515393,
-      "compounded_return": 0.2738812415666365,
-      "mean_win_rate": 0.517439266316078,
-      "mean_sharpe": 0.6504308489986718,
-      "mean_max_drawdown": -0.27038256442367653,
-      "total_trades": 756,
+      "compounded_return": 0.2496854858013895,
+      "mean_win_rate": 0.5123158095259545,
+      "mean_sharpe": 0.6072978885133544,
+      "mean_max_drawdown": -0.2743186577525008,
+      "total_trades": 749,
       "profitable_symbols": 22
     },
     "comparison": {
-      "delta_mean_total_return": -0.2013754397201214,
-      "delta_compounded_return": -0.10155981356816857,
-      "delta_mean_win_rate": -0.06327387030857673,
-      "delta_mean_sharpe": -0.37978980219890673,
+      "delta_mean_total_return": -0.19073163170481425,
+      "delta_compounded_return": -0.09212300286460695,
+      "delta_mean_win_rate": -0.06259485796289765,
+      "delta_mean_sharpe": -0.3552655850722789,
       "symbols_pipeline_beats_engine": 14
     }
   },
   "n_symbols": 30,
-  "generated_at": "2026-07-20 03:12:20"
+  "generated_at": "2026-08-01 11:53:22"
 }

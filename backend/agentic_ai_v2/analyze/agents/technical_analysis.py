@@ -13,11 +13,10 @@ from agentic_ai_v2.analyze.language import (
     output_language_instruction,
 )
 from agentic_ai_v2.analyze.state import AgentState
-from agentic_ai_v2.service.openai_service import _get_openai_client
+from agentic_ai_v2.service.deepseek_service import create_structured_completion
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "gpt-4o-mini"
 _MAX_OUTPUT_TOKENS = 1_500
 
 _SYSTEM_PROMPT = """Bạn là chuyên gia phân tích kỹ thuật cổ phiếu Việt Nam.
@@ -59,9 +58,7 @@ def _call_technical_analysis_llm(
     technical_data: dict[str, Any],
     language: str = "vi",
 ) -> TechnicalAnalysisOutput:
-    client = _get_openai_client()
-    response = client.beta.chat.completions.parse(
-        model=_MODEL,
+    return create_structured_completion(
         temperature=0.1,
         max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[
@@ -81,12 +78,8 @@ def _call_technical_analysis_llm(
                 ),
             },
         ],
-        response_format=TechnicalAnalysisOutput,
+        output_model=TechnicalAnalysisOutput,
     )
-    parsed = response.choices[0].message.parsed
-    if parsed is None:
-        raise ValueError("OpenAI returned an empty technical analysis")
-    return parsed
 
 
 def technical_analysis_agent(state: AgentState) -> dict:

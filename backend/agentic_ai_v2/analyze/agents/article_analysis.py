@@ -10,11 +10,10 @@ from agentic_ai_v2.analyze.language import (
     output_language_instruction,
 )
 from agentic_ai_v2.analyze.state import AgentState
-from agentic_ai_v2.service.openai_service import _get_openai_client
+from agentic_ai_v2.service.deepseek_service import create_structured_completion
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "gpt-4o-mini"
 _MAX_OUTPUT_TOKENS = 1_500
 _NO_DATA_PREFIXES = (
     "Không có bài viết",
@@ -46,9 +45,7 @@ def _call_article_analysis_llm(
     article_text: str,
     language: str = "vi",
 ) -> ArticleAnalysisOutput:
-    client = _get_openai_client()
-    response = client.beta.chat.completions.parse(
-        model=_MODEL,
+    return create_structured_completion(
         temperature=0.1,
         max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[
@@ -61,12 +58,8 @@ def _call_article_analysis_llm(
             },
             {"role": "user", "content": article_text},
         ],
-        response_format=ArticleAnalysisOutput,
+        output_model=ArticleAnalysisOutput,
     )
-    parsed = response.choices[0].message.parsed
-    if parsed is None:
-        raise ValueError("OpenAI returned an empty article analysis")
-    return parsed
 
 
 def article_analysis_agent(state: AgentState) -> dict:
