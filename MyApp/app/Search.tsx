@@ -347,7 +347,13 @@ const Search = () => {
         </View>
 
         <TouchableOpacity
-          onPress={() => router.dismiss()}
+          onPress={() => {
+            if (text) {
+              setText("");
+            } else {
+              router.dismiss();
+            }
+          }}
           style={{ marginLeft: 20, marginRight: 8 }}
         >
           <Text typography="titleMedium" color={theme.text.primary}>
@@ -368,7 +374,7 @@ const Search = () => {
             </Text>
             <SearchHistorySkeleton />
           </>
-        ) : (
+        ) : searchHistory.length > 0 ? (
           <View>
             <Text
               typography="titleMedium"
@@ -447,7 +453,7 @@ const Search = () => {
               ))}
             </View>
           </View>
-        ))}
+        ) : null)}
 
       {loading ? (
         <SearchResultSkeletonList />

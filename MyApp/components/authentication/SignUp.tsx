@@ -270,6 +270,7 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: "center",
     gap: 4,
+    marginHorizontal: 12,
   },
   modalButton: {
     marginTop: 16,

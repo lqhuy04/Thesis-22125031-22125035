@@ -346,6 +346,7 @@ export const getInvestingIdea = async (
   msgType: SuggestionMsgType,
   limit?: number,
   interval?: SuggestionInterval,
+  offset?: number,
 ): Promise<{
   status: boolean;
   data: SuggestionItem[];
@@ -353,7 +354,8 @@ export const getInvestingIdea = async (
   try {
     const result = await sendMessage(
       `api/investing-idea?msgType=${msgType}&limit=${limit != null ? limit : 5}` +
-        (interval ? `&interval=${interval}` : ""),
+        (interval ? `&interval=${interval}` : "") +
+        (offset ? `&offset=${offset}` : ""),
     );
 
     const { errorCode, data } = result || {};

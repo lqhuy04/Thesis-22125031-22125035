@@ -270,11 +270,16 @@ def get_investing_idea(
             "today, 1w, 1mo, 3mo, 6mo. Defaults to 'today'. Ignored for other categories."
         ),
     ),
-    limit: int = Query(100, ge=1, le=100, description="Number of stocks in the list"),
+    limit: int = Query(20, ge=1, le=100, description="Page size (number of stocks per page)"),
+    offset: int = Query(
+        0,
+        ge=0,
+        description="Pagination offset; the ranked list is capped at 100 items total",
+    ),
 ):
     request_id = str(uuid.uuid4())
     data = MarketService.get_investing_idea_by_type(
-        msg_type=msgType, limit=limit, interval=interval
+        msg_type=msgType, limit=limit, interval=interval, offset=offset
     )
 
     has_data = len(data) > 0

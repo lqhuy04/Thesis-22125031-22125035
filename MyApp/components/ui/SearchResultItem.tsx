@@ -65,7 +65,10 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
 
       <View style={{ alignItems: "flex-start", marginRight: 4 }}>
         <Text typography="labelLarge" color={theme.text.primary}>
-          {currentPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {currentPrice.toLocaleString("vi-VN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
         </Text>
         <Text
           typography="bodySmall"
@@ -80,7 +83,10 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
         >
           {"("}
           {priceChange > 0 ? "+" : ""}
-          {(priceChange >= 0 ? priceChange : priceChange * -1).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {priceChange.toLocaleString("vi-VN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
           {")"}
         </Text>
       </View>
@@ -124,8 +130,14 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
             {perPriceChange > 0 ? "▲" : perPriceChange === 0 ? "" : "▼"}{" "}
           </Text>
           {perPriceChange >= 0
-            ? perPriceChange?.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-            : (perPriceChange * -1).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            ? perPriceChange?.toLocaleString("vi-VN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })
+            : (perPriceChange * -1).toLocaleString("vi-VN", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
           %
         </Text>
       </View>

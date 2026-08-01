@@ -121,61 +121,73 @@ const CategorySkeleton = () => {
       }}
     >
       {/* Featured skeleton */}
-      <Animated.View
-        style={{
-          width: "100%",
-          height: 200,
-          borderRadius: 8,
-          backgroundColor: theme.border.default,
-          opacity,
-        }}
-      />
-      <Animated.View
-        style={{
-          height: 16,
-          borderRadius: 4,
-          backgroundColor: theme.border.default,
-          opacity,
-          marginTop: 12,
-          width: "85%",
-        }}
-      />
-      <Animated.View
-        style={{
-          height: 16,
-          borderRadius: 4,
-          backgroundColor: theme.border.default,
-          opacity,
-          marginTop: 8,
-          width: "60%",
-        }}
-      />
-      <Animated.View
-        style={{
-          height: 11,
-          borderRadius: 4,
-          backgroundColor: theme.border.default,
-          opacity,
-          marginTop: 8,
-          marginBottom: 12,
-          width: "40%",
-        }}
-      />
-      <View style={{ height: 1, backgroundColor: theme.border.default }} />
+      <View style={{ marginHorizontal: 12 }}>
+        <Animated.View
+          style={{
+            width: "100%",
+            height: 200,
+            borderRadius: 8,
+            backgroundColor: theme.border.default,
+            opacity,
+          }}
+        />
+        <Animated.View
+          style={{
+            height: 16,
+            borderRadius: 4,
+            backgroundColor: theme.border.default,
+            opacity,
+            marginTop: 12,
+            width: "85%",
+          }}
+        />
+        <Animated.View
+          style={{
+            height: 16,
+            borderRadius: 4,
+            backgroundColor: theme.border.default,
+            opacity,
+            marginTop: 8,
+            width: "60%",
+          }}
+        />
+        <Animated.View
+          style={{
+            height: 11,
+            borderRadius: 4,
+            backgroundColor: theme.border.default,
+            opacity,
+            marginTop: 8,
+            marginBottom: 12,
+            width: "40%",
+          }}
+        />
+        <View style={{ height: 1, backgroundColor: theme.border.default }} />
+      </View>
 
       {/* News items skeleton */}
       {Array.from({ length: 2 }).map((_, i) => (
         <View key={i}>
           {i !== 0 && (
             <View
-              style={{ height: 1, backgroundColor: theme.border.default }}
+              style={{
+                height: 1,
+                marginHorizontal: 12,
+                backgroundColor: theme.border.default,
+              }}
             />
           )}
           <NewsItemSkeleton opacity={opacity} />
         </View>
       ))}
 
-      <View style={{ height: 1, backgroundColor: theme.border.default }} />
+      <View
+        style={{
+          height: 1,
+          marginHorizontal: 12,
+          backgroundColor: theme.border.default,
+        }}
+      />
       <Animated.View
         style={{
           height: 16,
@@ -235,7 +247,7 @@ const CategoryContent = ({
             params: { articleId: featured.id },
           });
         }}
-        style={{ marginHorizontal: 0 }}
+        style={{ marginHorizontal: 12 }}
       >
         <Image
           source={{ uri: featured.thumbnail || undefined }}
@@ -278,8 +290,6 @@ const CategoryContent = ({
         decelerationRate="fast"
         onScroll={onScroll}
         scrollEventThrottle={16}
-        style={{ marginHorizontal: -12 }}
-        contentContainerStyle={{ paddingHorizontal: 12 }}
         renderItem={({ item: chunk }) => (
           <View style={{ width: ITEM_WIDTH - 12, marginLeft: 12 }}>
             {chunk.map((newsItem: New, i: number) => (
@@ -328,6 +338,7 @@ const CategoryContent = ({
       <View
         style={{
           height: 1,
+          marginHorizontal: 12,
           marginTop: 4,
           backgroundColor: theme.border.default,
         }}
@@ -335,7 +346,7 @@ const CategoryContent = ({
 
       {/* View All */}
       <TouchableOpacity
-        style={{ alignSelf: "center", marginTop: 12 }}
+        style={{ alignSelf: "center", marginVertical: 12 }}
         onPress={onViewAll}
       >
         <Text typography="titleMedium" color={theme.base.primary}>
@@ -470,8 +481,8 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
       <View
         style={{
           backgroundColor: theme.background.bg,
-          padding: 12,
           borderRadius: 12,
+          paddingTop: 12,
         }}
       >
         {/* Category tabs */}
@@ -481,6 +492,7 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
           style={{
             marginBottom: 12,
           }}
+          contentContainerStyle={{ paddingHorizontal: 12 }}
         >
           {categoryArticles.map((item, index) => (
             <TouchableOpacity

@@ -43,7 +43,7 @@ export default {
     tryAgain: "Vui lòng thử lại.",
     signUpWelcome: "Tạo tài khoản để bắt đầu 🚀",
     signUpFailedTitle: "Đăng ký thất bại",
-    signUpFailedBody: "Email, số điện thoại hoặc mật khẩu không hợp lệ.",
+    signUpFailedBody: "Email hoặc mật khẩu không hợp lệ.",
     emailInvalid: "Email không đúng định dạng.",
     emailFormatError: "Email không đúng định dạng.",
     confirmPasswordMismatch: "Mật khẩu xác nhận không khớp.",

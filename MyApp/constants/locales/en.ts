@@ -42,7 +42,7 @@ export default {
     tryAgain: "Please try again.",
     signUpWelcome: "Create an account to get started 🚀",
     signUpFailedTitle: "Sign Up Failed",
-    signUpFailedBody: "Invalid email, phone number, or password.",
+    signUpFailedBody: "Invalid email or password.",
     emailInvalid: "Invalid email format.",
     emailFormatError: "Invalid email format.",
     confirmPasswordMismatch: "Passwords do not match.",

@@ -6,6 +6,7 @@ import React, {
   useState,
 } from "react";
 import {
+  ActivityIndicator,
   Animated,
   Dimensions,
   FlatList,
@@ -37,6 +38,10 @@ import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+// Pagination: fetch 20 items per page, capped at 100 items total per list.
+const PAGE_SIZE = 20;
+const MAX_TOTAL_ITEMS = 100;
 
 // Trend categories support a time-window `interval`; others ignore it.
 const TREND_MSG_TYPES: SuggestionMsgType[] = [
@@ -376,10 +381,18 @@ const PageTableSkeleton = () => {
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
+type InvestingIdeaPageState = {
+  items: SuggestionItem[];
+  hasMore: boolean;
+  loadingMore: boolean;
+};
+
 const InvestmentIdeas = () => {
   const { t } = useLocalization();
   const { theme } = useTheme();
-  const [dataMap, setDataMap] = useState<Record<string, SuggestionItem[]>>({});
+  const [dataMap, setDataMap] = useState<
+    Record<string, InvestingIdeaPageState>
+  >({});
   const loadingRef = useRef<Set<string>>(new Set());
   const refreshingRef = useRef(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -499,7 +512,7 @@ const InvestmentIdeas = () => {
         : communityStartIndex;
 
   // ------------------------------------------------------------------
-  // Lazy-load a single category, cached by msgType. Each tab loads once.
+  // Lazy-load page 1 of a single category, cached by msgType. Each tab loads once.
   const loadTab = useCallback(
     (msgType: SuggestionMsgType, interval: SuggestionInterval) => {
       const key = cacheKeyFor(msgType, interval);
@@ -510,14 +523,73 @@ const InvestmentIdeas = () => {
         loadingRef.current.add(key);
         getInvestingIdea(
           msgType,
-          20,
+          PAGE_SIZE,
           isTrendMsgType(msgType) ? interval : undefined,
+          0,
         )
           .then((res) => {
-            setDataMap((curr) => ({ ...curr, [key]: res?.data ?? [] }));
+            const items = res?.data ?? [];
+            setDataMap((curr) => ({
+              ...curr,
+              [key]: {
+                items,
+                hasMore:
+                  items.length === PAGE_SIZE && items.length < MAX_TOTAL_ITEMS,
+                loadingMore: false,
+              },
+            }));
           })
           .finally(() => loadingRef.current.delete(key));
         return prev;
+      });
+    },
+    [],
+  );
+
+  // Load the next page for a category (infinite scroll), appending to what's
+  // already loaded. Scoped to the exact (msgType, interval) pair calling it,
+  // so scrolling one tab never fetches data for another.
+  const loadMoreTab = useCallback(
+    (msgType: SuggestionMsgType, interval: SuggestionInterval) => {
+      const key = cacheKeyFor(msgType, interval);
+      setDataMap((prev) => {
+        const current = prev[key];
+        if (
+          !current ||
+          !current.hasMore ||
+          current.loadingMore ||
+          loadingRef.current.has(key)
+        ) {
+          return prev;
+        }
+        loadingRef.current.add(key);
+        const offset = current.items.length;
+        getInvestingIdea(
+          msgType,
+          PAGE_SIZE,
+          isTrendMsgType(msgType) ? interval : undefined,
+          offset,
+        )
+          .then((res) => {
+            const newItems = res?.data ?? [];
+            setDataMap((curr) => {
+              const existing = curr[key];
+              if (!existing) return curr;
+              const merged = [...existing.items, ...newItems];
+              return {
+                ...curr,
+                [key]: {
+                  items: merged,
+                  hasMore:
+                    newItems.length === PAGE_SIZE &&
+                    merged.length < MAX_TOTAL_ITEMS,
+                  loadingMore: false,
+                },
+              };
+            });
+          })
+          .finally(() => loadingRef.current.delete(key));
+        return { ...prev, [key]: { ...current, loadingMore: true } };
       });
     },
     [],
@@ -606,14 +678,21 @@ const InvestmentIdeas = () => {
     try {
       const result = await getInvestingIdea(
         activeTab.msgType,
-        20,
+        PAGE_SIZE,
         isTrendMsgType(activeTab.msgType) ? selectedInterval : undefined,
+        0,
       );
 
       if (result.status) {
         setDataMap((current) => ({
           ...current,
-          [key]: result.data,
+          [key]: {
+            items: result.data,
+            hasMore:
+              result.data.length === PAGE_SIZE &&
+              result.data.length < MAX_TOTAL_ITEMS,
+            loadingMore: false,
+          },
         }));
       }
     } finally {
@@ -732,9 +811,9 @@ const InvestmentIdeas = () => {
   // Render one full-screen page
   // ------------------------------------------------------------------
   const renderPage = ({ item }: { item: (typeof tabs)[0] }) => {
-    const listData = dataMap[cacheKeyFor(item.msgType, selectedInterval)];
+    const pageState = dataMap[cacheKeyFor(item.msgType, selectedInterval)];
 
-    if (listData === undefined) {
+    if (pageState === undefined) {
       return <PageTableSkeleton />;
     }
 
@@ -742,7 +821,7 @@ const InvestmentIdeas = () => {
       INTERVAL_OPTIONS.find((o) => o.value === selectedInterval)?.labelKey ??
       "suggestion.intervalToday";
 
-    const sortedData = [...listData].sort((a, b) => {
+    const sortedData = [...pageState.items].sort((a, b) => {
       if (!sortKey) return 0;
       let diff = 0;
       if (sortKey === "symbol") diff = a.symbol.localeCompare(b.symbol);
@@ -752,6 +831,17 @@ const InvestmentIdeas = () => {
       return sortDir === "asc" ? diff : -diff;
     });
 
+    // Infinite scroll: fetch the next page for this exact tab + interval
+    // once the user nears the bottom of its own ScrollView.
+    const handlePageScroll = (e: any) => {
+      const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+      const distanceFromBottom =
+        contentSize.height - (layoutMeasurement.height + contentOffset.y);
+      if (distanceFromBottom < 200) {
+        loadMoreTab(item.msgType, selectedInterval);
+      }
+    };
+
     return (
       <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
         <ScrollView
@@ -759,6 +849,8 @@ const InvestmentIdeas = () => {
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}
+          onScroll={handlePageScroll}
+          scrollEventThrottle={16}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshing}
@@ -939,6 +1031,13 @@ const InvestmentIdeas = () => {
           {/* Rows */}
           {sortedData.map((stock: SuggestionItem, index: number) =>
             renderStockRow(stock, index),
+          )}
+
+          {/* Loading indicator while fetching the next page */}
+          {pageState.loadingMore && (
+            <View style={{ paddingVertical: 16, alignItems: "center" }}>
+              <ActivityIndicator color={theme.base.primary} />
+            </View>
           )}
         </ScrollView>
       </View>

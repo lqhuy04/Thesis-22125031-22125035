@@ -199,6 +199,7 @@ const TimeframeBottomSheet = ({
                 <Text
                   typography="bodyMedium"
                   color={isSelected ? theme.base.primary : theme.text.primary}
+                  style={{ textAlign: "center" }}
                 >
                   {t(option.labelKey)}
                 </Text>

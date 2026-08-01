@@ -178,7 +178,7 @@ const TradingViewScreen = () => {
     }
     return {
       ...styles.floatingButtonsLandscape,
-      bottom: Platform.select({ ios: 24, android: -12 }) || 12,
+      bottom: Platform.select({ ios: 24, android: 36 }) || 12,
       left: 64 * LANDSCAPE_BUTTON_LEFT_MULTIPLIER,
     };
   }, [isLandscape, bottom]);

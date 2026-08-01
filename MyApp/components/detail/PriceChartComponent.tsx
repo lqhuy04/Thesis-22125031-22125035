@@ -532,56 +532,60 @@ const PriceChartComponent = ({
               </TouchableOpacity>
             </View>
 
-            {/* Chart — shows lightweight opacity fade while reloading on timeframe change */}
-            <Animated.View style={{ opacity: loading ? 0.4 : 1 }}>
-              <TradingViewChart
-                prices={chartPriceData}
-                volumes={chartVolumeData}
-                volumeMAData={chartVolumeMAData}
-                maData={chartMAData}
-                bollData={chartBOLLData}
-                macdData={chartMACDData}
-                rsiData={chartRSIData}
-                kdjData={chartKDJData}
-                timeframe={timeFrame}
-                chartType={chartType}
-                showVolume={indicatorState.volume}
-                technicalIndicatorMode1={indicatorState.mode1}
-                technicalIndicatorMode2={indicatorState.mode2}
-              />
-
-              <TouchableOpacity
-                onPress={() =>
-                  router.push({
-                    pathname: "/TradingViewScreen",
-                    params: {
-                      data: JSON.stringify({
-                        symbol: symbol,
-                        exchange: data?.exchange,
-                      }),
-                    },
-                  })
-                }
-                style={{
-                  backgroundColor: theme.background.surface,
-                  borderColor: theme.border.default,
-                  position: "absolute",
-                  bottom: 64,
-                  left: 12,
-                  width: 24,
-                  height: 24,
-                  borderRadius: 12,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <MaterialCommunityIcons
-                  name="arrow-expand"
-                  size={12}
-                  color={theme.text.primary}
+            {/* Chart — shows skeleton while reloading on timeframe change */}
+            {loading ? (
+              <SkeletonBox height={300} borderRadius={8} />
+            ) : (
+              <View>
+                <TradingViewChart
+                  prices={chartPriceData}
+                  volumes={chartVolumeData}
+                  volumeMAData={chartVolumeMAData}
+                  maData={chartMAData}
+                  bollData={chartBOLLData}
+                  macdData={chartMACDData}
+                  rsiData={chartRSIData}
+                  kdjData={chartKDJData}
+                  timeframe={timeFrame}
+                  chartType={chartType}
+                  showVolume={indicatorState.volume}
+                  technicalIndicatorMode1={indicatorState.mode1}
+                  technicalIndicatorMode2={indicatorState.mode2}
                 />
-              </TouchableOpacity>
-            </Animated.View>
+
+                <TouchableOpacity
+                  onPress={() =>
+                    router.push({
+                      pathname: "/TradingViewScreen",
+                      params: {
+                        data: JSON.stringify({
+                          symbol: symbol,
+                          exchange: data?.exchange,
+                        }),
+                      },
+                    })
+                  }
+                  style={{
+                    backgroundColor: theme.background.surface,
+                    borderColor: theme.border.default,
+                    position: "absolute",
+                    bottom: 64,
+                    left: 12,
+                    width: 24,
+                    height: 24,
+                    borderRadius: 12,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="arrow-expand"
+                    size={12}
+                    color={theme.text.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.toolbar}>
               <Text typography="bodyMedium" color={theme.text.primary}>
@@ -590,6 +594,7 @@ const PriceChartComponent = ({
 
               <TouchableOpacity
                 onPress={() => setShowTimeframeSheet(true)}
+                disabled={loading}
                 style={{
                   backgroundColor: theme.background.bg,
                   borderWidth: 1,
@@ -599,6 +604,7 @@ const PriceChartComponent = ({
                   borderRadius: 8,
                   flexDirection: "row",
                   alignItems: "center",
+                  opacity: loading ? 0.5 : 1,
                 }}
               >
                 <Text
@@ -623,6 +629,7 @@ const PriceChartComponent = ({
 
               <TouchableOpacity
                 onPress={() => setShowIndicatorSheet(true)}
+                disabled={loading}
                 style={{
                   backgroundColor: theme.background.bg,
                   borderWidth: 1,
@@ -632,6 +639,7 @@ const PriceChartComponent = ({
                   borderRadius: 8,
                   flexDirection: "row",
                   alignItems: "center",
+                  opacity: loading ? 0.5 : 1,
                 }}
               >
                 <MaterialCommunityIcons

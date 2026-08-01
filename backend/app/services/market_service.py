@@ -1209,21 +1209,25 @@ class MarketService:
                 "symbol": symbol,
                 "company_name": profile.get("company_name") or "",
                 "current_price": MarketService._to_float(price.get("current_price")),
-                "price_change": MarketService._to_float(price.get("price_change")),
+                "price_change": round(close_now - close_past, 2),
                 "per_price_change": round(price_change_pct, 2),
                 "_vol_change": round(vol_change_pct, 2) if vol_change_pct is not None else None,
             })
 
         return rows
 
+    # Investing-idea list is paginated: fixed page size, capped at 100 items total.
+    _INVESTING_IDEA_MAX_TOTAL = 100
+
     @staticmethod
     def get_investing_idea_by_type(
         msg_type: str,
-        limit: int = 100,
+        limit: int = 20,
         interval: str = "today",
+        offset: int = 0,
     ) -> List[Dict[str, Any]]:
         """
-        Build a single investing-idea category list and return it as a flat list.
+        Build a single investing-idea category page and return it as a flat list.
 
         Supported msg_type values:
         - top_gainers / top_decliners / top_volume  (trend)
@@ -1236,6 +1240,10 @@ class MarketService:
           (gainers/decliners) hoặc volume (top_volume) giữa nến mới nhất và nến
           cách 1 tuần / 1 / 3 / 6 tháng trong bảng Stock_Price_1d.
 
+        `offset` / `limit` paginate the ranked list — page size is `limit`
+        (default 20), and the ranked list is capped at `_INVESTING_IDEA_MAX_TOTAL`
+        (100) items regardless of how far `offset` is pushed.
+
         The stock universe is restricted to current VN100 constituents before
         any category-specific ranking rule is applied.
         """
@@ -1243,7 +1251,11 @@ class MarketService:
             if msg_type not in MarketService._INVESTING_IDEA_TYPES:
                 return []
 
-            limit = max(1, min(limit, 100))
+            limit = max(1, min(limit, MarketService._INVESTING_IDEA_MAX_TOTAL))
+            offset = max(0, offset)
+            if offset >= MarketService._INVESTING_IDEA_MAX_TOTAL:
+                return []
+            page_end = min(offset + limit, MarketService._INVESTING_IDEA_MAX_TOTAL)
             interval = (interval or "today").strip().lower()
 
             vn100_symbols = set(get_index_symbols("VN100"))
@@ -1325,7 +1337,7 @@ class MarketService:
                         -item[1],
                         str(profile_by_stock_id.get(item[0], {}).get("symbol") or ""),
                     ),
-                )[:limit]:
+                )[offset:page_end]:
                     profile = profile_by_stock_id.get(stock_id)
                     if not profile:
                         continue
@@ -1351,17 +1363,17 @@ class MarketService:
                 if msg_type == "top_gainers":
                     selected = sorted(
                         period_rows, key=lambda x: x["per_price_change"], reverse=True
-                    )[:limit]
+                    )[offset:page_end]
                 elif msg_type == "top_decliners":
                     selected = sorted(
                         period_rows, key=lambda x: x["per_price_change"]
-                    )[:limit]
+                    )[offset:page_end]
                 else:  # top_volume
                     selected = sorted(
                         [r for r in period_rows if r["_vol_change"] is not None],
                         key=lambda x: x["_vol_change"],
                         reverse=True,
-                    )[:limit]
+                    )[offset:page_end]
 
                 return [
                     {k: v for k, v in row.items() if not k.startswith("_")}
@@ -1382,16 +1394,16 @@ class MarketService:
                 items.append(row)
 
             if msg_type == "top_gainers":
-                selected = sorted(items, key=lambda x: x["per_price_change"], reverse=True)[:limit]
+                selected = sorted(items, key=lambda x: x["per_price_change"], reverse=True)[offset:page_end]
             elif msg_type == "top_decliners":
-                selected = sorted(items, key=lambda x: x["per_price_change"])[:limit]
+                selected = sorted(items, key=lambda x: x["per_price_change"])[offset:page_end]
             elif msg_type == "top_volume":
-                selected = sorted(items, key=lambda x: x["_total_match_vol"], reverse=True)[:limit]
+                selected = sorted(items, key=lambda x: x["_total_match_vol"], reverse=True)[offset:page_end]
             else:  # cheap_under_50k
                 selected = sorted(
                     [item for item in items if 0 < item["current_price"] < 50],
                     key=lambda x: (-x["current_price"], -x["_total_match_vol"], x["symbol"]),
-                )[:limit]
+                )[offset:page_end]
 
             # Drop internal-only fields (prefixed with "_") from the response.
             return [
