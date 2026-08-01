@@ -7,11 +7,10 @@ from pydantic import BaseModel, Field
 
 from agentic_ai_v2.analyze.language import output_language_instruction
 from agentic_ai_v2.analyze.state import AgentState
-from agentic_ai_v2.service.openai_service import _get_openai_client
+from agentic_ai_v2.service.deepseek_service import create_structured_completion
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "gpt-4o-mini"
 _MAX_OUTPUT_TOKENS = 1_200
 
 _SYSTEM_PROMPT = """Bạn là chuyên gia tổng hợp quyết định đầu tư chứng khoán.
@@ -43,9 +42,7 @@ def _call_aggregator_llm(state: AgentState) -> AggregatorLLMOutput:
         "risk_appetite": state.get("risk_appetite"),
         "agent_results": state.get("agent_results") or {},
     }
-    client = _get_openai_client()
-    response = client.beta.chat.completions.parse(
-        model=_MODEL,
+    return create_structured_completion(
         temperature=0.1,
         max_tokens=_MAX_OUTPUT_TOKENS,
         messages=[
@@ -66,12 +63,8 @@ def _call_aggregator_llm(state: AgentState) -> AggregatorLLMOutput:
                 ),
             },
         ],
-        response_format=AggregatorLLMOutput,
+        output_model=AggregatorLLMOutput,
     )
-    parsed = response.choices[0].message.parsed
-    if parsed is None:
-        raise ValueError("OpenAI returned an empty aggregate analysis")
-    return parsed
 
 
 def _analysis_result(
