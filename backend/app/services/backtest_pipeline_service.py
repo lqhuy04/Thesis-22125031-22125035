@@ -69,6 +69,48 @@ def _build_dataframe(
     return df
 
 
+def _build_market_dataframe(
+    index_name: str,
+    start_date: str | None,
+    end_date: str | None,
+) -> pd.DataFrame:
+    """Build the benchmark frame from MarketIndex_Value_1d."""
+    rows = MarketService.get_market_index_value_by_interval(
+        index_name=index_name,
+        interval="1d",
+        # Market charts default to 300 points, but backtests need the complete
+        # retained history (currently five years).
+        limit=10_000,
+    )
+    if not rows:
+        raise ValueError(f"No market data for {index_name} at interval 1d")
+
+    df = pd.DataFrame(rows)
+    if df.empty or "trading_time" not in df.columns or "value" not in df.columns:
+        raise ValueError(
+            f"Missing trading_time/value columns for {index_name} at interval 1d"
+        )
+
+    df["datetime"] = df["trading_time"].apply(_parse_dt)
+    df["close"] = pd.to_numeric(df["value"], errors="coerce")
+    df = df.dropna(subset=["datetime", "close"])
+    df = df.sort_values("datetime").reset_index(drop=True)
+
+    start_boundary = _parse_date_boundary(start_date, end_of_day=False)
+    end_boundary = _parse_date_boundary(end_date, end_of_day=True)
+    if start_boundary is not None:
+        df = df[df["datetime"] >= start_boundary].reset_index(drop=True)
+    if end_boundary is not None:
+        df = df[df["datetime"] <= end_boundary].reset_index(drop=True)
+
+    if df.empty:
+        raise ValueError(
+            f"No market data after filtering for {index_name} at interval 1d"
+        )
+
+    return df[["datetime", "close"]]
+
+
 def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
     symbol = request.symbol.upper().strip()
     market_symbol = request.market_symbol.upper().strip()
@@ -87,9 +129,8 @@ def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
     # pipeline is explicitly daily/mid-term and does not read intraday prices.
     df_1m = df_1d
 
-    market_df = _build_dataframe(
-        symbol=market_symbol,
-        interval="1d",
+    market_df = _build_market_dataframe(
+        index_name=market_symbol,
         start_date=request.start_date,
         end_date=request.end_date,
     )
