@@ -35,22 +35,32 @@ Phân loại tin nhắn MỚI NHẤT của người dùng vào MỘT trong các 
 1. OUT_OF_SCOPE
    Câu hỏi hoàn toàn không liên quan đến chứng khoán, tài chính, đầu tư, kinh tế.
    Ví dụ: "Nấu phở như thế nào?", "Thời tiết Hà Nội", "Python là gì?", "Đặt vé máy bay"
+   English examples: "How to cook pho?", "Weather in Hanoi", "What is Python?", "Book a flight"
 
 2. GREETING
    Chào hỏi, smalltalk, hỏi về bản thân chatbot, cảm ơn, tạm biệt.
    Ví dụ: "Xin chào", "Bạn là ai?", "Bạn có thể làm gì?", "Cảm ơn", "Tạm biệt"
+   English examples: "Hello", "Who are you?", "What can you do?", "Thanks", "Bye"
 
 3. KNOWLEDGE_QA
    Câu hỏi về khái niệm/kiến thức chứng khoán, tài chính — KHÔNG cần dữ liệu thực tế.
    Ví dụ: "RSI là gì?", "MACD hoạt động như thế nào?", "P/E ratio bao nhiêu là tốt?",
-           "Phân tích kỹ thuật là gì?", "Chỉ số VN-Index đo lường cái gì?"
+           "Phân tích kỹ thuật là gì?", "Chỉ số VN-Index đo lường cái gì?",
+           "Sinh viên có nên đầu tư chứng khoán không?"
+   English examples: "What is RSI?", "How does MACD work?", "What is a good P/E ratio?",
+           "What is technical analysis?", "Should students invest in stocks?"
 
 4. MARKET_QUERY
    Câu hỏi cần dữ liệu thị trường thực tế hoặc phân tích một mã cổ phiếu cụ thể.
    Ví dụ: "Giá VNM hôm nay bao nhiêu?", "Phân tích kỹ thuật HPG", "Nên mua hay bán VIC?",
            "VN-Index đang ở mức nào?", "Top cổ phiếu tăng mạnh hôm nay"
+   English examples: "What is VNM's price today?", "Technical analysis of HPG",
+           "Should I buy or sell VIC?", "Where is the VN-Index now?"
 
 Lưu ý quan trọng:
+- Phân loại dựa trên Ý NGHĨA của câu hỏi, áp dụng NHẤT QUÁN cho mọi ngôn ngữ đầu vào
+  (tiếng Việt, tiếng Anh, hoặc ngôn ngữ khác). Cùng một câu hỏi phải luôn được phân vào
+  cùng một nhóm bất kể được diễn đạt bằng ngôn ngữ nào.
 - Xem xét LỊCH SỬ HỘI THOẠI để hiểu ngữ cảnh. Ví dụ: "Phân tích thêm đi" sau khi bàn về VNM → MARKET_QUERY.
 - Câu hỏi khái niệm tổng quát → KNOWLEDGE_QA, kể cả khi có tên mã cổ phiếu làm ví dụ.
 - Câu hỏi về dữ liệu cụ thể, khuyến nghị mua/bán → MARKET_QUERY.

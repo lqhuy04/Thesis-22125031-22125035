@@ -97,6 +97,7 @@ const Chatbot = () => {
   const [historyVisible, setHistoryVisible] = useState(false);
   const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   /** Các chip phân tích nhanh: top 3 mã tăng + top 3 mã giảm. */
   const [quickChips, setQuickChips] = useState<
@@ -134,15 +135,20 @@ const Chatbot = () => {
   }, []);
 
   const fetchSessions = useCallback(async () => {
-    const { status, data } = await getChatSessions();
-    if (status) {
-      setConversations(
-        data.map((s: ChatSession) => ({
-          id: s.session_id,
-          title: s.title || t("chatbot.newConversation"),
-          timeLabel: formatTimeLabel(s.updated_at, t),
-        })),
-      );
+    setHistoryLoading(true);
+    try {
+      const { status, data } = await getChatSessions();
+      if (status) {
+        setConversations(
+          data.map((s: ChatSession) => ({
+            id: s.session_id,
+            title: s.title || t("chatbot.newConversation"),
+            timeLabel: formatTimeLabel(s.updated_at, t),
+          })),
+        );
+      }
+    } finally {
+      setHistoryLoading(false);
     }
   }, [t]);
 
@@ -498,6 +504,7 @@ const Chatbot = () => {
       <ChatHistoryBottomSheet
         visible={historyVisible}
         conversations={conversations}
+        loading={historyLoading}
         onClose={() => setHistoryVisible(false)}
         onSelectConversation={(conversation) => {
           setHistoryVisible(false);

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Modal,
   Animated,
@@ -28,6 +28,7 @@ export interface ChatConversation {
 interface Props {
   visible: boolean;
   conversations?: ChatConversation[];
+  loading?: boolean;
   onClose: () => void;
   onSelectConversation?: (conversation: ChatConversation) => void;
   onConversationMenu?: (conversation: ChatConversation) => void;
@@ -36,9 +37,79 @@ interface Props {
   onShareConversation?: (conversation: ChatConversation) => void;
 }
 
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
+const SkeletonBox = ({
+  width,
+  height,
+  borderRadius = 6,
+  style,
+}: {
+  width: number | string;
+  height: number;
+  borderRadius?: number;
+  style?: object;
+}) => {
+  const { theme } = useTheme();
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.4,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.View
+      style={[
+        {
+          width,
+          height,
+          borderRadius,
+          backgroundColor: theme.border.default,
+          opacity,
+        },
+        style,
+      ]}
+    />
+  );
+};
+
+const ConversationSkeletonRow = ({ isLast }: { isLast: boolean }) => {
+  const { theme } = useTheme();
+  return (
+    <View
+      style={[
+        styles.row,
+        { borderBottomColor: isLast ? "transparent" : theme.border.default },
+      ]}
+    >
+      <View style={{ flex: 1, marginRight: 12 }}>
+        <SkeletonBox width="70%" height={16} />
+        <SkeletonBox width={48} height={12} style={{ marginTop: 8 }} />
+      </View>
+      <View style={styles.rowMenu} />
+    </View>
+  );
+};
+
 const ChatHistoryBottomSheet = ({
   visible,
   conversations = [],
+  loading = false,
   onClose,
   onSelectConversation,
   onConversationMenu,
@@ -144,57 +215,61 @@ const ChatHistoryBottomSheet = ({
             {t("chatbot.conversations")}
           </Text>
 
-          {conversations.map((item, index) => (
-            <TouchableOpacity
-              key={item.id}
-              activeOpacity={0.7}
-              onPress={() => {
-                closeSheet();
-                onSelectConversation?.(item);
-              }}
-              style={[
-                styles.row,
-                {
-                  borderBottomColor:
-                    index !== conversations.length - 1
-                      ? theme.border.default
-                      : "transparent",
-                },
-              ]}
-            >
-              <View style={{ flex: 1, marginRight: 12 }}>
-                <Text
-                  typography="bodyLarge"
-                  color={theme.text.primary}
-                  numberOfLines={2}
+          {loading
+            ? Array.from({ length: 4 }).map((_, index) => (
+                <ConversationSkeletonRow key={index} isLast={index === 3} />
+              ))
+            : conversations.map((item, index) => (
+                <TouchableOpacity
+                  key={item.id}
+                  activeOpacity={0.7}
+                  onPress={() => {
+                    closeSheet();
+                    onSelectConversation?.(item);
+                  }}
+                  style={[
+                    styles.row,
+                    {
+                      borderBottomColor:
+                        index !== conversations.length - 1
+                          ? theme.border.default
+                          : "transparent",
+                    },
+                  ]}
                 >
-                  {item.title}
-                </Text>
-                <Text
-                  typography="bodySmall"
-                  color={theme.text.primary + "88"}
-                  style={{ marginTop: 4 }}
-                >
-                  {item.timeLabel}
-                </Text>
-              </View>
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text
+                      typography="bodyLarge"
+                      color={theme.text.primary}
+                      numberOfLines={2}
+                    >
+                      {item.title}
+                    </Text>
+                    <Text
+                      typography="bodySmall"
+                      color={theme.text.primary + "88"}
+                      style={{ marginTop: 4 }}
+                    >
+                      {item.timeLabel}
+                    </Text>
+                  </View>
 
-              <TouchableOpacity
-                onPress={() => {
-                  onConversationMenu?.(item);
-                  setOptionsTarget(item);
-                }}
-                hitSlop={8}
-                style={styles.rowMenu}
-              >
-                <Feather
-                  name="more-horizontal"
-                  size={22}
-                  color={theme.text.primary}
-                />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
+                  <TouchableOpacity
+                    onPress={() => {
+                      onConversationMenu?.(item);
+                      setOptionsTarget(item);
+                    }}
+                    hitSlop={8}
+                    style={styles.rowMenu}
+                  >
+                    <Feather
+                      name="more-horizontal"
+                      size={22}
+                      color={theme.text.primary}
+                    />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              ))}
         </ScrollView>
 
         {/* Nút tạo trò chuyện mới */}
