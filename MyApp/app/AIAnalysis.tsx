@@ -36,6 +36,29 @@ const screenWidth = Dimensions.get("window").width;
 // Brand purple gradient, matching the app theme.
 const PURPLE_GRADIENT = ["#9D8CFF", "#7B5CFF", "#613DE4"] as const;
 
+// Tái dùng nhãn/mô tả kỳ hạn đã có ở màn RiskAppetite, tránh trùng lặp bản dịch.
+const PERIOD_LABEL_KEYS: Record<string, { label: string; desc: string }> = {
+  short_term: {
+    label: "riskAppetiteScreen.shortTerm",
+    desc: "riskAppetiteScreen.shortTermDesc",
+  },
+  mid_term: {
+    label: "riskAppetiteScreen.midTerm",
+    desc: "riskAppetiteScreen.midTermDesc",
+  },
+  long_term: {
+    label: "riskAppetiteScreen.longTerm",
+    desc: "riskAppetiteScreen.longTermDesc",
+  },
+};
+
+// Khung nến giữ tối đa tương ứng với từng khẩu vị rủi ro.
+const INTERVAL_LABEL_KEYS: Record<string, string> = {
+  short_term: "aiAnalysis.intervalHourly",
+  mid_term: "aiAnalysis.intervalDaily",
+  long_term: "aiAnalysis.intervalWeekly",
+};
+
 // Small gradient accent bar shown to the left of section titles.
 const SectionTitle = ({ children }: { children: React.ReactNode }) => {
   const { theme } = useTheme();
@@ -103,6 +126,7 @@ const AIAnalysis = () => {
   );
 
   const [analysis, setAnalysis] = useState<AnalysisData | null>(null);
+  const [period, setPeriod] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAxis, setSelectedAxis] = useState<number | null>(null);
   const [seeding, setSeeding] = useState(false);
@@ -140,6 +164,7 @@ const AIAnalysis = () => {
     let mounted = true;
     setIsLoading(true);
     setAnalysis(null);
+    setPeriod(null);
 
     getAnalysis(
       stockSymbol,
@@ -148,7 +173,10 @@ const AIAnalysis = () => {
       language,
     )
       .then((res) => {
-        if (mounted && res.status) setAnalysis(res.data);
+        if (mounted && res.status) {
+          setAnalysis(res.data);
+          setPeriod(res.period);
+        }
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
@@ -166,6 +194,14 @@ const AIAnalysis = () => {
 
   const formatPrice = (value: number | null | undefined) =>
     value == null ? t("aiAnalysis.notAvailable") : value.toFixed(2);
+
+  const formatInt = (value: number | null | undefined) =>
+    value == null ? t("aiAnalysis.notAvailable") : String(Math.round(value));
+
+  const maxHoldCandlesLabel =
+    period != null && INTERVAL_LABEL_KEYS[period]
+      ? `${t("aiAnalysis.maxHoldCandles")} (${t(INTERVAL_LABEL_KEYS[period])})`
+      : t("aiAnalysis.maxHoldCandles");
 
   const formatStockScore = (value: number | null | undefined) =>
     `${Math.round(Math.min(Math.max(value ?? 0, 0), 1) * 100)}/100`;
@@ -242,7 +278,7 @@ const AIAnalysis = () => {
             `- ${t("aiAnalysis.entryPrice")}: ${formatPrice(a.entry_price)}`,
             `- ${t("aiAnalysis.takeProfit")}: ${formatPrice(a.take_profit_price)}`,
             `- ${t("aiAnalysis.stopLoss")}: ${formatPrice(a.stop_loss_price)}`,
-            `- ${t("aiAnalysis.maxHoldCandles")}: ${formatPrice(a.max_hold_candles)}`,
+            `- ${maxHoldCandlesLabel}: ${formatInt(a.max_hold_candles)}`,
           ]
         : []),
       "",
@@ -386,6 +422,23 @@ const AIAnalysis = () => {
             </View>
           </LinearGradient>
 
+          {/* ── Investment Period ── */}
+          {period != null && PERIOD_LABEL_KEYS[period] && (
+            <View
+              style={[
+                styles.card,
+                { backgroundColor: theme.background.bg, marginTop: 12 },
+              ]}
+            >
+              <SectionTitle>{t("aiAnalysis.investmentPeriod")}</SectionTitle>
+              <Text typography="titleMedium" color={theme.text.primary}>
+                {`${t(PERIOD_LABEL_KEYS[period].label)} (${t(
+                  PERIOD_LABEL_KEYS[period].desc,
+                )})`}
+              </Text>
+            </View>
+          )}
+
           {/* ── Trading Plan ── */}
           {isBuy && (
             <View
@@ -422,8 +475,8 @@ const AIAnalysis = () => {
                   ),
                 },
                 {
-                  label: t("aiAnalysis.maxHoldCandles"),
-                  value: formatPrice(analysis.max_hold_candles),
+                  label: maxHoldCandlesLabel,
+                  value: formatInt(analysis.max_hold_candles),
                   color: theme.text.primary,
                   percent: null,
                 },
@@ -510,7 +563,8 @@ const AIAnalysis = () => {
                     {scoreData[selectedAxis].label}
                   </Text>
                   <Markdown style={analysisMarkdownStyle}>
-                    {analysis.analysis[axisAnalysisKeys[selectedAxis]]}
+                    {analysis.analysis[axisAnalysisKeys[selectedAxis]] ||
+                      t("aiAnalysis.noAnalysisData")}
                   </Markdown>
                 </>
               )}

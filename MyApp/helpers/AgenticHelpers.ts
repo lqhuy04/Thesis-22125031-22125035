@@ -58,9 +58,11 @@ export const getAnalysis = async (
 ): Promise<{
   status: boolean;
   data: AnalysisData | null;
+  period: string | null;
 }> => {
   try {
     const riskAppetite = await getRiskAppetite();
+    const period = riskAppetite?.data?.period ?? null;
 
     const body: Record<string, unknown> = {
       mode,
@@ -83,18 +85,21 @@ export const getAnalysis = async (
       return {
         status: true,
         data: data as AnalysisData,
+        period,
       };
     }
 
     return {
       status: false,
       data: null,
+      period,
     };
   } catch (error) {
     console.error(error);
     return {
       status: false,
       data: null,
+      period: null,
     };
   }
 };

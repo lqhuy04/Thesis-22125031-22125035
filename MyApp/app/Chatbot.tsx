@@ -1,5 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
+  Animated,
   ScrollView,
   View,
   Image,
@@ -46,6 +53,43 @@ const formatTimeLabel = (iso: string, t: (key: string) => string): string => {
   ).padStart(2, "0")}`;
 };
 
+/** Skeleton pill dùng khi chip phân tích nhanh chưa tải xong. */
+const QuickChipSkeleton = ({ width, backgroundColor }: { width: number; backgroundColor: string }) => {
+  const opacity = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0.5,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.View
+      style={{
+        width,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor,
+        opacity,
+        marginRight: 12,
+      }}
+    />
+  );
+};
+
 const Chatbot = () => {
   const { theme } = useTheme();
   const { t } = useLocalization();
@@ -58,27 +102,32 @@ const Chatbot = () => {
   const [quickChips, setQuickChips] = useState<
     { symbol: string; isUp: boolean }[]
   >([]);
+  const [quickChipsLoading, setQuickChipsLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
     Promise.all([
       getInvestingIdea("top_gainers", 3),
       getInvestingIdea("top_decliners", 3),
-    ]).then(([gainersRes, declinersRes]) => {
-      if (!mounted) return;
-      const gainers = (gainersRes?.data ?? []).slice(0, 3);
-      const decliners = (declinersRes?.data ?? []).slice(0, 3);
-      setQuickChips([
-        ...gainers.map((s: SuggestionItem) => ({
-          symbol: s.symbol,
-          isUp: true,
-        })),
-        ...decliners.map((s: SuggestionItem) => ({
-          symbol: s.symbol,
-          isUp: false,
-        })),
-      ]);
-    });
+    ])
+      .then(([gainersRes, declinersRes]) => {
+        if (!mounted) return;
+        const gainers = (gainersRes?.data ?? []).slice(0, 3);
+        const decliners = (declinersRes?.data ?? []).slice(0, 3);
+        setQuickChips([
+          ...gainers.map((s: SuggestionItem) => ({
+            symbol: s.symbol,
+            isUp: true,
+          })),
+          ...decliners.map((s: SuggestionItem) => ({
+            symbol: s.symbol,
+            isUp: false,
+          })),
+        ]);
+      })
+      .finally(() => {
+        if (mounted) setQuickChipsLoading(false);
+      });
     return () => {
       mounted = false;
     };
@@ -222,7 +271,7 @@ const Chatbot = () => {
       </View>
 
       {/* ── Phân tích nhanh ── */}
-      {quickChips.length > 0 && (
+      {(quickChipsLoading || quickChips.length > 0) && (
         <View>
           <View
             style={{
@@ -249,37 +298,45 @@ const Chatbot = () => {
             showsHorizontalScrollIndicator={false}
             style={{ marginLeft: 12 }}
           >
-            {quickChips.map((chip) => (
-              <TouchableOpacity
-                key={`${chip.symbol}-${chip.isUp ? "up" : "down"}`}
-                activeOpacity={0.8}
-                onPress={() =>
-                  router.push({
-                    pathname: "/AIAnalysis",
-                    params: { data: chip.symbol, mode: "auto" },
-                  })
-                }
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  marginRight: 12,
-                  borderRadius: 16,
-                  backgroundColor: theme.background.bg,
-                  paddingVertical: 4,
-                  paddingHorizontal: 16,
-                }}
-              >
-                <Text typography="labelLarge" color={theme.text.primary}>
-                  {chip.symbol}
-                </Text>
-                <AntDesign
-                  name={chip.isUp ? "rise" : "fall"}
-                  size={16}
-                  color={chip.isUp ? theme.base.success : theme.base.error}
-                />
-              </TouchableOpacity>
-            ))}
+            {quickChipsLoading
+              ? [88, 96, 84, 100, 92].map((width, index) => (
+                  <QuickChipSkeleton
+                    key={index}
+                    width={width}
+                    backgroundColor={theme.background.bg}
+                  />
+                ))
+              : quickChips.map((chip) => (
+                  <TouchableOpacity
+                    key={`${chip.symbol}-${chip.isUp ? "up" : "down"}`}
+                    activeOpacity={0.8}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/AIAnalysis",
+                        params: { data: chip.symbol, mode: "auto" },
+                      })
+                    }
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      marginRight: 12,
+                      borderRadius: 16,
+                      backgroundColor: theme.background.bg,
+                      paddingVertical: 4,
+                      paddingHorizontal: 16,
+                    }}
+                  >
+                    <Text typography="labelLarge" color={theme.text.primary}>
+                      {chip.symbol}
+                    </Text>
+                    <AntDesign
+                      name={chip.isUp ? "rise" : "fall"}
+                      size={16}
+                      color={chip.isUp ? theme.base.success : theme.base.error}
+                    />
+                  </TouchableOpacity>
+                ))}
           </ScrollView>
         </View>
       )}
