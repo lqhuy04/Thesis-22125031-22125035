@@ -31,8 +31,8 @@ from app.backtest.engine import (
 from app.services.backtest_pipeline_service import _build_dataframe
 from app.utils.market_index import get_index_symbols
 
-START_DATE = "2023-01-01"
-END_DATE = "2025-12-31"
+START_DATE = "2024-08-01"
+END_DATE = "2026-08-01"
 MAX_HOLD_CANDLES = 20
 
 INDICATORS = {

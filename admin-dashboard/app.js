@@ -40,6 +40,7 @@ const els = {
   vn30ResultsCard: document.getElementById("vn30ResultsCard"),
   vn30ResultsBody: document.getElementById("vn30ResultsBody"),
   exportVn30CsvBtn: document.getElementById("exportVn30CsvBtn"),
+  resetVn30CheckpointBtn: document.getElementById("resetVn30CheckpointBtn"),
 
   // Viz Wrapper
   vizWrapper: document.getElementById("vizWrapper"),
@@ -130,6 +131,8 @@ const els = {
 // Tokens remain in memory only. Never put credentials or tokens in web storage.
 let adminToken = null;
 let adminRefreshToken = null;
+let adminRefreshPromise = null;
+let adminRefreshTimer = null;
 let apiBaseUrl = "";
 let analyzeSummaryData = [];
 
@@ -154,20 +157,33 @@ function appendLog(message) {
   console.info(`[Stockrium Admin] ${message}`);
 }
 
-async function requestJson(url, options = {}) {
-  const response = await fetch(url, {
+function buildAdminRequestOptions(options = {}, accessToken = adminToken) {
+  return {
     method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(options.headers || {}),
     },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
-  });
+  };
+}
+
+async function requestJson(url, options = {}) {
+  let response = await fetch(url, buildAdminRequestOptions(options));
 
   if (response.status === 401) {
-    clearAdminSession("Phiên đăng nhập đã hết hạn.");
+    try {
+      const refreshedToken = await refreshAdminSession();
+      response = await fetch(
+        url,
+        buildAdminRequestOptions(options, refreshedToken),
+      );
+    } catch (error) {
+      clearAdminSession(error.message || "Phiên đăng nhập đã hết hạn.");
+      throw error;
+    }
   }
 
   let body;
@@ -217,9 +233,83 @@ function setAdminAuthBadge(type, text) {
   els.adminAuthBadge.textContent = text;
 }
 
+function adminTokenExpiresAt(token) {
+  try {
+    const payloadPart = token.split(".")[1];
+    const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+    const payload = JSON.parse(atob(padded));
+    return Number(payload.exp) * 1000;
+  } catch {
+    return 0;
+  }
+}
+
+function scheduleAdminTokenRefresh() {
+  if (adminRefreshTimer) {
+    clearTimeout(adminRefreshTimer);
+    adminRefreshTimer = null;
+  }
+  if (!adminToken || !adminRefreshToken) return;
+
+  const expiresAt = adminTokenExpiresAt(adminToken);
+  // Refresh one minute before expiry. If the JWT cannot be decoded, use the
+  // current backend default of a ten-minute refresh cadence.
+  const delay = expiresAt
+    ? Math.max(expiresAt - Date.now() - 60_000, 5_000)
+    : 10 * 60_000;
+  adminRefreshTimer = setTimeout(async () => {
+    try {
+      await refreshAdminSession();
+    } catch (error) {
+      clearAdminSession(error.message || "Phiên đăng nhập đã hết hạn.");
+    }
+  }, delay);
+}
+
+async function refreshAdminSession() {
+  if (adminRefreshPromise) return adminRefreshPromise;
+  if (!apiBaseUrl || !adminRefreshToken) {
+    throw new Error("Phiên admin không thể gia hạn. Vui lòng đăng nhập lại.");
+  }
+
+  adminRefreshPromise = (async () => {
+    const response = await fetch(`${apiBaseUrl}/api/auth/refresh`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ refresh_token: adminRefreshToken }),
+    });
+    const payload = await response.json().catch(() => null);
+    const newToken = payload?.data?.token;
+    if (!response.ok || !payload?.result || !newToken) {
+      throw new Error(payload?.errorDesc || "Phiên admin đã hết hạn.");
+    }
+
+    adminToken = newToken;
+    adminRefreshToken = payload.data.refresh_token || adminRefreshToken;
+    scheduleAdminTokenRefresh();
+    appendLog("Phiên admin đã được tự động gia hạn.");
+    return adminToken;
+  })();
+
+  try {
+    return await adminRefreshPromise;
+  } finally {
+    adminRefreshPromise = null;
+  }
+}
+
 function clearAdminSession(message = "") {
+  if (adminRefreshTimer) {
+    clearTimeout(adminRefreshTimer);
+    adminRefreshTimer = null;
+  }
   adminToken = null;
   adminRefreshToken = null;
+  adminRefreshPromise = null;
   els.adminPassword.value = "";
   els.adminLoginError.textContent = message;
   els.adminLoginCard.hidden = false;
@@ -280,6 +370,7 @@ async function adminLogin(event) {
 
     adminToken = candidateToken;
     adminRefreshToken = candidateRefreshToken;
+    scheduleAdminTokenRefresh();
     showAdminDashboard(sessionPayload.data.email);
     appendLog("Đăng nhập admin thành công.");
     loadCloudHistory();
@@ -348,6 +439,87 @@ const BACKTEST_FLOW_SUMMARIES = {
   technical_single: "Single-indicator AI pipeline: chỉ dùng một chỉ báo kỹ thuật đã chọn.",
   custom: "Tùy chỉnh nguồn dữ liệu, chỉ báo kỹ thuật và trọng số phân tích.",
 };
+const VN30_BACKTEST_CHECKPOINT_KEY = "stockrium.admin.vn30-backtest.v1";
+
+function vn30CheckpointSignature(baseUrl, baseParams, tickers) {
+  const { symbol: _ignoredSymbol, ...parameters } = baseParams;
+  return JSON.stringify({
+    apiBaseUrl: normalizeBaseUrl(baseUrl),
+    parameters,
+    tickers: [...tickers].sort(),
+  });
+}
+
+function loadVn30Checkpoint(baseUrl, baseParams, tickers) {
+  try {
+    const raw = localStorage.getItem(VN30_BACKTEST_CHECKPOINT_KEY);
+    if (!raw) return null;
+    const checkpoint = JSON.parse(raw);
+    const expectedSignature = vn30CheckpointSignature(
+      baseUrl,
+      baseParams,
+      tickers,
+    );
+    if (
+      checkpoint?.version !== 1
+      || checkpoint?.signature !== expectedSignature
+      || !Array.isArray(checkpoint?.rows)
+    ) {
+      return null;
+    }
+    return checkpoint;
+  } catch (error) {
+    appendLog(`Không thể đọc checkpoint VN30: ${error.message}`);
+    return null;
+  }
+}
+
+function saveVn30Checkpoint(baseUrl, baseParams, tickers) {
+  try {
+    const rows = vn30SummaryData.map(({ vizData: _vizData, ...row }) => row);
+    localStorage.setItem(
+      VN30_BACKTEST_CHECKPOINT_KEY,
+      JSON.stringify({
+        version: 1,
+        signature: vn30CheckpointSignature(baseUrl, baseParams, tickers),
+        updatedAt: new Date().toISOString(),
+        rows,
+      }),
+    );
+  } catch (error) {
+    appendLog(`Không thể lưu checkpoint VN30: ${error.message}`);
+  }
+}
+
+function clearVn30Checkpoint() {
+  try {
+    localStorage.removeItem(VN30_BACKTEST_CHECKPOINT_KEY);
+  } catch (error) {
+    appendLog(`Không thể xóa checkpoint VN30: ${error.message}`);
+  }
+}
+
+function removeVn30Result(ticker) {
+  vn30SummaryData = vn30SummaryData.filter((row) => row.ticker !== ticker);
+  els.vn30ResultsBody
+    ?.querySelector(`tr[data-ticker="${ticker}"]`)
+    ?.remove();
+}
+
+function upsertVn30Result(row) {
+  removeVn30Result(row.ticker);
+  vn30SummaryData.push(row);
+  addVn30TableRow(
+    row.ticker,
+    row.pnl,
+    row.winRate,
+    row.tradesCount,
+    row.sharpe,
+    row.status,
+    row.vizData,
+    row.error || "",
+  );
+}
 
 function getBacktestFlow() {
   const activeBtn = els.backtestFlowControl?.querySelector(".seg-btn.active");
@@ -657,15 +829,54 @@ async function runBacktest() {
 
     els.vn30Logs.textContent = "";
     els.vn30ResultsBody.innerHTML = "";
-    vn30SummaryData = [];
-    updateProgressBar(0, vn30Tickers.length);
+    const checkpoint = loadVn30Checkpoint(
+      baseUrl,
+      baseParams,
+      vn30Tickers,
+    );
+    vn30SummaryData = (checkpoint?.rows || [])
+      .filter((row) => vn30Tickers.includes(row?.ticker))
+      .map((row) => ({ ...row, vizData: null }));
+    vn30SummaryData.forEach((row) => {
+      addVn30TableRow(
+        row.ticker,
+        row.pnl,
+        row.winRate,
+        row.tradesCount,
+        row.sharpe,
+        row.status,
+        null,
+        row.error || "",
+      );
+    });
 
-    appendLog(`Bắt đầu chạy backtest tuần tự rổ VN30 (${vn30Tickers.length} mã)...`);
+    const completedSymbols = new Set(
+      vn30SummaryData
+        .filter((row) => row.status === "OK")
+        .map((row) => row.ticker),
+    );
+    let completedCount = completedSymbols.size;
+    let batchInterrupted = false;
+    updateProgressBar(completedCount, vn30Tickers.length);
 
-    let completedCount = 0;
+    if (completedCount > 0) {
+      appendVn30Log(
+        `↩️ Khôi phục checkpoint: ${completedCount}/${vn30Tickers.length} mã đã hoàn thành.`,
+      );
+      appendLog(`Tiếp tục batch VN30 từ checkpoint (${completedCount}/${vn30Tickers.length}).`);
+    } else {
+      appendLog(`Bắt đầu chạy backtest tuần tự rổ VN30 (${vn30Tickers.length} mã)...`);
+    }
+
     for (let i = 0; i < vn30Tickers.length; i++) {
       const ticker = vn30Tickers[i];
-      updateProgressBar(i, vn30Tickers.length, `Đang xử lý ${ticker} (${i + 1}/${vn30Tickers.length})...`);
+      if (completedSymbols.has(ticker)) {
+        appendVn30Log(`[${i + 1}/${vn30Tickers.length}] Bỏ qua ${ticker}: đã hoàn thành trong checkpoint.`);
+        continue;
+      }
+
+      removeVn30Result(ticker);
+      updateProgressBar(completedCount, vn30Tickers.length, `Đang xử lý ${ticker} (${i + 1}/${vn30Tickers.length})...`);
 
       const params = { ...baseParams, symbol: ticker };
       appendVn30Log(`[${i + 1}/${vn30Tickers.length}] Khởi động chạy backtest cho ${ticker}...`);
@@ -687,7 +898,7 @@ async function runBacktest() {
 
           appendVn30Log(`✅ ${ticker} thành công: Lợi nhuận ${pnl}, Sharpe ${sharpe}, Tổng giao dịch ${tradesCount}.`);
 
-          vn30SummaryData.push({
+          upsertVn30Result({
             ticker,
             pnl,
             winRate,
@@ -696,37 +907,54 @@ async function runBacktest() {
             status: "OK",
             vizData
           });
-
-          addVn30TableRow(ticker, pnl, winRate, tradesCount, sharpe, "OK", vizData);
         } else {
           throw new Error("Dữ liệu rỗng");
         }
       } catch (err) {
         appendVn30Log(`❌ ${ticker} thất bại: ${err.message}`);
 
-        vn30SummaryData.push({
+        upsertVn30Result({
           ticker,
           pnl: "N/A",
           winRate: "N/A",
           tradesCount: "N/A",
           sharpe: "N/A",
           status: "Lỗi",
-          vizData: null
+          vizData: null,
+          error: err.message,
         });
-
-        addVn30TableRow(ticker, "N/A", "N/A", "N/A", "N/A", "Lỗi", null, err.message);
       }
 
       completedCount++;
+      saveVn30Checkpoint(baseUrl, baseParams, vn30Tickers);
       updateProgressBar(completedCount, vn30Tickers.length, `Đang chạy: ${completedCount}/${vn30Tickers.length}`);
+
+      if (!adminToken) {
+        batchInterrupted = true;
+        appendVn30Log("⏸️ Batch đã tạm dừng vì phiên admin không thể gia hạn. Đăng nhập rồi chạy lại để tiếp tục.");
+        updateProgressBar(
+          completedCount,
+          vn30Tickers.length,
+          `Tạm dừng tại ${completedCount}/${vn30Tickers.length}`,
+        );
+        break;
+      }
 
       // Delay briefly between sequential API calls to prevent blocking
       await new Promise(resolve => setTimeout(resolve, 300));
     }
 
-    appendVn30Log(`🎉 Đã hoàn thành toàn bộ ${vn30Tickers.length} mã VN30!`);
-    updateProgressBar(vn30Tickers.length, vn30Tickers.length, "Hoàn tất rổ VN30");
-    appendLog("Chạy batch VN30 hoàn tất.");
+    const successfulCount = vn30SummaryData.filter((row) => row.status === "OK").length;
+    const failedCount = vn30SummaryData.filter((row) => row.status !== "OK").length;
+    if (successfulCount === vn30Tickers.length) {
+      clearVn30Checkpoint();
+      appendVn30Log(`🎉 Đã hoàn thành toàn bộ ${vn30Tickers.length} mã VN30!`);
+      updateProgressBar(vn30Tickers.length, vn30Tickers.length, "Hoàn tất rổ VN30");
+      appendLog("Chạy batch VN30 hoàn tất.");
+    } else if (!batchInterrupted) {
+      appendVn30Log(`⚠️ Kết thúc lượt chạy: ${successfulCount} thành công, ${failedCount} lỗi. Chạy lại để retry các mã lỗi.`);
+      updateProgressBar(completedCount, vn30Tickers.length, `Còn ${vn30Tickers.length - successfulCount} mã cần chạy lại`);
+    }
     loadCloudHistory();
     els.runBacktestBtn.disabled = false;
     els.runBacktestBtn.textContent = "Chạy Backtest Pipeline";
@@ -753,29 +981,46 @@ function appendVn30Log(msg) {
 
 function addVn30TableRow(ticker, pnl, winRate, trades, sharpe, status, vizData, errMsg = "") {
   const tr = document.createElement("tr");
+  tr.dataset.ticker = ticker;
   const pnlNum = parseFloat(pnl);
   const pnlClass = isNaN(pnlNum) ? "" : (pnlNum >= 0 ? "text-green font-semibold" : "text-red font-semibold");
   const statusClass = status === "OK" ? "badge ok" : "badge error";
+  const canView = status === "OK" && Boolean(vizData);
 
   tr.innerHTML = `
-    <td><strong>${ticker}</strong></td>
-    <td class="${pnlClass}">${pnl}</td>
-    <td>${winRate}</td>
-    <td>${trades}</td>
-    <td>${sharpe}</td>
-    <td><span class="${statusClass}" title="${errMsg}">${status}</span></td>
+    <td><strong>${escapeHtml(ticker)}</strong></td>
+    <td class="${pnlClass}">${escapeHtml(pnl)}</td>
+    <td>${escapeHtml(winRate)}</td>
+    <td>${escapeHtml(trades)}</td>
+    <td>${escapeHtml(sharpe)}</td>
+    <td><span class="${statusClass}" title="${escapeHtml(errMsg)}">${escapeHtml(status)}</span></td>
     <td style="text-align: center;">
-      <button class="btn btn-ghost btn-view-vn30-viz" type="button" style="padding: 4px 10px; font-size: 0.75rem;" ${status === "OK" ? "" : "disabled"}>Xem</button>
+      <button class="btn btn-ghost btn-view-vn30-viz" type="button" style="padding: 4px 10px; font-size: 0.75rem;" ${canView ? "" : "disabled"}>Xem</button>
     </td>
   `;
 
-  if (status === "OK" && vizData) {
+  if (canView) {
     tr.querySelector(".btn-view-vn30-viz").addEventListener("click", () => {
       renderVisualization(vizData);
     });
   }
 
   els.vn30ResultsBody.appendChild(tr);
+}
+
+function resetVn30Checkpoint() {
+  if (els.runBacktestBtn.disabled) {
+    alert("Không thể xóa checkpoint khi backtest đang chạy.");
+    return;
+  }
+  if (!confirm("Xóa toàn bộ tiến độ VN30 đã lưu để chạy lại từ đầu?")) return;
+
+  clearVn30Checkpoint();
+  vn30SummaryData = [];
+  els.vn30ResultsBody.innerHTML = "";
+  els.vn30Logs.textContent = "Checkpoint đã được xóa. Lần chạy VN30 tiếp theo sẽ bắt đầu từ đầu.";
+  updateProgressBar(0, 1, "Chưa bắt đầu");
+  appendLog("Đã xóa checkpoint backtest VN30.");
 }
 
 function exportVn30Csv() {
@@ -2000,6 +2245,7 @@ function exportAnalyzeCsv() {
 // ─────────────────────────────────────────────────────────────────────────────
 els.runBacktestBtn.addEventListener("click", runBacktest);
 els.exportVn30CsvBtn.addEventListener("click", exportVn30Csv);
+els.resetVn30CheckpointBtn.addEventListener("click", resetVn30Checkpoint);
 els.refreshCloudHistoryBtn.addEventListener("click", loadCloudHistory);
 els.runAnalyzeBtn.addEventListener("click", runAnalyze);
 els.exportAnalyzeCsvBtn.addEventListener("click", exportAnalyzeCsv);

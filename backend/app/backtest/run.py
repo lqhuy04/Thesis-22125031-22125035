@@ -236,6 +236,7 @@ def run_full_backtest(
     vn30_stats_file = None
     try:
         import os
+        from app.utils.market_index import get_index_symbols
         from .vn30_stats import build_symbol_stats, update_vn30_stats_file
         current_dir = os.path.dirname(os.path.abspath(__file__))
         vn30_stats_path = os.path.join(current_dir, "reports", "vn30_stats.json")
@@ -249,9 +250,18 @@ def run_full_backtest(
             stats=stats_results,
             full_trades=full_trades,
         )
-        update_vn30_stats_file(symbol, symbol_stats, vn30_stats_path)
-        vn30_stats_file = vn30_stats_path
-        print(f"VN30 aggregate stats updated: {vn30_stats_path}")
+        current_vn30_symbols = get_index_symbols("VN30")
+        if symbol.upper() in current_vn30_symbols:
+            update_vn30_stats_file(
+                symbol,
+                symbol_stats,
+                vn30_stats_path,
+                allowed_symbols=current_vn30_symbols,
+            )
+            vn30_stats_file = vn30_stats_path
+            print(f"VN30 aggregate stats updated: {vn30_stats_path}")
+        else:
+            print(f"VN30 aggregate stats skipped for non-member symbol: {symbol}")
     except Exception as e:
         print(f"Failed to update VN30 aggregate stats: {e}")
 

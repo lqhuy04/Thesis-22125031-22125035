@@ -220,6 +220,7 @@ def update_vn30_stats_file(
     symbol: str,
     symbol_stats: dict[str, Any],
     output_path: str,
+    allowed_symbols: list[str] | None = None,
 ) -> str:
     """
     Upsert thống kê của 1 mã vào file JSON tổng hợp rồi tính lại aggregate.
@@ -239,6 +240,17 @@ def update_vn30_stats_file(
         except (json.JSONDecodeError, OSError):
             report = {"symbols": {}}
 
+    # Remove symbols that are no longer in the current VN30 universe before
+    # recalculating the aggregate. This prevents an older constituent from
+    # surviving indefinitely when a later batch runs only the current basket.
+    allowed = {item.upper() for item in allowed_symbols} if allowed_symbols is not None else None
+    if allowed is not None:
+        report["symbols"] = {
+            existing_symbol: entry
+            for existing_symbol, entry in report["symbols"].items()
+            if existing_symbol.upper() in allowed
+        }
+
     # Remove the retired walk-forward section from legacy aggregate files.
     for existing_entry in report["symbols"].values():
         if isinstance(existing_entry, dict):
@@ -247,7 +259,9 @@ def update_vn30_stats_file(
     now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
     symbol_entry = dict(symbol_stats)
     symbol_entry["updated_at"] = now
-    report["symbols"][symbol.upper()] = symbol_entry
+    normalized_symbol = symbol.upper()
+    if allowed is None or normalized_symbol in allowed:
+        report["symbols"][normalized_symbol] = symbol_entry
 
     report["aggregate"] = _compute_aggregate(report["symbols"])
     report["n_symbols"] = len(report["symbols"])

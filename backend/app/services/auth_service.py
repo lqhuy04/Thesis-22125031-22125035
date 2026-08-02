@@ -375,14 +375,18 @@ class AuthService:
         if not is_valid:
             raise ValueError("Refresh token not found or invalid")
         
-        # Generate new access token
+        # Rotate both tokens. Reissuing the refresh token gives active clients
+        # a sliding session while keeping every token finite and revocable.
         new_access_token = create_access_token(user_id, email)
+        new_refresh_token = create_refresh_token(user_id, email)
         
-        # Store new access token in Redis
+        # Replacing the Redis values also revokes the previous token pair.
         await RedisSessionService.store_access_token(user_id, new_access_token)
+        await RedisSessionService.store_refresh_token(user_id, new_refresh_token)
         
         return {
             "token": new_access_token,
+            "refresh_token": new_refresh_token,
             "user_id": user_id,
             "email": email
         }

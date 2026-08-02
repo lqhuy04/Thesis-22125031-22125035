@@ -44,6 +44,37 @@ class BacktestScopeTests(unittest.TestCase):
             content = output_path.read_text(encoding="utf-8")
             self.assertNotIn("walk_forward", content)
 
+    def test_vn30_stats_prunes_symbols_outside_latest_universe(self):
+        symbol_stats = build_symbol_stats(
+            symbol="FPT",
+            full_metrics={},
+            engine_metrics={},
+            benchmarks={},
+            regime={},
+            confidence={},
+            stats={},
+            full_trades=[],
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "vn30_stats.json"
+            output_path.write_text(
+                '{"symbols":{"ACB":{},"DGC":{}}}',
+                encoding="utf-8",
+            )
+
+            update_vn30_stats_file(
+                "FPT",
+                symbol_stats,
+                str(output_path),
+                allowed_symbols=["ACB", "FPT"],
+            )
+
+            content = output_path.read_text(encoding="utf-8")
+            self.assertNotIn('"DGC"', content)
+            self.assertIn('"ACB"', content)
+            self.assertIn('"FPT"', content)
+
     @patch(
         "app.services.backtest_pipeline_service."
         "MarketService.get_market_index_value_by_interval"

@@ -4,16 +4,16 @@
 \subsection{VN30 Experimental Configuration}
 \label{subsec:backtest-vn30-configuration}
 
-Two saved experiment groups are available. The complete agentic AI pipeline report contains 30 symbols and was accumulated between July~18 and July~20, 2026. The requested daily interval is January~1, 2023 through December~31, 2025, with a 20-candle maximum hold and the default cost of 0.15\% per side. The artifact stores full-pipeline and engine-only performance, buy-and-hold and random comparisons, statistical tests, regime results, and confidence calibration. It is updated one symbol at a time rather than written from one atomic batch, so the per-symbol completion timestamps span the full execution period.
+Two saved experiment groups are available. The latest complete agentic AI pipeline report contains the 30 symbols returned by the current VN30 lookup and was finalized on August~2, 2026. The requested daily interval is August~1, 2024 through August~1, 2026, with a 20-candle maximum hold and the default cost of 0.15\% per side. The artifact stores full-pipeline and engine-only performance, buy-and-hold and random comparisons, statistical tests, regime results, and confidence calibration. It is updated one symbol at a time rather than written from one atomic batch, and its per-symbol completion timestamps span August~1 through August~2, 2026.
 
-The second group isolates each technical indicator. These ablations use the 30 symbols returned by the current VN30 lookup, daily data from January~1, 2023 through December~31, 2025, a 20-candle maximum hold, no language-model calls, and the default cost of 0.15\% per side. Each binary indicator score replaces the combined score, and every eligible date with score one creates a candidate. All 30 symbols completed each of the five ablations.
+The second group isolates each technical indicator. These ablations use the 30 symbols returned by the current VN30 lookup, daily data from August~1, 2024 through August~1, 2026, a 20-candle maximum hold, no language-model calls, and the default cost of 0.15\% per side. Each binary indicator score replaces the combined score, and every eligible date with score one creates a candidate. All 30 symbols completed each of the five ablations without a recorded error.
 
-The universe is the VN30 list available when the experiments were executed, not a date-reconstructed historical membership list. The results therefore describe the selected large-cap stock set and are not a survivorship-bias-free replication of the index.
+The universe is the 30-symbol result returned by the current VN30 lookup, not a date-reconstructed historical membership list. The full-pipeline and all five single-indicator artifacts use this same symbol set. The results therefore describe the selected large-cap stock set and are not a survivorship-bias-free replication of the index.
 
 \subsection{Full-Pipeline and Baseline Results}
 \label{subsec:backtest-full-pipeline-results}
 
-Table~\ref{tab:backtest-pipeline-vs-engine} reports cross-sectional results from the 30 symbols. The geometric aggregate is the geometric mean of per-symbol wealth multipliers, not the return of a capital-constrained rebalanced portfolio.
+Table~\ref{tab:backtest-pipeline-vs-engine} reports cross-sectional results from the 30 symbols in the latest full-pipeline artifact. The geometric aggregate is the geometric mean of per-symbol wealth multipliers, not the return of a capital-constrained rebalanced portfolio.
 
 \begin{table}[H]
     \centering
@@ -26,31 +26,31 @@ Table~\ref{tab:backtest-pipeline-vs-engine} reports cross-sectional results from
         \toprule
         \textbf{Measure} & \textbf{Full pipeline} & \textbf{Engine only} & \textbf{Difference} \\
         \midrule
-        Completed trades & 272 & 756 & $-484$ \\
-        Profitable symbols & 17 of 30 & 22 of 30 & $-5$ \\
-        Mean per-symbol total return & 25.66\% & 45.80\% & $-20.14$ pp \\
-        Median per-symbol total return & 12.31\% & 21.33\% & $-9.02$ pp \\
-        Geometric aggregate return & 17.23\% & 27.39\% & $-10.16$ pp \\
-        Mean per-symbol win rate & 45.42\% & 51.74\% & $-6.33$ pp \\
-        Median per-symbol win rate & 50.00\% & 51.93\% & $-1.93$ pp \\
-        Mean per-symbol maximum drawdown & $-17.11$\% & $-27.04$\% & $+9.93$ pp \\
-        Median trade-level Sharpe statistic & 0.746 & 0.637 & $+0.109$ \\
+        Completed trades & 440 & 578 & $-138$ \\
+        Profitable symbols & 22 of 30 & 21 of 30 & $+1$ \\
+        Mean per-symbol total return & 34.71\% & 36.15\% & $-1.43$ pp \\
+        Median per-symbol total return & 20.30\% & 18.69\% & $+1.61$ pp \\
+        Geometric aggregate return & 25.59\% & 22.06\% & $+3.54$ pp \\
+        Mean per-symbol win rate & 49.12\% & 48.76\% & $+0.36$ pp \\
+        Median per-symbol win rate & 50.00\% & 44.72\% & $+5.28$ pp \\
+        Mean per-symbol maximum drawdown & $-21.64$\% & $-23.82$\% & $+2.18$ pp \\
+        Median trade-level Sharpe statistic & 0.604 & 0.591 & $+0.013$ \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-The full pipeline admitted 64.0\% fewer trades and reduced mean maximum drawdown by 9.93 percentage points. Its median trade-level Sharpe statistic was modestly higher, but its mean and median per-symbol returns, geometric aggregate return, and mean and median win rates were lower. The pipeline exceeded engine-only return for 14 of 30 symbols and buy-and-hold return for 6 of 30. Passive buy-and-hold remains the strongest same-security reference: its cross-sectional mean return of 99.25\% and median of 78.61\% exceed the pipeline's 25.66\% mean and 12.31\% median, because the pipeline is invested only during selected intervals rather than continuously through the 2023--2025 uptrend. The saved evidence therefore characterizes the agentic AI workflow primarily as a conservative exposure filter rather than a source of broad return outperformance. These full-pipeline figures must be read together with the point-in-time limitation in Section~\ref{subsec:backtest-validity-limitations}: only the full pipeline uses the fundamental branch, whose latest-record loading can introduce look-ahead, so the cleanest leakage-free evidence is the single-indicator ablation reported in Section~\ref{subsec:backtest-indicator-ablation-results}.
+The full pipeline admitted 23.9\% fewer trades and reduced mean maximum drawdown by 2.18 percentage points. Its median trade-level Sharpe statistic, median per-symbol return, geometric aggregate return, and mean and median win rates were modestly higher than the engine-only baseline, while mean return was slightly lower. The pipeline had 22 profitable symbols compared with 21 for the engine, exceeded engine-only return for 16 of 30 symbols, and exceeded buy-and-hold return for 3 of 30. Passive buy-and-hold remains the stronger same-security reference across the selected universe: its cross-sectional mean return of 76.38\% and median of 36.86\% exceed the pipeline's 34.71\% mean and 20.30\% median, although the pipeline is invested only during selected intervals rather than continuously. The saved evidence therefore characterizes the agentic AI workflow as a selective exposure filter with mixed improvements over its engine-only comparator, not as a source of broad market outperformance. These full-pipeline figures must be read together with the point-in-time limitation in Section~\ref{subsec:backtest-validity-limitations}: only the full pipeline uses the fundamental branch, whose latest-record loading can introduce look-ahead, so the cleanest leakage-free evidence remains the companion single-indicator ablation reported in Section~\ref{subsec:backtest-indicator-ablation-results}.
 
-The stored mean pipeline Sharpe statistic is 0.271, compared with a median of 0.746. The per-symbol estimates remain sensitive to sparse observations: every symbol has fewer than 30 pipeline trades, six have fewer than five, and SHB's highest reported Sharpe statistic of 4.130 is based on only three trades. Because the trade-level Sharpe statistic scales with the square root of the trade count (Equation~\ref{eq:backtest-sharpe}) and the pipeline executes fewer trades per symbol than the engine, this scaling works against the pipeline; the higher median pipeline Sharpe is therefore not an artifact of a larger sample. HDB has the highest saved pipeline total return at 164.47\%, while GVR has the lowest at $-35.87$\%, demonstrating substantial cross-sectional variation.
+The stored mean pipeline Sharpe statistic is 0.661, compared with a median of 0.604. The per-symbol estimates remain sensitive to sparse observations: every symbol has fewer than 30 pipeline trades, and VPL has only one. Because the trade-level Sharpe statistic scales with the square root of the trade count (Equation~\ref{eq:backtest-sharpe}) and the pipeline executes fewer trades per symbol than the engine, this scaling works against the pipeline; its higher median Sharpe is therefore not an artifact of a larger sample. VIC has both the highest saved pipeline total return, 281.93\%, and the highest Sharpe statistic, 2.740, based on 19 trades; VNM has the lowest total return at $-25.82$\%. This spread demonstrates substantial cross-sectional variation.
 
-Only two of the 30 one-sample $t$-tests and two sign-permutation tests are significant at the 5\% level. The median random-entry percentile is 71.45\%, but no multiple-comparison-adjusted universe-level test is present. Most individual results therefore do not reject a zero-mean or random-timing explanation, and the evidence does not establish statistically reliable alpha.
+Only two of the 30 one-sample $t$-tests and one sign-permutation test are significant at the 5\% level. The median random-entry percentile is 62.45\%, but no multiple-comparison-adjusted universe-level test is present. Most individual results therefore do not reject a zero-mean or random-timing explanation, and the evidence does not establish statistically reliable alpha.
 
-The score--return information coefficient reinforces this caution. Correlating the technical score at trade entry with the realized trade return gives a mean information coefficient of 0.011 and a median of $-0.034$ across the 30 symbols; the coefficient is positive for 12 securities, negative for 16, flat for one, and unavailable for the zero-trade MSN result. Only two coefficients are significant at the unadjusted 5\% level. The most extreme coefficient, $-1.000$ for VPL, comes from only two trades and has a $p$-value of 1.0; HPG's significant coefficient of 0.978 is likewise based on only four trades. The entry score therefore exhibits, at best, a weak and statistically unreliable monotonic relationship with subsequent return, which is consistent with interpreting the pipeline as an exposure filter rather than a return-ranking signal.
+The score--return information coefficient reinforces this caution. Correlating the technical score at trade entry with the realized trade return gives a mean information coefficient of $-0.058$ and a median of $-0.040$ across the 30 symbols; the coefficient is positive for 12 securities, negative for 17, and flat for one. Only VPB is significant at the unadjusted 5\% level, and its coefficient is negative ($-0.509$, $p=0.037$). The entry score therefore exhibits a weak and statistically unreliable monotonic relationship with subsequent return, which is consistent with interpreting the pipeline as an exposure filter rather than a return-ranking signal.
 
 \subsection{Confidence and Regime Results}
 \label{subsec:backtest-robustness-results}
 
-Table~\ref{tab:backtest-confidence-results} pools confidence-tier outcomes. Medium-confidence trades outperform high-confidence trades in both win rate and mean net return, although the medium group contains only 37 observations. The Buy gate prevents low-confidence trades from being executed, so the accepted-trade sample cannot provide a calibration curve across the full confidence range or support a monotonic confidence claim.
+Table~\ref{tab:backtest-confidence-results} pools confidence-tier outcomes. High-confidence trades have the higher win rate, while medium-confidence trades have the higher mean net return and contain only 30 observations. The Buy gate prevents low-confidence trades from being executed, so the accepted-trade sample cannot provide a calibration curve across the full confidence range or support a monotonic confidence claim.
 
 \begin{table}[H]
     \centering
@@ -62,38 +62,38 @@ Table~\ref{tab:backtest-confidence-results} pools confidence-tier outcomes. Medi
         \toprule
         \textbf{Confidence tier} & \textbf{Trades} & \textbf{Win rate} & \textbf{Mean net return} \\
         \midrule
-        High ($C\geq0.70$) & 235 & 44.26\% & 2.21\% \\
-        Medium ($0.55\leq C<0.70$) & 37 & 48.65\% & 4.29\% \\
+        High ($C\geq0.70$) & 410 & 51.46\% & 2.05\% \\
+        Medium ($0.55\leq C<0.70$) & 30 & 43.33\% & 2.85\% \\
         Low ($C<0.55$) & 0 & --- & --- \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Regime grouping assigns 232 trades to sideways conditions, 39 to uptrends, and only one to a downtrend. Sideways trades record a 47.41\% win rate and 2.75\% mean return; uptrend trades record a 30.77\% win rate and 1.21\% mean return. The single downtrend trade loses 6.62\%, but one observation cannot support a meaningful regime conclusion.
+Regime grouping assigns 364 trades to sideways conditions and 76 to uptrends, with no executed downtrend trades. Sideways trades record a 51.65\% win rate and 2.02\% mean return; uptrend trades record a 47.37\% win rate and 2.47\% mean return. The absence of downtrend observations prevents any claim about performance in falling markets.
 
 \subsection{Single-Indicator Ablation}
 \label{subsec:backtest-indicator-ablation-results}
 
-Table~\ref{tab:backtest-single-indicator-results} reports the 2023--2025 engine-only ablations. Return, Sharpe, and drawdown are calculated for each symbol and then averaged across 30 symbols; trade counts are pooled.
+Table~\ref{tab:backtest-single-indicator-results} reports the engine-only ablations over the same August~1, 2024 to August~1, 2026 interval. Win rate, total return, Sharpe, and drawdown are calculated for each symbol and then averaged across 30 symbols; median total return is shown separately because the cross-sectional results are strongly skewed. Trade counts are pooled.
 
 \begin{table}[H]
     \centering
-    \caption{VN30 single-indicator ablation results, 2023--2025}
+    \caption{VN30 single-indicator ablation results, August~1, 2024--August~1, 2026}
     \label{tab:backtest-single-indicator-results}
     \small
-    \setlength{\tabcolsep}{4.5pt}
+    \setlength{\tabcolsep}{3.5pt}
     \renewcommand{\arraystretch}{1.2}
-    \begin{tabular}{p{2.7cm} >{\centering\arraybackslash}p{1.25cm} >{\centering\arraybackslash}p{2.15cm} >{\centering\arraybackslash}p{2.25cm} >{\centering\arraybackslash}p{1.65cm} >{\centering\arraybackslash}p{2.25cm}}
+    \begin{tabular}{p{2.4cm} >{\centering\arraybackslash}p{1.0cm} >{\centering\arraybackslash}p{1.7cm} >{\centering\arraybackslash}p{1.8cm} >{\centering\arraybackslash}p{1.9cm} >{\centering\arraybackslash}p{1.45cm} >{\centering\arraybackslash}p{1.9cm}}
         \toprule
-        \textbf{Indicator} & \textbf{Trades} & \textbf{Mean win rate} & \textbf{Mean total return} & \textbf{Mean Sharpe} & \textbf{Mean max drawdown} \\
+        \textbf{Indicator} & \textbf{Trades} & \textbf{Mean win rate} & \textbf{Mean total return} & \textbf{Median total return} & \textbf{Mean Sharpe} & \textbf{Mean max drawdown} \\
         \midrule
-        RSI & 824 & 50.23\% & 29.81\% & 0.502 & $-27.58$\% \\
-        MACD & 702 & 51.26\% & 35.73\% & 0.604 & $-24.72$\% \\
-        KDJ & 890 & 52.11\% & 42.75\% & 0.722 & $-26.34$\% \\
-        Bollinger Bands & 806 & 50.68\% & 47.11\% & 0.694 & $-26.99$\% \\
-        MA crossover/trend & 407 & 51.64\% & 20.62\% & 0.576 & $-16.98$\% \\
+        RSI & 574 & 45.95\% & 22.52\% & $-10.35$\% & 0.086 & $-30.16$\% \\
+        MACD & 489 & 46.47\% & 22.93\% & 2.69\% & 0.290 & $-26.41$\% \\
+        KDJ & 622 & 49.71\% & 20.07\% & $-11.81$\% & 0.206 & $-28.24$\% \\
+        Bollinger Bands & 555 & 45.12\% & 20.17\% & $-2.30$\% & 0.202 & $-29.89$\% \\
+        MA crossover/trend & 356 & 45.12\% & 30.22\% & $-8.12$\% & 0.186 & $-26.07$\% \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Bollinger conditions produce the highest mean per-symbol return, while KDJ produces the highest mean Sharpe statistic and win rate. Moving-average conditions generate approximately half as many trades as the reactive oscillators and have the smallest mean drawdown, but also the lowest mean return. No indicator dominates every criterion. This supports using complementary technical perspectives, but it does not prove that equal binary weighting is optimal.
+MA conditions produce the highest mean per-symbol return and the smallest mean drawdown, but their mean return is heavily influenced by VIC's 779.04\% result; the corresponding median is $-8.12$\%. MACD is the only ablation with a positive median total return (2.69\%) and also has the highest mean Sharpe statistic. KDJ has the highest mean win rate and the largest trade count, whereas MA produces the fewest trades. No indicator dominates every criterion, and the large gaps between mean and median returns show that a small number of securities drive the positive cross-sectional means. This supports using complementary technical perspectives and robust summaries, but it does not prove that equal binary weighting is optimal.
