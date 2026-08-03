@@ -44,7 +44,7 @@ where $n_t$ is the number of transactions in interval $t$, and $O_t$, $H_t$, $L_
     \end{tabularx}
 \end{table}
 
-The meaning of a bar depends on its interval. A one-minute bar describes intraday activity, whereas daily, weekly, and monthly bars progressively suppress short-lived fluctuations and emphasize longer trends. Stockrium uses daily, weekly, or monthly observations for short-, medium-, or long-term automated analysis, while its price chart also supports intraday intervals for exploration.
+The meaning of a bar depends on its interval. A one-minute bar describes intraday activity, whereas hourly, daily, and weekly bars progressively suppress short-lived fluctuations and emphasize longer trends. Stockrium uses hourly, daily, or weekly observations for short-, medium-, or long-term automated analysis, while its price chart also supports intraday intervals for exploration.
 
 \paragraph{Candlestick and volume charts.}
 
@@ -156,22 +156,6 @@ KDJ locates the close within the recent high--low range and adds a more responsi
 \end{align}
 
 When the nine-bar range is zero, the application-analysis service sets $RSV_t$ to 50; the first $K$ and $D$ values are also initialized at 50. The $K$ and $D$ lines smooth the location of the close, whereas $J$ magnifies their difference and can move outside the interval $[0,100]$. Stockrium looks for $K$ crossing above $D$, strengthening $J$ while $K>D$, or an upward recovery of $K$ below 20. This sensitivity is useful for short-term turning-point context but also makes KDJ susceptible to noise.
-
-\paragraph{Combination in Stockrium.}
-
-The current technical component requires at least 50 complete OHLCV bars and evaluates five enabled perspectives: SMA, RSI, MACD, Bollinger Bands, and KDJ. Each enabled perspective contributes either 0 or 1 according to its bullish conditions, producing
-
-\begin{equation}
-    S_t=\sum_{j=1}^{m}s_{j,t},
-    \qquad s_{j,t}\in\{0,1\},
-    \label{eq:technical-score}
-\end{equation}
-
-where $m$ is the number of selected perspectives. A candidate positive technical condition requires at least $\lceil0.60m\rceil$ points. When available, the latest one-minute price is used in the current-price comparisons for SMA and Bollinger Bands; RSI, MACD, and KDJ remain based on the daily, weekly, or monthly bars selected for the investment horizon. A zero for one perspective means only that its bullish condition was not satisfied; it is not an independent sell signal. Moreover, all five perspectives are derived from the same OHLCV series, so the total should not be interpreted as five statistically independent sources of evidence.
-
-Equation~\ref{eq:technical-score}, its binary point assignment, and the 60\% qualification threshold are author-defined Stockrium rules. They combine conventional indicators into an inspectable prototype score; they are not a published forecasting model or an empirically calibrated probability.
-
-The formulas above describe the NumPy- and pandas-based service used for current application analysis, chart data, and historical backtesting. Both production analysis and backtesting call this indicator service and the same deterministic scoring module, so their indicator conventions and binary scoring rules are maintained in one place. The available indicator set and conventional function families are also documented by TA-Lib \cite{talibFunctions2026}, but the active Stockrium service does not depend on the TA-Lib package.
 
 \subsection{Fundamental Analysis}
 \label{subsec:fundamental-analysis-foundations}
@@ -341,10 +325,6 @@ where $x_0$ and $x_n$ are the earliest and latest valid observations and $y_n-y_
 
 The system also compares a company with annual medians for its ICB industry. A median is less sensitive than a mean to extreme values and is shown only when the industry data contain at least three peers. For non-financial firms, the comparison includes profitability, margins, asset turnover, leverage, P/E, and P/B. For financial-sector firms, it includes available profitability, leverage, liquidity, P/B, CAR, NIM, LDR, and NPL measures. The comparison gives a ratio meaning only in relation to the economics and normal capital structure of similar firms.
 
-The five-year fundamental window is independent of the user's selected investment horizon. The horizon changes the relative influence of fundamental evidence during final synthesis: its default weight is 0.10 for short-term, 0.40 for medium-term, and 0.70 for long-term analysis. This preserves multi-year evidence while acknowledging that business performance and valuation generally matter more to a longer holding period.
-
-Fundamental ratios remain historical, accounting-based measures. They can be affected by accounting policy, exceptional items, restatements, stale market prices, missing observations, and differences in fiscal-year timing. A financial-year end is also not the date on which the report became public; a point-in-time historical evaluation must use actual availability rather than assume immediate knowledge. Fundamental analysis is consequently structured supporting evidence, not a guarantee of future earnings or returns.
-
 \subsection{Financial News Analysis}
 \label{subsec:financial-news-analysis-foundations}
 
@@ -363,18 +343,6 @@ News summarization reduces a long article to the information needed for analysis
 \paragraph{Sentiment analysis.}
 
 Financial sentiment analysis assigns a directional interpretation such as positive, neutral, or negative. In this setting, sentiment represents the expected implication for a specified company or market, not merely the emotional tone of the words. The same event can benefit one company, harm a competitor, and have an uncertain sector-wide effect; apparently positive language may also describe a result below market expectations. Domain-specific work such as FinBERT and Vietnamese stock-title classification demonstrates why financial vocabulary and local-language context matter \cite{araci2019finbert,tung2021phobert}. Mixed, conditional, or immaterial information should remain neutral instead of being forced into a directional trading signal.
-
-\paragraph{Temporal and contextual limitations.}
-
-Publication time is not necessarily the time at which an event occurred or first became known. Reposts and near-duplicate articles should not be counted as independent confirmation, and an apparently important event may already be incorporated into market prices. A point-in-time analysis must exclude articles published after the decision time and interpret older news according to both continuing materiality and the investor's horizon. Source credibility, conflicting reports, market conditions, and later corrections can also change an article's meaning. Evidence from the Vietnamese market indicates that news sentiment can be associated with changes in return variability without establishing a dependable change in mean return \cite{vu2023sentiments}. Sentiment is therefore contextual evidence, not a probability of profit or a stand-alone buy or sell rule.
-
-\paragraph{Use in Stockrium.}
-
-Stockrium's collection pipeline discovers Vietnamese financial-news pages through Serper, extracts their text and metadata with Newspaper3k, and uses \texttt{gpt-4o-mini} to produce a one-to-three-sentence Vietnamese summary and a positive, neutral, or negative label from the perspective of the relevant stock, industry, or market. The database retains the original link, content, source, and publication time together with these generated fields. The executable scheduler currently performs this collection weekly and restricts search results to the preceding week.
-
-During stock analysis, the article specialist selects stock-linked records within the planned date interval and uses their dates, titles, stored summaries, and sentiment labels to identify the principal information, positive implications, and risks. The aggregator then interprets the combined news evidence as positive, neutral, or negative. Missing news is excluded from the confidence calculation. When news is available, its sentiment contributes to confidence and a negative classification can veto a proposed Buy; it is normally interpreted alongside technical and fundamental evidence rather than treated as a stand-alone trading rule.
-
-The current article specialist does not receive the source domain, original link, or full article text at analysis time. It therefore cannot independently reassess publisher credibility or recover context omitted by the stored summary. This is an implementation limitation: provenance-aware filtering, duplicate detection, and direct traceability from a generated claim to its source article remain important improvements for reliable news analysis.
 
 \subsection{Rationale for Combining Technical, Fundamental, and News Analysis}
 \label{subsec:combined-financial-analysis-foundations}
