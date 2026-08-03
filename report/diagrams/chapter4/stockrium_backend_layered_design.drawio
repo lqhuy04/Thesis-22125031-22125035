@@ -1,9 +1,110 @@
 <mxfile host="app.diagrams.net" agent="Codex">
   <diagram id="stockrium-backend-layers" name="Backend Layered Design">
-    <mxGraphModel dx="1571" dy="889" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="960" math="0" shadow="0">
+    <mxGraphModel dx="2175" dy="1143" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1120" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
+        <mxCell id="client-layer" parent="1" style="swimlane;html=1;rounded=1;startSize=42;horizontal=1;fillColor=#f5f9ff;swimlaneFillColor=#ffffff;strokeColor=#6c8ebf;fontStyle=1;fontSize=22;arcSize=10;" value="Client Layer" vertex="1">
+          <mxGeometry height="150" width="1580" x="10" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="http-layer" parent="1" style="swimlane;html=1;rounded=1;startSize=42;horizontal=1;fillColor=#fffaf0;swimlaneFillColor=#ffffff;strokeColor=#d6b656;fontStyle=1;fontSize=22;arcSize=10;" value="HTTP Boundary Layer" vertex="1">
+          <mxGeometry height="140" width="1580" x="10" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="route-layer" parent="1" style="swimlane;html=1;rounded=1;startSize=42;horizontal=1;fillColor=#fffaf0;swimlaneFillColor=#ffffff;strokeColor=#d6b656;fontStyle=1;fontSize=22;arcSize=10;" value="Route and Model Layer" vertex="1">
+          <mxGeometry height="140" width="1580" x="10" y="420" as="geometry" />
+        </mxCell>
+        <mxCell id="application-layer" parent="1" style="swimlane;html=1;rounded=1;startSize=42;horizontal=1;fillColor=#f6fbf6;swimlaneFillColor=#ffffff;strokeColor=#82b366;fontStyle=1;fontSize=22;arcSize=10;" value="Application Layer" vertex="1">
+          <mxGeometry height="140" width="1580" x="10" y="620" as="geometry" />
+        </mxCell>
+        <mxCell id="integration-layer" parent="1" style="swimlane;html=1;rounded=1;startSize=42;horizontal=1;fillColor=#faf7fc;swimlaneFillColor=#ffffff;strokeColor=#9673a6;fontStyle=1;fontSize=22;arcSize=10;" value="Integration and Analytical Layer" vertex="1">
+          <mxGeometry height="190" width="1580" x="10" y="820" as="geometry" />
+        </mxCell>
+        <mxCell id="resource-layer" parent="1" style="swimlane;html=1;rounded=1;startSize=42;horizontal=1;fillColor=#fffaf0;swimlaneFillColor=#ffffff;strokeColor=#d79b00;fontStyle=1;fontSize=22;arcSize=10;" value="Resource Layer" vertex="1">
+          <mxGeometry height="190" width="1580" x="10" y="1070" as="geometry" />
+        </mxCell>
+        <mxCell id="mobile" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Mobile Application" vertex="1">
+          <mxGeometry height="62" width="320" x="360" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="admin-web" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Administrative Web Application" vertex="1">
+          <mxGeometry height="62" width="360" x="920" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="fastapi-boundary" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="FastAPI Application Boundary" vertex="1">
+          <mxGeometry height="62" width="600" x="500" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="routers-models" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Domain Routers and Pydantic Validation" vertex="1">
+          <mxGeometry height="62" width="600" x="500" y="475" as="geometry" />
+        </mxCell>
+        <mxCell id="services" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Application Services" vertex="1">
+          <mxGeometry height="62" width="600" x="500" y="675" as="geometry" />
+        </mxCell>
+        <mxCell id="data-access" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Data-Access Clients and Utility Adapters" vertex="1">
+          <mxGeometry height="72" width="500" x="240" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="analytical" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Indicator, Agentic, Chatbot, and Backtest Subsystems" vertex="1">
+          <mxGeometry height="72" width="500" x="870" y="890" as="geometry" />
+        </mxCell>
+        <mxCell id="supabase" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Supabase PostgreSQL and Storage" vertex="1">
+          <mxGeometry height="72" width="400" x="100" y="1145" as="geometry" />
+        </mxCell>
+        <mxCell id="redis" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Redis" vertex="1">
+          <mxGeometry height="72" width="330" x="635" y="1145" as="geometry" />
+        </mxCell>
+        <mxCell id="external-services" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="SSI and External Application Services" vertex="1">
+          <mxGeometry height="72" width="420" x="1080" y="1145" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-mobile-boundary" edge="1" parent="1" source="mobile" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.35;entryY=0;fontSize=22;" target="fastapi-boundary">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-web-boundary" edge="1" parent="1" source="admin-web" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.65;entryY=0;fontSize=22;" target="fastapi-boundary">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-boundary-routes" edge="1" parent="1" source="fastapi-boundary" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=22;" target="routers-models">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-routes-services" edge="1" parent="1" source="routers-models" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=22;" target="services">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-services-data" edge="1" parent="1" source="services" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.35;exitY=1;entryX=0.5;entryY=0;fontSize=22;" target="data-access">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-services-analytical" edge="1" parent="1" source="services" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.65;exitY=1;entryX=0.5;entryY=0;fontSize=22;" target="analytical">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-data-supabase" edge="1" parent="1" source="data-access" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.28;exitY=1;entryX=0.52;entryY=0;fontSize=22;" target="supabase">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="380" y="1095" />
+              <mxPoint x="308" y="1095" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-data-redis" edge="1" parent="1" source="data-access" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.62;exitY=1;entryX=0.45;entryY=0;fontSize=22;" target="redis">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="550" y="1095" />
+              <mxPoint x="784" y="1095" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-data-external" edge="1" parent="1" source="data-access" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.88;exitY=1;entryX=0.15;entryY=0;fontSize=22;" target="external-services">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="1095" />
+              <mxPoint x="1143" y="1095" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-analytical-supabase" edge="1" parent="1" source="analytical" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.18;exitY=1;entryX=0.82;entryY=0;fontSize=22;" target="supabase">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="960" y="1025" />
+              <mxPoint x="428" y="1025" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-analytical-external" edge="1" parent="1" source="analytical" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;startArrow=block;startFill=1;endArrow=block;endFill=1;strokeColor=#2f5597;strokeWidth=2;exitX=0.72;exitY=1;entryX=0.72;entryY=0;fontSize=22;" target="external-services">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>

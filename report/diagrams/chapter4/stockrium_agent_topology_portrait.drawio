@@ -1,58 +1,101 @@
-<mxfile host="app.diagrams.net" modified="2026-07-18T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
-  <diagram id="figure-4-9-agentic-topology-portrait" name="Figure 4.9 - Agentic Topology">
-    <mxGraphModel dx="1200" dy="1450" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1450" math="0" shadow="0">
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="stockrium-agent-topology-v2" name="Current Analysis Graph">
+    <mxGraphModel dx="3771" dy="1351" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="1420" math="0" shadow="0">
       <root>
-        <mxCell id="0"/>
-        <mxCell id="1" parent="0"/>
-
-        <!-- Portrait, top-to-bottom execution flow. Font sizes are intentionally
-             large so labels remain legible when the image is fitted to thesis width. -->
-        <mxCell id="request" value="Symbol, mode, horizon,&lt;br&gt;selection, and weights" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=3;fontSize=26;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="300" y="40" width="600" height="105" as="geometry"/>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="request" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=3;fontSize=23;spacing=10;" value="Symbol, mode, language, horizon,&lt;br&gt;selection, and weights" vertex="1">
+          <mxGeometry height="90" width="600" x="300" y="30" as="geometry" />
         </mxCell>
-        <mxCell id="orchestrator" value="Orchestrator planning node" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;fontSize=28;fontStyle=1;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="300" y="205" width="600" height="110" as="geometry"/>
+        <mxCell id="orchestrator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;fontSize=23;fontStyle=1;spacing=10;" value="Orchestrator&lt;br&gt;Deterministic plan and conditional routing" vertex="1">
+          <mxGeometry height="100" width="600" x="300" y="160" as="geometry" />
         </mxCell>
-
-        <!-- Parallel specialist branches -->
-        <mxCell id="article" value="Article agent&lt;br&gt;Filter and summarize" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontSize=24;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="35" y="415" width="340" height="125" as="geometry"/>
+        <mxCell id="article-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontSize=23;spacing=8;" value="Article data node&lt;br&gt;Load and filter up to 50 articles" vertex="1">
+          <mxGeometry height="100" width="340" x="25" y="360" as="geometry" />
         </mxCell>
-        <mxCell id="fundamental" value="Fundamental agent&lt;br&gt;Prepare financial evidence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontSize=24;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="430" y="415" width="340" height="125" as="geometry"/>
+        <mxCell id="fundamental-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontSize=23;spacing=8;" value="Fundamental data node&lt;br&gt;Prepare five-year and ICB evidence" vertex="1">
+          <mxGeometry height="100" width="340" x="430" y="360" as="geometry" />
         </mxCell>
-        <mxCell id="technical" value="Technical agent&lt;br&gt;Calculate and score signals" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontSize=24;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="825" y="415" width="340" height="125" as="geometry"/>
+        <mxCell id="technical-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontSize=23;spacing=8;" value="Technical data node&lt;br&gt;Calculate indicators and signals" vertex="1">
+          <mxGeometry height="100" width="340" x="835" y="360" as="geometry" />
         </mxCell>
-
-        <mxCell id="aggregator" value="Aggregator: structured synthesis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;fontSize=28;fontStyle=1;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="300" y="660" width="600" height="110" as="geometry"/>
+        <mxCell id="article-analysis" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;fontSize=23;spacing=8;" value="Article analysis node&lt;br&gt;DeepSeek score and explanation" vertex="1">
+          <mxGeometry height="100" width="340" x="25" y="520" as="geometry" />
         </mxCell>
-        <mxCell id="controls" value="Deterministic controls&lt;br&gt;Confidence, vetoes, and bounds" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=3;fontSize=26;fontStyle=1;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="300" y="835" width="600" height="120" as="geometry"/>
+        <mxCell id="fundamental-analysis" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;fontSize=23;spacing=8;" value="Fundamental analysis node&lt;br&gt;DeepSeek score and explanation" vertex="1">
+          <mxGeometry height="100" width="340" x="430" y="520" as="geometry" />
         </mxCell>
-        <mxCell id="result" value="Structured Buy-or-Wait result" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;fontSize=28;fontStyle=1;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="300" y="1020" width="600" height="110" as="geometry"/>
+        <mxCell id="technical-analysis" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;fontSize=23;spacing=8;" value="Technical analysis node&lt;br&gt;Python score; DeepSeek explanation" vertex="1">
+          <mxGeometry height="100" width="340" x="835" y="520" as="geometry" />
         </mxCell>
-        <mxCell id="state" value="Shared AgentState&lt;br&gt;Plan, source results, final output, and error" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf2f8;strokeColor=#6c8ebf;strokeWidth=3;fontSize=25;spacing=10;" vertex="1" parent="1">
-          <mxGeometry x="100" y="1255" width="1000" height="120" as="geometry"/>
+        <mxCell id="recommendation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;fontSize=23;fontStyle=1;spacing=10;" value="Recommendation node&lt;br&gt;Weighted score, deterministic Buy/Wait, and validated plan" vertex="1">
+          <mxGeometry height="110" width="600" x="300" y="710" as="geometry" />
         </mxCell>
-
-        <!-- Main execution flow -->
-        <mxCell id="e-request-orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="request" target="orchestrator"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-orchestrator-article" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="orchestrator" target="article"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-orchestrator-fundamental" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="orchestrator" target="fundamental"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-orchestrator-technical" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="orchestrator" target="technical"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-article-aggregator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.2;entryY=0;" edge="1" parent="1" source="article" target="aggregator"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-fundamental-aggregator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="fundamental" target="aggregator"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-technical-aggregator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.8;entryY=0;" edge="1" parent="1" source="technical" target="aggregator"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-aggregator-controls" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="aggregator" target="controls"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-controls-result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="controls" target="result"><mxGeometry relative="1" as="geometry"/></mxCell>
-
-        <!-- Dashed state-update paths -->
-        <mxCell id="e-orchestrator-state" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=3;dashed=1;dashPattern=8 6;exitX=0;exitY=0.5;entryX=0.12;entryY=0;" edge="1" parent="1" source="orchestrator" target="state"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-technical-state" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=3;dashed=1;dashPattern=8 6;exitX=1;exitY=0.5;entryX=0.88;entryY=0;" edge="1" parent="1" source="technical" target="state"><mxGeometry relative="1" as="geometry"/></mxCell>
-        <mxCell id="e-aggregator-state" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=3;dashed=1;dashPattern=8 6;exitX=0;exitY=0.5;entryX=0.38;entryY=0;" edge="1" parent="1" source="aggregator" target="state"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="aggregator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=3;fontSize=23;fontStyle=1;spacing=10;" value="Aggregator&lt;br&gt;DeepSeek confidence and summary" vertex="1">
+          <mxGeometry height="100" width="600" x="300" y="900" as="geometry" />
+        </mxCell>
+        <mxCell id="result" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=3;fontSize=23;fontStyle=1;spacing=10;" value="Structured API result&lt;br&gt;Decision, plan, analyses, scores, and confidence" vertex="1">
+          <mxGeometry height="100" width="600" x="300" y="1080" as="geometry" />
+        </mxCell>
+        <mxCell id="state" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf2f8;strokeColor=#6c8ebf;strokeWidth=3;fontSize=23;spacing=10;" value="Shared AgentState&lt;br&gt;Plan, merge-reduced agent_results, final_output, and error" vertex="1">
+          <mxGeometry height="100" width="900" x="150" y="1270" as="geometry" />
+        </mxCell>
+        <mxCell id="e-request-orchestrator" edge="1" parent="1" source="request" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="orchestrator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-orchestrator-article" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.3;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="article-data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-orchestrator-fundamental" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="fundamental-data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-orchestrator-technical" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.7;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="technical-data">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-article-chain" edge="1" parent="1" source="article-data" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="article-analysis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-fundamental-chain" edge="1" parent="1" source="fundamental-data" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="fundamental-analysis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-technical-chain" edge="1" parent="1" source="technical-data" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="technical-analysis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-article-recommendation" edge="1" parent="1" source="article-analysis" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.25;entryY=0;fontSize=23;" target="recommendation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-fundamental-recommendation" edge="1" parent="1" source="fundamental-analysis" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="recommendation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-technical-recommendation" edge="1" parent="1" source="technical-analysis" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.75;entryY=0;fontSize=23;" target="recommendation">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-recommendation-aggregator" edge="1" parent="1" source="recommendation" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="aggregator">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-aggregator-result" edge="1" parent="1" source="aggregator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=23;" target="result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-orchestrator-state" edge="1" parent="1" source="orchestrator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=3;dashed=1;dashPattern=8 6;exitX=0;exitY=0.5;entryX=0.15;entryY=0;fontSize=23;" target="state">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="0.09" y="210.09" />
+              <mxPoint x="0.09" y="1270.09" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e-technical-state" edge="1" parent="1" source="technical-analysis" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=3;dashed=1;dashPattern=8 6;exitX=1;exitY=0.5;entryX=0.85;entryY=0;fontSize=23;" target="state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-aggregator-state" edge="1" parent="1" source="aggregator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=3;dashed=1;dashPattern=8 6;exitX=0;exitY=0.5;entryX=0.45;entryY=0;fontSize=23;" target="state">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="120.09" y="950.09" />
+              <mxPoint x="120.09" y="1220.09" />
+              <mxPoint x="555" y="1220.09" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
       </root>
     </mxGraphModel>
   </diagram>

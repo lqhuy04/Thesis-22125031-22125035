@@ -84,12 +84,13 @@ An HTTP 401 Unauthorized response triggers coordinated token renewal. If no refr
         decision/.style={draw, rounded corners=10pt, fill=yellow!15, minimum width=2.8cm, minimum height=1.0cm, align=center, font=\small},
         action/.style={draw, rounded corners=5pt, fill=green!9, minimum width=3.2cm, minimum height=1.0cm, align=center, font=\small},
         failure/.style={draw, rounded corners=5pt, fill=red!8, minimum width=3.2cm, minimum height=1.0cm, align=center, font=\small},
-        flow/.style={-{Latex[length=2.2mm]}, line width=0.65pt, gray!80}
+        flow/.style={-{Latex[length=2.2mm]}, line width=0.65pt, gray!80},
+        guard/.style={font=\scriptsize, text=black}
     ]
         \node[box] (screen) at (0,0) {Screen calls a\\feature helper};
         \node[box] (session) at (0,-1.8) {Read session and\\send bearer request};
         \node[decision] (status) at (0,-3.6) {Response\\status};
-        \node[action] (success) at (4.4,-3.6) {Return parsed response\\to the screen};
+        \node[action] (success) at (5.0,-3.6) {Return parsed response\\to the screen};
         \node[decision] (active) at (0,-5.5) {Refresh already\\in progress?};
         \node[action] (wait) at (-3.7,-7.5) {Subscribe and wait for\\the shared new token};
         \node[action] (refresh) at (3.7,-7.5) {Call refresh endpoint\\with refresh token};
@@ -99,14 +100,14 @@ An HTTP 401 Unauthorized response triggers coordinated token renewal. If no refr
 
         \draw[flow] (screen.south) -- (session.north);
         \draw[flow] (session.south) -- (status.north);
-        \draw[flow] (status.east) -- node[above, font=\scriptsize] {not 401} (success.west);
-        \draw[flow] (status.south) -- node[right, font=\scriptsize] {401} (active.north);
-        \draw[flow] (active.south west) -- node[above left, font=\scriptsize] {yes} (wait.north east);
-        \draw[flow] (active.south east) -- node[above right, font=\scriptsize] {no} (refresh.north west);
+        \draw[flow] (status.east) -- node[above, guard] {not 401} (success.west);
+        \draw[flow] (status.south) -- node[right, guard] {401} (active.north);
+        \draw[flow] (active.south west) -- node[above left, guard] {yes} (wait.north east);
+        \draw[flow] (active.south east) -- node[above right, guard] {no} (refresh.north west);
         \draw[flow] (refresh.south) -- (refreshstatus.north);
-        \draw[flow] (refreshstatus.south west) -- node[above left, font=\scriptsize] {yes} (retry.north east);
-        \draw[flow] (refreshstatus.south east) -- node[above right, font=\scriptsize] {no} (expired.north west);
-        \draw[flow] (wait.south) |- node[left, font=\scriptsize] {on success} (retry.west);
+        \draw[flow] (refreshstatus.south west) -- node[above left, guard] {yes} (retry.north east);
+        \draw[flow] (refreshstatus.south east) -- node[above right, guard] {no} (expired.north west);
+        \draw[flow] (wait.south) |- node[left, guard] {on success} (retry.west);
     \end{tikzpicture}%
     }
     \caption{Coordinated access-token refresh in the mobile HTTP client}

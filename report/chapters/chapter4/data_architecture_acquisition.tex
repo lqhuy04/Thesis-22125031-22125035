@@ -83,7 +83,11 @@ Figure~\ref{fig:market-acquisition-pipeline} summarizes the market-data flow.
     \label{fig:market-acquisition-pipeline}
 \end{figure}
 
-The \texttt{Current\_Stock\_Price} table remains important to market lists, favorites, search history, and current-price cards. It is refreshed by scheduled Supabase Edge Function jobs rather than by the Python processes in \texttt{update\_stock\_price/}. This design makes the table a separately maintained latest-quote read model: the Python scheduler owns candle and index-stream persistence, while the managed database-side schedule owns current stock snapshots. Deployment documentation must therefore include both schedules; deploying only the Python service would leave current-price cards dependent on the existing Supabase job.
+Two deployed Supabase Edge Functions maintain the latest-state read models independently of the Python processes in \texttt{update\_stock\_price/}. The current-price function resolves the VN100 constituents through \texttt{MarketIndex}, \texttt{Stock\_MarketIndex}, and \texttt{Stock}; requests the current HOSE rows from SSI's \texttt{DailyStockPrice} endpoint; converts the SSI price unit; and upserts the matched values into \texttt{Current\_Stock\_Price} on \texttt{stock\_id}. The stored fields include the current, reference, ceiling, and floor prices, absolute and percentage changes, and matched volume and value. Consequently, market lists, favorites, search history, and current-price cards can read a compact snapshot without scanning historical candle tables.
+
+The current-market-index function updates VN30 and VN100. For each configured index, it obtains totals and change fields from SSI \texttt{DailyIndex}, takes the latest index value from \texttt{IntradayOhlc}, and derives advances, unchanged stocks, and declines by joining \texttt{Stock\_MarketIndex} membership with \texttt{Current\_Stock\_Price.price\_change}. It then upserts one row per index into \texttt{Current\_Market\_Index} on \texttt{market\_index\_id}. SSI calls are serialized with an approximately 1.1-second interval, and an authentication failure causes the function to obtain a new SSI token and retry the request.
+
+Supabase Cron invokes both Edge Functions through scheduled HTTP requests \cite{supabaseCron2026}. Each function has two weekday execution windows: \texttt{* 2-4 * * 1-5} and \texttt{* 6-7 * * 1-5} in UTC, corresponding to every minute from 09:00 through 11:59 and from 13:00 through 14:59 in Vietnam time. These managed jobs complement rather than replace the Python scheduler: the Python workers maintain historical candles and live streams, whereas the Edge Functions refresh the latest stock and index snapshots used by the application. Deployment therefore requires both scheduling mechanisms.
 
 The scheduler's trading-day test currently recognizes weekdays rather than an exchange-holiday calendar. On a weekday market holiday it may start streams and later execute reconciliation even though no session occurred. Upserts and empty-response handling reduce the risk of corrupting stored candles, but a production version should consume an official Vietnamese exchange calendar.
 
@@ -105,7 +109,7 @@ Figure~\ref{fig:company-fundamental-pipeline} shows the separation between acqui
 \begin{figure}[H]
     \centering
     \IfFileExists{figures/chapter4/stockrium_company_fundamental_pipeline.png}{%
-        \includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{figures/chapter4/stockrium_company_fundamental_pipeline.png}%
+        \includegraphics[width=\textwidth,height=0.5\textheight,keepaspectratio]{figures/chapter4/stockrium_company_fundamental_pipeline.png}%
     }{%
         \fbox{\parbox[c][5.5cm][c]{0.92\textwidth}{\centering
         Export the Draw.io diagram as\\
@@ -126,7 +130,7 @@ The extracted article is passed to \texttt{gpt-4o-mini} with a typed response sc
 
 Duplicate prevention occurs at two levels. Existing links are loaded before extraction so a known URL can be skipped without another model call. The insertion path checks again before creating the article. After an article exists, the pipeline checks the relevant join table before inserting \texttt{Article\_Stock} or \texttt{Article\_Category}. The same article can consequently be reused across associations without duplicated content or duplicate join rows. General macroeconomic articles can remain unassociated with an individual security.
 
-The production scheduler uses Vietnam time and executes once per ISO week on Saturday at 23:00. It runs \texttt{update\_macro\_articles.py}, \texttt{update\_category\_articles.py}, and \texttt{update\_stock\_articles.py} sequentially, waiting for each process to finish. A process-local week key prevents a second execution during the same uninterrupted scheduler run. Even if a service restart causes a repeated attempt, link-level duplicate checks make the update substantially idempotent.
+The production article scheduler uses Vietnam time and executes once per ISO week on Saturday at 23:00. It runs \texttt{update\_macro\_articles.py}, \texttt{update\_category\_articles.py}, and \texttt{update\_stock\_articles.py} sequentially, waiting for each process to finish. A process-local week key prevents a second execution during the same uninterrupted scheduler run. Even if a service restart causes a repeated attempt, link-level duplicate checks make the update substantially idempotent. This weekly article refresh is not one of the Supabase Cron jobs described in the market-price pipeline: those jobs invoke the two Edge Functions that refresh \texttt{Current\_Stock\_Price} and \texttt{Current\_Market\_Index} during weekday trading hours.
 
 \begin{figure}[H]
     \centering

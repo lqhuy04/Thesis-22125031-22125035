@@ -32,7 +32,7 @@ Beginner and experienced investors are treated as profiles within the same stake
 \subsection{Use Case Model}
 \label{subsec:application-use-cases}
 
-Stockrium has three direct actors. A guest accesses onboarding and account functions, an authenticated investor uses the personalized mobile features, and an authorized evaluator accesses restricted experimentation and backtesting functions. Figure~\ref{fig:stockrium-mobile-use-case-model} presents the guest and authenticated-investor use cases in the mobile application, while Figure~\ref{fig:stockrium-web-use-case-model} presents the evaluator use cases in the experimentation and backtesting web interface.
+Stockrium has three direct actors. A guest accesses registration, sign-in, and account-recovery functions; an authenticated investor uses personalized exploration, analysis, and chatbot features; and an authorized evaluator accesses restricted experimentation and backtesting functions. Figure~\ref{fig:stockrium-mobile-use-case-model} presents the guest and authenticated-investor use cases in the mobile application, while Figure~\ref{fig:stockrium-web-use-case-model} presents the evaluator use cases in the experimentation and backtesting web interface.
 
 \begin{figure}[H]
     \centering
@@ -61,7 +61,9 @@ Stockrium has three direct actors. A guest accesses onboarding and account funct
 \end{figure}
 
 {\small
-\begin{longtable}{p{5.1cm} p{8.7cm}}
+\setlength\LTleft{\fill}
+\setlength\LTright{\fill}
+\begin{longtable}{>{\raggedright\arraybackslash}m{5.1cm} >{\raggedright\arraybackslash}m{8.7cm}}
     \caption{Use cases in the Stockrium mobile and experimentation interfaces}
     \label{tab:stockrium-use-cases} \\
     \toprule
@@ -76,30 +78,23 @@ Stockrium has three direct actors. A guest accesses onboarding and account funct
     \bottomrule
     \endfoot
     \multicolumn{2}{l}{\textbf{Mobile application}} \\
-    Complete onboarding & Introduces the application's main features and initial guidance. \\
-    Register account & Creates a new investor account. \\
-    Verify email & Confirms ownership of the registered email address. \\
+    Register account & Creates a new investor account and includes email verification. \\
+    Verify email & Confirms ownership of the email address used to register the account. \\
     Sign in with password or Google & Authenticates the user through a supported sign-in method. \\
     Recover password & Restores access to an account with a forgotten password. \\
-    Set investment horizon & Saves the user's preferred investment time horizon. \\
+    Personalize & Adapts the application experience to the authenticated investor's preferences. \\
     Log out & Ends the current authenticated session. \\
-    Change language & Changes the application's display language. \\
-    Change theme & Switches the application's visual theme. \\
     Explore financial news & Browses available financial articles. \\
-    View news details & Displays the content and metadata of a selected article. \\
+    View news details & Opens the content and metadata of a selected financial article. \\
     Search for a stock & Finds a security by its symbol or company information. \\
     Explore market and industries & Reviews market conditions and industry groups. \\
-    View stock details & Displays market, company, fundamental, technical, and news information. \\
-    Configure analytical sources and weights & Selects evidence sources and adjusts their contribution weights. \\
-    Request AI-assisted analysis & Runs the agentic AI assessment for a selected stock. \\
-    Review action, confidence, and evidence & Presents the assessment, confidence, and supporting evidence. \\
-    Start conversation with chatbot & Begins a conversational financial-support session. \\
+    View stock details & Opens market, company, fundamental, technical, and news information for a selected stock. \\
+    View AI-assisted analysis & Displays the AI-assisted assessment associated with the selected stock. \\
+    Start conversation with Chatbot & Begins a conversational financial-support session. \\
     Review conversation history & Reopens previous chatbot sessions and messages. \\
     \midrule
     \multicolumn{2}{l}{\textbf{Experimentation and backtesting web interface}} \\
-    Run individual stock analysis & Executes a controlled analysis for one stock. \\
-    Run VN30 or VN100 batch analysis & Executes analysis across the selected index basket. \\
-    Monitor execution progress & Tracks the status of an ongoing analysis or backtest. \\
+    Run stock analysis & Executes a controlled analysis for a selected stock. \\
     Configure and execute backtest & Sets supported inputs and runs a historical simulation. \\
     Review stored experiment results & Opens previously stored analysis and backtesting results. \\
 \end{longtable}
