@@ -64,23 +64,25 @@ Figure~\ref{fig:stockrium-captures3} demonstrates the stock-detail views used to
     \begin{minipage}{0.32\textwidth}
         \centering
         \includegraphics[width=\linewidth]{screenshots/detail1.png}\\[2pt]
-        \footnotesize (a) Stock overview
+        \footnotesize (a) Price and technical-chart view
     \end{minipage}%
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
         \includegraphics[width=\linewidth]{screenshots/detail2.png}\\[2pt]
-        \footnotesize (b) Interactive chart
+        \footnotesize (b) Related news and financial ratios
     \end{minipage}%
     \hfill
     \begin{minipage}{0.32\textwidth}
         \centering
         \includegraphics[width=\linewidth]{screenshots/detail3.png}\\[2pt]
-        \footnotesize (c) Financial information
+        \footnotesize (c) Financial history and company profile
     \end{minipage}
-    \caption{Stock details and interactive technical charts}
+    \caption{Stock-detail evidence views}
     \label{fig:stockrium-captures3}
 \end{figure}
+
+These views keep price action, technical indicators, relevant news, financial ratios, historical performance, and company information within the same stock context. This arrangement allows the investor to cross-check the evidence behind an analysis before opening the multi-agent workflow.
 
 \section{Financial News Demo}
 \label{sec:demo-financial-news}
@@ -132,6 +134,8 @@ Figure~\ref{fig:stockrium-captures5} shows the investment-horizon and manual-con
     \label{fig:stockrium-captures5}
 \end{figure}
 
+The investment horizon provides the preset used in automatic mode. Manual mode exposes the analytical-source switches, normalized source weights, and technical-indicator selection; in the implemented pipeline, fundamental and news analysis remain whole-source inputs.
+
 \begin{figure}[H]
     \centering
     \begin{minipage}{0.45\textwidth}
@@ -148,6 +152,8 @@ Figure~\ref{fig:stockrium-captures5} shows the investment-horizon and manual-con
     \caption{Multi-agent analysis results}
     \label{fig:stockrium-captures6}
 \end{figure}
+
+The result view separates the final assessment and trading-plan fields from the supporting technical, fundamental, and news evidence. This makes the contribution of each agent inspectable while keeping the confidence value as an explanatory decision-support cue rather than a calibrated probability or an execution instruction.
 
 \section{Conversational Financial Assistant Demo}
 \label{sec:demo-conversational-assistant}
@@ -177,6 +183,8 @@ Figure~\ref{fig:stockrium-captures7} demonstrates conversation creation, stored 
     \label{fig:stockrium-captures7}
 \end{figure}
 
+Conversation history allows a user to resume earlier questions and continue with follow-up prompts. The assistant supports general financial exploration, whereas structured stock recommendations remain the responsibility of the configurable multi-agent analysis workflow.
+
 \section{Experimentation and Backtesting Demo}
 \label{sec:demo-experimentation-backtesting}
 
@@ -189,12 +197,16 @@ Figures~\ref{fig:stockrium-captures8}--\ref{fig:stockrium-captures11} demonstrat
     \label{fig:stockrium-captures8}
 \end{figure}
 
+The configuration screen records the security or supported basket, evaluation period, benchmark, score threshold, transaction fee, lookback window, holding-period fallback, and analysis mode. Previously exported JSON artifacts and stored runs can also be reopened for inspection without rerunning the experiment.
+
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{screenshots/web2.png}
     \caption{Backtesting experiment results}
     \label{fig:stockrium-captures9}
 \end{figure}
+
+The report combines summary metrics with a direct full-pipeline versus technical-baseline comparison. Entry and exit markers on the price chart and the associated trade journal make individual outcomes traceable; the displayed returns are historical results under the selected configuration, not evidence of guaranteed future profitability.
 
 \begin{figure}[H]
     \centering
@@ -209,5 +221,7 @@ Figures~\ref{fig:stockrium-captures8}--\ref{fig:stockrium-captures11} demonstrat
     \caption{Controlled stock-analysis results}
     \label{fig:stockrium-captures11}
 \end{figure}
+
+The controlled-analysis interface can evaluate one symbol or a supported stock basket using automatic or manual configuration. Its result screen exposes the aggregate assessment together with the technical, fundamental, and news explanations, providing an administrative view for checking how the multi-agent output was assembled.
 
 The demonstrated interfaces connect the specified user goals to the implemented application while preserving the boundary between decision support, controlled historical evaluation, and real securities transactions.
