@@ -26,8 +26,38 @@ def icb_to_industry_code(icb_code) -> Optional[str]:
     Trả về None nếu mã rỗng/không hợp lệ."""
     return _ICB_CATEGORY_CODE.get(str(icb_code or "").strip()[:2])
 
+
 class FundamentalAnalysisService:
     """Service for financial metrics database operations"""
+
+    @staticmethod
+    def _resolve_stock_id(symbol: str) -> Optional[str]:
+        """Resolve a stock symbol through Stock before querying FA tables."""
+        stock_result = (
+            supabase.table("Stock")
+            .select("id")
+            .eq("stock_symbol", symbol.strip().upper())
+            .limit(1)
+            .execute()
+        )
+
+        if not stock_result.data:
+            return None
+
+        return stock_result.data[0].get("id")
+
+    @staticmethod
+    def _get_latest_annual_rows(table_name: str, stock_id: str) -> List[Dict]:
+        """Return the row for the latest available financial year."""
+        result = (
+            supabase.table(table_name)
+            .select("*")
+            .eq("stock_id", stock_id)
+            .order("year", desc=True)
+            .limit(1)
+            .execute()
+        )
+        return result.data or []
 
     @staticmethod
     def get_summary(symbol: str) -> Optional[Dict]:
@@ -41,19 +71,19 @@ class FundamentalAnalysisService:
             Summary record with symbol and summary fields, or None if not found
         """
         try:
-            result = supabase.table("Stock") \
-                .select("id, FA_Summary(*)") \
-                .eq("stock_symbol", symbol.upper()) \
-                .single() \
-                .execute()
-
-            if not result.data:
+            stock_id = FundamentalAnalysisService._resolve_stock_id(symbol)
+            if not stock_id:
                 return None
 
-            # FA_Summary may be an empty list for newly-listed stocks with no
-            # summary row yet — avoid IndexError on [0].
-            fa_summary = result.data.get("FA_Summary") or []
-            return fa_summary[0] if fa_summary else None
+            result = (
+                supabase.table("FA_Summary")
+                .select("*")
+                .eq("stock_id", stock_id)
+                .limit(1)
+                .execute()
+            )
+            rows = result.data or []
+            return rows[0] if rows else None
 
         except Exception as e:
             print(f"Error fetching fundamental summary: {e}")
@@ -62,47 +92,50 @@ class FundamentalAnalysisService:
     @staticmethod
     def get_cash_flows(symbol: str) -> List[Dict]:
         """
-        Get cash flows for a specific symbol
+        Get cash flow data for the latest available year of a symbol.
         """
         try:
-            result = supabase.table("Stock").select("id, FA_CashFlow(*)").eq("stock_symbol", symbol.upper()).single().execute()
-            
-            if not result.data:
+            stock_id = FundamentalAnalysisService._resolve_stock_id(symbol)
+            if not stock_id:
                 return []
-            
-            return result.data.get("FA_CashFlow") or []
+
+            return FundamentalAnalysisService._get_latest_annual_rows(
+                "FA_CashFlow", stock_id
+            )
         except Exception as e:
             print(f"Error fetching cash flows: {e}")
             raise ValueError(f"Failed to fetch cash flows: {str(e)}")
 
     @staticmethod
-    def get_indicators(symbol: str ) -> List[Dict]:
+    def get_indicators(symbol: str) -> List[Dict]:
         """
-        Get financial indicators for a specific symbol
+        Get financial indicators for the latest available year of a symbol.
         """
         try:
-            result = supabase.table("Stock").select("id, FA_Indicator(*)").eq("stock_symbol", symbol.upper()).single().execute()
-            
-            if not result.data:
+            stock_id = FundamentalAnalysisService._resolve_stock_id(symbol)
+            if not stock_id:
                 return []
-            
-            return result.data.get("FA_Indicator") or []
+
+            return FundamentalAnalysisService._get_latest_annual_rows(
+                "FA_Indicator", stock_id
+            )
         except Exception as e:
             print(f"Error fetching financial indicators: {e}")
             raise ValueError(f"Failed to fetch financial indicators: {str(e)}")
 
     @staticmethod
-    def get_income_statements(symbol: str ) -> List[Dict]:
+    def get_income_statements(symbol: str) -> List[Dict]:
         """
-        Get income statements for a specific symbol
+        Get the income statement for the latest available year of a symbol.
         """
         try:
-            result = supabase.table("Stock").select("id, FA_IncomeStatement(*)").eq("stock_symbol", symbol.upper()).single().execute()
-
-            if not result.data:
+            stock_id = FundamentalAnalysisService._resolve_stock_id(symbol)
+            if not stock_id:
                 return []
 
-            return result.data.get("FA_IncomeStatement") or []
+            return FundamentalAnalysisService._get_latest_annual_rows(
+                "FA_IncomeStatement", stock_id
+            )
         except Exception as e:
             print(f"Error fetching income statements: {e}")
             raise ValueError(f"Failed to fetch income statements: {str(e)}")
