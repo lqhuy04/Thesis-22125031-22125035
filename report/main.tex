@@ -198,7 +198,7 @@ Vietnamese retail investors must often combine fragmented market prices, company
 
 Stockrium consists of an Android mobile application, a backend server, an internal experimentation and backtesting web interface, data-acquisition pipelines, and a multi-agent workflow. The platform supports market exploration, stock search, interactive price and technical-indicator charts, company and fundamental information, financial news, watchlist, AI-assisted analysis based on investment-horizon preference, and conversational follow-up. Given a user's investment horizon, independent technical, fundamental, and news agents retrieve and analyze their respective evidence, each producing a normalized score and a natural-language summary. These scores are combined through horizon-dependent weights into a Buy/Wait recommendation, accompanied, for Buy decisions, by a trading plan and a confidence-scored explanation of the overall decision. Separate crawling and scheduled collection processes acquire and normalize market, company, financial-statement, and news data for application use and historical evaluation.
 
-System testing covered functional behavior, API and external-service integration, security, reliability, performance, usability, and Android compatibility, with all tested workflows producing their expected results and a complete multi-agent analysis generated within seconds. A historical evaluation on the 30 VN30 securities from August~1, 2024 to August~1, 2026, against engine-only, buy-and-hold, random-entry, and single-indicator baselines, showed that the multi-agent workflow traded less often (--23.9\%) and reduced mean maximum drawdown (23.82\%~$\rightarrow$~21.64\%), with modest gains in median return, though mean return was slightly lower and it outperformed buy-and-hold on only 3 of 30 securities. Statistical and robustness evidence remained limited. Therefore, Stockrium's principal contribution is an integrated, inspectable, and time-efficient environment for Vietnamese-market decision support and experimentation, rather than evidence of guaranteed profitability or a replacement for professional judgment.
+Repository-verifiable system testing executed 66 automated backend tests covering multi-agent behavior, deterministic scoring, validation and security guards, authentication refresh, and backtesting boundaries; all passed under their fixed or mocked conditions. The repository does not archive sufficient evidence to claim completed load, mobile-device, or user-acceptance testing. A historical evaluation on the 30 VN30 securities from August~1, 2024 to August~1, 2026, against engine-only, buy-and-hold, random-entry, and single-indicator baselines, showed that the complete pipeline---including its Buy-or-Wait decision and recommendation-generated trading plan---executed 23.9\% fewer trades and had a smaller mean maximum drawdown (23.82\%~$\rightarrow$~21.64\%), with modest gains in median return. Mean return was slightly lower, and the pipeline outperformed buy-and-hold on only 3 of 30 securities. Statistical and robustness evidence remained limited. Therefore, Stockrium's principal contribution is an integrated and inspectable environment for Vietnamese-market decision support and experimentation, rather than evidence of guaranteed profitability or a replacement for professional judgment.
 
 \textbf{Keywords:} Vietnamese stock market, decision support, multi-agent systems, large language models, financial data analysis, backtesting.
 
@@ -295,14 +295,14 @@ System testing covered functional behavior, API and external-service integration
 \clearpage
 \chapter{System Testing}
 
-\textit{This chapter evaluates whether the implemented Stockrium platform satisfies its software requirements. It reports functional, integration, non-functional, compatibility, and user acceptance testing across the mobile application, backend APIs, persistent storage, market-data services, and AI providers.}
+\textit{This chapter reports the repository-verifiable automated backend suite and its evidence boundary. It evaluates selected multi-agent, technical, authentication, security, and backtesting behavior, while explicitly identifying mobile, live-provider, load, and user-acceptance testing that is not supported by archived artifacts.}
 
 \input{chapters/chapter5/system_testing}
 
 \clearpage
 \chapter{Experiments and Evaluation}
 
-\textit{This chapter evaluates the analytical behavior of Stockrium on historical Vietnamese market data. It compares the complete pipeline with deterministic and passive baselines, examines robustness across securities, indicators, confidence levels, windows, and market regimes, and identifies the limitations that constrain the strength of the conclusions.}
+\textit{This chapter evaluates the analytical behavior of Stockrium on historical Vietnamese market data. It compares the complete pipeline with deterministic and passive baselines, examines robustness across securities, indicators, confidence levels, and market regimes, and identifies the limitations that constrain the strength of the conclusions.}
 
 % ============================================================
 \input{chapters/chapter6/evaluation_methodology}
@@ -381,8 +381,11 @@ T. Phuoc, P. T. K. Anh, P. H. Tam, and C. V. Nguyen, ``Applying machine learning
 \bibitem{son2025deepmodels}
 H. H. Son, N. T. Phuong, N. T. Linh, and P. T. Loan, ``A comprehensive comparison of deep learning models for forecasting developing market indices: Evidence from the Vietnamese stock market,'' \textit{Procedia Computer Science}, vol. 272, pp. 210--217, 2025, doi: 10.1016/j.procs.2025.10.198.
 
-\bibitem{ssiIboardPro2026}
-SSI Securities Corporation, ``Stock trading -- SSI iBoard Pro,'' 2026. [Online]. Available: \url{https://www.ssi.com.vn/khach-hang-ca-nhan/giao-dich-chung-khoan-iboard-pro}. Accessed: Aug. 3, 2026.
+\bibitem{ssiIboardResearch2026}
+SSI Securities Corporation, ``How to access research reports on SSI iBoard Pro,'' 2026. [Online]. Available: \url{https://www.ssi.com.vn/en/individual-customer/instruction-research-center}. Accessed: Aug. 4, 2026.
+
+\bibitem{ssiIboardLaunch2023}
+SSI Securities Corporation, ``Trải nghiệm ngay ứng dụng mới ra mắt -- SSI iBoard Pro,'' Oct. 23, 2023. [Online]. Available: \url{https://www.ssi.com.vn/tin-tuc/tin-tuc-su-kien-ssi/trai-nghiem-ngay-ung-dung-moi-ra-mat-ssi-iboard-pro}. Accessed: Aug. 4, 2026.
 
 \bibitem{murphy1999technical}
 J. J. Murphy, \textit{Technical Analysis of the Financial Markets: A Comprehensive Guide to Trading Methods and Applications}. New York, NY, USA: New York Institute of Finance, 1999.
@@ -437,9 +440,6 @@ Backtrader, ``Introduction,'' Backtrader Documentation, 2026. [Online]. Availabl
 
 \bibitem{vectorbtDocs2026}
 VectorBT, ``Getting started,'' VectorBT Documentation, 2026. [Online]. Available: \url{https://vectorbt.dev/}. Accessed: Jul. 18, 2026.
-
-\bibitem{k6Scenarios2026}
-Grafana Labs, ``Scenarios,'' k6 Documentation, 2026. [Online]. Available: \url{https://grafana.com/docs/k6/latest/using-k6/scenarios/}. Accessed: Jul. 18, 2026.
 
 \bibitem{reactnative2026}
 Meta Platforms, Inc., ``React Native: Learn once, write anywhere,'' 2026. [Online]. Available: \url{https://reactnative.dev/}. Accessed: Jul. 14, 2026.

@@ -2,6 +2,6 @@
 
 The completed LaTeX chapter is in `system_testing.tex` and is included by `report/main.tex`.
 
-It reports successful functional/black-box, integration/API, non-functional, compatibility/device, and user-acceptance testing. Test cases are presented as summary tables followed by prose discussion. The testing methods are manual testing, Postman/Swagger UI, Expo with devices and emulators, and user acceptance testing.
+It reports the 66 repository-verifiable automated backend tests and explicitly separates those results from mobile, load, manual black-box, and user-acceptance activities for which no archived evidence is present. Test cases are grouped by multi-agent analysis, technical and security boundaries, authentication, and backtesting integration.
 
-`TESTING_PLAN.md` is retained as the earlier planning artifact; `system_testing.tex` is the thesis-ready chapter.
+`TESTING_PLAN.md` records the remaining expansion plan; `system_testing.tex` is the evidence-bounded thesis chapter.

@@ -132,19 +132,20 @@ Stockrium provides a connected set of features for exploring the Vietnamese stoc
 \begin{enumerate}[leftmargin=*, nosep]
     \item The investor opens analysis configuration for the selected stock.
     \item The investor selects automatic or manual mode.
-    \item In automatic mode, the system derives the analytical configuration from the saved investment horizon; in manual mode, the investor selects evidence sources, subcategories, and weights.
+    \item In automatic mode, the system derives the analytical configuration from the saved investment horizon; in manual mode, the investor toggles the news and fundamental sources, selects one or more technical indicators, and assigns source weights.
     \item The client and backend validate the completed configuration.
     \item The investor submits the analysis request.
     \item The multi-agent workflow prepares and analyzes the enabled technical, fundamental, and news evidence.
-    \item The aggregator produces a candidate assessment, after which deterministic code calculates confidence and enforces the decision constraints.
+    \item The recommendation stage calculates the weighted total, applies the total-score and minimum technical-score thresholds, and creates a trading plan for an accepted \textit{Buy}.
+    \item The aggregator generates a bounded confidence assessment and summary without changing the established decision or trading plan.
     \item The application presents the action, confidence, component evidence, explanations, and any applicable risk-related values.
 \end{enumerate}
 
 \noindent\textbf{Alternative Paths:}
 \begin{itemize}[leftmargin=*, nosep]
-    \item Invalid manual weights, empty enabled categories, or a configuration with no usable source are blocked before execution.
-    \item Unavailable evidence is marked missing and excluded from the applicable normalized confidence calculation.
-    \item A candidate \textit{Buy} that violates a technical, fundamental, news, or confidence condition is downgraded to \textit{Wait}.
+    \item Invalid manual weights or a configuration with no selected technical indicator are blocked before execution.
+    \item Unavailable evidence is marked missing; its component score defaults to zero, and the aggregator may reflect the missing evidence in its confidence assessment.
+    \item A weighted total below the acceptance threshold, or a technical score below the technical minimum, produces \textit{Wait}; confidence does not override this decision.
     \item A provider, validation, or data error produces controlled feedback and does not create a partial recommendation object.
 \end{itemize}
 
@@ -187,7 +188,7 @@ Stockrium provides a connected set of features for exploring the Vietnamese stoc
 
 \noindent\textbf{Pre-Condition(s):} The evaluator is authenticated with the required authorization. The protected backend, historical data, and selected analytical services are available, and the requested configuration is within the supported scope.
 
-\noindent\textbf{Post-Condition(s):} An individual or batch analysis result, or a historical backtesting report, is produced for inspection or export. A separately uploaded artifact may be available for later review. No live-market order or portfolio transaction is performed.
+\noindent\textbf{Post-Condition(s):} An individual or batch analysis result, or a historical backtesting report, is produced for inspection or export. After computing a backtest, the backend attempts to create a local JSON artifact and, when that succeeds, automatically attempts to persist the same file in Supabase Storage for later review. No live-market order or portfolio transaction is performed.
 
 \noindent\textbf{Basic Path:}
 \begin{enumerate}[leftmargin=*, nosep]
@@ -205,7 +206,7 @@ Stockrium provides a connected set of features for exploring the Vietnamese stoc
     \item The evaluator loads an available stored experiment artifact instead of starting a new run.
     \item Invalid dates, thresholds, holding limits, analytical selections, or unauthorized requests are rejected before execution.
     \item A batch run records a symbol-level failure without presenting the failed symbol as a successful result.
-    \item A generated JSON result may be exported directly; persistence in Supabase Storage requires the separate artifact-upload operation.
+    \item A generated JSON result remains available through the protected local-file route even if the automatic Supabase Storage upload fails; an upload failure is reported without converting the completed backtest into a failed simulation.
 \end{itemize}
 
 Together, these use cases define Stockrium as a configurable and explainable decision-support environment. They connect market discovery, evidence inspection, multi-agent synthesis, conversational follow-up, and controlled historical evaluation while keeping investment decisions and any subsequent transactions under the user's responsibility.

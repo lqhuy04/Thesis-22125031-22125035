@@ -3,8 +3,17 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
+import pandas as pd
+
 import app.backtest as backtest
-from app.backtest.single_indicator_backtest import INDICATORS
+from app.backtest.engine import MetricsCalculator
+from app.backtest.single_indicator_backtest import (
+    INDICATORS,
+    _prepare_single_indicator_scores,
+    _sanitize_json,
+    run_single_indicator_backtests,
+)
 from app.backtest.vn30_stats import build_symbol_stats, update_vn30_stats_file
 from app.services.backtest_pipeline_service import _build_market_dataframe
 
@@ -17,6 +26,69 @@ class BacktestScopeTests(unittest.TestCase):
         self.assertEqual(
             set(INDICATORS),
             {"RSI", "MACD", "KDJ", "Bollinger Bands", "MA Crossover"},
+        )
+
+    def test_single_indicator_json_preserves_boolean_metadata(self):
+        self.assertIs(_sanitize_json(True), True)
+        self.assertIs(_sanitize_json(np.bool_(False)), False)
+
+    def test_single_indicator_score_preserves_warmup_before_period_trim(self):
+        dates = pd.date_range("2024-01-01", periods=60)
+        scored = pd.DataFrame(
+            {
+                "datetime": dates,
+                "total_score": [*([np.nan] * 50), *([3.0] * 10)],
+                "rsi_score": [1] * 60,
+            }
+        )
+
+        prepared = _prepare_single_indicator_scores(
+            scored,
+            "rsi_score",
+            evaluation_start_date="2024-02-10",
+        )
+
+        self.assertEqual(
+            prepared.iloc[0]["datetime"],
+            pd.Timestamp("2024-02-10"),
+        )
+        self.assertTrue(prepared.iloc[:10]["total_score"].isna().all())
+        self.assertEqual(prepared.iloc[10:]["total_score"].tolist(), [1.0] * 10)
+
+    @patch("app.backtest.single_indicator_backtest._backtest_symbol_for_indicator")
+    @patch("app.backtest.single_indicator_backtest._build_dataframe")
+    def test_single_indicator_runner_loads_pre_start_history(
+        self,
+        build_dataframe,
+        backtest_symbol,
+    ):
+        build_dataframe.return_value = pd.DataFrame(
+            {"datetime": pd.date_range("2023-01-01", periods=60)}
+        )
+        backtest_symbol.return_value = {
+            "trades": [],
+            "metrics": MetricsCalculator().calculate([]),
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_single_indicator_backtests(
+                indicators={"RSI": "rsi_score"},
+                symbols=["FPT"],
+                start_date="2024-08-01",
+                end_date="2026-08-01",
+                output_dir=temp_dir,
+            )
+
+        build_dataframe.assert_called_once_with(
+            symbol="FPT",
+            interval="1d",
+            start_date=None,
+            end_date="2026-08-01",
+        )
+        backtest_symbol.assert_called_once_with(
+            build_dataframe.return_value,
+            "rsi_score",
+            evaluation_start_date="2024-08-01",
         )
 
     def test_vn30_stats_excludes_legacy_walk_forward_data(self):

@@ -13,7 +13,7 @@ To regenerate the thesis image:
 3. Enable **Crop** and **Transparent Background** only if desired.
 4. Select 200--300% zoom for print quality.
 5. Use a small border such as 10 px.
-6. Save it as `stockrium_agent_topology_portrait.png` in this directory.
+6. Save it as `stockrium_agent_topology_portrait.png` in `report/figures/chapter4/`.
 
 ## Legacy combined source
 

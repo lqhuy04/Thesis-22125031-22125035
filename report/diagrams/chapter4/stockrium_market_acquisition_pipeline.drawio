@@ -22,25 +22,25 @@
         <mxCell id="post-title" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=17;fontColor=#4d4d4d;" value="&lt;b&gt;POST-SESSION RECONCILIATION (15:05)&lt;/b&gt;" vertex="1">
           <mxGeometry height="30" width="480" x="50" y="742" as="geometry" />
         </mxCell>
-        <mxCell id="historical-source" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;" value="&lt;b&gt;SSI HTTP API&lt;/b&gt;&lt;br&gt;Historical OHLCV" vertex="1">
+        <mxCell id="historical-source" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;" value="&lt;b&gt;SSI HTTP API&lt;/b&gt;&lt;br&gt;Stock OHLCV and index values" vertex="1">
           <mxGeometry height="70" width="280" x="80" y="105" as="geometry" />
         </mxCell>
-        <mxCell id="historical-process" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;" value="&lt;b&gt;Initialization Jobs&lt;/b&gt;&lt;br&gt;Chunk requests, normalize, deduplicate, and pace" vertex="1">
+        <mxCell id="historical-process" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;" value="&lt;b&gt;Four Initialization Jobs&lt;/b&gt;&lt;br&gt;VN100 stocks + VN30/VN100 indices&lt;br&gt;Normalize, deduplicate, and pace" vertex="1">
           <mxGeometry height="80" width="410" x="480" y="100" as="geometry" />
         </mxCell>
-        <mxCell id="historical-minute" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Stock_Price_1m&lt;/b&gt;" vertex="1">
+        <mxCell id="historical-minute" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Stock_Price_1m&lt;/b&gt;&lt;br&gt;MarketIndex_Value_1m" vertex="1">
           <mxGeometry height="65" width="290" x="1030" y="70" as="geometry" />
         </mxCell>
-        <mxCell id="historical-daily" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Stock_Price_1d&lt;/b&gt;" vertex="1">
+        <mxCell id="historical-daily" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Stock_Price_1d&lt;/b&gt;&lt;br&gt;MarketIndex_Value_1d" vertex="1">
           <mxGeometry height="65" width="290" x="1030" y="150" as="geometry" />
         </mxCell>
         <mxCell id="live-scheduler" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=15;" value="&lt;b&gt;Python Scheduler&lt;/b&gt;&lt;br&gt;Start, monitor, restart, and stop workers" vertex="1">
           <mxGeometry height="75" width="290" x="75" y="325" as="geometry" />
         </mxCell>
-        <mxCell id="live-source" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;" value="&lt;b&gt;SSI WebSocket&lt;/b&gt;&lt;br&gt;Bar and market-index streams" vertex="1">
+        <mxCell id="live-source" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;" value="&lt;b&gt;SSI WebSocket + HTTP API&lt;/b&gt;&lt;br&gt;Stock bars + index IntradayOhlc" vertex="1">
           <mxGeometry height="75" width="290" x="75" y="440" as="geometry" />
         </mxCell>
-        <mxCell id="live-process" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;" value="&lt;b&gt;Intraday Workers&lt;/b&gt;&lt;br&gt;1-minute candle buffer&lt;br&gt;Daily snapshot aggregation&lt;br&gt;Market-index normalization" vertex="1">
+        <mxCell id="live-process" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;" value="&lt;b&gt;Four Live Workers&lt;/b&gt;&lt;br&gt;Stock 1m/1d WebSocket workers&lt;br&gt;Index 1m/1d HTTP pollers" vertex="1">
           <mxGeometry height="125" width="410" x="480" y="355" as="geometry" />
         </mxCell>
         <mxCell id="live-minute" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Stock_Price_1m&lt;/b&gt;" vertex="1">
@@ -49,13 +49,13 @@
         <mxCell id="live-daily" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Stock_Price_1d&lt;/b&gt;" vertex="1">
           <mxGeometry height="65" width="290" x="1030" y="390" as="geometry" />
         </mxCell>
-        <mxCell id="live-index" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Current_Market_Index&lt;/b&gt;" vertex="1">
+        <mxCell id="live-index" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;MarketIndex_Value_1m&lt;/b&gt;&lt;br&gt;MarketIndex_Value_1d" vertex="1">
           <mxGeometry height="65" width="290" x="1030" y="475" as="geometry" />
         </mxCell>
         <mxCell id="post-source" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;" value="&lt;b&gt;SSI HTTP API&lt;/b&gt;&lt;br&gt;Short lookback and end-of-day data" vertex="1">
           <mxGeometry height="80" width="290" x="75" y="820" as="geometry" />
         </mxCell>
-        <mxCell id="post-process" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=16;" value="&lt;b&gt;Sequential Reconciliation&lt;/b&gt;&lt;br&gt;1-minute → daily → market indices&lt;br&gt;Normalize, retain, and upsert" vertex="1">
+        <mxCell id="post-process" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=16;" value="&lt;b&gt;Four Sequential Jobs&lt;/b&gt;&lt;br&gt;Stock 1m → stock 1d → index 1m → index 1d&lt;br&gt;Normalize, retain, and upsert" vertex="1">
           <mxGeometry height="105" width="410" x="480" y="805" as="geometry" />
         </mxCell>
         <mxCell id="post-minute" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Stock_Price_1m&lt;/b&gt;" vertex="1">
@@ -64,7 +64,7 @@
         <mxCell id="post-daily" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Stock_Price_1d&lt;/b&gt;" vertex="1">
           <mxGeometry height="65" width="290" x="1030" y="840" as="geometry" />
         </mxCell>
-        <mxCell id="post-index" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Current_Market_Index&lt;/b&gt;" vertex="1">
+        <mxCell id="post-index" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;MarketIndex_Value_1m&lt;/b&gt;&lt;br&gt;MarketIndex_Value_1d" vertex="1">
           <mxGeometry height="65" width="290" x="1030" y="925" as="geometry" />
         </mxCell>
         <mxCell id="edge-historical-process" edge="1" parent="1" source="historical-source" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="historical-process" value="">
@@ -88,7 +88,7 @@
         <mxCell id="edge-live-daily" edge="1" parent="1" source="live-process" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=13;labelBackgroundColor=#f5f5f5;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="live-daily" value="daily snapshots">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="edge-live-index" edge="1" parent="1" source="live-process" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=13;labelBackgroundColor=#f5f5f5;exitX=1;exitY=0.75;entryX=0;entryY=0.5;" target="live-index" value="index snapshots">
+        <mxCell id="edge-live-index" edge="1" parent="1" source="live-process" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=13;labelBackgroundColor=#f5f5f5;exitX=1;exitY=0.75;entryX=0;entryY=0.5;" target="live-index" value="index history">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="edge-post-process" edge="1" parent="1" source="post-source" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="post-process" value="">
@@ -103,13 +103,13 @@
         <mxCell id="edge-post-index" edge="1" parent="1" source="post-process" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;fontSize=13;labelBackgroundColor=#f5f5f5;exitX=1;exitY=0.75;entryX=0;entryY=0.5;" target="post-index" value="reconcile">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="ghaypxM3YYE9NCr2h6nk-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;" value="&lt;b&gt;Scheduled Supabase Edge Function&lt;/b&gt;" vertex="1">
+        <mxCell id="ghaypxM3YYE9NCr2h6nk-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;" value="&lt;b&gt;Two Scheduled Edge Functions&lt;/b&gt;" vertex="1">
           <mxGeometry height="65" width="330" x="78" y="585" as="geometry" />
         </mxCell>
-        <mxCell id="ghaypxM3YYE9NCr2h6nk-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;" value="&lt;b&gt;1-minute cycle refreshing&amp;nbsp;&lt;/b&gt;&lt;div&gt;&lt;b&gt;stocks&#39; intraday data&lt;/b&gt;&lt;/div&gt;" vertex="1">
+        <mxCell id="ghaypxM3YYE9NCr2h6nk-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;" value="&lt;b&gt;1-minute latest-state refresh&lt;/b&gt;&lt;br&gt;VN100 stocks + VN30/VN100 indices" vertex="1">
           <mxGeometry height="65" width="330" x="523" y="585" as="geometry" />
         </mxCell>
-        <mxCell id="ghaypxM3YYE9NCr2h6nk-13" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Current_Stock_Price&lt;/b&gt;" vertex="1">
+        <mxCell id="ghaypxM3YYE9NCr2h6nk-13" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=16;" value="&lt;b&gt;Current_Stock_Price&lt;/b&gt;&lt;br&gt;Current_Market_Index" vertex="1">
           <mxGeometry height="70" width="290" x="1033" y="580" as="geometry" />
         </mxCell>
         <mxCell id="ghaypxM3YYE9NCr2h6nk-14" edge="1" parent="1" source="ghaypxM3YYE9NCr2h6nk-11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#555555;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="ghaypxM3YYE9NCr2h6nk-12" value="">

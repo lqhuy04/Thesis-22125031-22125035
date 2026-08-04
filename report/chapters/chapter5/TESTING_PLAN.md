@@ -9,7 +9,7 @@ The distinction is:
 - **Chapter 5 — System Testing:** Does the software implement its requirements correctly?
 - **Chapter 6 — Experiments and Evaluation:** Does the analytical pipeline exhibit useful historical behavior?
 
-The repository currently has no automated test framework or test suite. The recommended approach is a risk-based combination of:
+The repository now contains 66 Python `unittest` tests under `backend/tests`, covering selected multi-agent, technical, security, authentication, and backtesting behavior. Chapter 5 reports that reproducible suite. The remaining validation plan is a risk-based combination of:
 
 1. automated backend unit and API integration tests;
 2. automated mobile component and routing tests;
@@ -36,13 +36,13 @@ The final chapter must report actual results. Planned tests, unexecuted cases, a
 - standardized API success and error responses;
 - market price retrieval and stock-detail data;
 - deterministic technical indicators and score calculation;
-- AI-analysis configuration, structured response, confidence calculation, and decision threshold;
+- AI-analysis configuration, structured response, model-generated confidence validation, and deterministic decision thresholds;
 - chat-session ownership and deletion;
 - shared technical scoring, next-open execution, exit rules, and transaction costs.
 
 ### P1 — Important
 
-- favorites, portfolios, risk appetite, and search history;
+- favorites, risk appetite, and search history;
 - company, fundamental, article, industry, and related-stock views;
 - chart rendering and period/indicator selection;
 - automatic refresh after access-token expiry;
@@ -59,15 +59,15 @@ The final chapter must report actual results. Planned tests, unexecuted cases, a
 
 ## 4. Recommended Test Stack
 
-No dependencies should be installed until implementation begins.
+The existing backend suite uses the standard-library `unittest` runner and `unittest.mock`. The tools below are candidates for expanding coverage; they are not evidence that those tests have already been executed.
 
 | Layer | Recommended tools | Purpose |
 |---|---|---|
-| Backend unit/API | pytest, FastAPI TestClient, existing httpx | Test services and API routes without a live network listener |
-| Backend mocking/coverage | pytest-mock, pytest-cov | Replace Supabase, Redis, SSI, email, search, and LLM calls; measure exercised code |
+| Existing backend unit/integration | unittest, unittest.mock | Run the 66 repository-verifiable tests without live external providers |
+| Expanded backend API/coverage | pytest, FastAPI TestClient, pytest-mock, pytest-cov | Add route-level fixtures and measure exercised code |
 | Expo unit/component | Jest with jest-expo, React Native Testing Library | Test helpers, components, input validation, and user-visible states |
 | Expo Router integration | expo-router/testing-library | Test navigation and route behavior in memory |
-| Mobile end to end | Maestro on an Android emulator; add iOS if hardware or CI access permits | Exercise complete user flows against a test backend |
+| Mobile end to end | Maestro on an Android emulator and, when available, a physical Android device | Exercise complete user flows against a test backend |
 | API performance | k6 | Measure response time, error rate, and throughput under controlled load |
 | Security checklist | Relevant OWASP ASVS categories | Structure authentication, session, access-control, validation, data-protection, and API checks |
 
@@ -102,7 +102,7 @@ Use an isolated Supabase test project or test schema and a separate Redis databa
 - a second ordinary user for ownership tests;
 - one expired or revoked token.
 
-Use fixed OHLCV, company, fundamental, and article fixtures. Mock SSI, Serper, SMTP, social OAuth, OpenAI, and Gemini for automated tests. A few separately identified live-provider smoke tests may be run, but their variable outputs should not determine whether the regression suite passes.
+Use fixed OHLCV, company, fundamental, and article fixtures. Mock SSI, Serper, Resend, social OAuth, OpenAI, and DeepSeek for automated tests. A few separately identified live-provider smoke tests may be run, but their variable outputs should not determine whether the regression suite passes.
 
 ## 6. Test Design
 
@@ -140,18 +140,19 @@ The matrix below is the minimum useful thesis scope. Detailed steps should be re
 | TECH-02 | Indicators | Insufficient candles, missing values, constant prices, and zero volume | Defined empty/null behavior and no crash | P0 | Unit/API |
 | USER-01 | Preferences | Read and update risk appetite | Value persists only for the authenticated user | P1 | API + mobile |
 | USER-02 | Favorites | Add, duplicate-add, check, list, and delete | Idempotent state and correct enriched data | P1 | API + mobile |
-| USER-03 | Portfolio/history | CRUD portfolio and search history | Correct ownership, persistence, validation, and empty states | P1 | API + mobile |
+| USER-03 | Search history | Add, deduplicate, list, cap, and clear recent searches | Correct ownership, persistence, ordering, and empty states | P1 | API + mobile |
 | AGENT-01 | Orchestration | Automatic/manual modes and enabled branches | Only selected specialists run and weights normalize correctly | P0 | Integration with mocks |
 | AGENT-02 | Structure | Mock specialists return valid evidence | Aggregator output satisfies the typed schema and API contract | P0 | Integration with mocks |
-| AGENT-03 | Decision | Confidence below, at, and above acceptance threshold | Buy/Wait control follows the exact deterministic boundary | P0 | Unit test |
+| AGENT-03 | Decision | Weighted total and technical score below, at, and above their acceptance thresholds | Buy/Wait control follows both deterministic boundaries; confidence does not alter it | P0 | Unit test |
 | AGENT-04 | Horizon | Short-, medium-, and long-horizon profiles | Planning and holding constraints match the selected horizon | P0 | Integration with mocks |
 | AGENT-05 | Failure | Specialist timeout, malformed output, or no evidence | Defined fallback or safe error; no unsupported recommendation | P0 | Fault injection |
 | CHAT-01 | Conversation | Seed, follow up, reopen history, and delete | Ordered owner-only history and complete deletion | P1 | API + E2E |
 | BACK-01 | Shared scoring | Known indicator values through the shared scorer and both adapters | Production output and backtest score columns use the shared rule results | P0 | Unit/integration |
-| BACK-02 | Timing | Score meets threshold on candle t | One candidate and entry at candle t+1 open | P0 | Unit test |
-| BACK-03 | Rules | Take-profit, stop-loss, score exit, max hold, final liquidation | Correct reason, date, price, cost, and return | P0 | Parameterized unit |
-| BACK-04 | Edges | Same-bar TP/SL, gap, final signal, no candidates, missing benchmark | Conservative documented behavior and no invalid trade | P0 | Unit/integration |
-| BACK-05 | Artifacts | Complete backtest and result listing | Decisions, trades, metrics, tests, plots, and stored file agree | P1 | Integration |
+| BACK-02 | Warm-up | Full and single-indicator runs use a later evaluation start | Pre-start history is retained, the shared 50-candle warm-up is preserved, and trimming occurs after scoring | P0 | Unit/integration |
+| BACK-03 | Timing | Score meets threshold on candle t | One candidate and entry at candle t+1 open | P0 | Unit test |
+| BACK-04 | Rules | Take-profit, stop-loss, score exit, max hold, final liquidation | Correct reason, date, price, cost, and return | P0 | Parameterized unit |
+| BACK-05 | Edges | Same-bar TP/SL, gap, final signal, no candidates, missing benchmark | Conservative documented behavior and no invalid trade | P0 | Unit/integration |
+| BACK-06 | Artifacts | Complete backtest and result listing | Decisions, trades, metrics, effective warm-up metadata, tests, plots, and stored file agree | P1 | Integration |
 | MOB-01 | Authentication UI | Signup/login, verification, reset, logout | Correct validation, feedback, loading, and navigation | P0 | Component + E2E |
 | MOB-02 | Market UI | Browse, search, open detail, change chart view | Correct data, navigation, and responsive interaction | P0 | Component + E2E |
 | MOB-03 | AI analysis UI | Configure, submit, view result, open follow-up chat | Correct payload and safe rendering of all structured fields | P0 | Component + E2E |
@@ -169,7 +170,7 @@ These are targets, not current results:
 - at least 95% of executed P1 cases pass, with every failure documented;
 - no unresolved critical or high-severity security or authorization defect;
 - all tested protected and administrator-only routes reject invalid roles or tokens;
-- target at least 80% automated statement coverage for deterministic authentication, scoring, confidence, and backtesting modules; report the actual value even if lower;
+- target at least 80% automated statement coverage for deterministic authentication, scoring, decision, trading-plan validation, and backtesting modules; report the actual value even if lower;
 - critical mobile E2E flows pass three consecutive runs without a flaky failure;
 - at 20 concurrent virtual users in the stated local/staging environment, non-AI requests have under 1% unexpected errors, p95 below 500 ms for simple reads, and p95 below 1 s for ordinary writes;
 - AI and backtesting latency are reported separately because provider time and experiment size dominate them;

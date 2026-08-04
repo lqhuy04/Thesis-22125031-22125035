@@ -22,6 +22,7 @@ import pandas as pd
 
 from app.backtest.engine import (
     DEFAULT_TRANSACTION_COST_PCT,
+    INDICATOR_WARMUP_CANDLES,
     IndicatorEngine,
     MetricsCalculator,
     ScoringEngine,
@@ -49,6 +50,8 @@ def _sanitize_json(value: Any) -> Any:
         return {k: _sanitize_json(v) for k, v in value.items()}
     if isinstance(value, list):
         return [_sanitize_json(v) for v in value]
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
     if isinstance(value, (np.floating, float)):
         number = float(value)
         return number if np.isfinite(number) else None
@@ -57,7 +60,40 @@ def _sanitize_json(value: Any) -> Any:
     return value
 
 
-def _backtest_symbol_for_indicator(df_1d: pd.DataFrame, score_column: str) -> dict[str, Any]:
+def _prepare_single_indicator_scores(
+    scored: pd.DataFrame,
+    score_column: str,
+    evaluation_start_date: str | None,
+) -> pd.DataFrame:
+    """Select one score without discarding the shared indicator warm-up."""
+    if score_column not in scored.columns:
+        raise ValueError(f"Missing score column: {score_column}")
+
+    prepared = scored.copy()
+    warmup_complete = prepared["total_score"].notna()
+    prepared["total_score"] = pd.to_numeric(
+        prepared[score_column],
+        errors="coerce",
+    ).where(warmup_complete)
+
+    if evaluation_start_date:
+        evaluation_start = pd.to_datetime(evaluation_start_date)
+        prepared = prepared[
+            pd.to_datetime(prepared["datetime"]) >= evaluation_start
+        ].reset_index(drop=True)
+
+    if prepared.empty:
+        raise ValueError(
+            "No daily candles remain in the requested backtest period"
+        )
+    return prepared
+
+
+def _backtest_symbol_for_indicator(
+    df_1d: pd.DataFrame,
+    score_column: str,
+    evaluation_start_date: str | None = None,
+) -> dict[str, Any]:
     indicator_engine = IndicatorEngine()
     scoring_engine = ScoringEngine()
     signal_generator = SignalGenerator()
@@ -68,7 +104,11 @@ def _backtest_symbol_for_indicator(df_1d: pd.DataFrame, score_column: str) -> di
     metrics_calc = MetricsCalculator()
 
     scored = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1d))
-    scored["total_score"] = scored[score_column]
+    scored = _prepare_single_indicator_scores(
+        scored,
+        score_column,
+        evaluation_start_date,
+    )
 
     signaled = signal_generator.generate_signals(scored, min_score=1)
     trades = simulator.run(signaled)
@@ -141,10 +181,25 @@ def run_single_indicator_backtests(
 
         for symbol in symbols:
             try:
-                df_1d = _build_dataframe(symbol=symbol, interval="1d", start_date=start_date, end_date=end_date)
-                if len(df_1d) <= 50:
-                    raise ValueError("Insufficient data (<=50 candles)")
-                result = _backtest_symbol_for_indicator(df_1d, score_column)
+                # Match the full backtest: retain pre-start history while
+                # calculating rolling/EMA indicators, then trim the scored
+                # frame to the requested evaluation interval.
+                df_1d = _build_dataframe(
+                    symbol=symbol,
+                    interval="1d",
+                    start_date=None,
+                    end_date=end_date,
+                )
+                if len(df_1d) <= INDICATOR_WARMUP_CANDLES:
+                    raise ValueError(
+                        "Insufficient data "
+                        f"(<={INDICATOR_WARMUP_CANDLES} candles)"
+                    )
+                result = _backtest_symbol_for_indicator(
+                    df_1d,
+                    score_column,
+                    evaluation_start_date=start_date,
+                )
                 per_symbol[symbol] = result
                 m = result["metrics"]
                 print(
@@ -166,6 +221,8 @@ def run_single_indicator_backtests(
             "end_date": end_date,
             "max_hold_candles": MAX_HOLD_CANDLES,
             "transaction_cost_pct": DEFAULT_TRANSACTION_COST_PCT,
+            "warmup_candles": INDICATOR_WARMUP_CANDLES,
+            "pre_start_history_loaded": True,
             "generated_at": datetime.now().isoformat(),
             "symbols_tested": len(symbols),
             "symbols_succeeded": len(per_symbol),

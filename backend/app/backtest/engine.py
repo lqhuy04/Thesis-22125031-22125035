@@ -13,6 +13,7 @@ from app.services.technical_indicators_service import (
 )
 
 DEFAULT_TRANSACTION_COST_PCT = 0.0015
+INDICATOR_WARMUP_CANDLES = 50
 
 
 class IndicatorEngine:
@@ -71,7 +72,7 @@ class ScoringEngine:
         total_score = data[
             list(SCORE_COLUMN_BY_INDICATOR.values())
         ].sum(axis=1)
-        warmup_mask = np.arange(len(data)) < 50
+        warmup_mask = np.arange(len(data)) < INDICATOR_WARMUP_CANDLES
         total_score = total_score.astype(float)
         total_score[warmup_mask] = np.nan
         data["total_score"] = total_score
