@@ -22,9 +22,9 @@ The final chapter must report actual results. Planned tests, unexecuted cases, a
 ## 2. Testing Questions
 
 - **TQ1 — Functional correctness:** Do the mobile and backend functions produce the expected results for valid, invalid, and boundary inputs?
-- **TQ2 — Integration correctness:** Do the mobile client, FastAPI services, Supabase, Redis, external data sources, and agentic components interact correctly?
+- **TQ2 — Integration correctness:** Do the mobile client, FastAPI services, Supabase, Redis, external data sources, and multi-agent components interact correctly?
 - **TQ3 — Security and authorization:** Are authentication, session handling, ownership checks, and administrator-only functions enforced?
-- **TQ4 — Agentic workflow reliability:** Does the AI workflow honor the requested configuration, return valid structured output, and fail safely when a specialist or external provider is unavailable?
+- **TQ4 — Multi-agent workflow reliability:** Does the multi-agent workflow honor the requested configuration, return valid structured output, and fail safely when a specialist agent or external provider is unavailable?
 - **TQ5 — Quality attributes:** Is the system sufficiently responsive, compatible, recoverable, and understandable for the evaluated prototype scope?
 
 ## 3. Scope and Priorities
@@ -200,7 +200,7 @@ Performance thresholds may be revised before execution, but must be frozen befor
 2. Test authentication and authorization.
 3. Test market, company, fundamental, article, and user-data routes.
 4. Test the standardized response contract.
-5. Test agentic and backtesting logic with fixed model outputs.
+5. Test multi-agent and backtesting logic with fixed model outputs.
 
 ### Phase 4 — Mobile tests
 
@@ -242,7 +242,7 @@ Collect command output, coverage summaries, result tables, selected request/resp
 | 1 | Traceability, priorities, environment, and test data |
 | 2–3 | Backend harness, deterministic tests, authentication, authorization |
 | 4 | Data-domain and API-contract tests |
-| 5 | Agentic and backtesting correctness/failure tests |
+| 5 | Multi-agent and backtesting correctness/failure tests |
 | 6 | Expo Jest setup, helpers, forms, routing, and UI states |
 | 7 | Five Maestro end-to-end flows |
 | 8 | Security, performance, recovery, and device checks |
@@ -264,7 +264,7 @@ If time is limited, complete P0 backend/API tests, three core mobile E2E flows, 
    - authentication and authorization;
    - financial-data APIs and response contract;
    - user-owned resources.
-4. **Agentic and Backtesting Correctness Testing**
+4. **Multi-Agent and Backtesting Correctness Testing**
    - branch selection, weights, typed output, confidence boundary;
    - shared scoring, timing, exits, costs, and failure cases.
 5. **Mobile Application and End-to-End Testing**
@@ -291,7 +291,7 @@ If time is limited, complete P0 backend/API tests, three core mobile E2E flows, 
 | Authentication and security | | | | | | |
 | Market and financial data | | | | | | |
 | User-owned resources | | | | | | |
-| Agentic workflow | | | | | | |
+| Multi-agent workflow | | | | | | |
 | Backtesting correctness | | | | | | |
 | Mobile application | | | | | | |
 | Non-functional | | | | | | |

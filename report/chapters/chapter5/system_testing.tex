@@ -101,7 +101,7 @@ Integration tests exercised boundaries among the mobile client, FastAPI, Supabas
         \addlinespace
         I-SSI & SSI market data & Request valid, unknown, empty, and unavailable data. & Valid data were transformed correctly; failures returned controlled states. & 3/3 \\
         \addlinespace
-        I-AI & Agentic AI workflow & Run specialist branches, aggregation, chat, and invalid provider output. & Valid responses met the schema; invalid output failed safely. & 5/5 \\
+        I-MA & Multi-agent workflow & Run specialist-agent branches, aggregation, chat, and invalid provider output. & Valid responses met the schema; invalid output failed safely. & 5/5 \\
         \midrule
         \multicolumn{4}{r}{\textbf{Integration/API total}} & \textbf{24/24} \\
         \bottomrule
@@ -115,7 +115,7 @@ Successful APIs returned domain data, a zero error code, a request identifier, a
 
 \subsection{Performance and Reliability}
 
-Performance tests measured user-perceived response time under stable broadband with 20 concurrent virtual users. After a two-minute ramp-up, the workload remained at 20 users for 15 minutes and mixed authentication, market/search reads, stock-detail requests, and selected AI/chat calls. Two otherwise equivalent runs were compared: an off-session baseline with the market stream stopped, and a trading-session run in which the one-minute stock-price stream, daily-price stream, and market-index stream were active and flushing completed candles to Supabase. Limits were two seconds for ordinary APIs, fifteen seconds for agentic AI analysis, and ten seconds for chat.
+Performance tests measured user-perceived response time under stable broadband with 20 concurrent virtual users. After a two-minute ramp-up, the workload remained at 20 users for 15 minutes and mixed authentication, market/search reads, stock-detail requests, and selected AI/chat calls. Two otherwise equivalent runs were compared: an off-session baseline with the market stream stopped, and a trading-session run in which the one-minute stock-price stream, daily-price stream, and market-index stream were active and flushing completed candles to Supabase. Limits were two seconds for ordinary APIs, fifteen seconds for multi-agent analysis, and ten seconds for chat.
 
 \begin{table}[H]
     \centering
@@ -129,7 +129,7 @@ Performance tests measured user-perceived response time under stable broadband w
         Authentication request & 0.58 s & 0.66 s & 13.8\% & 2 s & Pass \\
         Market/search read & 0.79 s & 0.96 s & 21.5\% & 2 s & Pass \\
         Stock detail and indicators & 1.24 s & 1.48 s & 19.4\% & 2 s & Pass \\
-        Full agentic AI analysis & 12.61 s & 13.42 s & 6.4\% & 15 s & Pass \\
+        Full multi-agent analysis & 12.61 s & 13.42 s & 6.4\% & 15 s & Pass \\
         Chatbot response & 7.92 s & 8.36 s & 5.6\% & 10 s & Pass \\
         \bottomrule
     \end{tabularx}

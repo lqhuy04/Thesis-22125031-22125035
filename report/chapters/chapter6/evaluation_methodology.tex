@@ -1,12 +1,12 @@
 \section{Evaluation Methodology}
 \label{sec:evaluation-methodology}
 
-The evaluation examines the historical behavior of Stockrium's analytical pipeline. Its purpose is to determine how the complete agentic AI pipeline behaves relative to explicit alternatives, how sensitive the results are to securities and market conditions, and whether the available evidence supports a reliable performance claim. It does not treat historical profit as a guarantee of future return.
+The evaluation examines the historical behavior of Stockrium's analytical pipeline. Its purpose is to determine how the complete multi-agent pipeline behaves relative to explicit alternatives, how sensitive the results are to securities and market conditions, and whether the available evidence supports a reliable performance claim. It does not treat historical profit as a guarantee of future return.
 
 Three evaluation questions guide the chapter:
 
 \begin{enumerate}
-    \item \textbf{EQ1: Comparative performance.} How does the complete agentic AI pipeline compare with the engine-only technical strategy, passive buy-and-hold exposure, and random entry timing?
+    \item \textbf{EQ1: Comparative performance.} How does the complete multi-agent pipeline compare with the engine-only technical strategy, passive buy-and-hold exposure, and random entry timing?
     \item \textbf{EQ2: Robustness and calibration.} Are results consistent across VN30 securities, technical indicators, confidence tiers, and market regimes?
     \item \textbf{EQ3: Statistical and practical validity.} Are observed returns statistically distinguishable from simple alternatives, and which data or simulation limitations constrain interpretation?
 \end{enumerate}
@@ -16,7 +16,7 @@ Three evaluation questions guide the chapter:
 
 The primary evidence consists of JSON artifacts produced by the backtesting framework described in Section~\ref{sec:backtesting-framework}. The latest complete-pipeline artifact contains the 30 securities returned by the current VN30 lookup and evaluated over the requested period from August~1, 2024 to August~1, 2026, with pipeline and engine-only metrics, buy-and-hold and random comparisons, statistical tests, confidence summaries, and regime results. Five companion artifacts contain engine-only ablations for RSI, MACD, KDJ, Bollinger Bands, and moving-average conditions over the same explicitly recorded period. Each ablation successfully evaluated the same 30 symbols.
 
-Source inspection is used only to establish how the artifacts were produced: every date meeting the fixed technical threshold becomes a candidate; approval by the agentic AI pipeline filters candidates; execution begins at the next open; stop loss is checked before take profit within a daily candle; and 0.15\% transaction cost is deducted on each side. This inspection is necessary because an evaluation is meaningful only when the execution assumptions behind its metrics are stated clearly.
+Source inspection is used only to establish how the artifacts were produced: every date meeting the fixed technical threshold becomes a candidate; approval by the multi-agent pipeline filters candidates; execution begins at the next open; stop loss is checked before take profit within a daily candle; and 0.15\% transaction cost is deducted on each side. This inspection is necessary because an evaluation is meaningful only when the execution assumptions behind its metrics are stated clearly.
 
 \subsection{Measures and Comparisons}
 \label{subsec:evaluation-measures-comparisons}

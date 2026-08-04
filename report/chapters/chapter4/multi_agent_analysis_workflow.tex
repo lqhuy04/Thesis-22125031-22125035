@@ -1,5 +1,5 @@
-\section{Agentic AI-Based Stock Analysis Design}
-\label{sec:agentic-ai-stock-analysis-design}
+\section{Multi-Agent Stock Analysis Design}
+\label{sec:multi-agent-stock-analysis-design}
 
 Stockrium implements stock analysis as a stateful directed graph rather than as one monolithic language-model prompt. The current version separates deterministic planning, source-data preparation, source-specific interpretation, recommendation scoring, trading-plan generation, and final presentation. This separation is important because price series require numerical calculation, annual indicators require multi-year and industry-aware preparation, and articles require semantic interpretation. It also allows automatic and manually configured requests to share one implementation while skipping sources that the manual request does not enable.
 

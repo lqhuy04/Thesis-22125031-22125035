@@ -40,7 +40,7 @@
         <mxCell id="data-access" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Data-Access Clients and Utility Adapters" vertex="1">
           <mxGeometry height="72" width="500" x="240" y="890" as="geometry" />
         </mxCell>
-        <mxCell id="analytical" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Indicator, Agentic, Chatbot, and Backtest Subsystems" vertex="1">
+        <mxCell id="analytical" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Indicator, Multi-Agent Analysis, Chatbot, and Backtest Subsystems" vertex="1">
           <mxGeometry height="72" width="500" x="870" y="890" as="geometry" />
         </mxCell>
         <mxCell id="supabase" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=22;spacing=10;fontStyle=1;arcSize=12;" value="Supabase PostgreSQL and Storage" vertex="1">
