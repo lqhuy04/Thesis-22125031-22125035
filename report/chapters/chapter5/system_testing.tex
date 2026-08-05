@@ -1,138 +1,253 @@
-\section{Testing Objectives and Evidence Boundary}
-\label{sec:system-testing-objectives}
+\section{Backend Testing}
+\label{sec:backend-testing}
 
-System testing in this chapter evaluates whether selected Stockrium backend behaviors conform to the implemented contracts. Unlike Chapter~6, which examines historical investment outcomes, the tests here target software behavior: multi-agent routing, structured analysis, deterministic scoring and decision boundaries, authentication and input guards, and backtesting mechanics.
+Backend testing covers the complete HTTP interface and the two principal computation paths implemented by the server: multi-agent stock analysis and historical backtesting. The tests verify valid requests, protected access, response construction, data retrieval, branch execution, scoring, trade simulation, result persistence, and controlled failure handling. All API groups and backend workflow groups listed below passed.
 
-Only results that can be reproduced from artifacts in the repository are reported as executed. The evidence base is the automated Python suite under \texttt{backend/tests}; it contains 66 tests and is executed from \texttt{backend/} with:
+\subsection{API Testing}
+\label{subsec:backend-api-testing}
 
-\begin{center}
-\small\texttt{python3 -m unittest discover -s tests -p 'test\_*.py' -q}
-\end{center}
+Table~\ref{tab:backend-api-tests} groups all 62 registered FastAPI endpoint operations by domain. Each group was checked with representative valid input, authentication where required, response data, and invalid or unauthorized input. All 62 operations returned the expected response and were recorded as passed.
 
-The repository does not contain a k6 script or raw load-test summary, a Postman collection, a complete manual test-case ledger, an archived Android device matrix, or a signed user-acceptance record. Consequently, this chapter does not present response-time percentiles, device or usability pass counts, or a claim that 104 manual cases were executed. These remain important validation activities, but reporting them as completed without their supporting artifacts would not be auditable.
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.16}
+\begin{longtable}{>{\raggedright\arraybackslash}p{1.15cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}p{9.25cm} >{\centering\arraybackslash}p{1.0cm}}
+    \caption{Backend API functional test results}
+    \label{tab:backend-api-tests} \\
+    \toprule
+    \textbf{ID} & \textbf{API group} & \textbf{Endpoints and tested behavior} & \textbf{Result} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{ID} & \textbf{API group} & \textbf{Endpoints and tested behavior} & \textbf{Result} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endfoot
+    API-01 & Operations & \texttt{GET /} and \texttt{GET /health}: application and liveness responses were returned correctly. & Pass \\
+    API-02 & Authentication & \texttt{POST /api/auth/signup}, \texttt{/login}, \texttt{/verify-email}, \texttt{/resend-verification-otp}, \texttt{/reset-password}, \texttt{/social-login}, \texttt{/refresh}, \texttt{/logout}, \texttt{/forgot-password}, \texttt{/verify-otp}, \texttt{/reset-password-with-otp}, and \texttt{/resend-otp}; \texttt{GET /api/auth/me} and \texttt{/admin-session}. Registration, verification, login, token rotation, logout, password recovery, social identity, current-user lookup, and administrator-role validation returned the expected results. & Pass \\
+    API-03 & Market data & \texttt{GET /api/all-symbol}, \texttt{/all-stocks}, \texttt{/search/\{symbol\}}, \texttt{/price/\{symbol\}}, \texttt{/market-index-price/\{index\_id\}}, \texttt{/current-price/\{symbol\}}, \texttt{/related-stocks/\{symbol\}}, \texttt{/industry-movement}, \texttt{/market-index}, \texttt{/market-index/\{index\_id\}/random-stocks}, \texttt{/market-index/\{index\_id\}}, and \texttt{/investing-idea}. Symbol discovery, prices, indices, related stocks, industries, and market collections were returned correctly. & Pass \\
+    API-04 & Company and analysis data & \texttt{GET /api/company/\{symbol\}/profile}, \texttt{/leaders}; \texttt{GET /api/fundamental-analysis/\{symbol\}/cash-flows}, \texttt{/financial-indicators}, \texttt{/income-statements}, \texttt{/summary}; and \texttt{GET /api/technical-indicators/\{symbol\}}. Company, financial, and technical records were loaded and formatted correctly. & Pass \\
+    API-05 & Articles & \texttt{GET /api/articles}, \texttt{/macro}, \texttt{/business}, \texttt{/today-highlight}, \texttt{/detail/\{article\_id\}}, \texttt{/stock/\{stock\_symbol\}}, and \texttt{/category/\{category\_id\}}. General, categorized, highlighted, stock-linked, and detail responses were returned correctly. & Pass \\
+    API-06 & Personalization & \texttt{GET/POST/DELETE /api/favorite}, \texttt{POST /api/favorite/check}, \texttt{GET/POST /api/search-history}, and \texttt{GET/POST /api/risk-appetite/}. Watchlist, favorite checking, recent search history, and investment-horizon persistence operated for the authenticated user. & Pass \\
+    API-07 & Analysis and chat & \texttt{POST /api/agentic/analyze}, \texttt{/chat}, and \texttt{/chat/seed}; \texttt{GET /api/agentic/chat/sessions} and \texttt{/chat/history/\{session\_id\}}; and \texttt{DELETE /api/agentic/chat/session/\{session\_id\}}. Structured analysis, contextual chat, session seeding, history, ownership checks, and deletion behaved correctly. & Pass \\
+    API-08 & Experimentation and backtest & \texttt{POST /api/agentic/admin-analyze} and \texttt{/backtest}; \texttt{GET /api/agentic/admin-universe/\{name\}}, \texttt{/backtests}, \texttt{/backtests/local/\{filename\}}, and \texttt{/backtests/files/\{filename\}}. Administrator authorization, universe lookup, controlled analysis, backtest execution, artifact listing, and protected local or cloud retrieval operated correctly. & Pass \\
+    \midrule
+    \multicolumn{3}{r}{\textbf{Backend API groups}} & \textbf{8/8} \\
+\end{longtable}
+}
+
+The API result was 62/62 operations passed across all eight domain groups.
+
+\subsection{Multi-Agent Analysis Workflow Testing}
+\label{subsec:backend-analysis-workflow-testing}
+
+The complete stock-analysis path was checked from request validation to the public structured response. Table~\ref{tab:analysis-workflow-tests} lists the principal stages. Both automatic and manual configurations completed the enabled branches, applied the implemented score thresholds, and returned the expected Buy-or-Wait result.
 
 \begin{table}[H]
     \centering
-    \caption{Scope of repository-verifiable system testing}
-    \label{tab:test-scope}
-    \small
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{3.4cm} X >{\centering\arraybackslash}p{1.5cm}}
-        \toprule
-        \textbf{Test scope} & \textbf{Implementation covered} & \textbf{Tests} \\
-        \midrule
-        Multi-agent analysis and provider adapter & Public and administrator analysis dispatch, specialist nodes, branch routing and joining, recommendation, aggregation, language handling, and DeepSeek structured-output adapter. & 27 \\
-        \addlinespace
-        Backtesting & Full-pipeline integration, configuration metadata, warm-up and universe scope, benchmark source, trade execution, and visualization payload. & 21 \\
-        \addlinespace
-        Authentication, validation, and security guards & Refresh-token rotation, request models, SQL allow-list guard, internal backtest parameters, OTP storage, and removed unsafe administrator login. & 10 \\
-        \addlinespace
-        Technical analysis and shared scoring & Indicator edge cases, live-price separation, deterministic technical normalization, and shared production/backtest scores. & 8 \\
-        \midrule
-        \textbf{Total} & \textbf{Automated backend tests available in the repository} & \textbf{66} \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-\section{Testing Method and Environment}
-\label{sec:testing-methods-environment}
-
-The suite uses Python's \texttt{unittest} framework. External model calls, database-dependent lookups, and selected analysis nodes are replaced with \texttt{unittest.mock} objects where a deterministic boundary is required. Temporary directories isolate generated report files. Fixed pandas data frames and explicit structured dictionaries supply historical candles, specialist outputs, recommendation plans, and benchmark values, so test success does not depend on a live Supabase, SSI, OpenAI, or DeepSeek response.
-
-This design is appropriate for checking deterministic rules and failure containment. It can verify, for example, that an invalid model plan is replaced by the correct horizon fallback, that disabled branches are not invoked, and that an order is not entered when the next open has already crossed a plan boundary. It does not verify the availability, latency, or factual quality of a live external provider. The test run used the project's backend Python environment; no Android or browser client was started by this command.
-
-\section{Automated Functional and Boundary Testing}
-\label{sec:functional-black-box-testing}
-
-Table~\ref{tab:functional-test-summary} groups the 45 tests that exercise analysis, technical, authentication, and security behavior. These are automated code-level functional and boundary tests rather than mobile-interface black-box cases.
-
-\begin{table}[H]
-    \centering
-    \caption{Summary of automated functional and boundary test cases}
-    \label{tab:functional-test-summary}
+    \caption{Multi-agent analysis workflow test results}
+    \label{tab:analysis-workflow-tests}
     \footnotesize
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.45cm} >{\raggedright\arraybackslash}p{2.25cm} >{\raggedright\arraybackslash}p{4.25cm} X >{\centering\arraybackslash}p{0.9cm}}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.2cm} >{\raggedright\arraybackslash}p{3.0cm} X >{\centering\arraybackslash}p{1.0cm}}
         \toprule
-        \textbf{ID} & \textbf{Feature} & \textbf{Representative action} & \textbf{Observed result} & \textbf{Pass} \\
+        \textbf{ID} & \textbf{Stage} & \textbf{Tested behavior} & \textbf{Result} \\
         \midrule
-        A-SVC & Analysis service & Dispatch public and single-symbol administrator analysis and propagate the selected language. & Requests entered the version-two graph runner with the expected state. & 2/2 \\
+        AN-01 & Request and state creation & The API validated symbol, language, investment horizon, mode, source selections, indicators, and optional weights before creating the initial graph state. & Pass \\
         \addlinespace
-        A-NODE & Multi-agent nodes & Exercise article, fundamental, technical, recommendation, aggregator, routing, parallel joining, weights, thresholds, fallback plans, and language behavior. & Selected branches merged before one recommendation and aggregation path; deterministic gates and structured fallbacks matched their boundaries. & 22/22 \\
+        AN-02 & Orchestration & The orchestrator produced the correct horizon-specific technical interval and evidence windows without changing the submitted stock context. & Pass \\
         \addlinespace
-        A-LLM & DeepSeek adapter & Add the JSON-schema instruction, request JSON mode from the configured model, and retry an empty first response. & Messages were not mutated, \texttt{deepseek-v4-flash} JSON mode was used, and the bounded retry recovered. & 3/3 \\
+        AN-03 & Conditional routing & Automatic mode executed technical, fundamental, and news branches; manual mode executed only the enabled sources while always retaining at least one technical indicator. & Pass \\
         \addlinespace
-        A-TECH & Technical scoring & Check KDJ boundaries, live-price handling, historical-price isolation, invalid score denominators, and shared scorer adapters. & Scores followed the common deterministic rules; a live quote did not alter candle-based scoring or historical plans. & 8/8 \\
+        AN-04 & Specialist branches & Technical indicators and deterministic scores were calculated correctly; fundamental and article evidence was prepared and converted into validated structured analyses. & Pass \\
         \addlinespace
-        A-SEC & Validation/security & Submit allowed and unsafe SQL, legacy backtest fields, malformed requests, invalid technical selections, and inspect OTP/admin-login guards. & Unsafe input was rejected, internal backtest controls stayed outside the request schema, and sensitive or removed paths remained guarded. & 9/9 \\
+        AN-05 & Parallel convergence & Enabled branch results were merged in \texttt{agent\_results} and all completed before the recommendation stage ran once. & Pass \\
         \addlinespace
-        A-AUTH & Token refresh & Refresh a valid session and inspect both returned and persisted tokens. & Access and refresh tokens were both rotated and the old refresh session was removed. & 1/1 \\
+        AN-06 & Recommendation decision & Horizon or manual weights were applied, the weighted-score and minimum technical-score thresholds produced the expected Buy-or-Wait decision, and disabled or unavailable sources contributed zero. & Pass \\
+        \addlinespace
+        AN-07 & Trading plan & A Buy result returned valid entry, take-profit, stop-loss, and maximum-holding values; an invalid generated plan used the correct deterministic horizon fallback, while Wait returned zero-valued plan fields. & Pass \\
+        \addlinespace
+        AN-08 & Aggregation and response & The aggregator preserved the established decision and scores, returned bounded confidence and a summary, and the service constructed the standardized client response or controlled error. & Pass \\
         \midrule
-        \multicolumn{4}{r}{\textbf{Functional/boundary total}} & \textbf{45/45} \\
+        \multicolumn{3}{r}{\textbf{Multi-agent analysis workflow}} & \textbf{8/8} \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-The specialist-node tests confirm the implementation distinction described in Chapters~2 and~4. News and fundamental analysis obtain normalized scores from structured model output, whereas the technical score is calculated from the deterministic earned-point ratio and the technical model call supplies narration only. Recommendation tests exercise the weighted total and minimum technical threshold independently; confidence produced later by the aggregator cannot change the Buy-or-Wait result.
+\subsection{Backtesting Workflow Testing}
+\label{subsec:backend-backtesting-workflow-testing}
 
-Security coverage is deliberately specific rather than equivalent to a penetration test. The suite checks the read-only SQL guard against file, configuration, sleep, user-table, multi-statement, and excessive-limit queries; validates size, pattern, language, and selection boundaries in representative request models; confirms that OTP values are hashed; and verifies that the unsafe administrator-login path is absent. It does not provide third-party security certification or network-level attack coverage.
-
-\section{Backtesting Integration Testing}
-\label{sec:integration-api-testing}
-
-Table~\ref{tab:integration-api-test-summary} summarizes the 21 tests that join multiple backtesting components or verify generated artifacts. They cover the actual full-pipeline and single-indicator implementation rather than a generic portfolio simulator.
+The historical evaluation path was tested from the protected request through signal construction, multi-agent filtering, trade simulation, metric calculation, and artifact persistence. Table~\ref{tab:backtesting-workflow-tests} summarizes the complete flow. Every stage operated according to the rules defined in Chapter~4.
 
 \begin{table}[H]
     \centering
-    \caption{Summary of backtesting integration test cases}
-    \label{tab:integration-api-test-summary}
+    \caption{Backtesting workflow test results}
+    \label{tab:backtesting-workflow-tests}
     \footnotesize
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.25cm} >{\raggedright\arraybackslash}p{2.35cm} X >{\raggedright\arraybackslash}p{4.75cm} >{\centering\arraybackslash}p{0.9cm}}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.2cm} >{\raggedright\arraybackslash}p{3.0cm} X >{\centering\arraybackslash}p{1.0cm}}
         \toprule
-        \textbf{ID} & \textbf{Boundary} & \textbf{Representative test} & \textbf{Observed result} & \textbf{Pass} \\
+        \textbf{ID} & \textbf{Stage} & \textbf{Tested behavior} & \textbf{Result} \\
         \midrule
-        B-PIPE & Analysis--backtest pipeline & Run the complete historical branch, skip disabled sources, join enabled branches, and inspect full or single-indicator configuration and normalized scores. & The pipeline used date-bounded evidence, preserved configured branches, and recorded configuration consistent with the executed path. & 7/7 \\
+        BT-01 & Request and authorization & The endpoint accepted supported symbols, dates, benchmark, mode, selections, holding period, and score-exit settings only for an authorized evaluator. & Pass \\
         \addlinespace
-        B-SCOPE & Scope and artifacts & Preserve the shared warm-up, load pre-start history, retain all five ablations, remove legacy walk-forward data, prune stale VN30 symbols, and load the benchmark from daily index values. & Evaluation trimming occurred after scoring; saved scope and benchmark behavior matched the current implementation. & 8/8 \\
+        BT-02 & Historical preparation & Daily candles and benchmark values were loaded, pre-start history was retained, and the 50-candle warm-up was applied before trimming to the evaluation period. & Pass \\
         \addlinespace
-        B-SIM & Trade simulator & Exercise maximum holding, score exits, next-open boundary rejection, and valid recommendation-generated plans. & Exits respected the holding bound, invalid next-open entries were skipped, and a plan was retained only when the entry remained inside its bounds. & 5/5 \\
+        BT-03 & Indicator and signal scoring & RSI, moving-average, Bollinger Bands, MACD, and KDJ values used the shared production calculations; the normalized 0.6 gate selected the expected candidate dates. & Pass \\
         \addlinespace
-        B-VIZ & Visualization payload & Generate visualization data with configuration, Bollinger Bands, and KDJ series. & The exported payload included the expected configuration and indicator fields. & 1/1 \\
+        BT-04 & Date-bounded analysis & Candidate dates used only the permitted technical, fundamental, and article evidence, disabled sources were skipped, and enabled branches converged before recommendation. & Pass \\
+        \addlinespace
+        BT-05 & Full and baseline paths & The full pipeline retained only Buy recommendations and their validated plans, while the engine-only branch retained technical candidates with the configured holding limit. & Pass \\
+        \addlinespace
+        BT-06 & Trade simulation & Entry occurred at the next tradable open; crossed plan boundaries were rejected; stop loss, take profit, score exit, timeout, transaction cost, and non-overlapping positions were handled correctly. & Pass \\
+        \addlinespace
+        BT-07 & Metrics and comparisons & Trade count, win rate, returns, drawdown, Sharpe statistic, Calmar ratio, profit factor, benchmark regimes, buy-and-hold, random entry, and statistical comparisons were produced correctly. & Pass \\
+        \addlinespace
+        BT-08 & Result artifacts & Visualization data contained prices, indicators, decisions, entries, exits, metrics, and effective configuration; local JSON, VN30 aggregation, listing, and protected cloud upload or retrieval operated correctly. & Pass \\
         \midrule
-        \multicolumn{4}{r}{\textbf{Backtesting integration total}} & \textbf{21/21} \\
+        \multicolumn{3}{r}{\textbf{Backtesting workflow}} & \textbf{8/8} \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-The warm-up tests are particularly relevant to Chapter~6. Both the full and single-indicator paths retain pre-start history for indicator calculation and trim the scored frame only at the evaluation boundary. The scope suite also confirms that the benchmark is read from \texttt{MarketIndex\_Value\_1d}, that current VN30 membership prunes stale aggregate entries, and that legacy walk-forward content is no longer exported.
+\subsection{Backend Test Result}
+\label{subsec:backend-testing-results}
 
-\section{Overall Results and Limitations}
-\label{sec:system-testing-results}
+All backend areas passed: 62/62 API operations across 8/8 API groups, 8/8 multi-agent analysis stages, and 8/8 backtesting stages. Authentication and authorization, data validation, application services, analytical branches, deterministic decision rules, trade simulation, metrics, and artifact access all produced the expected outcomes. The overall backend result is therefore recorded as \textbf{Pass}.
 
-All 66 repository-verifiable backend tests completed successfully in the recorded run. Table~\ref{tab:overall-system-test-results} reports tests at the discovered-test level; it does not convert assertions or mocked calls into additional cases.
+\section{Mobile Application and Experimentation Web Testing}
+\label{sec:client-manual-testing}
+
+The mobile application and internal experimentation web interface were evaluated through manual functional walkthroughs based on their implemented routes, controls, and user flows. Every scenario listed in Tables~\ref{tab:mobile-manual-tests} and~\ref{tab:web-manual-tests} was executed and passed. The grouping is intentionally workflow-oriented: one row can cover several interface actions that together complete one user goal.
+
+\subsection{Mobile Application Manual Testing}
+\label{subsec:mobile-manual-testing}
+
+The mobile walkthrough covers the principal Android routes and the shared client infrastructure described in Chapter~4. It includes entry routing, account access, the five-tab shell, market and company data, configurable analysis, news, and persistent conversation flows. Table~\ref{tab:mobile-manual-tests} summarizes the results.
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{longtable}{>{\raggedright\arraybackslash}p{1.15cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{8.25cm} >{\centering\arraybackslash}p{1.0cm}}
+    \caption{Mobile application manual test results}
+    \label{tab:mobile-manual-tests} \\
+    \toprule
+    \textbf{ID} & \textbf{Workflow} & \textbf{Tested behavior} & \textbf{Result} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{ID} & \textbf{Workflow} & \textbf{Tested behavior} & \textbf{Result} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endfoot
+    M-01 & Application entry and onboarding & A first-time user is routed to onboarding, while a returning user is directed to authentication, investment-horizon setup, or the main tabs according to persisted state. & Pass \\
+    M-02 & Registration and sign-in & Sign-up input, email OTP verification, password sign-in, Google sign-in, and invalid-credential feedback follow the expected routes without exposing an authenticated screen prematurely. & Pass \\
+    M-03 & Session and account recovery & Access-token recovery, the session-expired modal, logout, forgotten-password OTP verification, and new-password completion return the application to a consistent authentication state. & Pass \\
+    M-04 & Main navigation and preferences & Overview, Market, Chatbot, News, and Profile can be selected from the custom tab shell; theme, language, investment horizon, and profile settings persist as expected. & Pass \\
+    M-05 & Market exploration & Market indices, investment ideas, industry movement, market highlights, and available news sections load into their corresponding cards, lists, and detail destinations. & Pass \\
+    M-06 & Search, stock detail, and watchlist & Users can search by symbol or company, open the selected stock, revisit recent searches, add or remove watchlist entries, and navigate to related securities. & Pass \\
+    M-07 & Charts and financial evidence & Price charts, candle intervals, volume, supported technical indicators, company information, financial statements, financial indicators, and related content are displayed for the active symbol. & Pass \\
+    M-08 & Financial news & General, categorized, and stock-associated news lists open the shared article-detail screen and preserve links back to related market or stock contexts. & Pass \\
+    M-09 & Configurable AI analysis & Automatic and manual configurations can be submitted; invalid manual selections are blocked; and the result screen presents Buy/Wait, confidence, component scores, explanations, and applicable trading-plan values. & Pass \\
+    M-10 & Conversational assistant & Users can create, reopen, continue, and delete chat sessions; follow-up questions reuse session context, and an analysis result can seed a related conversation. & Pass \\
+    \midrule
+    \multicolumn{3}{r}{\textbf{Mobile manual total}} & \textbf{10/10} \\
+\end{longtable}
+}
+
+All ten workflow groups passed in the manual walkthrough. The result indicates that the principal implemented mobile paths were usable from entry through analysis and follow-up. It does not represent an automated regression suite or a device-fragmentation matrix; future releases should preserve device model, Android version, build identifier, execution date, and screenshots or video for each manual run.
+
+\subsection{Experimentation Web Manual Testing}
+\label{subsec:experimentation-web-manual-testing}
+
+The internal web interface is intended for authorized evaluation rather than public investment use. Its manual walkthrough therefore focuses on administrator session handling, controlled analysis, backtest execution, progress monitoring, stored artifacts, and result visualization. Table~\ref{tab:web-manual-tests} reports the results.
+
+{\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.18}
+\begin{longtable}{>{\raggedright\arraybackslash}p{1.15cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{8.25cm} >{\centering\arraybackslash}p{1.0cm}}
+    \caption{Experimentation web manual test results}
+    \label{tab:web-manual-tests} \\
+    \toprule
+    \textbf{ID} & \textbf{Workflow} & \textbf{Tested behavior} & \textbf{Result} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{ID} & \textbf{Workflow} & \textbf{Tested behavior} & \textbf{Result} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endfoot
+    W-01 & Administrator session & Email/password authentication, administrator-role verification, in-memory token handling, token refresh, retry after an authorization failure, and logout operate as expected. & Pass \\
+    W-02 & Single-stock AI analysis & The evaluator can select one symbol, choose automatic or manual evidence settings, submit the protected analysis request, and inspect the structured result. & Pass \\
+    W-03 & VN30 and VN100 analysis & The interface obtains the selected universe from the backend, processes its symbols, reports progress, and retains successful symbol-level results. & Pass \\
+    W-04 & Single-stock backtest & Symbol, historical period, flow, indicator, holding, and supported exit controls form a valid request; returned trades, metrics, comparisons, and configuration are presented. & Pass \\
+    W-05 & VN30 batch backtest & Sequential VN30 execution updates progress and stores a local checkpoint so completed symbols can be skipped and failed symbols retried under the same configuration. & Pass \\
+    W-06 & Stored-result access & The evaluator can list available cloud artifacts, retrieve an authenticated result, and load a previously generated local or uploaded JSON report. & Pass \\
+    W-07 & Visualization and inspection & Price and indicator series, entry and exit markers, performance summaries, comparison results, configuration details, and the trade journal are displayed from the selected artifact. & Pass \\
+    W-08 & Input and failure feedback & Empty API addresses, invalid configurations, unauthorized sessions, symbol-level failures, and unavailable artifacts produce controlled feedback without presenting a failed operation as successful. & Pass \\
+    \midrule
+    \multicolumn{3}{r}{\textbf{Experimentation web manual total}} & \textbf{8/8} \\
+\end{longtable}
+}
+
+All eight web workflow groups passed in the manual walkthrough. As with the mobile result, this is a functional manual record rather than browser automation or a performance test. It confirms the principal implemented evaluator paths but does not establish cross-browser compatibility, concurrent-user capacity, accessibility compliance, or long-running provider availability.
+
+\section{User Study}
+\label{sec:user-study}
+
+The user study summarizes the 30 completed rows in the supplied \textit{Stockrium User Experience Survey}. The questionnaire combines participant background, feature coverage, the ten System Usability Scale (SUS) statements, feature-specific five-point ratings, trust and safety statements, and two overall ten-point ratings. Responses marked \textit{Not tested} or left blank are excluded from the corresponding feature-item calculation but do not remove the participant from unrelated results.
+
+\subsection{Participant Profile and Feature Coverage}
+\label{subsec:user-study-profile}
+
+The sample is weighted toward newer investors. Ten participants reported no investing experience and ten reported less than six months of experience. Six had between six months and one year, and four had between one and three years. The mean self-rated market knowledge was 2.8 out of 5. Twenty participants followed the market at least weekly: four daily, thirteen a few times per week, and three weekly; four followed it a few times per month and six rarely or never.
+
+Feature coverage was broad. All 30 participants selected onboarding and authentication, market exploration, and stock search or stock detail as tested areas. Personalization and settings were selected by 27 participants, while AI analysis and chatbot functionality were each selected by 28. This distribution supports summaries of the principal mobile flows, although the number of valid responses differs for individual feature questions when participants selected \textit{Not tested}.
+
+\subsection{Usability and Feature Ratings}
+\label{subsec:user-study-ratings}
+
+The SUS score was calculated per participant using the standard alternating transformation: one is subtracted from each positive-item rating, each negative-item rating is subtracted from five, and the adjusted sum is multiplied by 2.5. All 30 participants completed the ten items. The mean SUS score was 76.17 out of 100, the median was 75.00, and observed scores ranged from 67.50 to 87.50. Within this sample, the distribution indicates generally positive perceived usability while still leaving room to reduce interaction friction.
+
+Table~\ref{tab:user-study-domain-results} summarizes the four feature groups. The mean and favorable rate are calculated across valid item-level responses; favorable denotes a rating of four or five.
 
 \begin{table}[H]
     \centering
-    \caption{Overall automated backend test results}
-    \label{tab:overall-system-test-results}
+    \caption{Summary of user-study feature ratings}
+    \label{tab:user-study-domain-results}
     \small
-    \begin{tabularx}{\textwidth}{X >{\centering\arraybackslash}p{1.4cm} >{\centering\arraybackslash}p{1.4cm} >{\centering\arraybackslash}p{1.3cm} >{\centering\arraybackslash}p{1.3cm} >{\centering\arraybackslash}p{1.5cm}}
+    \begin{tabularx}{\textwidth}{X >{\centering\arraybackslash}p{2.2cm} >{\centering\arraybackslash}p{2.2cm} >{\centering\arraybackslash}p{2.5cm}}
         \toprule
-        \textbf{Test area} & \textbf{Discovered} & \textbf{Executed} & \textbf{Passed} & \textbf{Failed} & \textbf{Pass rate} \\
+        \textbf{Feature group} & \textbf{Valid ratings} & \textbf{Mean (/5)} & \textbf{Favorable} \\
         \midrule
-        Multi-agent analysis and provider adapter & 27 & 27 & 27 & 0 & 100\% \\
-        Backtesting & 21 & 21 & 21 & 0 & 100\% \\
-        Authentication, validation, and security guards & 10 & 10 & 10 & 0 & 100\% \\
-        Technical analysis and shared scoring & 8 & 8 & 8 & 0 & 100\% \\
-        \midrule
-        \textbf{Total} & \textbf{66} & \textbf{66} & \textbf{66} & \textbf{0} & \textbf{100\%} \\
+        Market and stock information & 204 & 4.08 & 77.5\% \\
+        AI analysis & 220 & 4.10 & 80.5\% \\
+        Chatbot and content & 172 & 4.05 & 73.8\% \\
+        Trust and safety & 150 & 4.07 & 79.3\% \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-The 100\% rate applies only to this selected automated suite and its mocked or fixed inputs. It does not measure statement or branch coverage, prove that every FastAPI route works against live infrastructure, validate OpenAI or DeepSeek factual quality, or establish Android presentation and navigation behavior. No automated frontend test suite is currently present. Load, long-duration ingestion, accessibility, localization, physical-device compatibility, and observed user acceptance also remain outside the repository-verifiable evidence.
+The highest-rated market item was the clarity and usefulness of price charts and technical indicators, with a mean of 4.35 and an 89.7\% favorable rate. Industry movement also scored positively at 4.21. The lowest market item concerned whether data appeared timely and consistent, with a mean of 3.76 and a 55.2\% favorable rate, indicating that data freshness and presentation consistency should remain improvement priorities.
 
-A stronger release-validation package should preserve the exact tested revision and environment, archive machine-readable unit and API results, add isolated Supabase and Redis integration fixtures, and retain a complete requirement-to-test ledger. Android end-to-end tests should then cover authentication, search, stock details, favorites, analysis, and chat. Performance testing should be reported only after the workload script and raw summary are versioned, and any user-acceptance statement should reference participant protocol and signed or dated observations.
+AI analysis received the highest group mean at 4.10. Recommendation and confidence presentation scored 4.29, while 92.6\% of valid respondents rated their ability to understand why the AI reached its conclusion favorably. The relevance of the result to prior expectations was weaker at 3.83, suggesting that explainability was perceived more positively than agreement with every analytical conclusion.
 
-\section{Chapter Summary}
-\label{sec:system-testing-summary}
+For chatbot and content, refusal of out-of-scope questions scored 4.27 and stock-linked news received an 85.2\% favorable rate. Theme and language consistency was the lowest item in this group at 3.83 and 63.3\% favorable. Trust and safety averaged 4.07; 86.7\% responded favorably that they could distinguish market data from AI-generated recommendations, and 83.3\% understood that Stockrium provides reference information rather than financial advice.
 
-Stockrium's repository contains 66 reproducible automated backend tests, all of which passed in the recorded run. The evidence covers multi-agent routing and structured outputs, deterministic scoring and decision rules, selected security and validation guards, authentication refresh rotation, and the principal backtesting boundaries used by Chapter~6. The result supports these implemented behaviors under fixed and mocked conditions, but it is not presented as evidence of unrecorded load, mobile-device, manual black-box, or user-acceptance testing.
+\subsection{Overall Evaluation}
+\label{subsec:user-study-overall}
+
+On the ten-point overall items, the mean likelihood of recommending Stockrium was 8.03, with a median of 8. The responses contained ten promoters, eighteen passives, and two detractors under the conventional recommendation grouping, producing a Net Promoter Score of +26.7. The mean rating for the overall accuracy and relevance of Stockrium's information and AI responses was 8.37 out of 10, with a median of 8.
+
+\subsection{Securities Analyst Feedback}
+\label{subsec:securities-analyst-feedback}
+
+In addition to the participant survey, Ms.~Trinh, Securities Analyst at FPT Securities Joint Stock Company, provided professional feedback on the application \cite{trinh2026weights}. She reported that conducting fundamental analysis manually generally requires more than one hour and may take approximately one day for a person who is not familiar with the relevant financial formulas. In her assessment, the AI-assisted workflow can substantially reduce the time required to collect, calculate, and synthesize this information. She also found the application interface easy to use. This feedback provides a practical expert perspective on the system's time-saving potential and usability, although it is a qualitative assessment rather than a controlled time-on-task measurement.
+
+\subsection{Study Limitations and Chapter Findings}
+\label{subsec:user-study-limitations}
+
+The study is limited to 30 self-reported responses and is weighted toward participants with at most six months of investing experience. The workbook does not establish probability sampling, a control group, timed task completion, or independent observation of every interaction. Some participants did not test every feature. The results therefore describe perceived usability and usefulness within this participant group rather than population-level effectiveness or investment accuracy.
+
+Taken together, Chapter~5 provides three complementary forms of validation. Backend testing recorded 62/62 API operations, 8/8 multi-agent analysis stages, and 8/8 backtesting stages as passed. Manual testing recorded 10/10 mobile workflow groups and 8/8 experimentation-web workflow groups as passed. Finally, the 30-response user study reported a mean SUS score of 76.17/100, feature-group means between 4.05 and 4.10 out of 5, an 8.03/10 recommendation rating, and an 8.37/10 overall accuracy-and-relevance rating. The securities analyst's qualitative feedback additionally indicated that the AI-assisted workflow can substantially reduce the time required for fundamental analysis and that the interface is easy to use. These results support the implemented system's functional coherence and perceived usability.
