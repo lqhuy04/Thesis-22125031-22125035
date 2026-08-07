@@ -84,10 +84,11 @@ const SuggestionCardBodySkeleton = () => {
   }, [rowOpacity]);
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       {/* Table */}
       <View
         style={{
+          flex: 1,
           marginHorizontal: 12,
           marginBottom: 12,
           borderRadius: 12,
@@ -141,6 +142,8 @@ const SuggestionCardBodySkeleton = () => {
             key={index}
             style={{
               flexDirection: "row",
+              flex: 1,
+              minHeight: 52,
               alignItems: "center",
               paddingHorizontal: 12,
               paddingVertical: 10,
@@ -227,7 +230,7 @@ const SuggestionCardBodySkeleton = () => {
           style={{ backgroundColor: theme.text.primary + "20" }}
         />
       </View>
-    </>
+    </View>
   );
 };
 
@@ -650,21 +653,16 @@ const SuggestionSection = ({ registerRefresh }: Props) => {
     if (tab) loadTab(tab.msgType);
   }, [currentPage, loadTab, tabs]);
 
-  // Pull-to-refresh — luôn fetch mới tab đang hiển thị và invalidate cache
+  // Pull-to-refresh keeps the current data visible while fetching fresh data.
   useEffect(() => {
     const refreshFn = async () => {
       const tab = tabs[currentPage];
       if (!tab) return;
       const msgType = tab.msgType;
-      loadingRef.current.delete(msgType);
-      // Xóa data cũ để hiện lại skeleton trong lúc fetch
-      setDataMap((curr) => {
-        const next = { ...curr };
-        delete next[msgType];
-        return next;
-      });
       const res = await getInvestingIdea(msgType, 5);
-      setDataMap((curr) => ({ ...curr, [msgType]: res?.data ?? [] }));
+      if (res?.status) {
+        setDataMap((curr) => ({ ...curr, [msgType]: res.data }));
+      }
     };
     const unregister = registerRefresh?.(refreshFn);
     return () => unregister?.();

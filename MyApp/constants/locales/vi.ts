@@ -510,7 +510,7 @@ export default {
     greeting: "Xin chào !",
     management: "Quản lý",
     assetManagement: "Quản lý tài sản",
-    riskAppetite: "Khẩu vị rủi ro",
+    riskAppetite: "Thời hạn đầu tư",
     system: "Hệ thống",
     darkMode: "Chế độ tối",
     language: "Ngôn ngữ",
@@ -655,7 +655,7 @@ export default {
     },
   },
   riskAppetiteScreen: {
-    title: "Khẩu vị rủi ro",
+    title: "Thời hạn đầu tư",
     question: "Bạn định đầu tư trong bao lâu?",
     description:
       "Khoảng thời gian này giúp đưa ra chiến thuật đầu tư phù hợp cho bạn.",

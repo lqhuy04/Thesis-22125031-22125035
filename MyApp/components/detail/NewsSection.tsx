@@ -116,14 +116,17 @@ const NewsSection = ({
   const [newsItems, setNewsItems] = useState<New[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setNewsItems([]);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
       const data = await fetchNews(stockSymbol, 3);
       if (data.status) setNewsItems(data.data);
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   }, [stockSymbol]);
 
@@ -133,7 +136,7 @@ const NewsSection = ({
 
   // Pull-to-refresh
   useEffect(() => {
-    const unregister = registerRefresh?.(fetchData);
+    const unregister = registerRefresh?.(() => fetchData(false));
     return () => unregister?.();
   }, [registerRefresh, fetchData]);
 

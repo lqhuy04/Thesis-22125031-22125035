@@ -227,14 +227,20 @@ const IncomeStatementSection = ({
   const [statements, setStatements] = useState<IncomeStatement[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setStatements(null);
-    await getIncomeStatements(stockSymbol)
-      .then((res) => {
-        if (res.status) setStatements(res.data);
-      })
-      .finally(() => setIsLoading(false));
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
+    try {
+      const result = await getIncomeStatements(stockSymbol);
+      if (result.status) {
+        setStatements(result.data);
+      }
+    } finally {
+      if (showLoading) {
+        setIsLoading(false);
+      }
+    }
   }, [stockSymbol]);
 
   useEffect(() => {
@@ -243,7 +249,7 @@ const IncomeStatementSection = ({
 
   // Pull-to-refresh
   useEffect(() => {
-    const unregister = registerRefresh?.(fetchData);
+    const unregister = registerRefresh?.(() => fetchData(false));
     return () => unregister?.();
   }, [registerRefresh, fetchData]);
 

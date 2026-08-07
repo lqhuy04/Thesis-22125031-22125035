@@ -14,6 +14,7 @@ import {
   Animated,
   ActivityIndicator,
   LayoutChangeEvent,
+  RefreshControl,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
 import ScreenHeader from "@/components/ui/ScreenHeader";
@@ -159,6 +160,10 @@ const IndustryMovement = () => {
   }, [industryId, categories]);
 
   const cache = useRef<Record<string, CurrentPriceData[]>>({});
+  const activeCategoryKeyRef = useRef(
+    categories[initialIndex]?.value ?? ALL_VALUE,
+  );
+  const refreshingRef = useRef(false);
   const categoryListRef = useRef<ScrollView>(null);
   const categoryLayoutsRef = useRef<
     Record<number, { x: number; width: number }>
@@ -173,6 +178,7 @@ const IndustryMovement = () => {
   const [data, setData] = useState<CurrentPriceData[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [chosenIndex, setChosenIndex] = useState<number>(initialIndex);
 
   const scrollToCategory = useCallback((index: number, animated: boolean) => {
@@ -207,9 +213,11 @@ const IndustryMovement = () => {
 
   useEffect(() => {
     const key = categories[chosenIndex].value;
+    activeCategoryKeyRef.current = key;
 
     if (cache.current[key]) {
       setData(cache.current[key]);
+      setLoading(false);
       return;
     }
 
@@ -225,9 +233,13 @@ const IndustryMovement = () => {
           cache.current[key] = result.data;
           allPageRef.current = result.page;
           allTotalPagesRef.current = result.totalPages;
-          setData(result.data);
+          if (activeCategoryKeyRef.current === key) {
+            setData(result.data);
+          }
         }
-        setLoading(false);
+        if (activeCategoryKeyRef.current === key) {
+          setLoading(false);
+        }
       });
       return;
     }
@@ -235,16 +247,54 @@ const IndustryMovement = () => {
     getIndustryMovement(key).then((result) => {
       if (result?.status) {
         cache.current[key] = result.data;
-        setData(result.data);
+        if (activeCategoryKeyRef.current === key) {
+          setData(result.data);
+        }
       }
-      setLoading(false);
+      if (activeCategoryKeyRef.current === key) {
+        setLoading(false);
+      }
     });
+  }, [categories, chosenIndex]);
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshingRef.current) return;
+
+    const key = categories[chosenIndex].value;
+    refreshingRef.current = true;
+    setRefreshing(true);
+
+    try {
+      if (key === ALL_VALUE) {
+        const result = await getAllStocks(1, PAGE_SIZE);
+        if (result.status) {
+          cache.current[key] = result.data;
+          allPageRef.current = result.page;
+          allTotalPagesRef.current = result.totalPages;
+          if (activeCategoryKeyRef.current === key) {
+            setData(result.data);
+          }
+        }
+        return;
+      }
+
+      const result = await getIndustryMovement(key);
+      if (result.status) {
+        cache.current[key] = result.data;
+        if (activeCategoryKeyRef.current === key) {
+          setData(result.data);
+        }
+      }
+    } finally {
+      refreshingRef.current = false;
+      setRefreshing(false);
+    }
   }, [categories, chosenIndex]);
 
   // Kéo xuống hết trang → load thêm page tiếp theo (chỉ cho tab "Tất cả")
   const handleLoadMore = () => {
     if (categories[chosenIndex].value !== ALL_VALUE) return;
-    if (loading || loadingMore) return;
+    if (loading || loadingMore || refreshingRef.current) return;
     if (allPageRef.current >= allTotalPagesRef.current) return;
 
     const nextPage = allPageRef.current + 1;
@@ -265,6 +315,7 @@ const IndustryMovement = () => {
   };
 
   const handleTabPress = (index: number) => {
+    activeCategoryKeyRef.current = categories[index].value;
     setChosenIndex(index);
     scrollToCategory(index, true);
   };
@@ -378,7 +429,8 @@ const IndustryMovement = () => {
             borderRadius: 12,
             margin: 12,
             paddingHorizontal: 12,
-            flex: 1,
+            flexGrow: 0,
+            flexShrink: 1,
             overflow: "hidden",
             marginBottom: insets.bottom + 12,
           }}
@@ -390,17 +442,29 @@ const IndustryMovement = () => {
       ) : (
         <FlatList
           data={data}
+          alwaysBounceVertical
+          overScrollMode="always"
           style={{
             backgroundColor: theme.background.bg,
             borderRadius: 12,
             margin: 12,
             paddingHorizontal: 12,
-            flex: 1,
+            flexGrow: 0,
+            flexShrink: 1,
             marginBottom: insets.bottom + 12,
           }}
           keyExtractor={(_, index) => index.toString()}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[theme.base.primary]}
+              tintColor={theme.base.primary}
+              progressBackgroundColor={theme.background.bg}
+            />
+          }
           ListFooterComponent={
             loadingMore ? (
               <View style={{ paddingVertical: 16 }}>

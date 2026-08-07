@@ -261,16 +261,26 @@ const IntroductionSection = ({
   const [leaders, setLeaders] = useState<CompanyLeader[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    await Promise.all([
-      getCompanyProfile(stockSymbol).then((res) => {
-        if (res.status) setCompanyProfileData(res.data);
-      }),
-      getCompanyLeaders(stockSymbol).then((res) => {
-        if (res.status) setLeaders(res.data);
-      }),
-    ]).finally(() => setLoading(false));
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+    try {
+      const [profileResult, leadersResult] = await Promise.all([
+        getCompanyProfile(stockSymbol),
+        getCompanyLeaders(stockSymbol),
+      ]);
+      if (profileResult.status) {
+        setCompanyProfileData(profileResult.data);
+      }
+      if (leadersResult.status) {
+        setLeaders(leadersResult.data);
+      }
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
   }, [stockSymbol]);
 
   useEffect(() => {
@@ -279,7 +289,7 @@ const IntroductionSection = ({
 
   // Pull-to-refresh
   useEffect(() => {
-    const unregister = registerRefresh?.(fetchData);
+    const unregister = registerRefresh?.(() => fetchData(false));
     return () => unregister?.();
   }, [registerRefresh, fetchData]);
 

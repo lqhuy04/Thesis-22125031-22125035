@@ -191,6 +191,7 @@ const Tabs = () => {
           markTabsVisited([idx]);
           updateActiveTab(idx);
         }}
+        scrollEnabled={false}
         overdrag={false}
       >
         {TABS.map((tab, index) => (

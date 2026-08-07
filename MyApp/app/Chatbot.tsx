@@ -11,6 +11,7 @@ import {
   View,
   Image,
   Dimensions,
+  RefreshControl,
   TouchableOpacity,
 } from "react-native";
 import { useTheme } from "@/hooks/ThemeContext";
@@ -104,35 +105,65 @@ const Chatbot = () => {
     { symbol: string; isUp: boolean }[]
   >([]);
   const [quickChipsLoading, setQuickChipsLoading] = useState(true);
+  const [quickChipsRefreshing, setQuickChipsRefreshing] = useState(false);
+  const [quoteIndex, setQuoteIndex] = useState(() =>
+    Math.floor(Math.random() * 1_000_000),
+  );
+  const mountedRef = useRef(true);
+
+  const fetchQuickChips = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setQuickChipsLoading(true);
+    }
+
+    try {
+      const [gainersRes, declinersRes] = await Promise.all([
+        getInvestingIdea("top_gainers", 3),
+        getInvestingIdea("top_decliners", 3),
+      ]);
+
+      if (!mountedRef.current || !gainersRes.status || !declinersRes.status) {
+        return;
+      }
+
+      const gainers = gainersRes.data.slice(0, 3);
+      const decliners = declinersRes.data.slice(0, 3);
+      setQuickChips([
+        ...gainers.map((s: SuggestionItem) => ({
+          symbol: s.symbol,
+          isUp: true,
+        })),
+        ...decliners.map((s: SuggestionItem) => ({
+          symbol: s.symbol,
+          isUp: false,
+        })),
+      ]);
+    } finally {
+      if (showLoading && mountedRef.current) {
+        setQuickChipsLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
-    let mounted = true;
-    Promise.all([
-      getInvestingIdea("top_gainers", 3),
-      getInvestingIdea("top_decliners", 3),
-    ])
-      .then(([gainersRes, declinersRes]) => {
-        if (!mounted) return;
-        const gainers = (gainersRes?.data ?? []).slice(0, 3);
-        const decliners = (declinersRes?.data ?? []).slice(0, 3);
-        setQuickChips([
-          ...gainers.map((s: SuggestionItem) => ({
-            symbol: s.symbol,
-            isUp: true,
-          })),
-          ...decliners.map((s: SuggestionItem) => ({
-            symbol: s.symbol,
-            isUp: false,
-          })),
-        ]);
-      })
-      .finally(() => {
-        if (mounted) setQuickChipsLoading(false);
-      });
+    mountedRef.current = true;
+    fetchQuickChips();
     return () => {
-      mounted = false;
+      mountedRef.current = false;
     };
-  }, []);
+  }, [fetchQuickChips]);
+
+  const refreshQuickChips = useCallback(async () => {
+    setQuoteIndex((current) => current + 1);
+    setQuickChipsRefreshing(true);
+    try {
+      await fetchQuickChips(false);
+    } finally {
+      if (mountedRef.current) {
+        setQuickChipsRefreshing(false);
+      }
+    }
+  }, [fetchQuickChips]);
 
   const fetchSessions = useCallback(async () => {
     setHistoryLoading(true);
@@ -220,15 +251,14 @@ const Chatbot = () => {
     [],
   );
 
-  const getRandomQuote = (): { quote: string; author: string } => {
-    const raw = quotes[Math.floor(Math.random() * quotes.length)];
+  const { quote, author } = useMemo(() => {
+    const raw = quotes[quoteIndex % quotes.length];
     const parts = raw.split(" — ");
     return {
       quote: parts[0], // "Don't look for the needle..."
       author: `— ${parts[1]}`, // — John Bogle
     };
-  };
-  const { quote, author } = getRandomQuote();
+  }, [quoteIndex, quotes]);
 
   const screenWidth = Dimensions.get("window").width;
 
@@ -243,6 +273,20 @@ const Chatbot = () => {
     >
       {/* Vùng chat chiếm hết không gian còn lại */}
 
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={quickChipsRefreshing}
+            onRefresh={refreshQuickChips}
+            tintColor={theme.text.onPrimary}
+            colors={[theme.text.onPrimary]}
+            progressBackgroundColor={theme.base.primary}
+          />
+        }
+      >
       <View
         style={{
           flexDirection: "row",
@@ -500,6 +544,7 @@ const Chatbot = () => {
           </Text>
         </TouchableOpacity>
       </View>
+      </ScrollView>
 
       <ChatHistoryBottomSheet
         visible={historyVisible}

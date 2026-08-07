@@ -528,7 +528,8 @@ const InvestmentIdeas = () => {
           0,
         )
           .then((res) => {
-            const items = res?.data ?? [];
+            if (!res?.status) return;
+            const items = res.data;
             setDataMap((curr) => ({
               ...curr,
               [key]: {
@@ -571,7 +572,18 @@ const InvestmentIdeas = () => {
           offset,
         )
           .then((res) => {
-            const newItems = res?.data ?? [];
+            if (!res?.status) {
+              setDataMap((curr) => {
+                const existing = curr[key];
+                if (!existing) return curr;
+                return {
+                  ...curr,
+                  [key]: { ...existing, loadingMore: false },
+                };
+              });
+              return;
+            }
+            const newItems = res.data;
             setDataMap((curr) => {
               const existing = curr[key];
               if (!existing) return curr;
@@ -1047,10 +1059,7 @@ const InvestmentIdeas = () => {
   // ------------------------------------------------------------------
   // Loading state — show full skeleton until the first tab has loaded.
   // ------------------------------------------------------------------
-  if (
-    isRefreshing ||
-    dataMap[cacheKeyFor(tabs[0].msgType, selectedInterval)] === undefined
-  ) {
+  if (dataMap[cacheKeyFor(tabs[0].msgType, selectedInterval)] === undefined) {
     return (
       <View style={{ flex: 1, backgroundColor: theme.background.surface }}>
         <LinearGradient

@@ -183,8 +183,10 @@ const TodayHighlightSection = ({ registerRefresh }: Props) => {
   const { t } = useLocalization();
   const shimmerOpacity = useShimmer();
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
       const result = await getTodayHighlights();
       if (result.status) {
@@ -201,7 +203,7 @@ const TodayHighlightSection = ({ registerRefresh }: Props) => {
 
   // Pull-to-refresh
   useEffect(() => {
-    const unregister = registerRefresh?.(fetchData);
+    const unregister = registerRefresh?.(() => fetchData(false));
     return () => unregister?.();
   }, [registerRefresh, fetchData]);
 
@@ -210,6 +212,10 @@ const TodayHighlightSection = ({ registerRefresh }: Props) => {
     const index = Math.round(offsetX / SNAP_INTERVAL);
     setActiveIndex(index);
   };
+
+  if (!isLoading && data.length === 0) {
+    return null;
+  }
 
   return (
     <View

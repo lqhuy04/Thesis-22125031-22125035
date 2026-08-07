@@ -323,26 +323,29 @@ export type RelatedStockItem = {
 
 export const fetchRelatedStocks = async (
   symbol: string,
-): Promise<RelatedStockItem[]> => {
+): Promise<{ status: boolean; data: RelatedStockItem[] }> => {
   try {
     const result = await sendMessage(`api/related-stocks/${symbol}`);
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
-      return data as RelatedStockItem[];
+      return {
+        status: true,
+        data: Array.isArray(data) ? (data as RelatedStockItem[]) : [],
+      };
     }
 
-    return [];
+    return { status: false, data: [] };
   } catch (error) {
     console.error(error);
-    return [];
+    return { status: false, data: [] };
   }
 };
 
 export const fetchRandomMarketIndexStocks = async (
   indexId: string,
   limit: number = 6,
-): Promise<RelatedStockItem[]> => {
+): Promise<{ status: boolean; data: RelatedStockItem[] }> => {
   try {
     const result = await sendMessage(
       `api/market-index/${indexId}/random-stocks?limit=${limit}`,
@@ -350,13 +353,16 @@ export const fetchRandomMarketIndexStocks = async (
 
     const { errorCode, data } = result || {};
     if (errorCode === 0) {
-      return data as RelatedStockItem[];
+      return {
+        status: true,
+        data: Array.isArray(data) ? (data as RelatedStockItem[]) : [],
+      };
     }
 
-    return [];
+    return { status: false, data: [] };
   } catch (error) {
     console.error(error);
-    return [];
+    return { status: false, data: [] };
   }
 };
 

@@ -186,7 +186,6 @@ const IndexValueChartComponent = ({
   const isFirstLoad = useRef(true);
 
   const [initialLoading, setInitialLoading] = useState(true);
-  const [refreshLoading, setRefreshLoading] = useState(false);
   const [chartLoading, setChartLoading] = useState(false);
   const [showTimeframeSheet, setShowTimeframeSheet] = useState(false);
   const [timeFrame, setTimeFrame] = useState<TIMEFRAME>(
@@ -199,14 +198,18 @@ const IndexValueChartComponent = ({
 
   const fetchHeaderData = useCallback(async () => {
     const response = await fetchCurrentIndexData(symbol);
-    setData(response.status ? response.data : null);
+    if (response.status) {
+      setData(response.data);
+    }
   }, [symbol]);
 
-  const fetchHistoricalData = useCallback(async () => {
-    if (isFirstLoad.current) {
-      setInitialLoading(true);
-    } else {
-      setChartLoading(true);
+  const fetchHistoricalData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      if (isFirstLoad.current) {
+        setInitialLoading(true);
+      } else {
+        setChartLoading(true);
+      }
     }
 
     try {
@@ -214,13 +217,16 @@ const IndexValueChartComponent = ({
         symbol,
         TIMEFRAME_TO_INTERVAL[timeFrame],
       );
-      setHistoricalValues(response.status ? response.data : []);
+      if (response.status) {
+        setHistoricalValues(response.data);
+      }
     } catch (error) {
       console.error(`Error fetching historical values for ${symbol}:`, error);
-      setHistoricalValues([]);
     } finally {
-      setChartLoading(false);
-      if (isFirstLoad.current) {
+      if (showLoading) {
+        setChartLoading(false);
+      }
+      if (showLoading && isFirstLoad.current) {
         setInitialLoading(false);
         isFirstLoad.current = false;
       }
@@ -237,12 +243,7 @@ const IndexValueChartComponent = ({
 
   useEffect(() => {
     const refreshFn = async () => {
-      setRefreshLoading(true);
-      try {
-        await Promise.all([fetchHeaderData(), fetchHistoricalData()]);
-      } finally {
-        setRefreshLoading(false);
-      }
+      await Promise.all([fetchHeaderData(), fetchHistoricalData(false)]);
     };
 
     const unregister = registerRefresh?.(refreshFn);
@@ -279,7 +280,7 @@ const IndexValueChartComponent = ({
     "";
   const selectedLabel = selectedLabelKey ? t(selectedLabelKey) : "";
 
-  if (initialLoading || refreshLoading) {
+  if (initialLoading) {
     return <IndexValueChartSkeleton />;
   }
 

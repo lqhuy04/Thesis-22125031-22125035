@@ -113,18 +113,24 @@ const RelatedStocksSection = ({
     }, []),
   );
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     isNavigatingRef.current = false;
     try {
-      const data = marketIndexId
+      const result = marketIndexId
         ? await fetchRandomMarketIndexStocks(marketIndexId)
         : stockSymbol
           ? await fetchRelatedStocks(stockSymbol)
-          : [];
-      setRelated(data);
+          : { status: true, data: [] };
+      if (result.status) {
+        setRelated(result.data);
+      }
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, [marketIndexId, stockSymbol]);
 
@@ -134,7 +140,7 @@ const RelatedStocksSection = ({
 
   // Pull-to-refresh
   useEffect(() => {
-    const unregister = registerRefresh?.(fetchData);
+    const unregister = registerRefresh?.(() => fetchData(false));
     return () => unregister?.();
   }, [registerRefresh, fetchData]);
 

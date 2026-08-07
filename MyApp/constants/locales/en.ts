@@ -513,7 +513,7 @@ export default {
     greeting: "Hello!",
     management: "Management",
     assetManagement: "Asset Management",
-    riskAppetite: "Risk Appetite",
+    riskAppetite: "Investment Horizon",
     system: "System",
     darkMode: "Dark Mode",
     language: "Language",
@@ -658,7 +658,7 @@ export default {
     },
   },
   riskAppetiteScreen: {
-    title: "Risk Appetite",
+    title: "Investment Horizon",
     question: "How long do you plan to invest?",
     description: "This helps us suggest the right investment strategy for you.",
     onboardingHint: "You can change this later in your profile.",

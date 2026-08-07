@@ -218,7 +218,6 @@ const PriceChartComponent = ({
   // true on first load until we have price data for the first time
   const isFirstLoad = useRef(true);
   const [initialLoading, setInitialLoading] = useState(true);
-  const [refreshLoading, setRefreshLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [chartType, setChartType] = useState<"candle" | "area">("candle");
@@ -252,13 +251,15 @@ const PriceChartComponent = ({
     TechnicalIndicatorData[]
   >([]);
 
-  const fetchChartData = useCallback(async () => {
+  const fetchChartData = useCallback(async (showLoading = true) => {
     // Show full skeleton only on the very first fetch; subsequent
-    // timeframe changes / refreshes show a lighter loading indicator.
-    if (isFirstLoad.current) {
-      setInitialLoading(true);
-    } else {
-      setLoading(true);
+    // timeframe changes show a chart-only skeleton.
+    if (showLoading) {
+      if (isFirstLoad.current) {
+        setInitialLoading(true);
+      } else {
+        setLoading(true);
+      }
     }
 
     try {
@@ -286,17 +287,19 @@ const PriceChartComponent = ({
         fetchStockDataByTimeFrame(symbol, interval),
       ]);
 
-      setTechnicalIndicatorsData(
-        indicatorRes?.status ? (indicatorRes.data ?? []) : [],
-      );
-      setPriceData(priceRes?.status ? (priceRes.data ?? []) : []);
+      if (indicatorRes?.status) {
+        setTechnicalIndicatorsData(indicatorRes.data ?? []);
+      }
+      if (priceRes?.status) {
+        setPriceData(priceRes.data ?? []);
+      }
     } catch (error) {
       console.error("Fetch error:", error);
-      setTechnicalIndicatorsData([]);
-      setPriceData([]);
     } finally {
-      setLoading(false);
-      if (isFirstLoad.current) {
+      if (showLoading) {
+        setLoading(false);
+      }
+      if (showLoading && isFirstLoad.current) {
         setInitialLoading(false);
         isFirstLoad.current = false;
       }
@@ -310,12 +313,7 @@ const PriceChartComponent = ({
   // Pull-to-refresh — fetch lại header + dữ liệu chart theo timeframe hiện tại
   useEffect(() => {
     const refreshFn = async () => {
-      setRefreshLoading(true);
-      try {
-        await Promise.all([fetchHeaderData(), fetchChartData()]);
-      } finally {
-        setRefreshLoading(false);
-      }
+      await Promise.all([fetchHeaderData(), fetchChartData(false)]);
     };
     const unregister = registerRefresh?.(refreshFn);
     return () => unregister?.();
@@ -431,8 +429,8 @@ const PriceChartComponent = ({
     (indicatorState.mode2 ? 1 : 0) +
     (indicatorState.volume ? 1 : 0);
 
-  // ── Skeleton guard — first load and pull-to-refresh ──────────────────
-  if (initialLoading || refreshLoading) return <PriceChartSkeleton />;
+  // ── Skeleton guard — first load only ─────────────────────────────────
+  if (initialLoading) return <PriceChartSkeleton />;
 
   // ── Normal render ─────────────────────────────────────────────────────
   return (

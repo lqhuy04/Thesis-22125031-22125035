@@ -145,7 +145,8 @@ const WatchlistSection = ({ registerRefresh }: Props) => {
   const { t } = useLocalization();
   const { theme } = useTheme();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
 
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
@@ -204,17 +205,22 @@ const WatchlistSection = ({ registerRefresh }: Props) => {
   // Thay useEffect fetch lần đầu bằng useFocusEffect
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      fetchFavorites().finally(() => setLoading(false));
+      const showLoading = !hasLoadedRef.current;
+      if (showLoading) {
+        setLoading(true);
+      }
+      fetchFavorites().finally(() => {
+        hasLoadedRef.current = true;
+        if (showLoading) {
+          setLoading(false);
+        }
+      });
     }, [fetchFavorites]),
   );
 
-  // Pull-to-refresh — fetch lại danh sách yêu thích
+  // Pull-to-refresh keeps the current watchlist visible while fetching.
   useEffect(() => {
-    const refreshFn = async () => {
-      setLoading(true);
-      await fetchFavorites().finally(() => setLoading(false));
-    };
+    const refreshFn = () => fetchFavorites();
     const unregister = registerRefresh?.(refreshFn);
     return () => unregister?.();
   }, [registerRefresh, fetchFavorites]);

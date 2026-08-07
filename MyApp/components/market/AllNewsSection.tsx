@@ -144,8 +144,10 @@ const AllNewsSection = ({ registerRefresh }: Props) => {
   const [articles, setArticles] = useState<New[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
       const result = await getAllNews(10);
       if (result.status) {
@@ -162,7 +164,7 @@ const AllNewsSection = ({ registerRefresh }: Props) => {
 
   // Pull-to-refresh
   useEffect(() => {
-    const unregister = registerRefresh?.(fetchData);
+    const unregister = registerRefresh?.(() => fetchData(false));
     return () => unregister?.();
   }, [registerRefresh, fetchData]);
 

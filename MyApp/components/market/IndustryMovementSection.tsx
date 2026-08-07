@@ -152,18 +152,14 @@ const IndustryMovementSection = ({ registerRefresh }: Props) => {
     };
   }, [categories, chosenIndex]);
 
-  // Pull-to-refresh — fetch lại ngành đang chọn và invalidate cache
+  // Pull-to-refresh keeps the current treemap visible while fetching fresh data.
   useEffect(() => {
     const refreshFn = async () => {
       const key = categories[chosenIndex].value;
-      delete cache.current[key];
 
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-
-      setLoading(true);
-      setData([]);
 
       const result = await getIndustryMovement(key, 10);
       if (controller.signal.aborted) return;

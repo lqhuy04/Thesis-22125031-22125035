@@ -354,19 +354,27 @@ const FinancialIndicatorsSection = ({
   const [cashFlows, setCashFlows] = useState<CashFlows | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setFinancialIndicators(null);
-    setCashFlows(null);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
 
-    await Promise.all([
-      getFinancialIndicators(stockSymbol).then((res) => {
-        if (res.status) setFinancialIndicators(res.data);
-      }),
-      getCashFlows(stockSymbol).then((res) => {
-        if (res.status) setCashFlows(res.data);
-      }),
-    ]).finally(() => setIsLoading(false));
+    try {
+      const [indicatorsResult, cashFlowsResult] = await Promise.all([
+        getFinancialIndicators(stockSymbol),
+        getCashFlows(stockSymbol),
+      ]);
+      if (indicatorsResult.status) {
+        setFinancialIndicators(indicatorsResult.data);
+      }
+      if (cashFlowsResult.status) {
+        setCashFlows(cashFlowsResult.data);
+      }
+    } finally {
+      if (showLoading) {
+        setIsLoading(false);
+      }
+    }
   }, [stockSymbol]);
 
   useEffect(() => {
@@ -375,7 +383,7 @@ const FinancialIndicatorsSection = ({
 
   // Pull-to-refresh
   useEffect(() => {
-    const unregister = registerRefresh?.(fetchData);
+    const unregister = registerRefresh?.(() => fetchData(false));
     return () => unregister?.();
   }, [registerRefresh, fetchData]);
 

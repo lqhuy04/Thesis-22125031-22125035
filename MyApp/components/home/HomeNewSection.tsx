@@ -116,7 +116,7 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
   );
 
   const fetchData = useCallback(
-    async (forceRefresh = false) => {
+    async (forceRefresh = false, showLoading = true) => {
       const key = chosenCategory;
 
       // Cache hit — chỉ skip nếu không phải force refresh
@@ -130,7 +130,9 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
       const controller = new AbortController();
       abortRef.current = controller;
 
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
 
       try {
         let result;
@@ -167,11 +169,10 @@ const HomeNewSection = ({ registerRefresh }: Props) => {
     };
   }, [fetchData]);
 
-  // Pull-to-refresh — luôn fetch mới và invalidate cache
+  // Pull-to-refresh fetches fresh data without hiding the current list.
   useEffect(() => {
     const refreshFn = async () => {
-      delete cache.current[chosenCategory];
-      await fetchData(true);
+      await fetchData(true, false);
     };
     const unregister = registerRefresh?.(refreshFn);
     return () => unregister?.();

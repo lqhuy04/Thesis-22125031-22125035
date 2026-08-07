@@ -414,19 +414,25 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
     );
   }, [categories]);
 
-  const loadCategory = async (categoryId: string) => {
-    setLoadingCategoryId(categoryId);
+  const loadCategory = async (categoryId: string, showLoading = true) => {
+    if (showLoading) {
+      setLoadingCategoryId(categoryId);
+    }
     const result = await getNewsByCategoryId(categoryId, 9);
-    const news = result.status ? result.data : [];
-    cacheRef.current[categoryId] = news;
-    loadedRef.current.add(categoryId);
+    if (result.status) {
+      const news = result.data;
+      cacheRef.current[categoryId] = news;
+      loadedRef.current.add(categoryId);
 
-    setCategoryArticles((prev) =>
-      prev.map((cat) =>
-        cat.category_id === categoryId ? { ...cat, news } : cat,
-      ),
-    );
-    setLoadingCategoryId(null);
+      setCategoryArticles((prev) =>
+        prev.map((cat) =>
+          cat.category_id === categoryId ? { ...cat, news } : cat,
+        ),
+      );
+    }
+    if (showLoading) {
+      setLoadingCategoryId(null);
+    }
   };
 
   // Chỉ fetch tab đầu tiên khi mount, các tab khác load lazy khi chọn
@@ -451,13 +457,11 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
     await loadCategory(categoryId);
   };
 
-  // Pull-to-refresh — fetch lại category đang xem và invalidate cache
+  // Pull-to-refresh keeps the current category visible while fetching.
   useEffect(() => {
     const refreshFn = async () => {
       const categoryId = categories[chosenIndex].id;
-      delete cacheRef.current[categoryId];
-      loadedRef.current.delete(categoryId);
-      await loadCategory(categoryId);
+      await loadCategory(categoryId, false);
     };
     const unregister = registerRefresh?.(refreshFn);
     return () => unregister?.();

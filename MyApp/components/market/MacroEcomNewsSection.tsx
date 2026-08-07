@@ -235,8 +235,10 @@ const MacroEcomNewsSection = ({ registerRefresh }: Props) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true);
+    }
     try {
       const result = await getMacroEcomNews(9);
       if (result.status) {
@@ -253,7 +255,7 @@ const MacroEcomNewsSection = ({ registerRefresh }: Props) => {
 
   // Pull-to-refresh
   useEffect(() => {
-    const unregister = registerRefresh?.(fetchData);
+    const unregister = registerRefresh?.(() => fetchData(false));
     return () => unregister?.();
   }, [registerRefresh, fetchData]);
 

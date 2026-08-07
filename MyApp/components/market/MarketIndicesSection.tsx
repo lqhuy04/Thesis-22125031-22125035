@@ -164,8 +164,10 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
   const [indices, setIndices] = useState<MarketIndex[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     try {
       const result = await getMarketIndices();
       if (result.status) {
@@ -178,7 +180,7 @@ const MarketIndicesSection = ({ registerRefresh }: Props) => {
 
   useEffect(() => {
     fetchData();
-    const unregister = registerRefresh?.(fetchData);
+    const unregister = registerRefresh?.(() => fetchData(false));
     return () => unregister?.();
   }, [fetchData, registerRefresh]);
 
