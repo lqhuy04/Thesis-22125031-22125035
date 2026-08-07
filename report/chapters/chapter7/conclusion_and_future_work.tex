@@ -33,49 +33,16 @@ The second objective was achieved as an engineering and evaluation capability. T
 
 The third objective remains incomplete. Stockrium establishes a common schema and maintainable pipelines for the three evidence domains, which is a necessary foundation for a Vietnamese-market research dataset. However, public research use requires more than populated application tables. Each release must define its observation interval, source and licensing conditions, schema version, missing-data policy, collection time, correction history, and information-availability time. Until those controls and a versioned release are completed, the data should be described as a curated application dataset rather than a finished public benchmark.
 
-\section{Principal Contributions}
-\label{sec:principal-contributions}
-
-The principal contributions of the thesis are summarized as follows.
-
-\begin{enumerate}[label=\textbf{C\arabic*.}, leftmargin=1.7cm]
-    \item \textbf{An integrated Vietnamese-market decision-support platform.}
-
-    Stockrium connects market monitoring, stock discovery, company information, interactive technical charts, financial news, user preferences, AI-assisted analysis, and conversational follow-up within one mobile-oriented system. The platform focuses on Vietnamese securities and preserves a clear boundary between information support and order execution.
-
-    \item \textbf{An inspectable hybrid multi-agent analysis workflow.}
-
-    The workflow separates orchestration, evidence preparation, specialist analysis, recommendation, aggregation, and deterministic decision controls. Specialized analytical nodes handle evidence with different structures, while typed outputs constrain the generated confidence and explanation at the system boundary. Selectable branches and normalized weights make the influence of each analytical perspective easier to examine.
-
-    \item \textbf{A unified data architecture for heterogeneous financial evidence.}
-
-    The project defines acquisition and storage processes for market candles, current prices, company profiles, financial statements and ratios, industry aggregates, and Vietnamese financial articles. Deduplication, normalization, upsert behavior, scheduled refresh, and explicit relational associations make the data usable across application screens, analytical services, and experiments.
-
-    \item \textbf{A decision-logic-aligned backtesting and evaluation framework.}
-
-    The framework evaluates the implemented multi-agent decision and trading-plan logic together with a historical adapter that reuses production indicator and scoring code rather than a separate research-only prediction model. It includes fixed-threshold technical gating, next-open execution, risk-based exits, transaction costs, deterministic and passive benchmarks, ablation experiments, regime summaries, and machine-readable artifacts. Its evaluation demonstrates the combined behavior of the decision and trade-management layer together with the weaknesses that prevent strong investment-performance claims.
-\end{enumerate}
-
 \section{Future Work}
 \label{sec:future-work}
 
-\subsection{Point-in-Time Data and Dataset Publication}
+\subsection{Backtesting System Improvements}
 
-The most immediate limitation is historical information integrity. Technical and article evidence are bounded by the simulated decision date, and the fundamental branch excludes records from the simulated year and future years. However, annual records lack filing-availability timestamps, so a prior-year record can still be treated as available before its actual publication date. The current VN30 universe is also based on membership available when the experiment is run. These conditions leave publication-timing and survivorship risks that weaken causal interpretation of full-pipeline performance.
+The backtesting system should first improve the integrity of historical inputs. Fundamental records need filing-availability timestamps, and simulations should use only information that was publicly available on each decision date. Historical index membership should be reconstructed by effective date to reduce survivorship bias, while news records should retain publication, retrieval, source, and correction metadata. Versioned data snapshots would then provide a stable basis for comparing experiments.
 
-The highest-priority extension is therefore to establish point-in-time correctness. Fundamental records should store both the reporting period and the date on which the filing became publicly available, and historical analysis should retrieve only records available by the candidate date. Index membership should be reconstructed by effective date and should retain removed, suspended, and delisted securities where data permit. News records should preserve retrieval time, publication-time corrections, source identity, and association provenance.
+Reproducibility should be strengthened by storing an immutable experiment manifest containing the security universe, evaluation interval, parameters, code revision, model and prompt versions, data snapshot, transaction-cost assumptions, and random seeds. Caching model outputs would support deterministic replay, while longer out-of-sample periods and historically reconstructed universes would provide more representative bull, sideways, and bear-market samples.
 
-The dataset can then be released as versioned snapshots rather than as an evolving database export. Each version should include a data dictionary, schema and unit definitions, source and licensing notes, coverage statistics, missing-value rules, deduplication procedures, checksums, and reproducible preparation scripts. A fixed benchmark split would make comparisons between future Stockrium versions and external methods more credible.
-
-\subsection{More Realistic and Reproducible Evaluation}
-
-The current experiment is limited by sample size and construction. Every security has relatively few completed pipeline trades, confidence groups are sparse, and the evaluated data include almost no downtrend trades. The saved results do not show consistent benchmark outperformance, robust confidence separation, or broad statistical significance. Multiple comparisons, model nondeterminism, prompt changes, and unrecorded random seeds also limit reproducibility.
-
-To make later comparisons more reliable, every experiment should store an immutable manifest containing the security universe, exact interval, effective parameters, code revision, model and prompt versions, data snapshot, transaction-cost assumptions, and random seeds. Model outputs can be cached for deterministic replay. Statistical analysis should use prespecified hypotheses, multiple-comparison correction, and bootstrap or hierarchical uncertainty intervals where conventional asymptotic tests are unreliable.
-
-The execution model is also necessarily simplified. Daily OHLCV bars cannot determine the intraday ordering of take-profit and stop-loss events and do not fully represent gaps, bid--ask spread, liquidity, market impact, partial fills, price limits, or latency. Results are calculated per security without a shared cash balance, position-sizing policy, concurrent-exposure constraint, or portfolio rebalancing rule. Consequently, aggregate returns are comparative research measures rather than a directly investable portfolio record.
-
-To address these limitations, the simulator should be extended with a shared capital ledger, position sizing, simultaneous-position limits, cash constraints, and portfolio-level risk measures. Conservative gap-aware fills, Vietnamese price-limit rules, liquidity filters, spread and slippage estimates, and, where available, intraday quote data would improve execution realism. Longer out-of-sample periods and historically reconstructed universes should be used to obtain meaningful bull, sideways, and bear-market samples. Forward outcomes should also be recorded for rejected candidates so that confidence calibration and the value of the Buy gate can be evaluated without selection truncation.
+The simulator should also move from independent per-security calculations toward a portfolio-level execution model with shared capital, position sizing, cash and concurrent-exposure constraints, and portfolio risk measures. Gap-aware fills, Vietnamese price-limit rules, liquidity filters, spread and slippage estimates, and intraday data where available would make execution more realistic. Recording forward outcomes for rejected candidates would additionally support confidence calibration and a less selection-biased assessment of the Buy gate.
 
 \subsection{Analytical and Multi-Agent Improvements}
 
@@ -88,6 +55,8 @@ Additional research can compare the current analytical-node decomposition with d
 The platform depends on external market-data, search, storage, and language-model services. Changes in their availability, response formats, quotas, or model behavior can affect system reliability and analytical reproducibility. The current prototype also requires broader security, load, recovery, Android-device compatibility, accessibility, and longitudinal usability validation before production-scale deployment.
 
 Future development should therefore extend automated unit, integration, contract, end-to-end, security, and performance coverage and execute it in continuous integration. Long-running collection, analysis, and backtesting jobs should use durable background queues with progress reporting, retry policies, idempotency keys, and operational monitoring. Secrets management, audit logging, rate limiting, dependency scanning, backup restoration, and incident procedures should be strengthened for a production deployment.
+
+The mobile application should also subscribe to and handle WebSocket events directly so that market data, analysis status, and other relevant screen state can be updated as events arrive instead of requiring users to refresh manually. The implementation should include reconnection, resubscription, heartbeat handling, and stale-data indicators to keep real-time updates reliable and improve the user experience when network conditions change.
 
 User-facing research should examine whether investors correctly understand confidence values, explanations, risk levels, and the distinction between decision support and advice. Accessibility, localization quality, onboarding, notification controls, and explanation design can be evaluated with representative Vietnamese retail investors. Portfolio tracking and paper-trading features could support learning and retrospective review without enabling automatic execution. Any later brokerage integration would require separate legal, security, suitability, and operational analysis beyond the scope of the present thesis.
 
