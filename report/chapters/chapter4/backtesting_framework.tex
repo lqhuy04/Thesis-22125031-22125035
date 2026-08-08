@@ -3,7 +3,7 @@
 
 Stockrium includes a historical simulation subsystem for evaluating whether the analytical pipeline behaves consistently with its intended decision rules. The subsystem is designed as an engineering and research tool rather than an automated trading facility. It reuses the production multi-agent components and the same deterministic technical-scoring implementation, applies explicit execution assumptions, and produces machine-readable artifacts for later evaluation. Experimental results obtained from this framework are reported in Chapter~6.
 
-Established Python frameworks already provide reusable data feeds, strategy lifecycles, order simulation, indicators, portfolio accounting, and fast parameter exploration. For example, Backtrader provides an event-driven strategy and broker abstraction \cite{backtraderDocs2026}, while VectorBT emphasizes vectorized analysis over pandas and NumPy objects \cite{vectorbtDocs2026}. Stockrium nevertheless implements a focused simulator because the object being evaluated is not only a conventional deterministic trading strategy. Each historical candidate must reconstruct a date-bounded production request, invoke the same enabled specialist agents, recommendation node, and structured aggregator used by the application, apply the fixed weighted-score and minimum technical-score decision gates, compare the full-pipeline result with an engine-only branch, and return artifacts through the existing FastAPI and Supabase workflow. The aggregator's confidence is retained for later grouping and statistical analysis but does not admit or reject a candidate.
+Established Python frameworks already provide reusable data feeds, strategy lifecycles, order simulation, indicators, portfolio accounting, and fast parameter exploration. For example, Backtrader provides an event-driven strategy and broker abstraction \cite{backtraderDocs2026}, while VectorBT emphasizes vectorized analysis over pandas and NumPy objects \cite{vectorbtDocs2026}. Stockrium nevertheless implements a focused simulator because the object being evaluated is not only a conventional deterministic trading strategy. Each historical candidate must reconstruct a date-bounded production request, invoke the same enabled specialist agents, recommendation node, and structured aggregator used by the application, and apply the fixed weighted-score and minimum technical-score decision gates. The surrounding evaluation framework then simulates accepted decisions, constructs explicit technical and passive comparators, and returns their artifacts through the existing FastAPI and Supabase workflow. The aggregator's confidence is retained for later grouping and statistical analysis but does not admit or reject a candidate.
 
 Adapting a general framework would still require custom adapters for historical workflow state, language-model outputs, source-availability markers, shared production scoring, and Stockrium's stored result schema. A compact in-project framework makes these assumptions visible and allows exact correspondence with the production decision path to be tested. The trade-off is that mature frameworks provide broader execution, portfolio, optimization, and broker features that the current simulator does not reproduce. Thus, the custom implementation is justified by production-path fidelity and experimental traceability, not by a claim that general frameworks are inadequate; cross-checking future deterministic results with an established engine remains desirable.
 
@@ -12,16 +12,56 @@ The implementation is exposed through the access-controlled internal \texttt{POS
 \subsection{Evaluation Architecture}
 \label{subsec:backtest-evaluation-architecture}
 
-The backtest reuses the production specialist-agent, recommendation, and aggregator implementations together with the production indicator service and shared scoring module, rather than maintaining a separate research-only prediction model. Figure~\ref{fig:backtest-execution-flow} shows the execution path. Daily candles first pass through the deterministic historical engine. Every date on which the normalized combined score meets the fixed 0.6 threshold becomes a candidate for multi-agent analysis. A candidate becomes eligible for simulation only when the final structured recommendation is \textit{Mua} (Buy); it can still be skipped if the next tradable open has already crossed the recommendation's stop-loss or take-profit boundary. The engine-only baseline retains all technical candidates and uses the request's holding limit without recommendation-generated stop-loss or take-profit levels. Consequently, the comparison captures the combined effect of candidate filtering and the multi-agent branch's generated exit and holding plan; it does not isolate filtering alone.
+The evaluation architecture separates the full production-path simulation from four explicit comparison flows: an engine-only technical baseline, a same-security buy-and-hold reference, a random-entry benchmark, and five single-indicator ablations. These flows share historical stock data and common accounting definitions where appropriate, but they answer different questions and should not be interpreted as interchangeable trading strategies. The selected benchmark index is used only for regime analysis; it does not contribute to stock-indicator scoring or candidate selection.
+
+The full-pipeline flow in Figure~\ref{fig:backtest-execution-flow} reuses the production indicator service, shared binary-scoring rules, enabled specialist agents, deterministic recommendation node, and structured aggregator rather than introducing a research-only prediction model. Historical candles are converted into the five indicator scores, after which the combined or manually selected score is normalized and tested against the fixed 0.6 technical gate. Only passing dates invoke the date-bounded specialist branches. Technical evidence ends at the candidate date, article retrieval uses its historical upper bound, and the fundamental branch excludes annual rows from the simulated year and future years. The enabled branches converge before the deterministic recommendation applies the configured weights and Buy-or-Wait constraints. The aggregator preserves that decision and adds a bounded confidence value and explanation; confidence is not an execution gate.
+
+A candidate proceeds to trading only when the established decision is \textit{Mua} (Buy). The recommendation-generated stop-loss, take-profit, and positive holding-period override are transferred to the signal. The stop-loss and take-profit boundaries are then checked against the next tradable open; if the open has already crossed either boundary, the plan is treated as no longer executable and no trade is created, although the decision remains in the stored artifact. Otherwise the simulator enters at the next open and applies the recommendation-generated boundaries, the optional score-drop exit, or the holding-period timeout. A missing or nonpositive holding override falls back to the request-level limit. VN-Index observations join only at the later regime-analysis stage.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth,keepaspectratio]{figures/chapter4/stockrium_backtesting_flow.png}
-    \caption{Execution flow of the Stockrium backtesting framework}
+    \caption{Historical execution flow of the full Stockrium analytical pipeline}
     \label{fig:backtest-execution-flow}
 \end{figure}
 
-The five scoring rules are implemented once in a shared deterministic module. The production technical node uses this module to build its indicator-level explanations, while the backtest adapter writes the returned binary scores into historical score columns. The previous runtime sampling gate is therefore unnecessary: there are no longer two independently maintained scoring implementations to compare. Unit tests instead cover the shared rules and both adapters.
+The engine-only flow in Figure~\ref{fig:backtest-engine-only-flow} begins from the same scored daily frame and retains every date that passes the normalized technical gate as a signal. It does not call the specialist, recommendation, or aggregator nodes and therefore has no recommendation-generated stop-loss, take-profit, or holding-period override. It uses the request-level holding limit, the same next-open convention and transaction-cost model, and the optional score-drop exit when enabled. Candidate signals that arise while a same-symbol position remains open do not create overlapping positions. Its output supplies the deterministic technical baseline used beside the full-pipeline result. Because the full pipeline changes both candidate acceptance and trade management, their observed difference measures the combined Buy-or-Wait and trading-plan layer rather than filtering alone.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,keepaspectratio]{figures/chapter4/stockrium_engine_only_backtesting_flow.png}
+    \caption{Execution flow of the engine-only technical baseline}
+    \label{fig:backtest-engine-only-flow}
+\end{figure}
+
+The same-security buy-and-hold flow in Figure~\ref{fig:backtest-buy-hold-flow} is a passive reference calculated independently for each evaluated security. It enters at the first open in the evaluation frame and exits at the final close, producing the ratio of final close to first open minus one. The implementation does not deduct the simulator's transaction cost from this reference. Buy-and-hold therefore represents continuous exposure to the same security rather than an exposure-matched replication of the pipeline's intermittent positions.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,keepaspectratio]{figures/chapter4/stockrium_buy_and_hold_benchmark_flow.png}
+    \caption{Calculation flow of the same-security buy-and-hold benchmark}
+    \label{fig:backtest-buy-hold-flow}
+\end{figure}
+
+The random-entry benchmark in Figure~\ref{fig:backtest-random-entry-flow} evaluates whether the pipeline return could be reproduced by entry timing without analytical selection. For each security, one simulation samples as many signal dates as the number of completed full-pipeline trades, or one date when the pipeline completes no trade. The sampled signals enter at the next open, use a fixed 20-candle maximum hold, incur the same transaction cost as the simulator, and receive no recommendation-generated price boundaries. Non-overlap handling may reduce the number of random trades actually executed. Repeating this procedure 1,000 times produces a distribution of total returns from which the pipeline's percentile rank and the stored random-entry p-value are derived.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,keepaspectratio]{figures/chapter4/stockrium_random_entry_benchmark_flow.png}
+    \caption{Generation and comparison flow of the random-entry benchmark}
+    \label{fig:backtest-random-entry-flow}
+\end{figure}
+
+The single-indicator ablations in Figure~\ref{fig:backtest-single-indicator-flow} are companion experiments rather than branches invoked during every full-pipeline run. Their runner loads pre-start history, calculates the same five indicator families and shared binary-score columns, preserves the 50-candle warm-up, and trims to the requested evaluation interval only after scoring. One score column is then selected at a time; every eligible date with a value of one becomes a candidate for the corresponding RSI, MACD, KDJ, Bollinger Bands, or moving-average experiment. Each ablation runs independently without language-model calls, using next-open entry, the fixed 20-candle hold, and the same per-side transaction cost. The resulting metrics and artifacts show how outcomes vary when candidate construction depends on only one technical perspective.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,keepaspectratio]{figures/chapter4/stockrium_single_indicator_ablation_flow.png}
+    \caption{Execution flow of the five single-indicator ablation experiments}
+    \label{fig:backtest-single-indicator-flow}
+\end{figure}
+
+The five scoring rules are implemented once in a shared deterministic module. The production technical node uses this module to build indicator-level explanations, while the historical and ablation adapters write the same returned values into score columns. This shared implementation prevents drift between interactive analysis and historical evaluation; unit tests cover the scoring rules and their adapters rather than comparing separately maintained formulas at runtime.
 
 \subsection{Technical Signal Construction}
 \label{subsec:backtest-signal-construction}

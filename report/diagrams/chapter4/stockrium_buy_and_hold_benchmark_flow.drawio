@@ -1,0 +1,22 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="stockrium-buy-hold-flow" name="Same-Security Buy-and-Hold Flow">
+    <mxGraphModel dx="1600" dy="400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" /><mxCell id="1" parent="0" />
+        <mxCell id="bh-stock" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=21;fontStyle=1;spacing=8;" value="Historical stock OHLCV&lt;br&gt;within evaluation period" vertex="1"><mxGeometry x="20" y="150" width="250" height="90" as="geometry" /></mxCell>
+        <mxCell id="bh-entry" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=21;fontStyle=1;spacing=8;" value="Buy at the&lt;br&gt;first open" vertex="1"><mxGeometry x="330" y="150" width="210" height="90" as="geometry" /></mxCell>
+        <mxCell id="bh-hold" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=20;fontStyle=1;spacing=8;" value="Hold continuously&lt;br&gt;through the period" vertex="1"><mxGeometry x="600" y="150" width="230" height="90" as="geometry" /></mxCell>
+        <mxCell id="bh-exit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=21;fontStyle=1;spacing=8;" value="Sell at the&lt;br&gt;final close" vertex="1"><mxGeometry x="890" y="150" width="210" height="90" as="geometry" /></mxCell>
+        <mxCell id="bh-return" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=19;fontStyle=1;spacing=8;" value="Same-security return&lt;br&gt;final close / first open − 1&lt;br&gt;no simulator cost deduction" vertex="1"><mxGeometry x="1160" y="135" width="300" height="120" as="geometry" /></mxCell>
+        <mxCell id="bh-pipeline-return" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=20;fontStyle=1;spacing=8;" value="Full-pipeline&lt;br&gt;total return" vertex="1"><mxGeometry x="850" y="290" width="250" height="80" as="geometry" /></mxCell>
+        <mxCell id="bh-comparison" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=20;fontStyle=1;spacing=8;" value="Pipeline versus&lt;br&gt;buy-and-hold comparison" vertex="1"><mxGeometry x="1160" y="290" width="300" height="80" as="geometry" /></mxCell>
+        <mxCell id="bh-e1" edge="1" parent="1" source="bh-stock" target="bh-entry" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bh-e2" edge="1" parent="1" source="bh-entry" target="bh-hold" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bh-e3" edge="1" parent="1" source="bh-hold" target="bh-exit" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bh-e4" edge="1" parent="1" source="bh-exit" target="bh-return" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bh-e5" edge="1" parent="1" source="bh-return" target="bh-comparison" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="bh-e6" edge="1" parent="1" source="bh-pipeline-return" target="bh-comparison" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#9673a6;strokeWidth=2;"><mxGeometry relative="1" as="geometry" /></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
