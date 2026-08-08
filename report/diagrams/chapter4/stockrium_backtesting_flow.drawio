@@ -1,56 +1,107 @@
 <mxfile host="app.diagrams.net" agent="Codex">
   <diagram id="stockrium-backtesting-flow" name="Stockrium Backtesting Flow">
-    <mxGraphModel dx="1803" dy="1021" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="650" math="0" shadow="0">
+    <mxGraphModel dx="2138" dy="1302" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2260" pageHeight="800" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="f410-ohlcv" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=22;spacing=8;" value="Historical OHLCV&lt;br&gt;and VN-Index data" vertex="1">
-          <mxGeometry height="84" width="230" x="320" y="380" as="geometry" />
+        <mxCell id="f410-stock-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=22;spacing=8;fontStyle=1" value="Historical stock&lt;br&gt;OHLCV data" vertex="1">
+          <mxGeometry height="90" width="210" x="565" y="580" as="geometry" />
         </mxCell>
-        <mxCell id="f410-indicators" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Indicators and&lt;br&gt;binary scores" vertex="1">
-          <mxGeometry height="84" width="230" x="330" y="130" as="geometry" />
+        <mxCell id="f410-indicators" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Indicators and&lt;br&gt;rule-based 0/1 scores" vertex="1">
+          <mxGeometry height="90" width="240" x="550" y="420" as="geometry" />
         </mxCell>
-        <mxCell id="f410-candidates" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Threshold-crossing&lt;br&gt;candidate dates" vertex="1">
-          <mxGeometry height="84" width="230" x="630" y="130" as="geometry" />
+        <mxCell id="f410-candidates" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Fixed technical gate ≥ 0.6&lt;br&gt;candidate dates" vertex="1">
+          <mxGeometry height="90" width="240" x="550" y="170" as="geometry" />
         </mxCell>
-        <mxCell id="f410-pipeline" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Specialist analysis&lt;br&gt;and aggregation" vertex="1">
-          <mxGeometry height="84" width="230" x="930" y="130" as="geometry" />
+        <mxCell id="f410-evidence-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=22;spacing=8;fontStyle=1" value="Date-bounded fundamental&lt;br&gt;and news data" vertex="1">
+          <mxGeometry height="80" width="260" x="850" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="f410-simulator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=22;spacing=8;" value="Next-open entry and&lt;br&gt;event-driven exits" vertex="1">
-          <mxGeometry height="84" width="240" x="1230" y="130" as="geometry" />
+        <mxCell id="f410-specialists" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Enabled specialist agents&lt;br&gt;technical, fundamental,&lt;br&gt;and news" vertex="1">
+          <mxGeometry height="110" width="260" x="850" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="f410-metrics" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Metrics, benchmarks,&lt;br&gt;tests, and artifacts" vertex="1">
-          <mxGeometry height="84" width="250" x="1550" y="130" as="geometry" />
+        <mxCell id="f410-recommendation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Deterministic Buy/Wait&lt;br&gt;recommendation" vertex="1">
+          <mxGeometry height="110" width="240" x="1150" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="f410-baseline" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf4e8;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Engine-only baseline:&lt;br&gt;all candidate dates" vertex="1">
-          <mxGeometry height="84" width="250" x="760" y="390" as="geometry" />
+        <mxCell id="f410-aggregator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Structured aggregator&lt;br&gt;explanation and confidence" vertex="1">
+          <mxGeometry height="110" width="240" x="1430" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="f410-baseline-sim" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0df;strokeColor=#d79b00;strokeWidth=2;fontSize=22;spacing=8;" value="Baseline trade&lt;br&gt;simulation" vertex="1">
-          <mxGeometry height="84" width="240" x="1230" y="390" as="geometry" />
+        <mxCell id="f410-buy-gate" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=22;fontStyle=1;spacing=6;" value="Buy and plan valid&lt;br&gt;at next open?" vertex="1">
+          <mxGeometry height="120" width="180" x="1720" y="155" as="geometry" />
         </mxCell>
-        <mxCell id="f410-e-indicators-candidates" edge="1" parent="1" source="f410-indicators" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;" target="f410-candidates">
+        <mxCell id="f410-full-simulator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=22;spacing=8;fontStyle=1" value="Full-pipeline simulation&lt;br&gt;next-open entry; SL/TP,&lt;br&gt;score exit, or timeout" vertex="1">
+          <mxGeometry height="110" width="260" x="1970" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-no-trade" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;fontSize=22;spacing=8;fontStyle=1" value="No trade&lt;br&gt;decision retained" vertex="1">
+          <mxGeometry height="80" width="180" x="1720" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-baseline" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eaf4e8;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Engine-only baseline&lt;br&gt;all technical candidates" vertex="1">
+          <mxGeometry height="90" width="280" x="850" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-baseline-sim" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0df;strokeColor=#d79b00;strokeWidth=2;fontSize=22;spacing=8;fontStyle=1" value="Baseline simulation&lt;br&gt;next-open entry without&lt;br&gt;recommendation boundaries" vertex="1">
+          <mxGeometry height="90" width="300" x="1250" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-metrics" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Metrics, benchmarks, and tests&lt;br&gt;regime/confidence analysis&lt;br&gt;and stored artifacts" vertex="1">
+          <mxGeometry height="110" width="350" x="1880" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-vnindex" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=22;spacing=8;fontStyle=1" value="Historical VN-Index data&lt;br&gt;for regime analysis" vertex="1">
+          <mxGeometry height="80" width="260" x="1925" y="690" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-e-candidates-specialists" edge="1" parent="1" source="f410-candidates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;fontStyle=1" target="f410-specialists">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f410-e-candidates-pipeline" edge="1" parent="1" source="f410-candidates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;" target="f410-pipeline">
+        <mxCell id="f410-e-evidence-specialists" edge="1" parent="1" source="f410-evidence-data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=22;fontStyle=1" target="f410-specialists">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f410-e-pipeline-simulator" edge="1" parent="1" source="f410-pipeline" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;" target="f410-simulator">
+        <mxCell id="f410-e-specialists-recommendation" edge="1" parent="1" source="f410-specialists" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;fontStyle=1" target="f410-recommendation">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f410-e-simulator-metrics" edge="1" parent="1" source="f410-simulator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;" target="f410-metrics">
+        <mxCell id="f410-e-recommendation-aggregator" edge="1" parent="1" source="f410-recommendation" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;fontStyle=1" target="f410-aggregator">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f410-e-candidates-baseline" edge="1" parent="1" source="f410-candidates" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=2;dashed=1;dashPattern=8 6;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=22;" target="f410-baseline">
+        <mxCell id="f410-e-aggregator-gate" edge="1" parent="1" source="f410-aggregator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;fontStyle=1" target="f410-buy-gate">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f410-e-baseline-baseline-sim" edge="1" parent="1" source="f410-baseline" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;" target="f410-baseline-sim">
+        <mxCell id="f410-e-gate-full-sim" edge="1" parent="1" source="f410-buy-gate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;fontStyle=1;labelBackgroundColor=#ffffff;" target="f410-full-simulator" value="Yes">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="f410-e-baseline-sim-metrics" edge="1" parent="1" source="f410-baseline-sim" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=2;dashed=1;dashPattern=8 6;exitX=1;exitY=0.5;entryX=0.5;entryY=1;fontSize=22;" target="f410-metrics">
+        <mxCell id="f410-e-gate-no-trade" edge="1" parent="1" source="f410-buy-gate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=22;fontStyle=1;labelBackgroundColor=#ffffff;" target="f410-no-trade" value="No">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="YCCZ9XYRgUFLxTLLQpWY-2" edge="1" parent="1" source="f410-ohlcv" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.459;entryY=0.98;entryDx=0;entryDy=0;entryPerimeter=0;fontSize=22;" target="f410-indicators">
+        <mxCell id="f410-e-full-sim-metrics" edge="1" parent="1" source="f410-full-simulator" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.75;entryY=0;fontSize=22;fontStyle=1" target="f410-metrics">
           <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-e-no-trade-metrics" edge="1" parent="1" source="f410-no-trade" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#999999;strokeWidth=2;dashed=1;dashPattern=8 6;exitX=1;exitY=0.5;entryX=0.1;entryY=0;fontSize=22;fontStyle=1" target="f410-metrics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-e-candidates-baseline" edge="1" parent="1" source="f410-candidates" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=2;dashed=1;dashPattern=8 6;exitX=0.874;exitY=1.02;entryX=0.5;entryY=0;fontSize=22;fontStyle=1;exitDx=0;exitDy=0;exitPerimeter=0;" target="f410-baseline">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="780.09" y="261.82" />
+              <mxPoint x="780.09" y="380" />
+              <mxPoint x="990.09" y="380" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="f410-e-baseline-sim" edge="1" parent="1" source="f410-baseline" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;fontStyle=1" target="f410-baseline-sim">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-e-baseline-metrics" edge="1" parent="1" source="f410-baseline-sim" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#3d85c6;strokeWidth=2;dashed=1;dashPattern=8 6;exitX=1;exitY=0.5;entryX=0;entryY=0.5;fontSize=22;fontStyle=1" target="f410-metrics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="f410-e-vnindex-metrics" edge="1" parent="1" source="f410-vnindex" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;exitX=0.5;exitY=0;entryX=0.5;entryY=1;fontSize=22;fontStyle=1" target="f410-metrics">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Q4cYnXPT-qPMYB3wEqH0-4" edge="1" parent="1" source="f410-indicators" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=0;entryX=0.5;entryY=1;fontSize=22;fontStyle=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="f410-candidates">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="610" y="370" as="sourcePoint" />
+            <mxPoint x="670" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Q4cYnXPT-qPMYB3wEqH0-5" edge="1" parent="1" source="f410-stock-data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=0.5;exitY=0;entryX=0.5;entryY=1;fontSize=22;fontStyle=1;entryDx=0;entryDy=0;exitDx=0;exitDy=0;" target="f410-indicators">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="380" y="470" as="sourcePoint" />
+            <mxPoint x="440" y="470" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
