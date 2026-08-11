@@ -59,7 +59,7 @@ Figure~\ref{fig:mobile-navigation-structure} summarizes the principal route rela
 
 The Stock Detail route is a particularly important navigation hub. It can be opened from search results, watchlist entries, investment-idea lists, industry visualizations, market highlights, and related-stock cards. It receives the stock symbol as a route parameter and passes the same symbol to its child sections. A floating AI button opens the configuration route with that symbol, after which the result route receives the analysis mode and serialized manual selection. This parameterized navigation keeps the user focused on one company across data inspection and AI analysis.
 
-News and chatbot routes follow a similar pattern. General or categorized lists open a shared article-detail route using article parameters. The Chatbot tab displays available sessions; composing or selecting a session opens Chat Detail with a session identifier. An AI result can create and seed a new session before navigating to that same Chat Detail route, allowing ordinary conversations and analysis follow-ups to reuse one interface.
+News and chatbot routes follow a similar pattern. General or categorized lists open a shared article-detail route using article parameters. The Chatbot tab displays available sessions; composing or selecting a session opens Chat Detail with a session identifier. This conversational flow operates independently from the structured AI-analysis result route.
 
 \subsection{API Integration and Client State}
 \label{subsec:api-integration-client-state}

@@ -146,7 +146,7 @@ The matrix below is the minimum useful thesis scope. Detailed steps should be re
 | AGENT-03 | Decision | Weighted total and technical score below, at, and above their acceptance thresholds | Buy/Wait control follows both deterministic boundaries; confidence does not alter it | P0 | Unit test |
 | AGENT-04 | Horizon | Short-, medium-, and long-horizon profiles | Planning and holding constraints match the selected horizon | P0 | Integration with mocks |
 | AGENT-05 | Failure | Specialist timeout, malformed output, or no evidence | Defined fallback or safe error; no unsupported recommendation | P0 | Fault injection |
-| CHAT-01 | Conversation | Seed, follow up, reopen history, and delete | Ordered owner-only history and complete deletion | P1 | API + E2E |
+| CHAT-01 | Conversation | Create, continue, reopen history, and delete | Ordered owner-only history and complete deletion | P1 | API + E2E |
 | BACK-01 | Shared scoring | Known indicator values through the shared scorer and both adapters | Production output and backtest score columns use the shared rule results | P0 | Unit/integration |
 | BACK-02 | Warm-up | Full and single-indicator runs use a later evaluation start | Pre-start history is retained, the shared 50-candle warm-up is preserved, and trimming occurs after scoring | P0 | Unit/integration |
 | BACK-03 | Timing | Score meets threshold on candle t | One candidate and entry at candle t+1 open | P0 | Unit test |
@@ -155,7 +155,7 @@ The matrix below is the minimum useful thesis scope. Detailed steps should be re
 | BACK-06 | Artifacts | Complete backtest and result listing | Decisions, trades, metrics, effective warm-up metadata, tests, plots, and stored file agree | P1 | Integration |
 | MOB-01 | Authentication UI | Signup/login, verification, reset, logout | Correct validation, feedback, loading, and navigation | P0 | Component + E2E |
 | MOB-02 | Market UI | Browse, search, open detail, change chart view | Correct data, navigation, and responsive interaction | P0 | Component + E2E |
-| MOB-03 | AI analysis UI | Configure, submit, view result, open follow-up chat | Correct payload and safe rendering of all structured fields | P0 | Component + E2E |
+| MOB-03 | AI analysis UI | Configure, submit, and view result | Correct payload and safe rendering of all structured fields | P0 | Component + E2E |
 | MOB-04 | Resilience | Offline, slow, 401, 500, and empty data | Clear retry/error/empty state and no duplicate submission | P1 | Component + manual |
 | MOB-05 | Presentation | Themes, Vietnamese text, long content, keyboard, small screen | Readable layout without clipping or blocked actions | P1 | Manual/device |
 | PERF-01 | API load | Health, market, detail, login, and preference flows | Provisional thresholds in Section 8 are met | P2 | k6 |
@@ -218,7 +218,7 @@ Automate these flows first:
 2. search and open stock details;
 3. add and remove a favorite;
 4. configure and submit AI analysis against a deterministic test backend;
-5. seed a chat, send a follow-up, reopen it, and delete it.
+5. create a chat, continue the conversation, reopen it, and delete it.
 
 ### Phase 6 — Non-functional tests
 

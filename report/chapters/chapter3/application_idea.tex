@@ -126,7 +126,7 @@ The user may proceed with an automatic analysis configuration or manually select
     \label{fig:stockrium-primary-flow}
 \end{figure}
 
-After submission, Stockrium processes the enabled technical, fundamental, and news perspectives and returns either a \textit{Buy} or \textit{Wait} assessment. The result includes confidence and source-specific explanations; an accepted \textit{Buy} assessment may additionally contain an entry price, take-profit price, stop-loss price, and maximum holding period. Figure~\ref{fig:stockrium-analysis-follow-up-flow} presents the second part of the journey, including evidence evaluation, recommendation validation, and subsequent user choices.
+After submission, Stockrium processes the enabled technical, fundamental, and news perspectives and returns either a \textit{Buy} or \textit{Wait} assessment. The result includes confidence and source-specific explanations; an accepted \textit{Buy} assessment may additionally contain an entry price, take-profit price, stop-loss price, and maximum holding period. Figure~\ref{fig:stockrium-analysis-result-flow} presents the second part of the journey, including evidence evaluation, recommendation validation, and subsequent user choices.
 
 \begin{figure}[H]
     \centering
@@ -137,15 +137,15 @@ After submission, Stockrium processes the enabled technical, fundamental, and ne
         Export the Mermaid diagram as\\
         \texttt{figures/chapter3/mobile\_decision\_support\_flow\_part2.png}}}%
     }
-    \caption{Mobile decision-support flow: analysis processing, recommendation, and follow-up}
-    \label{fig:stockrium-analysis-follow-up-flow}
+    \caption{Mobile decision-support flow: analysis processing and recommendation}
+    \label{fig:stockrium-analysis-result-flow}
 \end{figure}
 
-The recommendation is not the final step of the user journey. The investor can return to the supporting charts and company data, revise the configuration, update the watchlist, or ask a contextual question. These paths form an iterative cycle in which the user continues to examine the evidence rather than acting solely on the generated action label.
+After reviewing the recommendation, the investor can return to the supporting charts and company data, revise the configuration, or update the watchlist. These paths form an iterative cycle in which the user continues to examine the evidence rather than acting solely on the generated action label.
 
-\subsubsection{Conversational Follow-up Flow}
+\subsubsection{Conversational Assistant Flow}
 
-The conversational assistant supports both independent financial questions and follow-up questions about an existing analysis. An authenticated investor may create or revisit a conversation, submit a Vietnamese natural-language question, receive an answer based on available system information, and continue with additional turns. The assistant helps explain terminology and analytical evidence, but its answers remain informational and are subject to the same data and model limitations as the main analysis.
+The conversational assistant supports independent financial questions and multi-turn interaction. An authenticated investor may create or revisit a conversation, submit a Vietnamese natural-language question, receive an answer based on available system information, and continue with additional turns. The assistant helps explain terminology and financial information, but its answers remain informational and are subject to the same data and model limitations as the main analysis.
 
 \subsubsection{Experimentation and Backtesting Flow}
 

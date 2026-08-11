@@ -30,7 +30,7 @@ Table~\ref{tab:backend-api-tests} groups all 62 registered FastAPI endpoint oper
     API-04 & Company and analysis data & \texttt{GET /api/company/\{symbol\}/profile}, \texttt{/leaders}; \texttt{GET /api/fundamental-analysis/\{symbol\}/cash-flows}, \texttt{/financial-indicators}, \texttt{/income-statements}, \texttt{/summary}; and \texttt{GET /api/technical-indicators/\{symbol\}}. Company, financial, and technical records were loaded and formatted correctly. & Pass \\
     API-05 & Articles & \texttt{GET /api/articles}, \texttt{/macro}, \texttt{/business}, \texttt{/today-highlight}, \texttt{/detail/\{article\_id\}}, \texttt{/stock/\{stock\_symbol\}}, and \texttt{/category/\{category\_id\}}. General, categorized, highlighted, stock-linked, and detail responses were returned correctly. & Pass \\
     API-06 & Personalization & \texttt{GET/POST/DELETE /api/favorite}, \texttt{POST /api/favorite/check}, \texttt{GET/POST /api/search-history}, and \texttt{GET/POST /api/risk-appetite/}. Watchlist, favorite checking, recent search history, and investment-horizon persistence operated for the authenticated user. & Pass \\
-    API-07 & Analysis and chat & \texttt{POST /api/agentic/analyze}, \texttt{/chat}, and \texttt{/chat/seed}; \texttt{GET /api/agentic/chat/sessions} and \texttt{/chat/history/\{session\_id\}}; and \texttt{DELETE /api/agentic/chat/session/\{session\_id\}}. Structured analysis, contextual chat, session seeding, history, ownership checks, and deletion behaved correctly. & Pass \\
+    API-07 & Analysis and chat & \texttt{POST /api/agentic/analyze} and \texttt{/chat}; \texttt{GET /api/agentic/chat/sessions} and \texttt{/chat/history/\{session\_id\}}; and \texttt{DELETE /api/agentic/chat/session/\{session\_id\}}. Structured analysis, contextual chat, history, ownership checks, and deletion behaved correctly. & Pass \\
     API-08 & Experimentation and backtest & \texttt{POST /api/agentic/admin-analyze} and \texttt{/backtest}; \texttt{GET /api/agentic/admin-universe/\{name\}}, \texttt{/backtests}, \texttt{/backtests/local/\{filename\}}, and \texttt{/backtests/files/\{filename\}}. Administrator authorization, universe lookup, controlled analysis, backtest execution, artifact listing, and protected local or cloud retrieval operated correctly. & Pass \\
     \midrule
     \multicolumn{3}{r}{\textbf{Backend API groups}} & \textbf{8/8} \\
@@ -149,13 +149,13 @@ The mobile walkthrough covers the principal Android routes and the shared client
     M-07 & Charts and financial evidence & Price charts, candle intervals, volume, supported technical indicators, company information, financial statements, financial indicators, and related content are displayed for the active symbol. & Pass \\
     M-08 & Financial news & General, categorized, and stock-associated news lists open the shared article-detail screen and preserve links back to related market or stock contexts. & Pass \\
     M-09 & Configurable AI analysis & Automatic and manual configurations can be submitted; invalid manual selections are blocked; and the result screen presents Buy/Wait, confidence, component scores, explanations, and applicable trading-plan values. & Pass \\
-    M-10 & Conversational assistant & Users can create, reopen, continue, and delete chat sessions; follow-up questions reuse session context, and an analysis result can seed a related conversation. & Pass \\
+    M-10 & Conversational assistant & Users can create, reopen, continue, and delete chat sessions, with multi-turn questions retaining the context of the selected conversation. & Pass \\
     \midrule
     \multicolumn{3}{r}{\textbf{Mobile manual total}} & \textbf{10/10} \\
 \end{longtable}
 }
 
-All ten workflow groups passed in the manual walkthrough. The result indicates that the principal implemented mobile paths were usable from entry through analysis and follow-up. It does not represent an automated regression suite or a device-fragmentation matrix; future releases should preserve device model, Android version, build identifier, execution date, and screenshots or video for each manual run.
+All ten workflow groups passed in the manual walkthrough. The result indicates that the principal implemented mobile paths were usable from entry through analysis and conversational interaction. It does not represent an automated regression suite or a device-fragmentation matrix; future releases should preserve device model, Android version, build identifier, execution date, and screenshots or video for each manual run.
 
 \subsection{Experimentation Web Manual Testing}
 \label{subsec:experimentation-web-manual-testing}
