@@ -4,7 +4,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .engine import DEFAULT_TRANSACTION_COST_PCT, TradeSimulator
 from .stats import confidence_tier
 
 
@@ -12,8 +11,6 @@ def run_benchmarks(
     df: pd.DataFrame,
     pipeline_trades: list[dict[str, Any]],
     engine_trades: list[dict[str, Any]],
-    n_random: int = 1000,
-    transaction_cost_pct: float = DEFAULT_TRANSACTION_COST_PCT,
 ) -> dict[str, Any]:
     pipeline_entries = {t["entry_date"] for t in pipeline_trades}
     engine_entries = {t["entry_date"] for t in engine_trades}
@@ -27,24 +24,6 @@ def run_benchmarks(
 
     buy_hold_return = float(df.iloc[-1]["close"] / df.iloc[0]["open"] - 1)
 
-    random_returns: list[float] = []
-    if n_random > 0 and len(df) > 1:
-        indices = np.arange(len(df) - 1)
-        trade_count = max(len(pipeline_trades), 1)
-        simulator = TradeSimulator(max_hold_candles=20, transaction_cost_pct=transaction_cost_pct)
-        for _ in range(n_random):
-            sampled = np.random.choice(indices, size=trade_count, replace=False if trade_count <= len(indices) else True)
-            random_df = df.copy()
-            random_df["signal"] = None
-            for idx in sampled:
-                random_df.at[random_df.index[idx], "signal"] = "BUY"
-            random_trades = simulator.run(random_df)
-            total_return = float(np.prod([1 + t["return_pct"] for t in random_trades]) - 1) if random_trades else 0.0
-            random_returns.append(total_return)
-
-    percentile_rank = float(np.mean([ret <= pipeline_return for ret in random_returns])) if random_returns else 0.0
-    random_p_value = 1 - percentile_rank if random_returns else 1.0
-
     return {
         "llm_vs_engine": {
             "agreement_rate": agreement_rate,
@@ -55,10 +34,6 @@ def run_benchmarks(
             "pipeline_return": pipeline_return,
             "buy_hold_return": buy_hold_return,
             "delta": pipeline_return - buy_hold_return,
-        },
-        "llm_vs_random": {
-            "percentile_rank": percentile_rank,
-            "p_value": random_p_value,
         },
     }
 

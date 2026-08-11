@@ -27,9 +27,7 @@
         "delta_vs_buy_hold": -0.17983024267982306,
         "impact_on_returns": 0.08915177493680282,
         "agreement_rate": 0.4,
-        "cases_llm_filtered_out": 12,
-        "random_percentile_rank": 0.136,
-        "random_p_value": 0.864
+        "cases_llm_filtered_out": 12
       },
       "statistical_tests": {
         "ttest": {
@@ -121,9 +119,7 @@
         "delta_vs_buy_hold": -0.16832685962462246,
         "impact_on_returns": 0.012195301972246386,
         "agreement_rate": 0.4,
-        "cases_llm_filtered_out": 12,
-        "random_percentile_rank": 0.194,
-        "random_p_value": 0.806
+        "cases_llm_filtered_out": 12
       },
       "statistical_tests": {
         "ttest": {
@@ -215,9 +211,7 @@
         "delta_vs_buy_hold": -0.38386844038463774,
         "impact_on_returns": -0.06559776132528206,
         "agreement_rate": 0.3333333333333333,
-        "cases_llm_filtered_out": 14,
-        "random_percentile_rank": 0.91,
-        "random_p_value": 0.08999999999999997
+        "cases_llm_filtered_out": 14
       },
       "statistical_tests": {
         "ttest": {
@@ -309,9 +303,7 @@
         "delta_vs_buy_hold": -0.16372681022097502,
         "impact_on_returns": 0.04323554622451975,
         "agreement_rate": 0.4,
-        "cases_llm_filtered_out": 12,
-        "random_percentile_rank": 0.685,
-        "random_p_value": 0.31499999999999995
+        "cases_llm_filtered_out": 12
       },
       "statistical_tests": {
         "ttest": {
@@ -403,9 +395,7 @@
         "delta_vs_buy_hold": -0.24518250312316225,
         "impact_on_returns": 0.01980835719466012,
         "agreement_rate": 0.2857142857142857,
-        "cases_llm_filtered_out": 15,
-        "random_percentile_rank": 0.552,
-        "random_p_value": 0.44799999999999995
+        "cases_llm_filtered_out": 15
       },
       "statistical_tests": {
         "ttest": {
@@ -497,9 +487,7 @@
         "delta_vs_buy_hold": -0.24256547213637036,
         "impact_on_returns": -0.09994607322223703,
         "agreement_rate": 0.15789473684210525,
-        "cases_llm_filtered_out": 16,
-        "random_percentile_rank": 0.417,
-        "random_p_value": 0.583
+        "cases_llm_filtered_out": 16
       },
       "statistical_tests": {
         "ttest": {
@@ -591,9 +579,7 @@
         "delta_vs_buy_hold": -1.111397815453922,
         "impact_on_returns": -0.4341038819825571,
         "agreement_rate": 0.3,
-        "cases_llm_filtered_out": 14,
-        "random_percentile_rank": 0.839,
-        "random_p_value": 0.16100000000000003
+        "cases_llm_filtered_out": 14
       },
       "statistical_tests": {
         "ttest": {
@@ -685,9 +671,7 @@
         "delta_vs_buy_hold": -0.21293932858811604,
         "impact_on_returns": -0.13539500676151106,
         "agreement_rate": 0.3684210526315789,
-        "cases_llm_filtered_out": 12,
-        "random_percentile_rank": 0.601,
-        "random_p_value": 0.399
+        "cases_llm_filtered_out": 12
       },
       "statistical_tests": {
         "ttest": {
@@ -779,9 +763,7 @@
         "delta_vs_buy_hold": -0.1600928640486241,
         "impact_on_returns": -0.08370367282339775,
         "agreement_rate": 0.2,
-        "cases_llm_filtered_out": 16,
-        "random_percentile_rank": 0.455,
-        "random_p_value": 0.5449999999999999
+        "cases_llm_filtered_out": 16
       },
       "statistical_tests": {
         "ttest": {
@@ -873,9 +855,7 @@
         "delta_vs_buy_hold": -0.16732265171195837,
         "impact_on_returns": 0.30045354245292977,
         "agreement_rate": 0.14285714285714285,
-        "cases_llm_filtered_out": 18,
-        "random_percentile_rank": 0.993,
-        "random_p_value": 0.007000000000000006
+        "cases_llm_filtered_out": 18
       },
       "statistical_tests": {
         "ttest": {
@@ -967,9 +947,7 @@
         "delta_vs_buy_hold": 0.19544559154316676,
         "impact_on_returns": 0.0004151001486765171,
         "agreement_rate": 0.2222222222222222,
-        "cases_llm_filtered_out": 14,
-        "random_percentile_rank": 0.957,
-        "random_p_value": 0.04300000000000004
+        "cases_llm_filtered_out": 14
       },
       "statistical_tests": {
         "ttest": {
@@ -1061,9 +1039,7 @@
         "delta_vs_buy_hold": -0.4125064020262723,
         "impact_on_returns": -0.016286166674581937,
         "agreement_rate": 0.2857142857142857,
-        "cases_llm_filtered_out": 15,
-        "random_percentile_rank": 0.837,
-        "random_p_value": 0.16300000000000003
+        "cases_llm_filtered_out": 15
       },
       "statistical_tests": {
         "ttest": {
@@ -1155,9 +1131,7 @@
         "delta_vs_buy_hold": -0.03758151131790155,
         "impact_on_returns": 0.10615451213418214,
         "agreement_rate": 0.4444444444444444,
-        "cases_llm_filtered_out": 10,
-        "random_percentile_rank": 0.18,
-        "random_p_value": 0.8200000000000001
+        "cases_llm_filtered_out": 10
       },
       "statistical_tests": {
         "ttest": {
@@ -1249,9 +1223,7 @@
         "delta_vs_buy_hold": 0.19745613425468012,
         "impact_on_returns": 0.6172637472505511,
         "agreement_rate": 0.47619047619047616,
-        "cases_llm_filtered_out": 11,
-        "random_percentile_rank": 0.939,
-        "random_p_value": 0.061000000000000054
+        "cases_llm_filtered_out": 11
       },
       "statistical_tests": {
         "ttest": {
@@ -1343,9 +1315,7 @@
         "delta_vs_buy_hold": -0.4756997466690962,
         "impact_on_returns": 0.13433498655048393,
         "agreement_rate": 0.3333333333333333,
-        "cases_llm_filtered_out": 14,
-        "random_percentile_rank": 0.701,
-        "random_p_value": 0.29900000000000004
+        "cases_llm_filtered_out": 14
       },
       "statistical_tests": {
         "ttest": {
@@ -1437,9 +1407,7 @@
         "delta_vs_buy_hold": -0.5934724263352926,
         "impact_on_returns": 0.2128058719651924,
         "agreement_rate": 0.36363636363636365,
-        "cases_llm_filtered_out": 14,
-        "random_percentile_rank": 0.911,
-        "random_p_value": 0.08899999999999997
+        "cases_llm_filtered_out": 14
       },
       "statistical_tests": {
         "ttest": {
@@ -1531,9 +1499,7 @@
         "delta_vs_buy_hold": 0.10167697910920515,
         "impact_on_returns": 0.4256418551247414,
         "agreement_rate": 0.4,
-        "cases_llm_filtered_out": 12,
-        "random_percentile_rank": 0.918,
-        "random_p_value": 0.08199999999999996
+        "cases_llm_filtered_out": 12
       },
       "statistical_tests": {
         "ttest": {
@@ -1625,9 +1591,7 @@
         "delta_vs_buy_hold": -0.13605034977391817,
         "impact_on_returns": 0.19772191312799337,
         "agreement_rate": 0.35,
-        "cases_llm_filtered_out": 13,
-        "random_percentile_rank": 0.493,
-        "random_p_value": 0.507
+        "cases_llm_filtered_out": 13
       },
       "statistical_tests": {
         "ttest": {
@@ -1719,9 +1683,7 @@
         "delta_vs_buy_hold": -0.3013428808773284,
         "impact_on_returns": 0.349700429844537,
         "agreement_rate": 0.2777777777777778,
-        "cases_llm_filtered_out": 13,
-        "random_percentile_rank": 0.826,
-        "random_p_value": 0.17400000000000004
+        "cases_llm_filtered_out": 13
       },
       "statistical_tests": {
         "ttest": {
@@ -1813,9 +1775,7 @@
         "delta_vs_buy_hold": -1.101248079384328,
         "impact_on_returns": -0.2925382855709451,
         "agreement_rate": 0.4444444444444444,
-        "cases_llm_filtered_out": 10,
-        "random_percentile_rank": 0.773,
-        "random_p_value": 0.22699999999999998
+        "cases_llm_filtered_out": 10
       },
       "statistical_tests": {
         "ttest": {
@@ -1907,9 +1867,7 @@
         "delta_vs_buy_hold": -4.12665864234086,
         "impact_on_returns": -1.5070976932576774,
         "agreement_rate": 0.05263157894736842,
-        "cases_llm_filtered_out": 18,
-        "random_percentile_rank": 0.912,
-        "random_p_value": 0.08799999999999997
+        "cases_llm_filtered_out": 18
       },
       "statistical_tests": {
         "ttest": {
@@ -2001,9 +1959,7 @@
         "delta_vs_buy_hold": -0.15962343451170502,
         "impact_on_returns": -0.030132219085258205,
         "agreement_rate": 0.42105263157894735,
-        "cases_llm_filtered_out": 11,
-        "random_percentile_rank": 0.051,
-        "random_p_value": 0.949
+        "cases_llm_filtered_out": 11
       },
       "statistical_tests": {
         "ttest": {
@@ -2095,9 +2051,7 @@
         "delta_vs_buy_hold": -0.5838657371637632,
         "impact_on_returns": -0.38019495586243357,
         "agreement_rate": 0.2,
-        "cases_llm_filtered_out": 16,
-        "random_percentile_rank": 0.349,
-        "random_p_value": 0.651
+        "cases_llm_filtered_out": 16
       },
       "statistical_tests": {
         "ttest": {
@@ -2189,9 +2143,7 @@
         "delta_vs_buy_hold": -0.3255823756448337,
         "impact_on_returns": 0.22155156421336109,
         "agreement_rate": 0.45,
-        "cases_llm_filtered_out": 11,
-        "random_percentile_rank": 0.559,
-        "random_p_value": 0.44099999999999995
+        "cases_llm_filtered_out": 11
       },
       "statistical_tests": {
         "ttest": {
@@ -2283,9 +2235,7 @@
         "delta_vs_buy_hold": -0.16146439377710609,
         "impact_on_returns": 0.2152715761207339,
         "agreement_rate": 0.19047619047619047,
-        "cases_llm_filtered_out": 17,
-        "random_percentile_rank": 0.624,
-        "random_p_value": 0.376
+        "cases_llm_filtered_out": 17
       },
       "statistical_tests": {
         "ttest": {
@@ -2377,9 +2327,7 @@
         "delta_vs_buy_hold": -0.21427542919107934,
         "impact_on_returns": -0.2121724031169785,
         "agreement_rate": 0.0,
-        "cases_llm_filtered_out": 4,
-        "random_percentile_rank": 0.081,
-        "random_p_value": 0.919
+        "cases_llm_filtered_out": 4
       },
       "statistical_tests": {
         "ttest": {
@@ -2471,9 +2419,7 @@
         "delta_vs_buy_hold": -0.1670311680304486,
         "impact_on_returns": -0.16315099527066534,
         "agreement_rate": 0.4,
-        "cases_llm_filtered_out": 12,
-        "random_percentile_rank": 0.625,
-        "random_p_value": 0.375
+        "cases_llm_filtered_out": 12
       },
       "statistical_tests": {
         "ttest": {
@@ -2565,9 +2511,7 @@
         "delta_vs_buy_hold": -0.6518647271338427,
         "impact_on_returns": 0.13293533708525151,
         "agreement_rate": 0.55,
-        "cases_llm_filtered_out": 9,
-        "random_percentile_rank": 0.812,
-        "random_p_value": 0.18799999999999994
+        "cases_llm_filtered_out": 9
       },
       "statistical_tests": {
         "ttest": {
@@ -2659,9 +2603,7 @@
         "delta_vs_buy_hold": -0.11547600425719651,
         "impact_on_returns": -0.004307465956237544,
         "agreement_rate": 0.2777777777777778,
-        "cases_llm_filtered_out": 13,
-        "random_percentile_rank": 0.106,
-        "random_p_value": 0.894
+        "cases_llm_filtered_out": 13
       },
       "statistical_tests": {
         "ttest": {
@@ -2753,9 +2695,7 @@
         "delta_vs_buy_hold": -0.39520713470892566,
         "impact_on_returns": -0.08413574596558226,
         "agreement_rate": 0.3684210526315789,
-        "cases_llm_filtered_out": 12,
-        "random_percentile_rank": 0.584,
-        "random_p_value": 0.41600000000000004
+        "cases_llm_filtered_out": 12
       },
       "statistical_tests": {
         "ttest": {

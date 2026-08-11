@@ -78,7 +78,6 @@ def build_symbol_stats(
     # 2. Benchmark
     vs_bh = benchmarks.get("llm_vs_buy_hold", {})
     vs_engine = benchmarks.get("llm_vs_engine", {})
-    vs_random = benchmarks.get("llm_vs_random", {})
     benchmark = {
         "pipeline_return": _f(vs_bh.get("pipeline_return")),
         "buy_hold_return": _f(vs_bh.get("buy_hold_return")),
@@ -86,8 +85,6 @@ def build_symbol_stats(
         "impact_on_returns": _f(vs_engine.get("impact_on_returns")),
         "agreement_rate": _f(vs_engine.get("agreement_rate")),
         "cases_llm_filtered_out": int(vs_engine.get("cases_llm_filtered_out", 0)),
-        "random_percentile_rank": _f(vs_random.get("percentile_rank")),
-        "random_p_value": _f(vs_random.get("p_value"), default=1.0),
     }
 
     # 3. Kiểm định thống kê

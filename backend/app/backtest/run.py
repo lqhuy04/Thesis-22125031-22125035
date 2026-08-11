@@ -106,7 +106,7 @@ def run_full_backtest(
     full_metrics = metrics_calc.calculate(full_trades)
     engine_metrics = metrics_calc.calculate(engine_trades)
 
-    benchmark_results = run_benchmarks(scored_1d, full_trades, engine_trades, transaction_cost_pct=transaction_cost_pct)
+    benchmark_results = run_benchmarks(scored_1d, full_trades, engine_trades)
     regime_results = regime_analysis(scored_1d, market_df, pipeline_results, full_trades)
     confidence_results = confidence_calibration(pipeline_results, full_trades)
 
@@ -147,8 +147,6 @@ def run_full_backtest(
     print(f"Total Return:          {_pct(full_metrics['pnl']['total_return'])}")
     print(f"Sharpe Ratio:          {full_metrics['risk']['sharpe_ratio']:.2f}")
     print(f"Max Drawdown:         {_pct(full_metrics['risk']['max_drawdown'])}")
-    print(f"vs Random:             top {_pct(benchmark_results['llm_vs_random']['percentile_rank'])} (p={benchmark_results['llm_vs_random']['p_value']:.2f})")
-
     print("\n[ABLATION — Technical Only, khong LLM]")
     print(f"Trades executed:       {engine_metrics['volume']['n_trades']}")
     print(f"Win Rate:              {_pct(engine_metrics['volume']['win_rate'])}")
