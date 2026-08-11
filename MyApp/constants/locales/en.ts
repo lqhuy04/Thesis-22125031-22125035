@@ -154,10 +154,6 @@ export default {
     selectAtLeastOne: "Please select at least one data source",
     selectAtLeastOneTechnicalIndicator:
       "Please select at least one technical indicator",
-    askMore: "Ask more about this analysis",
-    chatQuestion:
-      "Summarize the situation and suggest an investment timing for {symbol} based on the investor's risk appetite.",
-    seedError: "Couldn't open the conversation. Please try again.",
   },
   priceChart: {
     chart: "Chart:",
