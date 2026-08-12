@@ -1,17 +1,17 @@
 <mxfile host="app.diagrams.net" agent="Codex">
   <diagram id="stockrium-full-pipeline-backtest" name="Full-Pipeline Backtesting Flow">
-    <mxGraphModel dx="2333" dy="1420" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="780" math="0" shadow="0">
+    <mxGraphModel dx="1486" dy="976" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="780" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="fp-stock" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Historical stock&lt;br&gt;OHLCV data" vertex="1">
-          <mxGeometry height="90" width="210" x="860" y="590" as="geometry" />
+          <mxGeometry height="90" width="210" x="870" y="560" as="geometry" />
         </mxCell>
         <mxCell id="fp-indicators" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Indicators and&lt;br&gt;rule-based 0/1 scores" vertex="1">
-          <mxGeometry height="90" width="240" x="1110" y="590" as="geometry" />
+          <mxGeometry height="90" width="240" x="1120" y="560" as="geometry" />
         </mxCell>
         <mxCell id="fp-gate" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Medium-term technical prefilter&lt;br&gt;normalized score ≥ 0.5&lt;br&gt;(disabled when manual weight &lt; 0.15)" vertex="1">
-          <mxGeometry height="110" width="260" x="1390" y="580" as="geometry" />
+          <mxGeometry height="170" width="310" x="1400" y="520" as="geometry" />
         </mxCell>
         <mxCell id="fp-evidence" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Date-bounded fundamental&lt;br&gt;and news data" vertex="1">
           <mxGeometry height="80" width="260" x="860" y="20" as="geometry" />
