@@ -10,16 +10,16 @@
         <mxCell id="fp-indicators" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Indicators and&lt;br&gt;rule-based 0/1 scores" vertex="1">
           <mxGeometry height="90" width="240" x="1110" y="590" as="geometry" />
         </mxCell>
-        <mxCell id="fp-gate" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Combined/selected technical gate&lt;br&gt;normalized score ≥ 0.6" vertex="1">
+        <mxCell id="fp-gate" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Medium-term technical prefilter&lt;br&gt;normalized score ≥ 0.5&lt;br&gt;(disabled when manual weight &lt; 0.15)" vertex="1">
           <mxGeometry height="110" width="260" x="1390" y="580" as="geometry" />
         </mxCell>
         <mxCell id="fp-evidence" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Date-bounded fundamental&lt;br&gt;and news data" vertex="1">
           <mxGeometry height="80" width="260" x="860" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="fp-specialists" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Enabled specialist agents&lt;br&gt;technical, fundamental,&lt;br&gt;and news" vertex="1">
+        <mxCell id="fp-specialists" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=18;fontStyle=1;spacing=8;" value="Enabled specialist agents&lt;br&gt;technical, fundamental,&lt;br&gt;and news scores/analyses" vertex="1">
           <mxGeometry height="110" width="260" x="860" y="160" as="geometry" />
         </mxCell>
-        <mxCell id="fp-recommendation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Deterministic Buy/Wait&lt;br&gt;recommendation" vertex="1">
+        <mxCell id="fp-recommendation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=19;fontStyle=1;spacing=8;" value="Deterministic Buy/Wait&lt;br&gt;total ≥ 0.60 and period gate" vertex="1">
           <mxGeometry height="110" width="240" x="1160" y="160" as="geometry" />
         </mxCell>
         <mxCell id="fp-aggregator" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=22;fontStyle=1;spacing=8;" value="Structured aggregator&lt;br&gt;explanation and confidence" vertex="1">

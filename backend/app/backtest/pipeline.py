@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -18,7 +19,8 @@ from agentic_ai_v2.analyze.agents.fundamental_analysis import (
     fundamental_analysis_agent,
 )
 from agentic_ai_v2.analyze.agents.recommendation import (
-    TECHNICAL_SCORE_THRESHOLD,
+    MANUAL_TECHNICAL_GATE_MIN_WEIGHT,
+    TECHNICAL_SCORE_THRESHOLD_BY_PERIOD,
     recommendation_agent,
 )
 from agentic_ai_v2.analyze.agents.technical import technical_agent
@@ -33,7 +35,8 @@ from agentic_ai_v2.analyze.technical_scoring import (
 
 AgentCallable = Callable[[AgentState], dict]
 TECHNICAL_SIGNAL_SCORE = (
-    TECHNICAL_SCORE_THRESHOLD * len(SCORE_COLUMN_BY_INDICATOR)
+    TECHNICAL_SCORE_THRESHOLD_BY_PERIOD["mid_term"]
+    * len(SCORE_COLUMN_BY_INDICATOR)
 )
 
 
@@ -359,7 +362,7 @@ class BacktestPipeline:
         # the next-open entry used by SignalGenerator and TradeSimulator.
         executable_frame = selected_frame.iloc[:-1]
         total_score = executable_frame["total_score"]
-        mask = total_score >= TECHNICAL_SIGNAL_SCORE
+        mask = total_score >= self.technical_signal_score()
         dates = (
             executable_frame.loc[mask, "datetime"]
             if "datetime" in executable_frame.columns
@@ -370,15 +373,41 @@ class BacktestPipeline:
             for date in dates
         ]
 
+    def technical_signal_score(self) -> float:
+        """Return the legacy-scale prefilter for this configuration."""
+        if self.mode != "manual":
+            return TECHNICAL_SIGNAL_SCORE
+
+        payload_weights = self.data_selection.get("weight")
+        if not isinstance(payload_weights, dict):
+            return TECHNICAL_SIGNAL_SCORE
+        try:
+            weights = [
+                float(payload_weights[name])
+                for name in ("news", "technical", "fundamental")
+            ]
+        except (KeyError, TypeError, ValueError):
+            return TECHNICAL_SIGNAL_SCORE
+        if (
+            all(
+                math.isfinite(weight) and 0 <= weight <= 1
+                for weight in weights
+            )
+            and math.isclose(sum(weights), 1.0, abs_tol=1e-6)
+            and weights[1] < MANUAL_TECHNICAL_GATE_MIN_WEIGHT
+        ):
+            return 0.0
+        return TECHNICAL_SIGNAL_SCORE
+
     def apply_technical_selection(
         self,
         df: pd.DataFrame,
     ) -> pd.DataFrame:
         """Normalize selected indicator scores back onto the legacy 0–5 scale.
 
-        The fixed production threshold remains 60% even when manual mode enables
-        fewer than five indicators, matching the normalized score used by
-        technical_analysis_agent and recommendation_agent.
+        The mid-term production threshold remains 50% even when manual mode
+        enables fewer than five indicators. When manual technical weight is
+        below 15%, the technical prefilter is disabled with a zero threshold.
         """
         selected = self.selected_indicators()
 

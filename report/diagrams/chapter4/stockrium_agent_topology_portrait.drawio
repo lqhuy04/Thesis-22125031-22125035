@@ -16,7 +16,7 @@
         <mxCell id="fundamental-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontSize=26;spacing=8;" value="&lt;b&gt;Fundamental data&lt;/b&gt;&lt;br&gt;Prepare five-year and ICB evidence" vertex="1">
           <mxGeometry height="100" width="340" x="430" y="360" as="geometry" />
         </mxCell>
-        <mxCell id="technical-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontSize=26;spacing=8;" value="&lt;b&gt;Technical data&lt;/b&gt;&lt;br&gt;Calculate indicators and signals" vertex="1">
+        <mxCell id="technical-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;fontSize=26;spacing=8;" value="&lt;b&gt;Technical data&lt;/b&gt;&lt;br&gt;Indicators, reference signals, and trend context" vertex="1">
           <mxGeometry height="100" width="340" x="835" y="360" as="geometry" />
         </mxCell>
         <mxCell id="article-analysis" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;fontSize=26;spacing=8;" value="&lt;b&gt;Article analysis&lt;/b&gt;&lt;br&gt;DeepSeek score and explanation" vertex="1">
@@ -25,7 +25,7 @@
         <mxCell id="fundamental-analysis" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;fontSize=26;spacing=8;" value="&lt;b&gt;Fundamental analysis&lt;/b&gt;&lt;br&gt;DeepSeek score and explanation" vertex="1">
           <mxGeometry height="100" width="340" x="430" y="520" as="geometry" />
         </mxCell>
-        <mxCell id="technical-analysis" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;fontSize=26;spacing=8;" value="&lt;b&gt;Technical analysis&lt;/b&gt;&lt;br&gt;Python score; DeepSeek explanation" vertex="1">
+        <mxCell id="technical-analysis" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;fontSize=26;spacing=8;" value="&lt;b&gt;Technical analysis&lt;/b&gt;&lt;br&gt;DeepSeek score and explanation" vertex="1">
           <mxGeometry height="100" width="340" x="835" y="520" as="geometry" />
         </mxCell>
         <mxCell id="recommendation" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;fontSize=26;fontStyle=1;spacing=10;" value="Recommendation node&lt;br&gt;&lt;span style=&quot;font-weight: normal;&quot;&gt;Weighted score, deterministic Buy/Wait, and validated plan&lt;/span&gt;" vertex="1">

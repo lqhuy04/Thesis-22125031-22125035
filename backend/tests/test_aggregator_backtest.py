@@ -425,7 +425,7 @@ class V2BacktestPipelineTests(unittest.TestCase):
             ["2023-05-04"],
         )
 
-    def test_all_five_indicators_use_fixed_sixty_percent_threshold(self):
+    def test_all_five_indicators_use_mid_term_fifty_percent_threshold(self):
         frame = pd.DataFrame(
             {
                 "datetime": pd.to_datetime(
@@ -451,11 +451,40 @@ class V2BacktestPipelineTests(unittest.TestCase):
             ["2023-05-04", "2023-05-05"],
         )
 
-        signaled = SignalGenerator().generate_signals(frame, min_score=3.0)
+        signaled = SignalGenerator().generate_signals(frame, min_score=2.5)
         self.assertTrue(pd.isna(signaled.iloc[0]["signal"]))
         self.assertEqual(signaled.iloc[1]["signal"], "BUY")
         self.assertEqual(signaled.iloc[2]["signal"], "BUY")
         self.assertTrue(pd.isna(signaled.iloc[3]["signal"]))
+
+    def test_manual_low_technical_weight_disables_technical_prefilter(self):
+        pipeline = BacktestPipeline(
+            symbol="ACB",
+            trade_config={"max_hold_candles": 20},
+            mode="manual",
+            data_selection={
+                "technical": {"rsi": True},
+                "weight": {
+                    "news": 0.10,
+                    "technical": 0.14,
+                    "fundamental": 0.76,
+                },
+            },
+        )
+        frame = pd.DataFrame(
+            {
+                "datetime": pd.to_datetime(
+                    ["2023-05-03", "2023-05-04", "2023-05-05"]
+                ),
+                "rsi_score": [0, 0, 0],
+            }
+        )
+
+        self.assertEqual(pipeline.technical_signal_score(), 0.0)
+        self.assertEqual(
+            pipeline.filter_signal_dates(frame),
+            ["2023-05-03", "2023-05-04"],
+        )
 
 
 if __name__ == "__main__":

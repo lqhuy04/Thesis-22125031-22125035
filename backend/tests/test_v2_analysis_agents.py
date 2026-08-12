@@ -126,7 +126,7 @@ class V2AnalysisAgentTests(unittest.TestCase):
         "agentic_ai_v2.analyze.agents.technical_analysis."
         "_call_technical_analysis_llm"
     )
-    def test_technical_analysis_uses_deterministic_ratio_for_score(
+    def test_technical_analysis_uses_llm_score(
         self,
         call_llm,
     ):
@@ -140,6 +140,7 @@ class V2AnalysisAgentTests(unittest.TestCase):
             "indicators": {"rsi": {"score": 1}},
         }
         call_llm.return_value = TechnicalAnalysisOutput(
+            score=0.73,
             analysis="Ba trên năm tín hiệu đang tích cực."
         )
 
@@ -150,7 +151,7 @@ class V2AnalysisAgentTests(unittest.TestCase):
         self.assertEqual(
             result,
             {
-                "score": 0.6,
+                "score": 0.73,
                 "analysis": "Ba trên năm tín hiệu đang tích cực.",
             },
         )
@@ -169,6 +170,7 @@ class V2AnalysisAgentTests(unittest.TestCase):
             "max_score": 2,
         }
         call_llm.return_value = TechnicalAnalysisOutput(
+            score=0.51,
             analysis="The technical signals are mixed."
         )
 
@@ -186,6 +188,31 @@ class V2AnalysisAgentTests(unittest.TestCase):
             "The technical signals are mixed.",
         )
         call_llm.assert_called_once_with(technical_data, "en")
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.technical_analysis."
+        "_call_technical_analysis_llm"
+    )
+    def test_technical_analysis_falls_back_to_rule_score_when_llm_fails(
+        self,
+        call_llm,
+    ):
+        call_llm.side_effect = RuntimeError("LLM unavailable")
+        technical_data = {
+            "total_score": 3,
+            "max_score": 5,
+            "indicators": {"rsi": {"score": 1}},
+        }
+
+        result = technical_analysis_agent(
+            {"agent_results": {"technical_agent": technical_data}}
+        )["agent_results"]["technical_analysis_agent"]
+
+        self.assertEqual(result["score"], 0.6)
+        self.assertEqual(
+            result["analysis"],
+            "Không thể tóm tắt dữ liệu phân tích kỹ thuật.",
+        )
 
     def test_no_data_fallbacks_follow_english_language(self):
         state = {
@@ -317,15 +344,15 @@ class V2RecommendationAgentTests(unittest.TestCase):
             "risk_appetite": {"period": "mid_term"},
             "agent_results": {
                 "article_analysis_agent": {
-                    "score": 0.75,
+                    "score": 0.5,
                     "analysis": "Tin tức khá tích cực.",
                 },
                 "fundamental_analysis_agent": {
-                    "score": 0.4,
+                    "score": 0.75,
                     "analysis": "Cơ bản còn thận trọng.",
                 },
                 "technical_analysis_agent": {
-                    "score": 0.6,
+                    "score": 0.5,
                     "analysis": "Kỹ thuật vừa đạt ngưỡng.",
                 },
                 "technical_agent": {
@@ -341,7 +368,7 @@ class V2RecommendationAgentTests(unittest.TestCase):
         self.assertEqual(
             result,
             {
-                "score": 0.55,
+                "score": 0.6,
                 "buy": True,
                 "recommendation": "Mua",
                 "entry_price": 100.0,
@@ -488,7 +515,7 @@ class V2RecommendationAgentTests(unittest.TestCase):
             "agent_results": {
                 "article_analysis_agent": {"score": 1.0},
                 "fundamental_analysis_agent": {"score": 1.0},
-                "technical_analysis_agent": {"score": 0.59},
+                "technical_analysis_agent": {"score": 0.39},
                 "technical_agent": {
                     "current_price": {"value": 100.0},
                 },
@@ -499,10 +526,36 @@ class V2RecommendationAgentTests(unittest.TestCase):
             "recommendation_agent"
         ]
 
-        self.assertEqual(result["score"], 0.9385)
+        self.assertEqual(result["score"], 0.9085)
         self.assertFalse(result["buy"])
         self.assertEqual(result["recommendation"], "Chờ")
         self.assertEqual(result["entry_price"], 0.0)
+        call_llm.assert_not_called()
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.recommendation."
+        "_call_trading_plan_llm"
+    )
+    def test_short_term_keeps_point_60_technical_gate(
+        self,
+        call_llm,
+    ):
+        state = {
+            "mode": "auto",
+            "risk_appetite": {"period": "short_term"},
+            "agent_results": {
+                "article_analysis_agent": {"score": 1.0},
+                "fundamental_analysis_agent": {"score": 1.0},
+                "technical_analysis_agent": {"score": 0.59},
+            },
+        }
+
+        result = recommendation_agent(state)["agent_results"][
+            "recommendation_agent"
+        ]
+
+        self.assertEqual(result["score"], 0.754)
+        self.assertFalse(result["buy"])
         call_llm.assert_not_called()
 
     @patch(
@@ -542,6 +595,80 @@ class V2RecommendationAgentTests(unittest.TestCase):
         self.assertEqual(result["score"], 0.6)
         self.assertTrue(result["buy"])
         call_llm.assert_called_once()
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.recommendation."
+        "_call_trading_plan_llm"
+    )
+    def test_manual_technical_weight_below_point_15_skips_gate(
+        self,
+        call_llm,
+    ):
+        call_llm.return_value = TradingPlanOutput(
+            take_profit=150.0,
+            stop_loss=82.0,
+            max_hold_candles=52,
+        )
+        state = {
+            "mode": "manual",
+            "risk_appetite": {"period": "long_term"},
+            "data_selection": {
+                "weight": {
+                    "news": 0.10,
+                    "technical": 0.14,
+                    "fundamental": 0.76,
+                }
+            },
+            "agent_results": {
+                "article_analysis_agent": {"score": 0.8},
+                "fundamental_analysis_agent": {"score": 0.8},
+                "technical_analysis_agent": {"score": 0.0},
+                "technical_agent": {
+                    "current_price": {"value": 100.0},
+                },
+            },
+        }
+
+        result = recommendation_agent(state)["agent_results"][
+            "recommendation_agent"
+        ]
+
+        self.assertEqual(result["score"], 0.688)
+        self.assertTrue(result["buy"])
+        call_llm.assert_called_once()
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.recommendation."
+        "_call_trading_plan_llm"
+    )
+    def test_manual_technical_weight_at_point_15_keeps_gate(
+        self,
+        call_llm,
+    ):
+        state = {
+            "mode": "manual",
+            "risk_appetite": {"period": "long_term"},
+            "data_selection": {
+                "weight": {
+                    "news": 0.10,
+                    "technical": 0.15,
+                    "fundamental": 0.75,
+                }
+            },
+            "agent_results": {
+                "article_analysis_agent": {"score": 0.8},
+                "fundamental_analysis_agent": {"score": 0.9},
+                "technical_analysis_agent": {"score": 0.39},
+            },
+        }
+
+        result = recommendation_agent(state)["agent_results"][
+            "recommendation_agent"
+        ]
+
+        self.assertEqual(result["score"], 0.8135)
+        self.assertFalse(result["buy"])
+        call_llm.assert_not_called()
 
     @patch(
         "agentic_ai_v2.analyze.agents.recommendation."

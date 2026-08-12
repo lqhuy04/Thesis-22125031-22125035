@@ -59,11 +59,11 @@ The complete stock-analysis path was checked from request validation to the publ
         \addlinespace
         AN-03 & Conditional routing & Automatic mode executed technical, fundamental, and news branches; manual mode executed only the enabled sources while always retaining at least one technical indicator. & Pass \\
         \addlinespace
-        AN-04 & Specialist branches & Technical indicators and deterministic scores were calculated correctly; fundamental and article evidence was prepared and converted into validated structured analyses. & Pass \\
+        AN-04 & Specialist branches & Technical indicators, reference signals, and multi-candle trend context were calculated correctly; technical, fundamental, and article evidence was converted into validated structured scores and analyses, with deterministic technical fallback on model failure. & Pass \\
         \addlinespace
         AN-05 & Parallel convergence & Enabled branch results were merged in \texttt{agent\_results} and all completed before the recommendation stage ran once. & Pass \\
         \addlinespace
-        AN-06 & Recommendation decision & Horizon or manual weights were applied, the weighted-score and minimum technical-score thresholds produced the expected Buy-or-Wait decision, and disabled or unavailable sources contributed zero. & Pass \\
+        AN-06 & Recommendation decision & Horizon or manual weights were applied; the 0.60 total threshold, horizon-specific technical thresholds, and manual low-technical-weight bypass produced the expected Buy-or-Wait decision; disabled or unavailable sources contributed zero. & Pass \\
         \addlinespace
         AN-07 & Trading plan & A Buy result returned valid entry, take-profit, stop-loss, and maximum-holding values; an invalid generated plan used the correct deterministic horizon fallback, while Wait returned zero-valued plan fields. & Pass \\
         \addlinespace
@@ -92,7 +92,7 @@ The historical evaluation path was tested from the protected request through sig
         \addlinespace
         BT-02 & Historical preparation & Daily candles and benchmark values were loaded, pre-start history was retained, and the 50-candle warm-up was applied before trimming to the evaluation period. & Pass \\
         \addlinespace
-        BT-03 & Indicator and signal scoring & RSI, moving-average, Bollinger Bands, MACD, and KDJ values used the shared production calculations; the normalized 0.6 gate selected the expected candidate dates. & Pass \\
+        BT-03 & Indicator and signal scoring & RSI, moving-average, Bollinger Bands, MACD, and KDJ values used the shared production calculations; the normalized medium-term 0.5 prefilter and manual weight below 0.15 selected the expected candidate dates. & Pass \\
         \addlinespace
         BT-04 & Date-bounded analysis & Candidate dates used only the permitted technical, fundamental, and article evidence, disabled sources were skipped, and enabled branches converged before recommendation. & Pass \\
         \addlinespace

@@ -136,7 +136,7 @@ Stockrium provides a connected set of features for exploring the Vietnamese stoc
     \item The client and backend validate the completed configuration.
     \item The investor submits the analysis request.
     \item The multi-agent workflow prepares and analyzes the enabled technical, fundamental, and news evidence.
-    \item The recommendation stage calculates the weighted total, applies the total-score and minimum technical-score thresholds, and creates a trading plan for an accepted \textit{Buy}.
+    \item The recommendation stage calculates the weighted total, applies the 0.60 total-score threshold and the horizon-specific technical threshold, conditionally bypasses the technical gate when its manual weight is below 0.15, and creates a trading plan for an accepted \textit{Buy}.
     \item The aggregator generates a bounded confidence assessment and summary without changing the established decision or trading plan.
     \item The application presents the action, confidence, component evidence, explanations, and any applicable risk-related values.
 \end{enumerate}
@@ -145,7 +145,7 @@ Stockrium provides a connected set of features for exploring the Vietnamese stoc
 \begin{itemize}[leftmargin=*, nosep]
     \item Invalid manual weights or a configuration with no selected technical indicator are blocked before execution.
     \item Unavailable evidence is marked missing; its component score defaults to zero, and the aggregator may reflect the missing evidence in its confidence assessment.
-    \item A weighted total below the acceptance threshold, or a technical score below the technical minimum, produces \textit{Wait}; confidence does not override this decision.
+    \item A weighted total below 0.60, or a technical score below the applicable horizon minimum when that gate is active, produces \textit{Wait}; confidence does not override this decision.
     \item A provider, validation, or data error produces controlled feedback and does not create a partial recommendation object.
 \end{itemize}
 

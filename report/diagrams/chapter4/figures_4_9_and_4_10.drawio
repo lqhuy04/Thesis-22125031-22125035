@@ -18,7 +18,7 @@
         <mxCell id="f49-fundamental" value="Fundamental agent&lt;br&gt;prepare financial evidence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=16;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="670" y="260" width="250" height="84" as="geometry"/>
         </mxCell>
-        <mxCell id="f49-technical" value="Technical agent&lt;br&gt;calculate and score signals" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=16;spacing=8;" vertex="1" parent="1">
+        <mxCell id="f49-technical" value="Technical agent&lt;br&gt;prepare trends; AI score" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=16;spacing=8;" vertex="1" parent="1">
           <mxGeometry x="670" y="435" width="250" height="84" as="geometry"/>
         </mxCell>
         <mxCell id="f49-aggregator" value="Aggregator&lt;br&gt;structured synthesis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=16;fontStyle=1;spacing=8;" vertex="1" parent="1">
@@ -61,9 +61,9 @@
 
         <!-- Main pipeline -->
         <mxCell id="f410-ohlcv" value="Historical OHLCV&lt;br&gt;and VN-Index data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=16;spacing=8;" vertex="1" parent="1"><mxGeometry x="30" y="130" width="230" height="84" as="geometry"/></mxCell>
-        <mxCell id="f410-indicators" value="Indicators and&lt;br&gt;binary scores" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=16;fontStyle=1;spacing=8;" vertex="1" parent="1"><mxGeometry x="330" y="130" width="230" height="84" as="geometry"/></mxCell>
-        <mxCell id="f410-candidates" value="Threshold-crossing&lt;br&gt;candidate dates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=16;fontStyle=1;spacing=8;" vertex="1" parent="1"><mxGeometry x="630" y="130" width="230" height="84" as="geometry"/></mxCell>
-        <mxCell id="f410-pipeline" value="Specialist analysis&lt;br&gt;and aggregation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=16;fontStyle=1;spacing=8;" vertex="1" parent="1"><mxGeometry x="930" y="130" width="230" height="84" as="geometry"/></mxCell>
+        <mxCell id="f410-indicators" value="Indicators and&lt;br&gt;reference scores" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=16;fontStyle=1;spacing=8;" vertex="1" parent="1"><mxGeometry x="330" y="130" width="230" height="84" as="geometry"/></mxCell>
+        <mxCell id="f410-candidates" value="Mid-term prefilter 0.5&lt;br&gt;manual low-weight bypass" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=16;fontStyle=1;spacing=8;" vertex="1" parent="1"><mxGeometry x="630" y="130" width="230" height="84" as="geometry"/></mxCell>
+        <mxCell id="f410-pipeline" value="AI specialist scores;&lt;br&gt;total 0.60 and period gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=16;fontStyle=1;spacing=8;" vertex="1" parent="1"><mxGeometry x="930" y="130" width="230" height="84" as="geometry"/></mxCell>
         <mxCell id="f410-simulator" value="Next-open entry and&lt;br&gt;event-driven exits" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=16;spacing=8;" vertex="1" parent="1"><mxGeometry x="1230" y="130" width="240" height="84" as="geometry"/></mxCell>
         <mxCell id="f410-metrics" value="Metrics, benchmarks,&lt;br&gt;tests, and artifacts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=16;fontStyle=1;spacing=8;" vertex="1" parent="1"><mxGeometry x="1550" y="130" width="250" height="84" as="geometry"/></mxCell>
 

@@ -244,6 +244,26 @@ class V2TechnicalAnalysisCurrentPriceTests(unittest.TestCase):
                 "source": "Stock_Price_1d",
             },
         )
+        trend = result["trend_context"]
+        self.assertEqual(trend["lookback_candles"], 20)
+        self.assertEqual(trend["observations"], 21)
+        self.assertEqual(
+            trend["price_action"]["returns_pct"]["5_candles"],
+            3.4483,
+        )
+        self.assertEqual(
+            trend["volume"]["current_vs_average_20"],
+            1.0091,
+        )
+        self.assertEqual(
+            trend["indicator_trends"]["sma_20"]["current"],
+            100.0,
+        )
+        self.assertEqual(
+            trend["price_action"]["returns_pct"]["20_candles"],
+            15.3846,
+        )
+        self.assertEqual(len(trend["recent_candles"]), 21)
 
 
 if __name__ == "__main__":

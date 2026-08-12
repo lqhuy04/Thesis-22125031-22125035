@@ -16,7 +16,7 @@ from .engine import (
     SignalGenerator,
     TradeSimulator,
 )
-from .pipeline import BacktestPipeline, TECHNICAL_SIGNAL_SCORE
+from .pipeline import BacktestPipeline
 from .experiments import run_benchmarks, regime_analysis, confidence_calibration
 from .stats import ttest_returns, permutation_test, confidence_vs_outcome_test
 
@@ -51,6 +51,7 @@ def run_full_backtest(
     scored_1d = scoring_engine.score_dataframe(indicator_engine.add_indicators(df_1d))
 
     pipeline = BacktestPipeline(symbol, trade_config, mode=mode, data_selection=data_selection)
+    technical_signal_score = pipeline.technical_signal_score()
     backtest_configuration = pipeline.configuration()
     if evaluation_start_date:
         evaluation_start = pd.to_datetime(evaluation_start_date)
@@ -82,7 +83,7 @@ def run_full_backtest(
 
     signaled_full = signal_generator.generate_signals(
         scored_1d,
-        min_score=TECHNICAL_SIGNAL_SCORE,
+        min_score=technical_signal_score,
     )
     date_labels = pd.to_datetime(signaled_full["datetime"]).dt.strftime("%Y-%m-%d")
     allowed_mask = (signaled_full["signal"] == "BUY") & date_labels.isin(approved_dates)
@@ -98,7 +99,7 @@ def run_full_backtest(
 
     signaled_engine = signal_generator.generate_signals(
         scored_1d,
-        min_score=TECHNICAL_SIGNAL_SCORE,
+        min_score=technical_signal_score,
     )
     engine_trades = simulator.run(signaled_engine)
 

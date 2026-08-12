@@ -15,8 +15,13 @@ logger = logging.getLogger(__name__)
 
 _MAX_OUTPUT_TOKENS = 1_000
 
-SCORE_THRESHOLD = 0.55
-TECHNICAL_SCORE_THRESHOLD = 0.60
+SCORE_THRESHOLD = 0.60
+TECHNICAL_SCORE_THRESHOLD_BY_PERIOD = {
+    "short_term": 0.60,
+    "mid_term": 0.50,
+    "long_term": 0.40,
+}
+MANUAL_TECHNICAL_GATE_MIN_WEIGHT = 0.15
 WEIGHTS_BY_PERIOD = {
     "short_term": {
         "fundamental": 0.10,
@@ -181,6 +186,23 @@ def _calculate_total_score(
     )
 
 
+def _passes_technical_gate(
+    state: AgentState,
+    period: str,
+    technical_score: float,
+    weights: dict[str, float],
+) -> bool:
+    if (
+        state.get("mode") == "manual"
+        and weights["technical"] < MANUAL_TECHNICAL_GATE_MIN_WEIGHT
+    ):
+        return True
+    threshold = TECHNICAL_SCORE_THRESHOLD_BY_PERIOD[
+        _normalize_period(period)
+    ]
+    return technical_score >= threshold
+
+
 def _current_price(results: dict[str, Any]) -> float | None:
     technical = results.get("technical_agent") or {}
     price = (technical.get("current_price") or {}).get("value")
@@ -322,7 +344,12 @@ def recommendation_agent(state: AgentState) -> dict:
     total_score = _calculate_total_score(period, scores, weights)
     buy = (
         total_score >= SCORE_THRESHOLD
-        and scores["technical"] >= TECHNICAL_SCORE_THRESHOLD
+        and _passes_technical_gate(
+            state,
+            period,
+            scores["technical"],
+            weights,
+        )
     )
     recommendation = localized_text(
         state.get("language"),

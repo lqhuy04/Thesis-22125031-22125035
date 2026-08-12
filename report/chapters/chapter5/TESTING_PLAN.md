@@ -9,7 +9,7 @@ The distinction is:
 - **Chapter 5 — System Testing:** Does the software implement its requirements correctly?
 - **Chapter 6 — Experiments and Evaluation:** Does the analytical pipeline exhibit useful historical behavior?
 
-The repository now contains 66 Python `unittest` tests under `backend/tests`, covering selected multi-agent, technical, security, authentication, and backtesting behavior. Chapter 5 reports that reproducible suite. The remaining validation plan is a risk-based combination of:
+The repository now contains 71 Python `unittest` tests under `backend/tests`, covering selected multi-agent, technical, security, authentication, and backtesting behavior. Chapter 5 reports that reproducible suite. The remaining validation plan is a risk-based combination of:
 
 1. automated backend unit and API integration tests;
 2. automated mobile component and routing tests;
@@ -35,10 +35,10 @@ The final chapter must report actual results. Planned tests, unexecuted cases, a
 - authorization for protected routes and administrator-only routes;
 - standardized API success and error responses;
 - market price retrieval and stock-detail data;
-- deterministic technical indicators and score calculation;
+- deterministic technical indicators and reference-signal calculation, multi-candle trend context, and model-generated technical scoring with fallback;
 - AI-analysis configuration, structured response, model-generated confidence validation, and deterministic decision thresholds;
 - chat-session ownership and deletion;
-- shared technical scoring, next-open execution, exit rules, and transaction costs.
+- shared technical reference scoring, AI technical-score integration, next-open execution, exit rules, and transaction costs.
 
 ### P1 — Important
 
@@ -63,7 +63,7 @@ The existing backend suite uses the standard-library `unittest` runner and `unit
 
 | Layer | Recommended tools | Purpose |
 |---|---|---|
-| Existing backend unit/integration | unittest, unittest.mock | Run the 66 repository-verifiable tests without live external providers |
+| Existing backend unit/integration | unittest, unittest.mock | Run the 71 repository-verifiable tests without live external providers |
 | Expanded backend API/coverage | pytest, FastAPI TestClient, pytest-mock, pytest-cov | Add route-level fixtures and measure exercised code |
 | Expo unit/component | Jest with jest-expo, React Native Testing Library | Test helpers, components, input validation, and user-visible states |
 | Expo Router integration | expo-router/testing-library | Test navigation and route behavior in memory |

@@ -23,6 +23,15 @@ _INTERVAL_SOURCE_TABLE = {
     "1w": "Stock_Price_1d",
 }
 _PRICE_COLUMNS = ["open", "high", "low", "close", "volume"]
+_TREND_LOOKBACK_CANDLES = 20
+_RETURN_HORIZONS = (1, 5, 10, 20)
+_INDICATOR_FIELDS = {
+    "ma": ("sma_20", "sma_50"),
+    "boll": ("bb_upper", "bb_middle", "bb_lower"),
+    "rsi": ("rsi_14",),
+    "macd": ("macd", "macd_signal", "macd_histogram"),
+    "kdj": ("kdj_k", "kdj_d", "kdj_j"),
+}
 
 
 def _parse_plan_date(value: Any, field_name: str) -> date:
@@ -106,6 +115,223 @@ def _attach_indicators(frame: pd.DataFrame) -> pd.DataFrame:
     return output
 
 
+def _rounded_float(value: Any) -> float | None:
+    parsed = to_finite_float(value)
+    return round(parsed, 4) if parsed is not None else None
+
+
+def _percentage_change(current: Any, previous: Any) -> float | None:
+    current_value = to_finite_float(current)
+    previous_value = to_finite_float(previous)
+    if (
+        current_value is None
+        or previous_value is None
+        or previous_value == 0
+    ):
+        return None
+    return round((current_value / previous_value - 1) * 100, 4)
+
+
+def _absolute_change(current: Any, previous: Any) -> float | None:
+    current_value = to_finite_float(current)
+    previous_value = to_finite_float(previous)
+    if current_value is None or previous_value is None:
+        return None
+    return round(current_value - previous_value, 4)
+
+
+def _mean(values: pd.Series) -> float | None:
+    finite_values = [
+        parsed
+        for value in values
+        if (parsed := to_finite_float(value)) is not None
+    ]
+    if not finite_values:
+        return None
+    return round(sum(finite_values) / len(finite_values), 4)
+
+
+def _indicator_fields(selected_indicators: set[str]) -> list[str]:
+    return [
+        field
+        for indicator in TECHNICAL_INDICATORS
+        if indicator in selected_indicators
+        for field in _INDICATOR_FIELDS[indicator]
+    ]
+
+
+def _build_price_action(window: pd.DataFrame) -> dict[str, Any]:
+    closes = window["close"] if "close" in window else pd.Series(dtype=float)
+    highs = window["high"] if "high" in window else pd.Series(dtype=float)
+    lows = window["low"] if "low" in window else pd.Series(dtype=float)
+
+    latest_close = _rounded_float(closes.iloc[-1]) if not closes.empty else None
+    returns = {}
+    for horizon in _RETURN_HORIZONS:
+        returns[f"{horizon}_candles"] = (
+            _percentage_change(closes.iloc[-1], closes.iloc[-1 - horizon])
+            if len(closes) > horizon
+            else None
+        )
+
+    finite_highs = [
+        parsed
+        for value in highs
+        if (parsed := to_finite_float(value)) is not None
+    ]
+    finite_lows = [
+        parsed
+        for value in lows
+        if (parsed := to_finite_float(value)) is not None
+    ]
+    highest_high = max(finite_highs) if finite_highs else None
+    lowest_low = min(finite_lows) if finite_lows else None
+    range_position = None
+    if (
+        latest_close is not None
+        and highest_high is not None
+        and lowest_low is not None
+        and highest_high > lowest_low
+    ):
+        range_position = round(
+            (latest_close - lowest_low) / (highest_high - lowest_low),
+            4,
+        )
+
+    finite_closes = [
+        parsed
+        for value in closes
+        if (parsed := to_finite_float(value)) is not None
+    ]
+    close_changes = [
+        current - previous
+        for previous, current in zip(finite_closes, finite_closes[1:])
+    ]
+    return {
+        "latest_close": latest_close,
+        "returns_pct": returns,
+        "highest_high": _rounded_float(highest_high),
+        "lowest_low": _rounded_float(lowest_low),
+        "close_position_in_range": range_position,
+        "up_candles": sum(change > 0 for change in close_changes),
+        "down_candles": sum(change < 0 for change in close_changes),
+        "unchanged_candles": sum(change == 0 for change in close_changes),
+    }
+
+
+def _build_volume_trend(window: pd.DataFrame) -> dict[str, Any]:
+    if "volume" not in window or window.empty:
+        return {}
+
+    volumes = window["volume"]
+    current_volume = _rounded_float(volumes.iloc[-1])
+    average_5 = _mean(volumes.iloc[-5:])
+    average_20 = _mean(volumes.iloc[-20:])
+    return {
+        "current": current_volume,
+        "change_1_candle_pct": (
+            _percentage_change(volumes.iloc[-1], volumes.iloc[-2])
+            if len(volumes) > 1
+            else None
+        ),
+        "average_5": average_5,
+        "average_20": average_20,
+        "current_vs_average_5": (
+            round(current_volume / average_5, 4)
+            if current_volume is not None and average_5
+            else None
+        ),
+        "current_vs_average_20": (
+            round(current_volume / average_20, 4)
+            if current_volume is not None and average_20
+            else None
+        ),
+    }
+
+
+def _build_indicator_trends(
+    window: pd.DataFrame,
+    selected_indicators: set[str],
+) -> dict[str, Any]:
+    trends = {}
+    for field in _indicator_fields(selected_indicators):
+        if field not in window or window.empty:
+            continue
+        values = window[field]
+        current = _rounded_float(values.iloc[-1])
+        finite_values = [
+            parsed
+            for value in values
+            if (parsed := to_finite_float(value)) is not None
+        ]
+        trends[field] = {
+            "current": current,
+            "change_1_candle": (
+                None
+                if len(values) <= 1
+                else _absolute_change(values.iloc[-1], values.iloc[-2])
+            ),
+            "change_5_candles": (
+                None
+                if len(values) <= 5
+                else _absolute_change(values.iloc[-1], values.iloc[-6])
+            ),
+            "minimum": (
+                _rounded_float(min(finite_values)) if finite_values else None
+            ),
+            "maximum": (
+                _rounded_float(max(finite_values)) if finite_values else None
+            ),
+        }
+    return trends
+
+
+def _build_recent_candles(
+    window: pd.DataFrame,
+    selected_indicators: set[str],
+) -> list[dict[str, Any]]:
+    fields = [
+        *_PRICE_COLUMNS,
+        *_indicator_fields(selected_indicators),
+        "volume_ma_20",
+        "volume_ma_50",
+    ]
+    candles = []
+    for _, row in window.iterrows():
+        candle = {"time": row["trading_time"].isoformat()}
+        for field in fields:
+            if field in row.index:
+                candle[field] = _rounded_float(row.get(field))
+        candles.append(candle)
+    return candles
+
+
+def _build_trend_context(
+    frame: pd.DataFrame,
+    current_position: int,
+    selected_indicators: set[str],
+) -> dict[str, Any]:
+    # N-period returns require N + 1 closing-price observations.
+    start_position = max(0, current_position - _TREND_LOOKBACK_CANDLES)
+    window = frame.iloc[start_position : current_position + 1]
+    return {
+        "lookback_candles": max(len(window) - 1, 0),
+        "observations": len(window),
+        "from": window.iloc[0]["trading_time"].isoformat(),
+        "to": window.iloc[-1]["trading_time"].isoformat(),
+        "price_action": _build_price_action(window),
+        "volume": _build_volume_trend(window),
+        "indicator_trends": _build_indicator_trends(
+            window,
+            selected_indicators,
+        ),
+        "recent_candles": _build_recent_candles(
+            window,
+            selected_indicators,
+        ),
+    }
+
+
 def _format_output(
     symbol: str,
     interval: str,
@@ -175,6 +401,11 @@ def _format_output(
         "total_score": total_score,
         "max_score": len(indicator_results),
         "indicators": indicator_results,
+        "trend_context": _build_trend_context(
+            frame,
+            current_position,
+            selected_indicators,
+        ),
     }
 
 
