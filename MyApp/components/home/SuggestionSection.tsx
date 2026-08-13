@@ -951,6 +951,7 @@ const SuggestionSection = ({ registerRefresh }: Props) => {
                               }}
                             >
                               <Image
+                                resizeMode="contain"
                                 source={{
                                   uri:
                                     stock.logo ??

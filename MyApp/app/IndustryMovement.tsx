@@ -518,6 +518,7 @@ const IndustryMovement = () => {
                   }}
                 >
                   <Image
+                    resizeMode="contain"
                     source={{
                       uri:
                         item.logo ||

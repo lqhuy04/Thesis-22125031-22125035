@@ -228,6 +228,7 @@ const DetailHeader = ({
               }}
             >
               <Image
+                resizeMode="contain"
                 source={{
                   uri:
                     displayData?.logo ||

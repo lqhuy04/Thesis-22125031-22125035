@@ -508,7 +508,7 @@ const CategoriesNewsSection = ({ registerRefresh }: Props) => {
                     ? theme.base.primary
                     : theme.border.default,
                 paddingVertical: 4,
-                paddingHorizontal: 12,
+                paddingHorizontal: 16,
                 borderRadius: 24,
                 marginRight: 8,
               }}

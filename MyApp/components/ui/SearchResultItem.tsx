@@ -45,6 +45,7 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
       }}
     >
       <Image
+        resizeMode="contain"
         source={{
           uri:
             item.logo ??

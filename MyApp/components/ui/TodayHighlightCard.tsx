@@ -50,6 +50,7 @@ const TodayHighlightCard = ({ item }: Props) => {
         }}
       >
         <Image
+          resizeMode="contain"
           source={{
             uri:
               item.logo ??

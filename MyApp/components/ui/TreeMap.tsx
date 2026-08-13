@@ -308,6 +308,7 @@ export const TreeMap: React.FC<Props> = ({
             {/* Header */}
             <View style={styles.popupHeader}>
               <Image
+                resizeMode="contain"
                 source={{
                   uri:
                     selectedItem?.logo ||

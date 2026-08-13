@@ -764,6 +764,7 @@ const InvestmentIdeas = () => {
             {index + 1}
           </Text>
           <Image
+            resizeMode="contain"
             source={{
               uri:
                 stock.logo ??

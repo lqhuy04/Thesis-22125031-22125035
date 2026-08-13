@@ -266,6 +266,7 @@ const WatchlistSection = ({ registerRefresh }: Props) => {
           }}
         >
           <Image
+            resizeMode="contain"
             source={{
               uri:
                 item.logo ||
