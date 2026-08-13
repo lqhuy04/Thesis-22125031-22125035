@@ -62,10 +62,11 @@ def get_business_articles(
     offset: int = Query(0, ge=0, description="Number of latest articles to skip"),
 ):
     """
-    Lấy tin tức mới nhất có ``article_type = "stock"`` và liên kết với ít nhất
-    một mã cổ phiếu thuộc VN100.
+    Lấy tin tức mới nhất có ``article_type = "stock"``, sắp xếp theo thời gian
+    giảm dần.
 
     - **limit**: Số lượng bài viết tối đa trả về
+    - **offset**: Số bài viết mới nhất cần bỏ qua
     """
     articles = ArticlesService.get_business_articles(limit=limit, offset=offset)
     return ArticlesListResponse(

@@ -6,7 +6,7 @@ import requests
 from supabase import create_client, Client
 from app.config import settings
 from app.models.article_schema import ArticleListItemResponse, ArticlesResponse
-from app.utils.market_index import get_index_stocks, get_index_symbols
+from app.utils.market_index import get_index_stocks
 from typing import Optional, List, Union
 from pydantic import BaseModel, Field
 import re
@@ -375,113 +375,30 @@ class ArticlesService:
         
     @staticmethod
     def get_business_articles(
-        limit: Optional[int] = None,
+        limit: int = 50,
         offset: int = 0,
     ) -> List[ArticleListItemResponse]:
         """
-        Return the latest stock-type articles linked to at least one VN100 stock.
-        Articles may be linked to multiple stocks.
+        Return stock-type articles ordered from newest to oldest.
         """
         try:
-            requested_offset = max(0, offset)
-            normalized_limit = max(1, limit) if limit is not None else None
-            target_count = (
-                requested_offset + normalized_limit
-                if normalized_limit is not None
-                else None
-            )
+            normalized_limit = max(1, limit)
+            normalized_offset = max(0, offset)
 
-            vn100_symbols = set(get_index_symbols("VN100"))
-            if not vn100_symbols:
-                return []
-
-            stock_result = (
-                supabase.table("Stock")
-                .select("id")
-                .in_("stock_symbol", sorted(vn100_symbols))
+            article_result = (
+                supabase.table("Article")
+                .select(ARTICLE_LIST_FIELDS)
+                .eq("article_type", "stock")
+                .order("time", desc=True, nullsfirst=False)
+                .order("id", desc=True)
+                .range(
+                    normalized_offset,
+                    normalized_offset + normalized_limit - 1,
+                )
                 .execute()
             )
-            vn100_stock_ids = list(dict.fromkeys(
-                str(row.get("id"))
-                for row in (stock_result.data or [])
-                if row.get("id")
-            ))
-            if not vn100_stock_ids:
-                return []
-            vn100_stock_id_set = set(vn100_stock_ids)
 
-            page_size = (
-                max(100, min(500, target_count * 4))
-                if target_count is not None
-                else 500
-            )
-            scan_offset = 0
-            articles: List[dict] = []
-
-            while True:
-                article_result = (
-                    supabase.table("Article")
-                    .select(ARTICLE_LIST_FIELDS)
-                    .eq("article_type", "stock")
-                    .order("time", desc=True, nullsfirst=False)
-                    .order("id", desc=True)
-                    .range(scan_offset, scan_offset + page_size - 1)
-                    .execute()
-                )
-                article_rows = article_result.data or []
-                if not article_rows:
-                    break
-
-                article_ids = [
-                    str(row.get("id"))
-                    for row in article_rows
-                    if row.get("id")
-                ]
-                linked_article_ids = set()
-
-                for start in range(0, len(article_ids), 100):
-                    link_result = (
-                        supabase.table("Article_Stock")
-                        .select("article_id, stock_id")
-                        .in_("article_id", article_ids[start:start + 100])
-                        .execute()
-                    )
-                    linked_article_ids.update(
-                        str(row.get("article_id"))
-                        for row in (link_result.data or [])
-                        if row.get("article_id")
-                        and str(row.get("stock_id")) in vn100_stock_id_set
-                    )
-
-                for payload in article_rows:
-                    if str(payload.get("id")) not in linked_article_ids:
-                        continue
-                    try:
-                        ArticleListItemResponse(**payload)
-                        articles.append(payload)
-                    except Exception:
-                        continue
-
-                    if (
-                        target_count is not None
-                        and len(articles) >= target_count
-                    ):
-                        return ArticlesService._to_list_items(
-                            articles[requested_offset:target_count]
-                        )
-
-                if len(article_rows) < page_size:
-                    break
-                scan_offset += page_size
-
-            if normalized_limit is not None:
-                selected_articles = articles[
-                    requested_offset:requested_offset + normalized_limit
-                ]
-            else:
-                selected_articles = articles[requested_offset:]
-
-            return ArticlesService._to_list_items(selected_articles)
+            return ArticlesService._to_list_items(article_result.data or [])
 
         except Exception as e:
             print(f"Error getting business articles: {e}")
@@ -493,20 +410,16 @@ class ArticlesService:
     def get_today_highlight(
         stock_limit: int = 10,
         articles_per_stock: int = 2,
-        max_scan_pages: int = 5,
     ) -> List[dict]:
         """
-        Return the VN100 stocks with the latest related news.
-
-        A stock only needs one article to qualify. Up to ``articles_per_stock``
-        articles are collected while scanning a bounded number of pages.
+        Return random VN100 stocks with up to N latest related articles each.
         """
         try:
             from collections import defaultdict
+            import random
 
             stock_limit = max(1, stock_limit)
             articles_per_stock = max(1, articles_per_stock)
-            max_scan_pages = max(1, max_scan_pages)
 
             vn100_stock_symbol_map = {
                 str(item.get("id")): str(
@@ -519,128 +432,24 @@ class ArticlesService:
             if not vn100_stock_symbol_map:
                 return []
 
-            def fetch_article_stock_links(
-                article_ids: List[str],
-                article_id_batch_size: int = 100,
-                row_batch_size: int = 1000,
-            ) -> List[dict]:
-                """Fetch links in small ID batches and avoid PostgREST's row cap."""
-                all_rows: List[dict] = []
-                for batch_start in range(
-                    0,
-                    len(article_ids),
-                    article_id_batch_size,
-                ):
-                    article_id_batch = article_ids[
-                        batch_start:batch_start + article_id_batch_size
-                    ]
-                    row_start = 0
+            selected_stock_ids = random.sample(
+                list(vn100_stock_symbol_map),
+                k=min(stock_limit, len(vn100_stock_symbol_map)),
+            )
 
-                    while True:
-                        batch_result = (
-                            supabase.table("Article_Stock")
-                            .select("article_id, stock_id")
-                            .in_("article_id", article_id_batch)
-                            .order("article_id", desc=False)
-                            .order("stock_id", desc=False)
-                            .range(
-                                row_start,
-                                row_start + row_batch_size - 1,
-                            )
-                            .execute()
-                        )
-                        rows = batch_result.data or []
-                        all_rows.extend(rows)
-
-                        if len(rows) < row_batch_size:
-                            break
-                        row_start += row_batch_size
-
-                return all_rows
-
-            page_size = 200
-            cursor_time = None
-            cursor_id = None
+            articles_result = supabase.rpc(
+                "get_latest_articles_for_stocks",
+                {
+                    "p_stock_ids": selected_stock_ids,
+                    "p_articles_per_stock": articles_per_stock,
+                },
+            ).execute()
 
             stock_to_articles = defaultdict(list)
-            selected_stock_ids: List[str] = []
-            selected_stock_id_set = set()
-
-            for _ in range(max_scan_pages):
-                query = (
-                    supabase.table("Article")
-                    .select("id,title,time,sentiment")
-                    .eq("article_type", "stock")
-                    .not_.is_("time", "null")
-                    .order("time", desc=True, nullsfirst=False)
-                    .order("id", desc=True)
-                    .limit(page_size)
-                )
-
-                if cursor_time is not None and cursor_id is not None:
-                    query = query.or_(
-                        f"time.lt.{cursor_time},and(time.eq.{cursor_time},id.lt.{cursor_id})"
-                    )
-
-                latest_articles_result = query.execute()
-
-                article_rows = latest_articles_result.data or []
-                if not article_rows:
-                    break
-
-                article_ids = [
-                    str(item.get("id"))
-                    for item in article_rows
-                    if item.get("id")
-                ]
-                if not article_ids:
-                    break
-
-                article_to_stock_ids = defaultdict(list)
-                for row in fetch_article_stock_links(article_ids):
-                    article_id = str(row.get("article_id") or "")
-                    stock_id = str(row.get("stock_id") or "")
-                    if not article_id or not stock_id:
-                        continue
-                    if stock_id not in vn100_stock_symbol_map:
-                        continue
-                    if stock_id not in article_to_stock_ids[article_id]:
-                        article_to_stock_ids[article_id].append(stock_id)
-
-                for article in article_rows:
-                    article_id = str(article.get("id") or "")
-                    stock_ids = sorted(
-                        article_to_stock_ids.get(article_id, []),
-                        key=lambda stock_id: vn100_stock_symbol_map.get(
-                            stock_id,
-                            "",
-                        ),
-                    )
-
-                    for stock_id in stock_ids:
-                        if stock_id not in selected_stock_id_set:
-                            if len(selected_stock_ids) >= stock_limit:
-                                continue
-                            selected_stock_ids.append(stock_id)
-                            selected_stock_id_set.add(stock_id)
-
-                        if len(stock_to_articles[stock_id]) < articles_per_stock:
-                            stock_to_articles[stock_id].append(article)
-
-                if len(selected_stock_ids) >= stock_limit:
-                    break
-
-                if len(article_rows) < page_size:
-                    break
-
-                last_row = article_rows[-1]
-                cursor_time = last_row.get("time")
-                cursor_id = last_row.get("id")
-                if cursor_time is None or cursor_id is None:
-                    break
-
-            if not selected_stock_ids:
-                return []
+            for article in articles_result.data or []:
+                stock_id = str(article.get("stock_id") or "")
+                if stock_id in vn100_stock_symbol_map:
+                    stock_to_articles[stock_id].append(article)
 
             profile_result = (
                 supabase.table("BI_Profile")
@@ -695,9 +504,6 @@ class ArticlesService:
 
                 profile = profile_map.get(stock_id, {})
                 price = price_map.get(stock_id, {})
-
-                if not stock_articles:
-                    continue
 
                 highlights.append(
                     {

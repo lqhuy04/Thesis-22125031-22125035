@@ -824,7 +824,7 @@ class SupabaseReviewImporter:
             try:
                 response = (
                     self.client.table(ARTICLE_STOCK_TABLE)
-                    .select("id")
+                    .select("article_id,stock_id")
                     .eq("article_id", article_id)
                     .eq("stock_id", stock_id)
                     .limit(1)
