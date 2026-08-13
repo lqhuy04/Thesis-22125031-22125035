@@ -16,6 +16,11 @@ import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
 import { CurrentPriceData } from "@/helpers/DetailHelpers";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import {
+  formatPercentageChange,
+  formatPriceChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -161,25 +166,13 @@ export const TreeMap: React.FC<Props> = ({
   const chartH = height - 24;
 
   const perText = (item: CurrentPriceData) => {
-    const sign = item.PerPriceChange > 0 ? "+" : "";
-    return `${sign}${item.PerPriceChange.toFixed(2)}%`;
+    return formatPercentageChange(item.PerPriceChange);
   };
 
   const perColor = useCallback(
     (item: CurrentPriceData) =>
-      item.PerPriceChange > 6
-        ? theme.base.primary
-        : item.PerPriceChange > 0
-          ? theme.base.success
-          : item.PerPriceChange < 0
-            ? theme.base.error
-            : theme.base.warning,
-    [
-      theme.base.error,
-      theme.base.primary,
-      theme.base.success,
-      theme.base.warning,
-    ],
+      getStockChangeColor(item.PerPriceChange, theme.base),
+    [theme.base],
   );
 
   const nodes: TreeNode[] = useMemo(
@@ -377,15 +370,15 @@ export const TreeMap: React.FC<Props> = ({
                     <Text
                       style={[
                         styles.rowValue,
-                        { color: perColor(selectedItem) },
+                        {
+                          color: getStockChangeColor(
+                            selectedItem.PriceChange,
+                            theme.base,
+                          ),
+                        },
                       ]}
                     >
-                      ({selectedItem.PriceChange > 0 ? "+" : ""}
-                      {selectedItem.PriceChange.toLocaleString("vi-VN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                      )
+                      ({formatPriceChange(selectedItem.PriceChange)})
                     </Text>
                     <Text
                       style={[
@@ -396,11 +389,6 @@ export const TreeMap: React.FC<Props> = ({
                         },
                       ]}
                     >
-                      {selectedItem.PriceChange > 0
-                        ? "▲"
-                        : selectedItem.PriceChange < 0
-                          ? "▼"
-                          : ""}
                       {perText(selectedItem)}
                     </Text>
                   </>

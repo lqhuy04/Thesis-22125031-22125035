@@ -3,6 +3,11 @@ import React, { useMemo } from "react";
 import { Image, TouchableOpacity, View } from "react-native";
 import { Text } from "./Text";
 import { SearchStockItem } from "@/helpers/SearchHelper";
+import {
+  formatPercentageChange,
+  formatPriceChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 interface SearchResultItemProps {
   item: SearchStockItem;
@@ -26,6 +31,9 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
     if (!item.per_price_change) return 0;
     return item.per_price_change;
   }, [item.per_price_change]);
+
+  const priceChangeColor = getStockChangeColor(priceChange, theme.base);
+  const perPriceChangeColor = getStockChangeColor(perPriceChange, theme.base);
 
   return (
     <TouchableOpacity
@@ -72,21 +80,11 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
         </Text>
         <Text
           typography="bodySmall"
-          color={
-            priceChange > 0
-              ? theme.base.success
-              : priceChange === 0
-                ? theme.base.warning
-                : theme.base.error
-          }
+          color={priceChangeColor}
           style={{ textAlign: "right" }}
         >
           {"("}
-          {priceChange > 0 ? "+" : ""}
-          {priceChange.toLocaleString("vi-VN", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}
+          {formatPriceChange(priceChange)}
           {")"}
         </Text>
       </View>
@@ -99,46 +97,14 @@ const SearchResultItem = ({ item, onPress }: SearchResultItemProps) => {
           paddingVertical: 6,
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor:
-            perPriceChange > 0
-              ? theme.base.success + "36"
-              : perPriceChange === 0
-                ? theme.base.warning + "36"
-                : theme.base.error + "36",
+          backgroundColor: perPriceChangeColor + "36",
         }}
       >
         <Text
           typography="labelMedium"
-          color={
-            perPriceChange > 0
-              ? theme.base.success
-              : perPriceChange === 0
-                ? theme.base.warning
-                : theme.base.error
-          }
+          color={perPriceChangeColor}
         >
-          <Text
-            typography="labelSmall"
-            color={
-              perPriceChange > 0
-                ? theme.base.success
-                : perPriceChange === 0
-                  ? theme.base.warning
-                  : theme.base.error
-            }
-          >
-            {perPriceChange > 0 ? "▲" : perPriceChange === 0 ? "" : "▼"}{" "}
-          </Text>
-          {perPriceChange >= 0
-            ? perPriceChange?.toLocaleString("vi-VN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })
-            : (perPriceChange * -1).toLocaleString("vi-VN", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-          %
+          {formatPercentageChange(perPriceChange)}
         </Text>
       </View>
     </TouchableOpacity>

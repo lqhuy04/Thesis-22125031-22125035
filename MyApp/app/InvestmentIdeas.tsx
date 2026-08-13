@@ -36,6 +36,11 @@ import Feather from "@expo/vector-icons/build/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/build/MaterialCommunityIcons";
 import Ionicons from "@expo/vector-icons/build/Ionicons";
 import { router, useLocalSearchParams } from "expo-router";
+import {
+  formatPercentageChange,
+  formatPriceChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -717,12 +722,14 @@ const InvestmentIdeas = () => {
   // Render a single full-screen stock row
   // ------------------------------------------------------------------
   const renderStockRow = (stock: SuggestionItem, index: number) => {
-    const isPositive = stock.per_price_change >= 0;
-    const changeColor = isPositive ? theme.base.success : theme.base.error;
-    const changeBg = isPositive
-      ? theme.base.success + "20"
-      : theme.base.error + "20";
-    const arrow = isPositive ? "▲" : "▼";
+    const priceChangeColor = getStockChangeColor(
+      stock.price_change,
+      theme.base,
+    );
+    const perPriceChangeColor = getStockChangeColor(
+      stock.per_price_change,
+      theme.base,
+    );
 
     return (
       <TouchableOpacity
@@ -788,17 +795,13 @@ const InvestmentIdeas = () => {
               maximumFractionDigits: 2,
             })}
           </Text>
-          <Text typography="bodySmall" color={changeColor}>
-            {isPositive ? "+" : ""}
-            {stock.price_change.toLocaleString("vi-VN", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
+          <Text typography="bodySmall" color={priceChangeColor}>
+            {formatPriceChange(stock.price_change)}
           </Text>
         </View>
         <View
           style={{
-            backgroundColor: changeBg,
+            backgroundColor: perPriceChangeColor + "20",
             borderRadius: 6,
             flex: 2.5,
             alignItems: "center",
@@ -806,13 +809,8 @@ const InvestmentIdeas = () => {
             paddingVertical: 6,
           }}
         >
-          <Text typography="labelMedium" color={changeColor}>
-            {arrow}{" "}
-            {Math.abs(stock.per_price_change).toLocaleString("vi-VN", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-            %
+          <Text typography="labelMedium" color={perPriceChangeColor}>
+            {formatPercentageChange(stock.per_price_change)}
           </Text>
         </View>
       </TouchableOpacity>

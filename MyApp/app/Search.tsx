@@ -26,6 +26,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Text } from "@/components/ui/Text";
 import { useLocalization } from "@/hooks/LocalizationContext";
+import {
+  formatPercentageChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 function chunkArray<T>(arr: T[], size: number = 3): (T | any)[][] {
   const result: (T | any)[][] = [];
@@ -417,25 +421,23 @@ const Search = () => {
                         </Text>
 
                         <Text
-                          color={
-                            subItem?.per_price_change > 0
-                              ? theme.base.success
-                              : subItem?.per_price_change < 0
-                                ? theme.base.error
-                                : theme.base.warning
-                          }
+                          color={getStockChangeColor(
+                            subItem?.per_price_change,
+                            theme.base,
+                          )}
                           typography="bodySmall"
                         >
                           {subItem?.current_price?.toLocaleString("vi-VN", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}{" "}
-                          {subItem?.per_price_change >= 0 ? "+" : ""}
-                          {subItem?.per_price_change?.toLocaleString("vi-VN", {
+                          {formatPercentageChange(
+                            subItem?.per_price_change,
+                            {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
-                          })}
-                          %
+                            },
+                          )}
                         </Text>
                       </TouchableOpacity>
                     ) : (

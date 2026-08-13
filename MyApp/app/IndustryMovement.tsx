@@ -24,6 +24,11 @@ import { CurrentPriceData } from "@/helpers/DetailHelpers";
 import { router, useLocalSearchParams } from "expo-router";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  formatPercentageChange,
+  formatPriceChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 // Sentinel value cho tab "Tất cả" (không phải industry id thật)
 export const ALL_VALUE = "__all__";
@@ -477,6 +482,14 @@ const IndustryMovement = () => {
             const currentPrice = item.CurrentPrice;
             const priceChange = item.PriceChange;
             const perPriceChange = item.PerPriceChange;
+            const priceChangeColor = getStockChangeColor(
+              priceChange,
+              theme.base,
+            );
+            const perPriceChangeColor = getStockChangeColor(
+              perPriceChange,
+              theme.base,
+            );
 
             return (
               <>
@@ -540,24 +553,11 @@ const IndustryMovement = () => {
                     </Text>
                     <Text
                       typography="bodySmall"
-                      color={
-                        priceChange > 0
-                          ? theme.base.success
-                          : priceChange === 0
-                            ? theme.base.warning
-                            : theme.base.error
-                      }
+                      color={priceChangeColor}
                       style={{ textAlign: "right" }}
                     >
                       {"("}
-                      {priceChange > 0 ? "+" : ""}
-                      {(priceChange >= 0
-                        ? priceChange
-                        : priceChange * -1
-                      ).toLocaleString("vi-VN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                      {formatPriceChange(priceChange)}
                       {")"}
                     </Text>
                   </View>
@@ -570,48 +570,14 @@ const IndustryMovement = () => {
                       paddingVertical: 6,
                       alignItems: "center",
                       justifyContent: "center",
-                      backgroundColor:
-                        perPriceChange > 0
-                          ? theme.base.success + "36"
-                          : perPriceChange === 0
-                            ? theme.base.warning + "36"
-                            : theme.base.error + "36",
+                      backgroundColor: perPriceChangeColor + "36",
                     }}
                   >
                     <Text
                       typography="labelMedium"
-                      color={
-                        perPriceChange > 0
-                          ? theme.base.success
-                          : perPriceChange === 0
-                            ? theme.base.warning
-                            : theme.base.error
-                      }
+                      color={perPriceChangeColor}
                     >
-                      <Text
-                        typography="labelSmall"
-                        color={
-                          perPriceChange > 0
-                            ? theme.base.success
-                            : perPriceChange === 0
-                              ? theme.base.warning
-                              : theme.base.error
-                        }
-                      >
-                        {perPriceChange > 0
-                          ? "▲"
-                          : perPriceChange === 0
-                            ? ""
-                            : "▼"}{" "}
-                      </Text>
-                      {(perPriceChange >= 0
-                        ? perPriceChange
-                        : perPriceChange * -1
-                      ).toLocaleString("vi-VN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                      %
+                      {formatPercentageChange(perPriceChange)}
                     </Text>
                   </View>
                 </TouchableOpacity>

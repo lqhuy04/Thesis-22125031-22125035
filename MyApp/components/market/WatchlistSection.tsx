@@ -21,6 +21,11 @@ import Entypo from "@expo/vector-icons/Entypo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { ALL_VALUE } from "@/app/IndustryMovement";
 import { saveSearchHistory } from "@/helpers/SearchHelper";
+import {
+  formatPercentageChange,
+  formatPriceChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
@@ -232,23 +237,8 @@ const WatchlistSection = ({ registerRefresh }: Props) => {
     item: FavoriteItem;
     index: number;
   }) => {
-    const priceColor =
-      item.PriceChange > 0
-        ? theme.base.success
-        : item.PriceChange < 0
-          ? theme.base.error
-          : theme.base.warning;
-
-    const perPriceColor =
-      item.PerPriceChange > 0
-        ? theme.base.success
-        : item.PerPriceChange < 0
-          ? theme.base.error
-          : theme.base.warning;
-
-    const absPerPriceChange = Math.abs(item.PerPriceChange).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const arrow =
-      item.PerPriceChange > 0 ? "▲" : item.PerPriceChange < 0 ? "▼" : "";
+    const priceColor = getStockChangeColor(item.PriceChange, theme.base);
+    const perPriceColor = getStockChangeColor(item.PerPriceChange, theme.base);
 
     const screenWidth = Dimensions.get("window").width;
 
@@ -316,7 +306,7 @@ const WatchlistSection = ({ registerRefresh }: Props) => {
               {item.CurrentPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
             <Text typography="bodySmall" color={priceColor}>
-              {`(${item.PriceChange > 0 ? "+" : ""}${item.PriceChange.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`}
+              {`(${formatPriceChange(item.PriceChange)})`}
             </Text>
           </View>
 
@@ -330,10 +320,7 @@ const WatchlistSection = ({ registerRefresh }: Props) => {
             }}
           >
             <Text typography="bodyMedium" color={perPriceColor}>
-              <Text typography="labelSmall" color={perPriceColor}>
-                {`${arrow} `}
-              </Text>
-              {`${absPerPriceChange}%`}
+              {formatPercentageChange(item.PerPriceChange)}
             </Text>
           </View>
         </TouchableOpacity>

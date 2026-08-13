@@ -5,6 +5,11 @@ import { Text } from "./Text";
 import { useTheme } from "@/hooks/ThemeContext";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { router } from "expo-router";
+import {
+  formatPercentageChange,
+  formatPriceChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 interface Props {
   item: TodayHighlight;
@@ -13,6 +18,11 @@ interface Props {
 const TodayHighlightCard = ({ item }: Props) => {
   const screenWidth = Dimensions.get("window").width;
   const { theme } = useTheme();
+  const priceChangeColor = getStockChangeColor(item.PriceChange, theme.base);
+  const perPriceChangeColor = getStockChangeColor(
+    item.PerPriceChange,
+    theme.base,
+  );
 
   return (
     <View
@@ -64,18 +74,11 @@ const TodayHighlightCard = ({ item }: Props) => {
             {item.CurrentPrice.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
           <Text
-            color={
-              item.PriceChange > 0
-                ? theme.base.success
-                : item.PriceChange < 0
-                  ? theme.base.error
-                  : theme.base.warning
-            }
+            color={priceChangeColor}
             typography="bodySmall"
           >
             {"("}
-            {item.PriceChange >= 0 ? "+" : ""}
-            {item.PriceChange.toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {formatPriceChange(item.PriceChange)}
             {")"}
           </Text>
         </View>
@@ -83,12 +86,7 @@ const TodayHighlightCard = ({ item }: Props) => {
           style={{
             paddingHorizontal: 4,
             paddingVertical: 4,
-            backgroundColor:
-              item.PriceChange > 0
-                ? theme.base.success + "18"
-                : item.PriceChange < 0
-                  ? theme.base.error + "18"
-                  : theme.base.warning + "18",
+            backgroundColor: perPriceChangeColor + "18",
             flexDirection: "row",
             alignItems: "center",
             borderRadius: 6,
@@ -96,20 +94,9 @@ const TodayHighlightCard = ({ item }: Props) => {
         >
           <Text
             typography="titleSmall"
-            color={
-              item.PriceChange > 0
-                ? theme.base.success
-                : item.PriceChange < 0
-                  ? theme.base.error
-                  : theme.base.warning
-            }
+            color={perPriceChangeColor}
           >
-            {item.PerPriceChange > 0
-              ? "▲"
-              : item.PerPriceChange === 0
-                ? ""
-                : "▼"}{" "}
-            {Math.abs(item.PerPriceChange).toLocaleString("vi-VN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%
+            {formatPercentageChange(item.PerPriceChange)}
           </Text>
         </View>
       </TouchableOpacity>

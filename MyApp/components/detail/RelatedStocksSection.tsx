@@ -9,6 +9,10 @@ import {
 import { useTheme } from "@/hooks/ThemeContext";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import { router, useFocusEffect } from "expo-router";
+import {
+  formatPercentageChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 interface RelatedStocksSectionProps {
   stockSymbol?: string;
@@ -219,25 +223,17 @@ const RelatedStocksSection = ({
                   </Text>
 
                   <Text
-                    color={
-                      item?.per_price_change > 0
-                        ? theme.base.success
-                        : item?.per_price_change < 0
-                          ? theme.base.error
-                          : theme.base.warning
-                    }
+                    color={getStockChangeColor(
+                      item?.per_price_change,
+                      theme.base,
+                    )}
                     typography="bodySmall"
                   >
                     {item?.current_price?.toLocaleString("vi-VN", {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })}{" "}
-                    {item?.per_price_change >= 0 ? "+" : ""}
-                    {item?.per_price_change?.toLocaleString("vi-VN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                    %
+                    {formatPercentageChange(item?.per_price_change)}
                   </Text>
                 </TouchableOpacity>
               ) : (

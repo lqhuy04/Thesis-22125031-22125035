@@ -1,4 +1,8 @@
 import { RelatedStock } from "@/helpers/DetailHelpers";
+import {
+  formatPercentageChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 import { useTheme } from "@/hooks/ThemeContext";
 import { router } from "expo-router";
 import React from "react";
@@ -17,11 +21,10 @@ const formatPercentage = (value: number | null) => {
     return "--";
   }
 
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toLocaleString("vi-VN", {
+  return formatPercentageChange(value, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  })}%`;
+  });
 };
 
 const RelatedStockBadges = ({
@@ -56,11 +59,7 @@ const RelatedStockBadges = ({
         const percentageColor =
           stock.per_price_change == null
             ? theme.text.primary + "80"
-            : stock.per_price_change > 0
-              ? theme.base.success
-              : stock.per_price_change < 0
-                ? theme.base.error
-                : theme.base.warning;
+            : getStockChangeColor(stock.per_price_change, theme.base);
 
         return (
           <Pressable

@@ -15,6 +15,11 @@ import {
   getMarketState,
   MarketStatus,
 } from "@/helpers/MarketHoursHelper";
+import {
+  formatPercentageChange,
+  formatPriceChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 interface DetailHeaderProps {
   data: any;
@@ -164,61 +169,29 @@ const DetailHeader = ({
                   paddingBottom: 2,
                   paddingTop: 1,
                   backgroundColor:
-                    displayData?.PriceChange > 0
-                      ? theme.base.success + "36"
-                      : displayData?.PriceChange === 0
-                        ? theme.base.warning + "36"
-                        : theme.base.error + "36",
+                    getStockChangeColor(displayData?.PriceChange, theme.base) +
+                    "36",
                 }}
               >
                 <Text
                   typography="labelMedium"
-                  color={
-                    displayData?.PriceChange > 0
-                      ? theme.base.success
-                      : displayData?.PriceChange === 0
-                        ? theme.base.warning
-                        : theme.base.error
-                  }
+                  color={getStockChangeColor(
+                    displayData?.PriceChange,
+                    theme.base,
+                  )}
                 >
-                  {displayData?.PriceChange > 0
-                    ? "▲"
-                    : displayData?.PriceChange === 0
-                      ? ""
-                      : "▼"}{" "}
-                  {(displayData?.PriceChange >= 0
-                    ? displayData?.PriceChange
-                    : displayData?.PriceChange * -1
-                  ).toLocaleString("vi-VN", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {formatPriceChange(displayData?.PriceChange)}
                 </Text>
               </View>
 
               <Text
                 typography="labelSmall"
-                color={
-                  displayData?.PerPriceChange > 0
-                    ? theme.base.success
-                    : displayData?.PerPriceChange === 0
-                      ? theme.base.warning
-                      : theme.base.error
-                }
+                color={getStockChangeColor(
+                  displayData?.PerPriceChange,
+                  theme.base,
+                )}
               >
-                {displayData?.PerPriceChange > 0
-                  ? "▲"
-                  : displayData?.PerPriceChange === 0
-                    ? ""
-                    : "▼"}{" "}
-                {(displayData?.PerPriceChange >= 0
-                  ? displayData?.PerPriceChange
-                  : displayData?.PerPriceChange * -1
-                ).toLocaleString("vi-VN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-                %
+                {formatPercentageChange(displayData?.PerPriceChange)}
               </Text>
             </View>
 
@@ -352,61 +325,29 @@ const DetailHeader = ({
                   paddingBottom: 2,
                   paddingTop: 1,
                   backgroundColor:
-                    displayData?.PriceChange > 0
-                      ? theme.base.success + "36"
-                      : displayData?.PriceChange === 0
-                        ? theme.base.warning + "36"
-                        : theme.base.error + "36",
+                    getStockChangeColor(displayData?.PriceChange, theme.base) +
+                    "36",
                 }}
               >
                 <Text
                   typography="labelMedium"
-                  color={
-                    displayData?.PriceChange > 0
-                      ? theme.base.success
-                      : displayData?.PriceChange === 0
-                        ? theme.base.warning
-                        : theme.base.error
-                  }
+                  color={getStockChangeColor(
+                    displayData?.PriceChange,
+                    theme.base,
+                  )}
                 >
-                  {displayData?.PriceChange > 0
-                    ? "▲"
-                    : displayData?.PriceChange === 0
-                      ? ""
-                      : "▼"}
-                  {(displayData?.PriceChange >= 0
-                    ? displayData?.PriceChange
-                    : displayData?.PriceChange * -1
-                  ).toLocaleString("vi-VN", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  {formatPriceChange(displayData?.PriceChange)}
                 </Text>
               </View>
 
               <Text
                 typography="labelSmall"
-                color={
-                  displayData?.PerPriceChange > 0
-                    ? theme.base.success
-                    : displayData?.PerPriceChange === 0
-                      ? theme.base.warning
-                      : theme.base.error
-                }
+                color={getStockChangeColor(
+                  displayData?.PerPriceChange,
+                  theme.base,
+                )}
               >
-                {displayData?.PerPriceChange > 0
-                  ? "▲"
-                  : displayData?.PerPriceChange === 0
-                    ? ""
-                    : "▼"}
-                {(displayData?.PerPriceChange >= 0
-                  ? displayData?.PerPriceChange
-                  : displayData?.PerPriceChange * -1
-                ).toLocaleString("vi-VN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-                %
+                {formatPercentageChange(displayData?.PerPriceChange)}
               </Text>
             </View>
           </View>

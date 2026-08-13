@@ -28,6 +28,11 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import Feather from "@expo/vector-icons/Feather";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
+import {
+  formatPercentageChange,
+  formatPriceChange,
+  getStockChangeColor,
+} from "@/helpers/stockChange";
 
 const SkeletonBox = ({
   width,
@@ -908,10 +913,14 @@ const SuggestionSection = ({ registerRefresh }: Props) => {
 
                       {/* Table Rows */}
                       {listData.map((stock: SuggestionItem, index: number) => {
-                        const isPositive = stock.per_price_change >= 0;
-                        const changeColor = isPositive ? "#22C55E" : "#EF4444";
-                        const changeBg = isPositive ? "#DCFCE7" : "#FEE2E2";
-                        const arrow = isPositive ? "▲" : "▼";
+                        const priceChangeColor = getStockChangeColor(
+                          stock.price_change,
+                          theme.base,
+                        );
+                        const perPriceChangeColor = getStockChangeColor(
+                          stock.per_price_change,
+                          theme.base,
+                        );
 
                         return (
                           <TouchableOpacity
@@ -979,9 +988,11 @@ const SuggestionSection = ({ registerRefresh }: Props) => {
                               >
                                 {stock.current_price.toLocaleString("vi-VN")}
                               </Text>
-                              <Text typography="bodySmall" color={changeColor}>
-                                ({isPositive ? "+" : ""}
-                                {stock.price_change.toLocaleString("vi-VN")})
+                              <Text
+                                typography="bodySmall"
+                                color={priceChangeColor}
+                              >
+                                ({formatPriceChange(stock.price_change)})
                               </Text>
                             </View>
 
@@ -989,7 +1000,7 @@ const SuggestionSection = ({ registerRefresh }: Props) => {
                             <View style={{ flex: 3.5, alignItems: "flex-end" }}>
                               <View
                                 style={{
-                                  backgroundColor: changeBg,
+                                  backgroundColor: perPriceChangeColor + "20",
                                   borderRadius: 4,
                                   width: "100%",
                                   alignItems: "center",
@@ -999,18 +1010,11 @@ const SuggestionSection = ({ registerRefresh }: Props) => {
                               >
                                 <Text
                                   typography="labelLarge"
-                                  color={changeColor}
+                                  color={perPriceChangeColor}
                                 >
-                                  <Text
-                                    typography="labelSmall"
-                                    color={changeColor}
-                                  >
-                                    {arrow}
-                                  </Text>
-                                  {Math.abs(
+                                  {formatPercentageChange(
                                     stock.per_price_change,
-                                  ).toLocaleString("vi-VN")}
-                                  %
+                                  )}
                                 </Text>
                               </View>
                             </View>
