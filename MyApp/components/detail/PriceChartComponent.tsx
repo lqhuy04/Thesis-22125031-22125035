@@ -10,7 +10,6 @@ import {
   parseDateTime,
   StockPriceData,
   TechnicalIndicatorData,
-  getTechnicalIndicators,
   fetchCurrentPriceData,
 } from "@/helpers/DetailHelpers";
 import { TouchableOpacity, View, StyleSheet } from "react-native";
@@ -208,6 +207,39 @@ interface Props {
   registerRefresh?: (fn: () => Promise<void>) => () => void;
 }
 
+type ChartInterval =
+  | "1m"
+  | "5m"
+  | "15m"
+  | "30m"
+  | "1h"
+  | "1d"
+  | "1w"
+  | "1M";
+
+const toChartInterval = (timeFrame: TIMEFRAME): ChartInterval => {
+  switch (timeFrame) {
+    case TIMEFRAME.ONE_MINUTE:
+      return "1m";
+    case TIMEFRAME.FIVE_MINUTES:
+      return "5m";
+    case TIMEFRAME.FIFTEEN_MINUTES:
+      return "15m";
+    case TIMEFRAME.THIRTY_MINUTES:
+      return "30m";
+    case TIMEFRAME.ONE_HOUR:
+      return "1h";
+    case TIMEFRAME.ONE_DAY:
+      return "1d";
+    case TIMEFRAME.ONE_WEEK:
+      return "1w";
+    case TIMEFRAME.ONE_MONTH:
+      return "1M";
+    default:
+      return "15m";
+  }
+};
+
 const PriceChartComponent = ({
   symbol,
   registerRefresh,
@@ -250,8 +282,19 @@ const PriceChartComponent = ({
   const [technicalIndicatorsData, setTechnicalIndicatorsData] = useState<
     TechnicalIndicatorData[]
   >([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const isLoadingMoreRef = useRef(false);
+  const chartRequestVersion = useRef(0);
 
   const fetchChartData = useCallback(async (showLoading = true) => {
+    const requestVersion = ++chartRequestVersion.current;
+    isLoadingMoreRef.current = false;
+    setIsLoadingMore(false);
+    setNextCursor(null);
+    setHasMore(false);
+
     // Show full skeleton only on the very first fetch; subsequent
     // timeframe changes show a chart-only skeleton.
     if (showLoading) {
@@ -263,39 +306,25 @@ const PriceChartComponent = ({
     }
 
     try {
-      const interval =
-        timeFrame === TIMEFRAME.ONE_MINUTE
-          ? "1m"
-          : timeFrame === TIMEFRAME.FIVE_MINUTES
-            ? "5m"
-            : timeFrame === TIMEFRAME.FIFTEEN_MINUTES
-              ? "15m"
-              : timeFrame === TIMEFRAME.THIRTY_MINUTES
-                ? "30m"
-                : timeFrame === TIMEFRAME.ONE_HOUR
-                  ? "1h"
-                  : timeFrame === TIMEFRAME.ONE_DAY
-                    ? "1d"
-                    : timeFrame === TIMEFRAME.ONE_WEEK
-                      ? "1w"
-                      : timeFrame === TIMEFRAME.ONE_MONTH
-                        ? "1M"
-                        : "15m";
+      const interval = toChartInterval(timeFrame);
+      const priceRes = await fetchStockDataByTimeFrame(symbol, interval);
+      if (requestVersion !== chartRequestVersion.current) return;
 
-      const [indicatorRes, priceRes] = await Promise.all([
-        getTechnicalIndicators(symbol, interval),
-        fetchStockDataByTimeFrame(symbol, interval),
-      ]);
-
-      if (indicatorRes?.status) {
-        setTechnicalIndicatorsData(indicatorRes.data ?? []);
-      }
       if (priceRes?.status) {
         setPriceData(priceRes.data ?? []);
+        setTechnicalIndicatorsData(priceRes.indicators ?? []);
+        setNextCursor(priceRes.nextCursor);
+        setHasMore(priceRes.hasMore);
+      } else {
+        setPriceData([]);
+        setTechnicalIndicatorsData([]);
       }
     } catch (error) {
-      console.error("Fetch error:", error);
+      if (requestVersion === chartRequestVersion.current) {
+        console.error("Fetch error:", error);
+      }
     } finally {
+      if (requestVersion !== chartRequestVersion.current) return;
       if (showLoading) {
         setLoading(false);
       }
@@ -305,6 +334,59 @@ const PriceChartComponent = ({
       }
     }
   }, [symbol, timeFrame]);
+
+  const loadMoreChartData = useCallback(async () => {
+    if (!hasMore || !nextCursor || isLoadingMoreRef.current) return;
+
+    const requestVersion = chartRequestVersion.current;
+    const interval = toChartInterval(timeFrame);
+    const cursor = nextCursor;
+
+    isLoadingMoreRef.current = true;
+    setIsLoadingMore(true);
+    try {
+      const response = await fetchStockDataByTimeFrame(
+        symbol,
+        interval,
+        cursor,
+      );
+      if (
+        requestVersion !== chartRequestVersion.current ||
+        !response.status
+      ) {
+        return;
+      }
+
+      setPriceData((current) => {
+        const existing = new Set(
+          current.map((item) => `${item.TradingDate}|${item.Time}`),
+        );
+        return [
+          ...response.data.filter(
+            (item) => !existing.has(`${item.TradingDate}|${item.Time}`),
+          ),
+          ...current,
+        ];
+      });
+      setTechnicalIndicatorsData((current) => {
+        const existing = new Set(
+          current.map((item) => `${item.TradingDate}|${item.Time}`),
+        );
+        return [
+          ...response.indicators.filter(
+            (item) => !existing.has(`${item.TradingDate}|${item.Time}`),
+          ),
+          ...current,
+        ];
+      });
+      setNextCursor(response.nextCursor);
+      setHasMore(response.hasMore);
+    } finally {
+      if (requestVersion !== chartRequestVersion.current) return;
+      isLoadingMoreRef.current = false;
+      setIsLoadingMore(false);
+    }
+  }, [hasMore, nextCursor, symbol, timeFrame]);
 
   useEffect(() => {
     fetchChartData();
@@ -337,11 +419,13 @@ const PriceChartComponent = ({
       technicalIndicatorsData.length === 0
     )
       return [];
-    return technicalIndicatorsData.map((item) => ({
-      time: parseDateTime(item.TradingDate, item.Time) / 1000,
-      ma20: item.sma_20,
-      ma50: item.sma_50,
-    }));
+    return technicalIndicatorsData
+      .filter((item) => item.sma_20 !== null && item.sma_50 !== null)
+      .map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        ma20: item.sma_20 as number,
+        ma50: item.sma_50 as number,
+      }));
   }, [technicalIndicatorsData]);
 
   const chartBOLLData: BollData[] = useMemo(() => {
@@ -350,12 +434,19 @@ const PriceChartComponent = ({
       technicalIndicatorsData.length === 0
     )
       return [];
-    return technicalIndicatorsData.map((item) => ({
-      time: parseDateTime(item.TradingDate, item.Time) / 1000,
-      boll: item.bb_middle,
-      ub: item.bb_upper,
-      lb: item.bb_lower,
-    }));
+    return technicalIndicatorsData
+      .filter(
+        (item) =>
+          item.bb_middle !== null &&
+          item.bb_upper !== null &&
+          item.bb_lower !== null,
+      )
+      .map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        boll: item.bb_middle as number,
+        ub: item.bb_upper as number,
+        lb: item.bb_lower as number,
+      }));
   }, [technicalIndicatorsData]);
 
   const chartMACDData: MACDData[] = useMemo(() => {
@@ -364,12 +455,19 @@ const PriceChartComponent = ({
       technicalIndicatorsData.length === 0
     )
       return [];
-    return technicalIndicatorsData.map((item) => ({
-      time: parseDateTime(item.TradingDate, item.Time) / 1000,
-      macd: item.macd_histogram,
-      dif: item.macd,
-      dea: item.macd_signal,
-    }));
+    return technicalIndicatorsData
+      .filter(
+        (item) =>
+          item.macd_histogram !== null &&
+          item.macd !== null &&
+          item.macd_signal !== null,
+      )
+      .map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        macd: item.macd_histogram as number,
+        dif: item.macd as number,
+        dea: item.macd_signal as number,
+      }));
   }, [technicalIndicatorsData]);
 
   const chartRSIData: RSIData[] = useMemo(() => {
@@ -378,10 +476,12 @@ const PriceChartComponent = ({
       technicalIndicatorsData.length === 0
     )
       return [];
-    return technicalIndicatorsData.map((item) => ({
-      time: parseDateTime(item.TradingDate, item.Time) / 1000,
-      value: item.rsi_14,
-    }));
+    return technicalIndicatorsData
+      .filter((item) => item.rsi_14 !== null)
+      .map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        value: item.rsi_14 as number,
+      }));
   }, [technicalIndicatorsData]);
 
   const chartKDJData: KDJData[] = useMemo(() => {
@@ -390,12 +490,17 @@ const PriceChartComponent = ({
       technicalIndicatorsData.length === 0
     )
       return [];
-    return technicalIndicatorsData.map((item) => ({
-      time: parseDateTime(item.TradingDate, item.Time) / 1000,
-      k: item.kdj_k,
-      d: item.kdj_d,
-      j: item.kdj_j,
-    }));
+    return technicalIndicatorsData
+      .filter(
+        (item) =>
+          item.kdj_k !== null && item.kdj_d !== null && item.kdj_j !== null,
+      )
+      .map((item) => ({
+        time: parseDateTime(item.TradingDate, item.Time) / 1000,
+        k: item.kdj_k as number,
+        d: item.kdj_d as number,
+        j: item.kdj_j as number,
+      }));
   }, [technicalIndicatorsData]);
 
   const chartVolumeData: VolumeData[] = useMemo(() => {
@@ -549,6 +654,8 @@ const PriceChartComponent = ({
                   showVolume={indicatorState.volume}
                   technicalIndicatorMode1={indicatorState.mode1}
                   technicalIndicatorMode2={indicatorState.mode2}
+                  onLoadMore={loadMoreChartData}
+                  isLoadingMore={isLoadingMore}
                 />
 
                 <TouchableOpacity

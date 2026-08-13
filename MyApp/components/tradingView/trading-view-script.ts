@@ -24,6 +24,8 @@ window.setTheme = (background, textPrimary) => {
 // Track initialization state
 window.currentSeriesType = "candle";
 window.cachedPriceData = null;
+window.hasLoadedChartData = false;
+window.loadMoreEnabled = false;
 window.cachedVolumeData = null;
 window.cachedVolumeMAData = null;
 window.cachedMaData = null;
@@ -717,6 +719,10 @@ const tryInitialize = () => {
         rightOffset: DEFAULT_ZOOM.rightOffset,
         borderVisible: false,
         autoScale: true,
+        // Do not allow scrolling into empty space before the oldest loaded
+        // candle. Once an older page is prepended, this edge moves left and
+        // the user can continue scrolling naturally.
+        fixLeftEdge: true,
         enableConflation: true,
         timeVisible: true,
         tickMarkFormatter,
@@ -729,6 +735,17 @@ const tryInitialize = () => {
 
     // ── Main price series — pane 0 ─────────────────────────────────────────
     window.mainSeries = window.chart.addSeries(LightweightCharts.CandlestickSeries, createCandlestickOptions());
+
+    let lastLoadMoreMessageAt = 0;
+    window.chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (!window.loadMoreEnabled || !range || range.from > 8 || !window.cachedPriceData?.length) return;
+      const now = Date.now();
+      if (now - lastLoadMoreMessageAt < 750) return;
+      lastLoadMoreMessageAt = now;
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: "load-more" }));
+      }
+    });
 
     // ── MA lines — pane 0 ─────────────────────────────────────────────────
     window.ma20Series = window.chart.addSeries(LightweightCharts.LineSeries, {
@@ -1040,11 +1057,16 @@ window.setTechnicalIndicatorMode2 = (mode) => {
 };
 
 // Set chart data (called once or when timeframe changes)
-window.updateChartData = (priceData, volumeData, volumeMAData, maData, bollData, macdData, rsiData, kdjData, timeframeOption) => {
+window.updateChartData = (priceData, volumeData, volumeMAData, maData, bollData, macdData, rsiData, kdjData, timeframeOption, preserveVisibleRange) => {
   if (!priceData || !volumeData) return;
 
+  const isInitialUpdate = !window.hasLoadedChartData;
   const isTimeframeChanged = timeframeOption !== undefined && timeframeOption !== window.currentTimeframeOption;
   if (timeframeOption !== undefined) window.currentTimeframeOption = timeframeOption;
+  if (isInitialUpdate || isTimeframeChanged) window.loadMoreEnabled = false;
+  const previousVisibleRange = preserveVisibleRange && window.chart
+    ? window.chart.timeScale().getVisibleRange()
+    : null;
 
   // Cache everything
   window.cachedPriceData = priceData;
@@ -1104,14 +1126,25 @@ window.updateChartData = (priceData, volumeData, volumeMAData, maData, bollData,
     }
   }
 
-  if (isTimeframeChanged) {
+  if (previousVisibleRange) {
+    requestAnimationFrame(() => {
+      if (window.chart) {
+        window.chart.timeScale().setVisibleRange(previousVisibleRange);
+        window.loadMoreEnabled = true;
+      }
+    });
+  } else if (isInitialUpdate || isTimeframeChanged) {
     requestAnimationFrame(() => {
       if (window.chart) {
         window.chart.timeScale().applyOptions(DEFAULT_ZOOM);
         window.chart.timeScale().scrollToPosition(DEFAULT_ZOOM.rightOffset, false);
+        setTimeout(() => { window.loadMoreEnabled = true; }, 100);
       }
     });
+  } else {
+    window.loadMoreEnabled = true;
   }
+  window.hasLoadedChartData = true;
 
   // Refresh legends with latest data
   updateAllLegends(null);

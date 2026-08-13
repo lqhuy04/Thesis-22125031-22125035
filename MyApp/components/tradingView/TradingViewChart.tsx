@@ -33,6 +33,8 @@ type Props = {
   technicalIndicatorMode1: string | null;
   technicalIndicatorMode2: string | null;
   hideTooltip?: boolean;
+  onLoadMore?: () => void;
+  isLoadingMore?: boolean;
 };
 
 const TradingViewChart = ({
@@ -50,10 +52,14 @@ const TradingViewChart = ({
   technicalIndicatorMode1,
   technicalIndicatorMode2,
   hideTooltip = false,
+  onLoadMore,
+  isLoadingMore = false,
 }: Props) => {
   const { theme } = useTheme();
   const webViewRef = useRef<WebView>(null);
   const isChartReady = useRef(false);
+  const previousOldestTime = useRef<number | null>(null);
+  const previousTimeframe = useRef<number | null>(null);
 
   const WEB_VIEW_SOURCE = useMemo(() => getWebViewSource(), []);
   const injectedJavaScriptCode = useMemo(() => injectedJavaScript(), []);
@@ -73,6 +79,7 @@ const TradingViewChart = ({
       rsiData: RSIData[],
       kdjData: KDJData[],
       tf: number,
+      preserveVisibleRange: boolean,
     ) => {
       const script = /*javascript*/ `
         (function() {
@@ -87,7 +94,8 @@ const TradingViewChart = ({
                 ${JSON.stringify(macdData)},
                 ${JSON.stringify(rsiData)},
                 ${JSON.stringify(kdjData)},
-                ${tf}
+                ${tf},
+                ${preserveVisibleRange}
               );
             }
           } catch (_e) {}
@@ -220,7 +228,10 @@ const TradingViewChart = ({
               rsiData,
               kdjData,
               timeframe,
+              false,
             );
+            previousOldestTime.current = prices[0]?.time ?? null;
+            previousTimeframe.current = timeframe;
           }
           // Apply initial states
           switchSeriesType(chartType);
@@ -228,6 +239,8 @@ const TradingViewChart = ({
           setTechnicalIndicatorMode1(technicalIndicatorMode1);
           setTechnicalIndicatorMode2(technicalIndicatorMode2);
           setTooltipHidden(hideTooltip);
+        } else if (message.type === "load-more") {
+          onLoadMore?.();
         }
       } catch (_e) {
         console.error(_e);
@@ -257,6 +270,7 @@ const TradingViewChart = ({
       rsiData,
       kdjData,
       timeframe,
+      onLoadMore,
     ],
   );
 
@@ -264,6 +278,12 @@ const TradingViewChart = ({
   useEffect(() => {
     if (!isChartReady.current) return;
     if (prices.length === 0) return;
+    const oldestTime = prices[0]?.time ?? null;
+    const preserveVisibleRange =
+      previousTimeframe.current === timeframe &&
+      previousOldestTime.current !== null &&
+      oldestTime !== null &&
+      oldestTime < previousOldestTime.current;
     updateChartData(
       prices,
       volumes,
@@ -274,7 +294,10 @@ const TradingViewChart = ({
       rsiData,
       kdjData,
       timeframe,
+      preserveVisibleRange,
     );
+    previousOldestTime.current = oldestTime;
+    previousTimeframe.current = timeframe;
   }, [
     prices,
     volumes,
@@ -349,6 +372,18 @@ const TradingViewChart = ({
         injectedJavaScriptBeforeContentLoaded={injectedJavaScriptCode}
         webviewDebuggingEnabled={false}
       />
+      {isLoadingMore && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+          }}
+        >
+          <ActivityIndicator size="small" />
+        </View>
+      )}
     </View>
   );
 };

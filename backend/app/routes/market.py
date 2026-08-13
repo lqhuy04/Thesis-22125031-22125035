@@ -72,27 +72,45 @@ def search_stock_by_symbol(
 @router.get("/price/{symbol}", response_model=Any)
 def get_latest_historical_chart_data(
     symbol: str,
-    interval: str = Query("15m", description="Interval: 15m, 1h, or 1d")
+    interval: str = Query(
+        "15m",
+        description="Interval: 1m, 5m, 15m, 30m, 1h, 1d, 1w, or 1M",
+    ),
+    limit: int = Query(100, ge=1, le=100, description="Candles per page"),
+    before: str | None = Query(
+        None,
+        description="Exclusive trading_time cursor for loading older candles",
+    ),
 ):
     """
-    📈 Get exactly the latest 300 records for a specific interval
+    Get one cursor page of candles with technical indicators.
 
-    The stock symbol is resolved through Stock.stock_symbol, then price rows
-    are queried from Stock_Price_1m or Stock_Price_1d by Stock.id.
-
-    - **interval**: 15m, 1h, 1d (defaults to 15m)
-    - Returns latest **300** records (fixed)
-    
-    **Example:** `/api/price/VNM?interval=1h`
+    Use ``nextCursor`` as the next request's ``before`` value to load older
+    candles. Each candle includes OHLCV and indicator fields.
     """
     request_id = str(uuid.uuid4())
-    result = MarketService.get_stock_price_by_interval(symbol, interval=interval)
+    try:
+        result = MarketService.get_stock_price_page(
+            symbol,
+            interval=interval,
+            limit=limit,
+            before=before,
+        )
+    except ValueError as exc:
+        return {
+            "data": {},
+            "errorCode": 400001,
+            "errorDesc": str(exc),
+            "requestId": request_id,
+            "result": False,
+        }
+    candles = result.get("candles", []) if result else []
     return {
         "data": result,
-        "errorCode": 0 if result else 500001,
-        "errorDesc": "" if result else "No data found for the specified symbol and interval",
+        "errorCode": 0 if candles else 500001,
+        "errorDesc": "" if candles else "No data found for the specified symbol and interval",
         "requestId": request_id,
-        "result": bool(result)
+        "result": bool(candles),
     }
 
 

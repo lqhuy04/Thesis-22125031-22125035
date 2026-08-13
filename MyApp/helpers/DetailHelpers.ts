@@ -182,19 +182,30 @@ export type StockPriceData = {
 export const fetchStockDataByTimeFrame = async (
   symbol: string,
   timeframe: "1m" | "5m" | "15m" | "30m" | "1h" | "1d" | "1w" | "1M",
+  before?: string | null,
+  limit: number = 100,
 ): Promise<{
   status: boolean;
   data: StockPriceData[];
+  indicators: TechnicalIndicatorData[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }> => {
   try {
+    const query = [
+      `interval=${encodeURIComponent(timeframe)}`,
+      `limit=${Math.max(1, Math.min(limit, 100))}`,
+      ...(before ? [`before=${encodeURIComponent(before)}`] : []),
+    ].join("&");
     const result = await sendMessage(
-      `api/price/${symbol}?interval=${timeframe}`,
+      `api/price/${symbol}?${query}`,
     );
 
     const { errorCode, data } = result || {};
 
     if (errorCode === 0) {
-      const result = data?.map((item: any) => {
+      const candles = Array.isArray(data?.candles) ? data.candles : [];
+      const prices = candles.map((item: any) => {
         const { date, time } = parseTradingTime(item?.trading_time);
         return {
           symbol: item?.symbol,
@@ -207,15 +218,42 @@ export const fetchStockDataByTimeFrame = async (
           Volume: item?.volume,
         };
       });
+      const indicators = candles.map((item: any) => {
+        const { date, time } = parseTradingTime(item?.trading_time);
+        return {
+          TradingDate: date,
+          Time: time,
+          sma_20: item?.sma_20 ?? null,
+          sma_50: item?.sma_50 ?? null,
+          rsi_14: item?.rsi_14 ?? null,
+          macd: item?.macd ?? null,
+          macd_signal: item?.macd_signal ?? null,
+          macd_histogram: item?.macd_histogram ?? null,
+          bb_upper: item?.bb_upper ?? null,
+          bb_middle: item?.bb_middle ?? null,
+          bb_lower: item?.bb_lower ?? null,
+          kdj_k: item?.kdj_k ?? null,
+          kdj_d: item?.kdj_d ?? null,
+          kdj_j: item?.kdj_j ?? null,
+          volume_ma_20: item?.volume_ma_20 ?? null,
+          volume_ma_50: item?.volume_ma_50 ?? null,
+        };
+      });
 
       return {
         status: true,
-        data: result,
+        data: prices,
+        indicators,
+        nextCursor: data?.nextCursor ?? null,
+        hasMore: Boolean(data?.hasMore),
       };
     } else {
       return {
         status: false,
         data: [],
+        indicators: [],
+        nextCursor: null,
+        hasMore: false,
       };
     }
   } catch (error) {
@@ -223,6 +261,9 @@ export const fetchStockDataByTimeFrame = async (
     return {
       status: false,
       data: [],
+      indicators: [],
+      nextCursor: null,
+      hasMore: false,
     };
   }
 };
@@ -402,20 +443,20 @@ export const fetchCurrentIndexData = async (
 export type TechnicalIndicatorData = {
   TradingDate: string;
   Time: string;
-  sma_20: number;
-  sma_50: number;
-  rsi_14: number;
-  macd: number;
-  macd_signal: number;
-  macd_histogram: number;
-  bb_upper: number;
-  bb_middle: number;
-  bb_lower: number;
-  kdj_k: number;
-  kdj_d: number;
-  kdj_j: number;
-  volume_ma_20: number;
-  volume_ma_50: number;
+  sma_20: number | null;
+  sma_50: number | null;
+  rsi_14: number | null;
+  macd: number | null;
+  macd_signal: number | null;
+  macd_histogram: number | null;
+  bb_upper: number | null;
+  bb_middle: number | null;
+  bb_lower: number | null;
+  kdj_k: number | null;
+  kdj_d: number | null;
+  kdj_j: number | null;
+  volume_ma_20: number | null;
+  volume_ma_50: number | null;
 };
 
 export const getTechnicalIndicators = async (

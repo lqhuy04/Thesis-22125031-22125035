@@ -126,16 +126,24 @@ class FundamentalAnalysisService:
     @staticmethod
     def get_income_statements(symbol: str) -> List[Dict]:
         """
-        Get the income statement for the latest available year of a symbol.
+        Get the full annual income-statement history for a symbol.
+
+        This query is intentionally separate from ``_get_latest_annual_rows``:
+        cash flow and financial indicators still return only their latest year.
         """
         try:
             stock_id = FundamentalAnalysisService._resolve_stock_id(symbol)
             if not stock_id:
                 return []
 
-            return FundamentalAnalysisService._get_latest_annual_rows(
-                "FA_IncomeStatement", stock_id
+            result = (
+                supabase.table("FA_IncomeStatement")
+                .select("*")
+                .eq("stock_id", stock_id)
+                .order("year", desc=False)
+                .execute()
             )
+            return result.data or []
         except Exception as e:
             print(f"Error fetching income statements: {e}")
             raise ValueError(f"Failed to fetch income statements: {str(e)}")

@@ -5,11 +5,13 @@ Handles database operations for historical stock prices (15m, 1h, 1d intervals)
 from supabase import create_client, Client
 from app.config import settings
 from collections import Counter
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable
 from datetime import datetime, timedelta
 from app.utils.market_index import get_index_symbols
+from app.services.technical_indicators_service import TechnicalIndicatorsService
 import random
 import pandas as pd
+import time
 
 
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
@@ -19,6 +21,38 @@ class MarketService:
     
     def __init__(self):
         pass
+
+    _TRANSIENT_ERROR_MARKERS = (
+        "resource temporarily unavailable",
+        "connection reset",
+        "connection terminated",
+        "server disconnected",
+        "temporarily unavailable",
+        "timed out",
+        "timeout",
+    )
+
+    @staticmethod
+    def _execute_with_retry(
+        operation: Callable[[], Any],
+        attempts: int = 3,
+    ) -> Any:
+        """Retry short-lived socket/transport failures with a small backoff."""
+        for attempt in range(attempts):
+            try:
+                return operation()
+            except Exception as exc:
+                message = str(exc).lower()
+                is_transient = (
+                    getattr(exc, "errno", None) in {11, 35}
+                    or any(
+                        marker in message
+                        for marker in MarketService._TRANSIENT_ERROR_MARKERS
+                    )
+                )
+                if not is_transient or attempt == attempts - 1:
+                    raise
+                time.sleep(0.15 * (2 ** attempt))
 
     @staticmethod
     def get_all_symbols() -> List[str]:
@@ -111,18 +145,172 @@ class MarketService:
         if not normalized_symbol:
             return None
 
-        response = (
-            supabase.table("Stock")
-            .select("id")
-            .eq("stock_symbol", normalized_symbol)
-            .limit(1)
-            .execute()
+        response = MarketService._execute_with_retry(
+            lambda: (
+                supabase.table("Stock")
+                .select("id")
+                .eq("stock_symbol", normalized_symbol)
+                .limit(1)
+                .execute()
+            )
         )
         rows = response.data or []
         if not rows or not rows[0].get("id"):
             return None
 
         return str(rows[0]["id"])
+
+    @staticmethod
+    def _fetch_raw_window(
+        table: str,
+        stock_id: str,
+        max_rows: int,
+        before: Optional[str] = None,
+    ) -> tuple[pd.DataFrame, bool]:
+        """Fetch a bounded newest-first raw window and return it oldest-first."""
+        page_size = 1000
+        all_rows: List[Dict[str, Any]] = []
+        offset = 0
+        exhausted = False
+
+        while len(all_rows) < max_rows:
+            batch_size = min(page_size, max_rows - len(all_rows))
+
+            def execute_page():
+                query = (
+                    supabase.table(table)
+                    .select(
+                        "stock_id,trading_time,open,high,low,close,volume"
+                    )
+                    .eq("stock_id", stock_id)
+                )
+                if before:
+                    query = query.lt("trading_time", before)
+                return (
+                    query.order("trading_time", desc=True)
+                    .range(offset, offset + batch_size - 1)
+                    .execute()
+                )
+
+            response = MarketService._execute_with_retry(execute_page)
+            rows = response.data or []
+            all_rows.extend(rows)
+            if len(rows) < batch_size:
+                exhausted = True
+                break
+            offset += batch_size
+
+        if not all_rows:
+            return pd.DataFrame(), True
+
+        df = pd.DataFrame(all_rows)
+        df["trading_time"] = pd.to_datetime(
+            df["trading_time"],
+            errors="coerce",
+        )
+        for column in ("open", "high", "low", "close", "volume"):
+            df[column] = pd.to_numeric(df[column], errors="coerce")
+        df = df.dropna(
+            subset=["trading_time", "open", "high", "low", "close", "volume"]
+        )
+        return df.set_index("trading_time").sort_index(), exhausted
+
+    @staticmethod
+    def get_stock_price_page(
+        symbol: str,
+        interval: str = "15m",
+        limit: int = 100,
+        before: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Return one cursor page of candles with technical indicators."""
+        normalized_symbol = (symbol or "").strip().upper()
+        if not normalized_symbol:
+            return {}
+
+        interval_config = {
+            "1m": ("Stock_Price_1m", "1min", 1),
+            "5m": ("Stock_Price_1m", "5min", 5),
+            "15m": ("Stock_Price_1m", "15min", 15),
+            "30m": ("Stock_Price_1m", "30min", 30),
+            "1h": ("Stock_Price_1m", "1h", 60),
+            "1d": ("Stock_Price_1d", "1D", 1),
+            "1w": ("Stock_Price_1d", "1W", 5),
+            "1M": ("Stock_Price_1d", "1ME", 23),
+        }
+        if interval not in interval_config:
+            raise ValueError(f"Unsupported interval: {interval}")
+
+        normalized_limit = max(1, min(limit, 100))
+        warmup_candles = 60
+        source_table, resample_rule, raw_rows_per_candle = interval_config[
+            interval
+        ]
+        raw_limit = (
+            normalized_limit + warmup_candles + 1
+        ) * raw_rows_per_candle
+
+        stock_id = MarketService._resolve_stock_id(normalized_symbol)
+        if not stock_id:
+            return {}
+
+        raw_df, raw_exhausted = MarketService._fetch_raw_window(
+            source_table,
+            stock_id,
+            raw_limit,
+            before=before,
+        )
+        if raw_df.empty:
+            return {
+                "candles": [],
+                "nextCursor": None,
+                "hasMore": False,
+            }
+
+        if interval in {"1m", "1d"}:
+            candle_df = raw_df
+        else:
+            candle_df = MarketService._resample_ohlcv(
+                raw_df,
+                resample_rule,
+            )
+        candle_df = candle_df.sort_index()
+        if candle_df.empty:
+            return {
+                "candles": [],
+                "nextCursor": None,
+                "hasMore": False,
+            }
+
+        indicator_values: Dict[str, List[Any]] = {}
+        if len(candle_df) >= 50:
+            indicator_values = TechnicalIndicatorsService.calculate_all_indicators(
+                candle_df.reset_index()
+            )
+
+        page_df = candle_df.tail(normalized_limit)
+        start_index = len(candle_df) - len(page_df)
+        candles = MarketService._df_to_records(page_df, normalized_symbol)
+        for row_offset, candle in enumerate(candles):
+            indicator_index = start_index + row_offset
+            for name, values in indicator_values.items():
+                candle[name] = (
+                    values[indicator_index]
+                    if indicator_index < len(values)
+                    else None
+                )
+
+        oldest_time = page_df.index[0]
+        next_cursor = (
+            oldest_time.isoformat()
+            if hasattr(oldest_time, "isoformat")
+            else str(oldest_time)
+        )
+        has_more = len(candle_df) > normalized_limit or not raw_exhausted
+        return {
+            "candles": candles,
+            "nextCursor": next_cursor if has_more else None,
+            "hasMore": has_more,
+        }
 
     @staticmethod
     def _fetch_raw(table: str, symbol: str) -> pd.DataFrame:
@@ -476,7 +664,7 @@ class MarketService:
                 .eq("symbol", normalized_symbol) \
                 .limit(1)
             
-            result = query.execute()
+            result = MarketService._execute_with_retry(query.execute)
             data = result.data if result.data else []
 
             if len(data) == 0:
@@ -492,7 +680,7 @@ class MarketService:
                 .eq("stock_id", stock_id) \
                 .limit(1)
             
-            result2 = query2.execute()
+            result2 = MarketService._execute_with_retry(query2.execute)
             data2 = result2.data if result2.data else []
 
             if len(data2) == 0:
