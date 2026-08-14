@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
-  Dimensions,
   FlatList,
   Image,
   NativeScrollEvent,
@@ -18,10 +17,6 @@ import { getNewsByCategoryId } from "@/helpers/MarketHelpers";
 import NewsItem from "../ui/NewsItem";
 import { useLocalization } from "@/hooks/LocalizationContext";
 import RelatedStockBadges from "../ui/RelatedStockBadges";
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const ITEM_WIDTH = SCREEN_WIDTH - 48;
-const SNAP_INTERVAL = ITEM_WIDTH;
 
 function chunkArray<T>(arr: T[], size: number = 2): T[][] {
   const result: T[][] = [];
@@ -219,14 +214,17 @@ const CategoryContent = ({
   const { theme } = useTheme();
   const { t } = useLocalization();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [carouselWidth, setCarouselWidth] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
   const chunks = chunkArray(data.news.slice(1));
   const featured = data.news[0];
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (carouselWidth === 0) return;
+
     const offsetX = event.nativeEvent.contentOffset.x;
-    setActiveIndex(Math.round(offsetX / SNAP_INTERVAL));
+    setActiveIndex(Math.round(offsetX / carouselWidth));
   };
 
   // Reset carousel khi đổi category
@@ -285,13 +283,20 @@ const CategoryContent = ({
         data={chunks}
         keyExtractor={(_, index) => index.toString()}
         showsHorizontalScrollIndicator={false}
-        snapToInterval={SNAP_INTERVAL}
+        snapToInterval={carouselWidth || undefined}
         snapToAlignment="start"
         decelerationRate="fast"
+        disableIntervalMomentum
         onScroll={onScroll}
         scrollEventThrottle={16}
+        onLayout={(event) => {
+          const nextWidth = Math.round(event.nativeEvent.layout.width);
+          setCarouselWidth((currentWidth) =>
+            currentWidth === nextWidth ? currentWidth : nextWidth,
+          );
+        }}
         renderItem={({ item: chunk }) => (
-          <View style={{ width: ITEM_WIDTH - 12, marginLeft: 12 }}>
+          <View style={{ width: carouselWidth, paddingHorizontal: 12 }}>
             {chunk.map((newsItem: New, i: number) => (
               <View key={newsItem.title}>
                 {i !== 0 && (
