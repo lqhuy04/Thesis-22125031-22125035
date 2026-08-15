@@ -6,7 +6,7 @@ Mọi câu lệnh phải đi qua `run_select()`, nơi:
   1. sanitize_sql()  — chỉ cho phép một câu SELECT/WITH, cấm DML/DDL, cấm multi-statement,
                        cấm comment, và mọi bảng trong FROM/JOIN phải nằm trong ALLOWED_TABLES.
   2. execute        — chạy trong transaction READ ONLY + statement_timeout ngắn,
-                       trả tối đa MAX_ROWS dòng.
+                       trả tối đa 100 dòng thông thường hoặc 200 nến khi tính chỉ báo kỹ thuật.
 
 Dùng chung pool với PostgresSaver (xem db.py). Schema được introspect động từ
 information_schema để prompt của LLM luôn khớp tên cột thật (tránh hallucination).
@@ -15,6 +15,8 @@ information_schema để prompt của LLM luôn khớp tên cột thật (tránh
 import re
 
 from psycopg.rows import dict_row
+from sqlglot import exp, parse_one
+from sqlglot.errors import ParseError
 
 from agentic_ai.chatbot.db import get_query_pool
 
@@ -48,7 +50,8 @@ ALLOWED_TABLES: set[str] = {
     "Stock_MarketIndex",
 }
 
-MAX_ROWS = 100            # Số dòng tối đa trả về (chống ngốn token + lạm dụng)
+MAX_ROWS = 100            # Giới hạn mặc định cho câu hỏi dữ liệu thông thường.
+TECHNICAL_MAX_ROWS = 200  # Chỉ dùng khi market_agent cần đủ nến tính chỉ báo.
 STATEMENT_TIMEOUT_MS = 4000  # Hủy query chạy quá lâu
 MAX_SQL_LENGTH = 12_000
 
@@ -70,7 +73,6 @@ _CTE_NAME = re.compile(
     re.IGNORECASE,
 )
 
-_FUNCTION_CALL = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", re.IGNORECASE)
 _LIMIT = re.compile(r"\blimit\s+(\d+)\b", re.IGNORECASE)
 _DISALLOWED_CONTEXT = re.compile(
     r"\b(current_user|session_user|current_role|current_catalog|current_schema)\b",
@@ -84,20 +86,37 @@ _ALLOWED_FUNCTIONS = {
     "extract", "greatest", "least", "lower", "max", "min", "nullif",
     "round", "sum", "to_char", "upper",
 }
-_PAREN_KEYWORDS = {"all", "any", "as", "exists", "filter", "in", "on", "over"}
-
-
 def _mask_string_literals(sql: str) -> str:
     """Mask quoted values so their contents are not parsed as SQL structure."""
     return re.sub(r"'(?:''|[^'])*'", "''", sql)
+
+
+def _validate_function_calls(sql: str) -> None:
+    """Allow only approved SQL functions, identified from a PostgreSQL AST.
+
+    A regex cannot distinguish real calls from valid syntax such as
+    ``SELECT (current_price)`` or ``FROM (SELECT ...)``. Parsing the SQL first
+    preserves the strict function allowlist while avoiding those false positives.
+    """
+    try:
+        statement = parse_one(sql, dialect="postgres")
+    except ParseError as exc:
+        raise UnsafeSQLError("SQL không hợp lệ.") from exc
+
+    for function in statement.find_all(exp.Func):
+        name = function.sql_name().lower()
+        if name not in _ALLOWED_FUNCTIONS:
+            raise UnsafeSQLError(f"Hàm SQL '{name}' không được phép.")
 
 
 class UnsafeSQLError(ValueError):
     """Raise khi câu SQL không vượt qua được kiểm tra an toàn."""
 
 
-def sanitize_sql(sql: str) -> str:
+def sanitize_sql(sql: str, max_rows: int = MAX_ROWS) -> str:
     """Kiểm tra & chuẩn hóa câu SQL. Trả về SQL sạch hoặc raise UnsafeSQLError."""
+    if max_rows not in {MAX_ROWS, TECHNICAL_MAX_ROWS}:
+        raise ValueError("max_rows phải là giới hạn truy vấn đã được phê duyệt.")
     if not sql or not sql.strip():
         raise UnsafeSQLError("Câu SQL rỗng.")
 
@@ -128,10 +147,7 @@ def sanitize_sql(sql: str) -> str:
     if _DISALLOWED_CONTEXT.search(structural_sql) or _ROW_LOCK.search(structural_sql):
         raise UnsafeSQLError("SQL chứa biểu thức truy cập ngữ cảnh hệ thống.")
 
-    for function in _FUNCTION_CALL.findall(structural_sql):
-        normalized = function.lower()
-        if normalized not in _ALLOWED_FUNCTIONS and normalized not in _PAREN_KEYWORDS:
-            raise UnsafeSQLError(f"Hàm SQL '{function}' không được phép.")
+    _validate_function_calls(cleaned)
 
     refs = _TABLE_REF.findall(structural_sql)
     cte_names = {name.lower() for name in _CTE_NAME.findall(structural_sql)}
@@ -144,21 +160,21 @@ def sanitize_sql(sql: str) -> str:
             )
 
     limits = [int(value) for value in _LIMIT.findall(structural_sql)]
-    if any(value > MAX_ROWS for value in limits):
-        raise UnsafeSQLError(f"LIMIT không được vượt quá {MAX_ROWS}.")
+    if any(value > max_rows for value in limits):
+        raise UnsafeSQLError(f"LIMIT không được vượt quá {max_rows}.")
     if not limits:
-        cleaned = f"SELECT * FROM ({cleaned}) AS guarded_query LIMIT {MAX_ROWS}"
+        cleaned = f"SELECT * FROM ({cleaned}) AS guarded_query LIMIT {max_rows}"
 
     return cleaned
 
 
-def run_select(sql: str) -> list[dict]:
+def run_select(sql: str, max_rows: int = MAX_ROWS) -> list[dict]:
     """Sanitize rồi chạy câu SELECT trong transaction read-only. Trả list[dict].
 
     Raise UnsafeSQLError nếu SQL không an toàn; raise các lỗi psycopg nếu SQL sai
     cú pháp/sai cột (market_agent bắt để retry).
     """
-    safe_sql = sanitize_sql(sql)
+    safe_sql = sanitize_sql(sql, max_rows=max_rows)
 
     pool = get_query_pool()
     with pool.connection() as conn:
@@ -169,7 +185,7 @@ def run_select(sql: str) -> list[dict]:
                 cur.execute(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}")
                 cur.execute("SET LOCAL search_path = pg_catalog, public")
                 cur.execute(safe_sql)
-                rows = cur.fetchmany(MAX_ROWS)
+                rows = cur.fetchmany(max_rows)
     return rows
 
 

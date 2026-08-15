@@ -5,11 +5,13 @@ Phân loại tin nhắn của người dùng vào một trong 4 nhóm:
   - OUT_OF_SCOPE  : Ngoài phạm vi chứng khoán/tài chính → từ chối, set final_output luôn
   - GREETING      : Chào hỏi, smalltalk → route sang chat_agent
   - KNOWLEDGE_QA  : Câu hỏi kiến thức chứng khoán (không cần DB) → route sang qa_agent
-  - MARKET_QUERY  : Cần dữ liệu thực tế / phân tích mã cụ thể → route sang qa_agent (tạm thời, Phase 2 sẽ có market_agent)
+  - MARKET_QUERY  : Cần dữ liệu thực tế / phân tích mã cụ thể → route sang market_agent
 
 Xem xét cả lịch sử hội thoại (6 tin gần nhất) để phân loại chính xác hơn.
 """
 
+import re
+import unicodedata
 from typing import Literal
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -26,6 +28,32 @@ OUT_OF_SCOPE_REPLY = (
     "Sorry, I only support questions related to stocks and finance. "
     "Do you have any questions about the market, technical analysis, or investing?"
 )
+
+# Company-profile questions with an explicit ticker are unambiguously in scope
+# and need the market database. Resolve these deterministically before relying
+# on an LLM classifier, which previously blocked questions such as
+# "FPT hoạt động trong ngành nào?".
+_TICKER_PATTERN = re.compile(r"\b[A-Z][A-Z0-9]{1,5}\b")
+_COMPANY_PROFILE_TERMS = (
+    "nganh", "linh vuc", "hoat dong", "kinh doanh", "ho so",
+    "cong ty", "doanh nghiep", "lanh dao", "cong ty con", "san",
+    "niem yet", "ngay niem yet", "tru so", "dia chi", "nhan vien",
+    "von dieu le", "industry", "sector", "business", "company profile",
+    "leadership", "subsidiary", "listing", "listed", "exchange",
+)
+
+
+def _is_company_profile_query(user_input: str) -> bool:
+    """Return True for profile/business questions that name a stock ticker."""
+    if not _TICKER_PATTERN.search(user_input or ""):
+        return False
+
+    normalized = unicodedata.normalize("NFKD", user_input).casefold()
+    normalized = "".join(
+        character for character in normalized if not unicodedata.combining(character)
+    )
+    normalized = normalized.replace("đ", "d")
+    return any(term in normalized for term in _COMPANY_PROFILE_TERMS)
 
 INTENT_SYSTEM_PROMPT = """
 Bạn là bộ phân loại ý định (intent classifier) cho chatbot phân tích chứng khoán Việt Nam.
@@ -53,7 +81,10 @@ Phân loại tin nhắn MỚI NHẤT của người dùng vào MỘT trong các 
 4. MARKET_QUERY
    Câu hỏi cần dữ liệu thị trường thực tế hoặc phân tích một mã cổ phiếu cụ thể.
    Ví dụ: "Giá VNM hôm nay bao nhiêu?", "Phân tích kỹ thuật HPG", "Nên mua hay bán VIC?",
-           "VN-Index đang ở mức nào?", "Top cổ phiếu tăng mạnh hôm nay"
+           "VN-Index đang ở mức nào?", "Top cổ phiếu tăng mạnh hôm nay",
+           "FPT hoạt động trong ngành nào?", "MWG kinh doanh gì?",
+           "Hồ sơ doanh nghiệp VNM", "Ban lãnh đạo HPG gồm những ai?",
+           "VIC niêm yết ở sàn nào?"
    English examples: "What is VNM's price today?", "Technical analysis of HPG",
            "Should I buy or sell VIC?", "Where is the VN-Index now?"
 
@@ -64,6 +95,8 @@ Lưu ý quan trọng:
 - Xem xét LỊCH SỬ HỘI THOẠI để hiểu ngữ cảnh. Ví dụ: "Phân tích thêm đi" sau khi bàn về VNM → MARKET_QUERY.
 - Câu hỏi khái niệm tổng quát → KNOWLEDGE_QA, kể cả khi có tên mã cổ phiếu làm ví dụ.
 - Câu hỏi về dữ liệu cụ thể, khuyến nghị mua/bán → MARKET_QUERY.
+- Câu hỏi có mã cổ phiếu cụ thể và hỏi ngành/lĩnh vực/hoạt động kinh doanh/hồ sơ/
+  lãnh đạo/công ty con/niêm yết → MARKET_QUERY, TUYỆT ĐỐI không OUT_OF_SCOPE.
 """.strip()
 
 
@@ -83,6 +116,16 @@ def intent_classifier_agent(state: ChatbotState) -> dict:
     print(f"\n{'='*60}")
     print(f"[Intent Classifier] >>> Input: {user_input!r}")
     print(f"[Intent Classifier] >>> History length: {len(history)} messages")
+
+    if _is_company_profile_query(user_input):
+        print("[Intent Classifier] >>> Intent  : MARKET_QUERY (deterministic company-profile rule)")
+        print("[Intent Classifier] >>> Action  : PASS — route to 'market' agent")
+        print(f"{'='*60}\n")
+        return {
+            "intent": "MARKET_QUERY",
+            "final_output": None,
+            "error": None,
+        }
 
     try:
         client = _get_openai_client()

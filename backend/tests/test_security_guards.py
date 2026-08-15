@@ -4,7 +4,11 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from agentic_ai.chatbot.sql_runner import UnsafeSQLError, sanitize_sql
+from agentic_ai.chatbot.sql_runner import (
+    TECHNICAL_MAX_ROWS,
+    UnsafeSQLError,
+    sanitize_sql,
+)
 from app.models.agentic_schemas import (
     AdminAnalysisRequest,
     ChatRequest,
@@ -22,18 +26,39 @@ class SQLGuardTests(unittest.TestCase):
         guarded = sanitize_sql('SELECT "stock_symbol" FROM "Stock"')
         self.assertIn("LIMIT 100", guarded)
         sanitize_sql(
+            'SELECT ("current_price") AS current_price '
+            'FROM "Current_Stock_Price" LIMIT 1'
+        )
+        sanitize_sql(
+            'SELECT "stock_symbol", COUNT(*) AS total FROM "Stock" '
+            'GROUP BY ("stock_symbol") HAVING (COUNT(*) > 0) '
+            'ORDER BY ("stock_symbol") LIMIT 10'
+        )
+        sanitize_sql(
             'SELECT COUNT(*) AS total, MAX("stock_symbol") FROM "Stock" LIMIT 50'
         )
         sanitize_sql(
             'WITH prices AS (SELECT * FROM "Current_Stock_Price" LIMIT 10) '
             "SELECT COUNT(*) FROM prices"
         )
+        technical_sql = (
+            'SELECT "close" FROM "Stock_Price_1d" '
+            "ORDER BY trading_time DESC LIMIT 200"
+        )
+        sanitize_sql(technical_sql, max_rows=TECHNICAL_MAX_ROWS)
+
+        with self.assertRaises(UnsafeSQLError):
+            sanitize_sql(
+                'SELECT "close" FROM "Stock_Price_1d" LIMIT 201',
+                max_rows=TECHNICAL_MAX_ROWS,
+            )
 
     def test_dangerous_queries_are_rejected(self):
         queries = [
             'SELECT pg_read_file(\'/etc/passwd\') FROM "Stock"',
             'SELECT current_setting(\'server_version\') FROM "Stock"',
             'SELECT pg_sleep(1) FROM "Stock"',
+            'SELECT random() FROM "Stock"',
             'SELECT * FROM "User"',
             'SELECT * FROM "Stock" LIMIT 101',
             'SELECT * FROM "Stock"; SELECT * FROM "Article"',

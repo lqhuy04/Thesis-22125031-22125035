@@ -23,7 +23,13 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from pydantic import BaseModel
 
 from agentic_ai.chatbot.state import ChatbotState
-from agentic_ai.chatbot.sql_runner import get_schema_ddl, run_select, UnsafeSQLError
+from agentic_ai.chatbot.sql_runner import (
+    MAX_ROWS,
+    TECHNICAL_MAX_ROWS,
+    UnsafeSQLError,
+    get_schema_ddl,
+    run_select,
+)
 from agentic_ai.service.openai_service import _get_openai_client
 from app.services.technical_indicators_service import TechnicalIndicatorsService
 
@@ -64,6 +70,69 @@ def _fallback_sql_for_symbol(symbol: str) -> str:
     )
 
 
+def _fallback_technical_sql_for_symbol(symbol: str) -> str:
+    """Return the OHLCV query required when a technical SQL generation fails.
+
+    RSI, MACD, KDJ and Bollinger cannot be calculated from ``FA_Summary``. The
+    fallback must therefore preserve the exact OHLCV shape expected by
+    ``_compute_technical`` and fetch the approved technical window.
+    """
+    sym = symbol.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9._-]{1,16}", sym):
+        return ""
+    return (
+        'SELECT (open * 1000) AS open, (high * 1000) AS high, '
+        '(low * 1000) AS low, (close * 1000) AS close, '
+        '(volume * 1000) AS volume, trading_time '
+        'FROM "Stock_Price_1d" '
+        'WHERE stock_id = (SELECT id FROM "Stock" '
+        f"WHERE stock_symbol = '{sym}') "
+        f"ORDER BY trading_time DESC LIMIT {TECHNICAL_MAX_ROWS}"
+    )
+
+
+def _fallback_news_sql_for_symbol(symbol: str) -> str:
+    """Return a deterministic recent-news query for one stock symbol."""
+    sym = symbol.strip().upper()
+    if not re.fullmatch(r"[A-Z0-9._-]{1,16}", sym):
+        return ""
+    return (
+        "SELECT a.title, a.link, a.time, a.description "
+        'FROM "Article" AS a '
+        'JOIN "Article_Stock" AS article_stock '
+        "ON a.id = article_stock.article_id "
+        'JOIN "Stock" AS s ON s.id = article_stock.stock_id '
+        f"WHERE s.stock_symbol = '{sym}' "
+        "ORDER BY a.time DESC LIMIT 10"
+    )
+
+
+def _is_news_question(user_input: str) -> bool:
+    normalized = unicodedata.normalize("NFKD", user_input or "").casefold()
+    normalized = "".join(
+        char for char in normalized if not unicodedata.combining(char)
+    )
+    return bool(re.search(r"\b(tin\s*tuc|bai\s*bao|news|articles?)\b", normalized))
+
+
+def _fallback_sql_for_request(
+    symbol: str,
+    user_input: str,
+    needs_technical_calc: bool,
+) -> tuple[str, str]:
+    """Choose a deterministic fallback that matches the requested data type."""
+    if needs_technical_calc:
+        return _fallback_technical_sql_for_symbol(symbol), "technical"
+    if _is_news_question(user_input):
+        return _fallback_news_sql_for_symbol(symbol), "news"
+    return _fallback_sql_for_symbol(symbol), "fundamental"
+
+
+def _is_sql_syntax_error(error: UnsafeSQLError) -> bool:
+    """Only parse failures are safe to ask the SQL generator to correct."""
+    return str(error) == "SQL không hợp lệ."
+
+
 # ─── Prompts ───────────────────────────────────────────────────────────────────
 
 GEN_SQL_SYSTEM_PROMPT = """
@@ -81,6 +150,9 @@ QUY TẮC SINH SQL (bắt buộc tuân thủ):
 - Luôn thêm LIMIT hợp lý (<= 100). Với dữ liệu lịch sử/giá theo thời gian, ORDER BY thời gian DESC.
 - Các bảng FA_* (cơ bản) liên kết với "Stock" qua FA_*.stock_id = "Stock".id.
 - Tin tức: "Article" liên kết "Stock" qua bảng nối "Article_Stock" (article_id, stock_id).
+- ALIAS SQL: Không bao giờ dùng keyword SQL làm alias (đặc biệt không viết `AS as`).
+  Với bảng Article_Stock hãy dùng alias `article_stock`; ví dụ JOIN "Article_Stock"
+  AS article_stock ON a.id = article_stock.article_id.
 
 🏭 CÂU HỎI LIÊN QUAN ĐẾN NGÀNH (BẮT BUỘC dùng id ngành, base table "Category"):
 - Ngành/nhóm ngành được lưu trong bảng "Category" (cột id, category_name). "Stock" liên
@@ -305,12 +377,17 @@ def market_agent(state: ChatbotState) -> dict:
         print(f"[Market Agent] >>> SQL    : {gen.sql!r}")
         print(f"[Market Agent] >>> TechCalc: {gen.needs_technical_calc} | Symbol: {gen.symbol}")
 
-        # Cách 1: LLM bỏ cuộc (sql rỗng) nhưng VẪN xác định được mã CK →
-        # tự build query FA_Summary mặc định thay vì từ chối. Quyết định "đã có mã
-        # thì luôn truy vấn được" phải deterministic, không lệ thuộc ý LLM.
+        # LLM bỏ cuộc (sql rỗng) nhưng VẪN xác định được mã CK → tự build
+        # query xác định. Chỉ báo kỹ thuật bắt buộc dùng OHLCV; các câu hỏi còn
+        # lại dùng truy vấn tin tức hoặc tổng quan cơ bản tương ứng.
         if not gen.sql.strip() and gen.symbol and gen.symbol.strip():
-            gen.sql = _fallback_sql_for_symbol(gen.symbol)
-            print(f"[Market Agent] >>> Fallback SQL (symbol={gen.symbol}): {gen.sql!r}")
+            gen.sql, fallback_kind = _fallback_sql_for_request(
+                gen.symbol, user_input, gen.needs_technical_calc
+            )
+            print(
+                f"[Market Agent] >>> Fallback {fallback_kind} SQL "
+                f"(symbol={gen.symbol}): {gen.sql!r}"
+            )
 
         # Thật sự không thể tạo truy vấn (không có cả mã CK) → trả lời lịch sự, không bịa
         if not gen.sql.strip():
@@ -328,23 +405,83 @@ def market_agent(state: ChatbotState) -> dict:
             }
 
         # 2) Chạy SQL (retry 1 lần nếu lỗi cú pháp/cột)
+        query_max_rows = (
+            TECHNICAL_MAX_ROWS if gen.needs_technical_calc else MAX_ROWS
+        )
         try:
-            rows = run_select(gen.sql)
+            rows = run_select(gen.sql, max_rows=query_max_rows)
         except UnsafeSQLError as e:
-            # SQL không an toàn — không retry, từ chối luôn
-            print(f"[Market Agent] >>> UNSAFE SQL: {e}")
-            reply = "Xin lỗi, tôi không thể thực hiện truy vấn này vì lý do an toàn dữ liệu."
-            return {
-                "messages": [HumanMessage(content=user_input), AIMessage(content=reply)],
-                "generated_sql": gen.sql,
-                "final_output": reply,
-                "error": f"UnsafeSQL: {e}",
-            }
+            if not _is_sql_syntax_error(e):
+                # Security guards (table/function/DML/limit...) are never retried.
+                print(f"[Market Agent] >>> UNSAFE SQL: {e}")
+                reply = "Xin lỗi, tôi không thể thực hiện truy vấn này vì lý do an toàn dữ liệu."
+                return {
+                    "messages": [HumanMessage(content=user_input), AIMessage(content=reply)],
+                    "generated_sql": gen.sql,
+                    "final_output": reply,
+                    "error": f"UnsafeSQL: {e}",
+                }
+
+            # A parser error means the LLM generated malformed SQL, not that the
+            # user requested unsafe data. Give it exactly one correction attempt.
+            print(f"[Market Agent] >>> SQL syntax error, retrying once: {e}")
+            original_gen = gen
+            gen = _generate_sql(client, history, user_input, prev_error=str(e))
+            print(f"[Market Agent] >>> SQL(retry): {gen.sql!r}")
+            retry_symbol = gen.symbol or original_gen.symbol
+            retry_needs_technical = (
+                gen.needs_technical_calc or original_gen.needs_technical_calc
+            )
+            if not gen.sql.strip() and retry_symbol and retry_symbol.strip():
+                gen.sql, fallback_kind = _fallback_sql_for_request(
+                    retry_symbol, user_input, retry_needs_technical
+                )
+                gen.symbol = retry_symbol
+                gen.needs_technical_calc = retry_needs_technical
+                print(
+                    f"[Market Agent] >>> Fallback {fallback_kind} SQL "
+                    f"(symbol={retry_symbol}): {gen.sql!r}"
+                )
+            query_max_rows = (
+                TECHNICAL_MAX_ROWS if gen.needs_technical_calc else MAX_ROWS
+            )
+            try:
+                rows = run_select(gen.sql, max_rows=query_max_rows)
+            except UnsafeSQLError as retry_error:
+                symbol = gen.symbol or original_gen.symbol
+                technical_needed = (
+                    gen.needs_technical_calc or original_gen.needs_technical_calc
+                )
+                if _is_sql_syntax_error(retry_error) and symbol:
+                    gen.sql, fallback_kind = _fallback_sql_for_request(
+                        symbol, user_input, technical_needed
+                    )
+                    gen.needs_technical_calc = technical_needed
+                    query_max_rows = (
+                        TECHNICAL_MAX_ROWS if technical_needed else MAX_ROWS
+                    )
+                    print(
+                        f"[Market Agent] >>> Fallback {fallback_kind} SQL after "
+                        f"retry syntax error (symbol={symbol}): {gen.sql!r}"
+                    )
+                    rows = run_select(gen.sql, max_rows=query_max_rows)
+                else:
+                    print(f"[Market Agent] >>> UNSAFE SQL after retry: {retry_error}")
+                    reply = "Xin lỗi, tôi không thể thực hiện truy vấn này vì lý do an toàn dữ liệu."
+                    return {
+                        "messages": [HumanMessage(content=user_input), AIMessage(content=reply)],
+                        "generated_sql": gen.sql,
+                        "final_output": reply,
+                        "error": f"UnsafeSQL: {retry_error}",
+                    }
         except Exception as e:
             print(f"[Market Agent] >>> SQL error, retrying once: {e}")
             gen = _generate_sql(client, history, user_input, prev_error=str(e))
             print(f"[Market Agent] >>> SQL(retry): {gen.sql!r}")
-            rows = run_select(gen.sql)
+            query_max_rows = (
+                TECHNICAL_MAX_ROWS if gen.needs_technical_calc else MAX_ROWS
+            )
+            rows = run_select(gen.sql, max_rows=query_max_rows)
 
         print(f"[Market Agent] >>> Rows   : {len(rows)}")
 

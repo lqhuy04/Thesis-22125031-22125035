@@ -83,7 +83,10 @@ def _run_stock_analysis_with_graph(
 
     result = graph.invoke(initial_state)
 
-    if result.get("error"):
+    # Some agents create a safe user-facing fallback while retaining `error`
+    # for diagnostics (for example when a generated query is rejected). Return
+    # that fallback instead of turning it into an HTTP 500.
+    if result.get("error") and not result.get("final_output"):
         raise RuntimeError(result["error"])
 
     return result["final_output"]
@@ -212,7 +215,9 @@ def run_chat(session_id: str, message: str, user_id: str) -> str:
         initial_state, config={"configurable": {"thread_id": session_id}}
     )
 
-    if result.get("error"):
+    # Agents can return a safe fallback while retaining `error` for logging.
+    # Return that fallback to the chat client instead of producing HTTP 500.
+    if result.get("error") and not result.get("final_output"):
         raise RuntimeError(result["error"])
 
     ChatSessionService.touch(session_id)
