@@ -55,7 +55,13 @@ const formatTimeLabel = (iso: string, t: (key: string) => string): string => {
 };
 
 /** Skeleton pill dùng khi chip phân tích nhanh chưa tải xong. */
-const QuickChipSkeleton = ({ width, backgroundColor }: { width: number; backgroundColor: string }) => {
+const QuickChipSkeleton = ({
+  width,
+  backgroundColor,
+}: {
+  width: number;
+  backgroundColor: string;
+}) => {
   const opacity = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
@@ -196,7 +202,7 @@ const Chatbot = () => {
   };
 
   /** Tạo phiên mới (UUID) và điều hướng sang ChatDetail, gửi luôn tin đầu tiên. */
-  const startNewConversation = (text: string) => {
+  const startNewConversation = (text: string, fromBts = false) => {
     const message = text.trim();
     if (!message) return;
 
@@ -212,6 +218,7 @@ const Chatbot = () => {
       params: {
         data: JSON.stringify(conversation),
         initialMessage: message,
+        fromBts: fromBts ? "1" : undefined,
       },
     });
   };
@@ -287,263 +294,265 @@ const Chatbot = () => {
           />
         }
       >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginHorizontal: 12,
-          marginTop: insets.top + 24,
-          marginBottom: 12,
-        }}
-      >
         <View
           style={{
-            width: 48,
-            height: 48,
-            backgroundColor: theme.background.bg,
-            borderRadius: 24,
+            flexDirection: "row",
             alignItems: "center",
-            justifyContent: "center",
-            marginRight: 12,
+            marginHorizontal: 12,
+            marginTop: insets.top + 24,
+            marginBottom: 12,
           }}
         >
-          <Octicons name="dependabot" size={32} color={theme.text.primary} />
-        </View>
-        <View
-          style={{
-            flex: 1,
-          }}
-        >
-          <Text typography="headlineMedium" color={theme.text.onPrimary}>
-            {t("chatbot.greeting")}
-          </Text>
-        </View>
-      </View>
-
-      {/* ── Phân tích nhanh ── */}
-      {(quickChipsLoading || quickChips.length > 0) && (
-        <View>
           <View
             style={{
-              flexDirection: "row",
-              alignItems: "center",
-              marginHorizontal: 12,
-              justifyContent: "space-between",
-              marginVertical: 12,
-            }}
-          >
-            <Text typography="titleMedium" color={theme.text.onPrimary}>
-              {t("chatbot.quickAnalysis")}
-            </Text>
-
-            <TouchableOpacity onPress={() => router.push("/InvestmentIdeas")}>
-              <Text typography="labelLarge" color={theme.text.onPrimary}>
-                {t("chatbot.viewMore")}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ marginLeft: 12 }}
-          >
-            {quickChipsLoading
-              ? [88, 96, 84, 100, 92].map((width, index) => (
-                  <QuickChipSkeleton
-                    key={index}
-                    width={width}
-                    backgroundColor={theme.background.bg}
-                  />
-                ))
-              : quickChips.map((chip) => (
-                  <TouchableOpacity
-                    key={`${chip.symbol}-${chip.isUp ? "up" : "down"}`}
-                    activeOpacity={0.8}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/AIAnalysis",
-                        params: { data: chip.symbol, mode: "auto" },
-                      })
-                    }
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      marginRight: 12,
-                      borderRadius: 16,
-                      backgroundColor: theme.background.bg,
-                      paddingVertical: 4,
-                      paddingHorizontal: 16,
-                    }}
-                  >
-                    <Text typography="labelLarge" color={theme.text.primary}>
-                      {chip.symbol}
-                    </Text>
-                    <AntDesign
-                      name={chip.isUp ? "rise" : "fall"}
-                      size={16}
-                      color={chip.isUp ? theme.base.success : theme.base.error}
-                    />
-                  </TouchableOpacity>
-                ))}
-          </ScrollView>
-        </View>
-      )}
-
-      <View
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-          paddingHorizontal: 48,
-          opacity: 0.8,
-        }}
-      >
-        <Image
-          source={{
-            uri: "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/increase.png",
-          }}
-          style={{
-            width: screenWidth * 0.38,
-            height: screenWidth * 0.38, // Giữ tỷ lệ hình ảnh
-            alignSelf: "center",
-            marginBottom: 24,
-            opacity: 0.7,
-          }}
-        />
-        <Text
-          typography="bodyMedium"
-          color={theme.text.onPrimary}
-          style={{ textAlign: "center", opacity: 0.8 }}
-        >
-          <Text
-            typography="bodyMedium"
-            color={theme.text.onPrimary}
-            style={{ fontStyle: "italic" }}
-          >
-            {quote}
-          </Text>{" "}
-          <Text typography="bodyMedium" color={theme.text.onPrimary}>
-            {author}
-          </Text>
-        </Text>
-      </View>
-
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginHorizontal: 12,
-          justifyContent: "space-between",
-          marginBottom: 12,
-        }}
-      >
-        <Text typography="titleMedium" color={theme.text.onPrimary}>
-          {t("chatbot.suggestions")}
-        </Text>
-
-        <TouchableOpacity onPress={() => setSuggestionsVisible(true)}>
-          <Text typography="labelLarge" color={theme.text.onPrimary}>
-            {t("chatbot.viewMore")}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{
-          flexDirection: "row",
-          paddingLeft: 12,
-          marginBottom: 36,
-          maxHeight: 128,
-        }}
-      >
-        {exampleMessages.map((msg, index) => (
-          <TouchableOpacity
-            key={index.toString()}
-            activeOpacity={0.7}
-            onPress={() => startNewConversation(msg)}
-            style={{
-              borderTopLeftRadius: 16,
-              borderBottomLeftRadius: 16,
-              borderTopRightRadius: 16,
-              borderBottomRightRadius: 4,
+              width: 48,
+              height: 48,
               backgroundColor: theme.background.bg,
-              padding: 12,
-              width: 128,
-              height: 128,
+              borderRadius: 24,
+              alignItems: "center",
+              justifyContent: "center",
               marginRight: 12,
             }}
           >
-            <Text
-              typography="bodyLarge"
-              color={theme.text.primary}
-              numberOfLines={4}
-            >
-              {msg}
+            <Octicons name="dependabot" size={32} color={theme.text.primary} />
+          </View>
+          <View
+            style={{
+              flex: 1,
+            }}
+          >
+            <Text typography="headlineMedium" color={theme.text.onPrimary}>
+              {t("chatbot.greeting")}
             </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+          </View>
+        </View>
 
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          marginBottom: 24,
-          paddingHorizontal: 12,
-        }}
-      >
-        <TouchableOpacity
-          onPress={openHistory}
+        {/* ── Phân tích nhanh ── */}
+        {(quickChipsLoading || quickChips.length > 0) && (
+          <View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                marginHorizontal: 12,
+                justifyContent: "space-between",
+                marginVertical: 12,
+              }}
+            >
+              <Text typography="titleMedium" color={theme.text.onPrimary}>
+                {t("chatbot.quickAnalysis")}
+              </Text>
+
+              <TouchableOpacity onPress={() => router.push("/InvestmentIdeas")}>
+                <Text typography="labelLarge" color={theme.text.onPrimary}>
+                  {t("chatbot.viewMore")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginLeft: 12 }}
+            >
+              {quickChipsLoading
+                ? [88, 96, 84, 100, 92].map((width, index) => (
+                    <QuickChipSkeleton
+                      key={index}
+                      width={width}
+                      backgroundColor={theme.background.bg}
+                    />
+                  ))
+                : quickChips.map((chip) => (
+                    <TouchableOpacity
+                      key={`${chip.symbol}-${chip.isUp ? "up" : "down"}`}
+                      activeOpacity={0.8}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/AIAnalysis",
+                          params: { data: chip.symbol, mode: "auto" },
+                        })
+                      }
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        marginRight: 12,
+                        borderRadius: 16,
+                        backgroundColor: theme.background.bg,
+                        paddingVertical: 4,
+                        paddingHorizontal: 16,
+                      }}
+                    >
+                      <Text typography="labelLarge" color={theme.text.primary}>
+                        {chip.symbol}
+                      </Text>
+                      <AntDesign
+                        name={chip.isUp ? "rise" : "fall"}
+                        size={16}
+                        color={
+                          chip.isUp ? theme.base.success : theme.base.error
+                        }
+                      />
+                    </TouchableOpacity>
+                  ))}
+            </ScrollView>
+          </View>
+        )}
+
+        <View
           style={{
-            width: 56,
-            height: 56,
-            backgroundColor: theme.background.bg,
-            borderRadius: 28,
-            borderWidth: 4,
-            borderColor: theme.background.surface,
+            flex: 1,
             alignItems: "center",
             justifyContent: "center",
+            paddingHorizontal: 48,
+            opacity: 0.8,
           }}
         >
-          <Feather name="menu" size={24} color={theme.text.primary} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => openCompose()}
-          style={{
-            height: 56,
-            backgroundColor: theme.background.bg,
-            borderRadius: 28,
-            marginLeft: 12,
-            flex: 1,
-            borderWidth: 4,
-            borderColor: theme.background.surface,
-            flexDirection: "row",
-            alignItems: "center",
-            paddingLeft: 12,
-            paddingRight: 16,
-          }}
-        >
-          <Octicons
-            name="sparkles-fill"
-            size={16}
-            color={theme.text.primary}
-            style={{ marginRight: 8 }}
+          <Image
+            source={{
+              uri: "https://ddazflrupjwuxlxlszbk.supabase.co/storage/v1/object/public/icons/increase.png",
+            }}
+            style={{
+              width: screenWidth * 0.38,
+              height: screenWidth * 0.38, // Giữ tỷ lệ hình ảnh
+              alignSelf: "center",
+              marginBottom: 24,
+              opacity: 0.7,
+            }}
           />
           <Text
-            typography="bodyLarge"
-            color={theme.text.primary + "88"}
-            style={{ flex: 1 }}
+            typography="bodyMedium"
+            color={theme.text.onPrimary}
+            style={{ textAlign: "center", opacity: 0.8 }}
           >
-            {t("chatbot.placeholder")}
+            <Text
+              typography="bodyMedium"
+              color={theme.text.onPrimary}
+              style={{ fontStyle: "italic" }}
+            >
+              {quote}
+            </Text>{" "}
+            <Text typography="bodyMedium" color={theme.text.onPrimary}>
+              {author}
+            </Text>
           </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginHorizontal: 12,
+            justifyContent: "space-between",
+            marginBottom: 12,
+          }}
+        >
+          <Text typography="titleMedium" color={theme.text.onPrimary}>
+            {t("chatbot.suggestions")}
+          </Text>
+
+          <TouchableOpacity onPress={() => setSuggestionsVisible(true)}>
+            <Text typography="labelLarge" color={theme.text.onPrimary}>
+              {t("chatbot.viewMore")}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{
+            flexDirection: "row",
+            paddingLeft: 12,
+            marginBottom: 36,
+            maxHeight: 128,
+          }}
+        >
+          {exampleMessages.map((msg, index) => (
+            <TouchableOpacity
+              key={index.toString()}
+              activeOpacity={0.7}
+              onPress={() => startNewConversation(msg)}
+              style={{
+                borderTopLeftRadius: 16,
+                borderBottomLeftRadius: 16,
+                borderTopRightRadius: 16,
+                borderBottomRightRadius: 4,
+                backgroundColor: theme.background.bg,
+                padding: 12,
+                width: 128,
+                height: 128,
+                marginRight: 12,
+              }}
+            >
+              <Text
+                typography="bodyLarge"
+                color={theme.text.primary}
+                numberOfLines={4}
+              >
+                {msg}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 24,
+            paddingHorizontal: 12,
+          }}
+        >
+          <TouchableOpacity
+            onPress={openHistory}
+            style={{
+              width: 56,
+              height: 56,
+              backgroundColor: theme.background.bg,
+              borderRadius: 28,
+              borderWidth: 4,
+              borderColor: theme.background.surface,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Feather name="menu" size={24} color={theme.text.primary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => openCompose()}
+            style={{
+              height: 56,
+              backgroundColor: theme.background.bg,
+              borderRadius: 28,
+              marginLeft: 12,
+              flex: 1,
+              borderWidth: 4,
+              borderColor: theme.background.surface,
+              flexDirection: "row",
+              alignItems: "center",
+              paddingLeft: 12,
+              paddingRight: 16,
+            }}
+          >
+            <Octicons
+              name="sparkles-fill"
+              size={16}
+              color={theme.text.primary}
+              style={{ marginRight: 8 }}
+            />
+            <Text
+              typography="bodyLarge"
+              color={theme.text.primary + "88"}
+              style={{ flex: 1 }}
+            >
+              {t("chatbot.placeholder")}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
       <ChatHistoryBottomSheet
@@ -567,7 +576,7 @@ const Chatbot = () => {
         onClose={() => setSuggestionsVisible(false)}
         onSelectQuestion={(question) => {
           setSuggestionsVisible(false);
-          startNewConversation(question);
+          startNewConversation(question, true);
         }}
       />
     </LinearGradient>
