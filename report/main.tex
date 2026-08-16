@@ -107,52 +107,58 @@
 
 % --- Cover page 1 ---
 \begin{titlepage}
+    \begin{tikzpicture}[remember picture, overlay]
+        \draw[line width=2pt]
+            ([xshift=2cm,yshift=-2cm]current page.north west)
+            rectangle
+            ([xshift=-1.5cm,yshift=2cm]current page.south east);
+    \end{tikzpicture}
     \centering
     \vspace*{0.8cm}
-    {\Large\textbf{UNIVERSITY OF SCIENCE}\par}
-    \vspace{0.25cm}
-    {\large\textbf{ADVANCED PROGRAM IN COMPUTER SCIENCE}\par}
-    \vspace{2.6cm}
-    {\large LE QUOC HUY\par}
-    {\large NGUYEN VINH KHANG\par}
-    \vspace{1.7cm}
-    {\LARGE\bfseries \thesistitle\par}
+    {\large\ UNIVERSITY OF SCIENCE\par}
+    {\large\textbf{FACULTY OF INFORMATION TECHNOLOGY}\par}
+    \vspace{2.5cm}
+    {\large\bfseries LE QUOC HUY \textendash{} NGUYEN VINH KHANG\par}
+    \vspace{2cm}
+    {\LARGE\bfseries A Multi-Agent System for Vietnamese Financial Market\\[0.3em]
+    Data Analysis and Summarization\par}
+    \vspace{3cm}
+    {\large\bfseries BACHELOR'S THESIS\par}
+    \vspace{0.3cm}
+    {\large\bfseries ADVANCED PROGRAM IN COMPUTER SCIENCE\par}
     \vfill
-    {\large\textbf{BACHELOR OF SCIENCE IN COMPUTER SCIENCE}\par}
-    \vspace{0.9cm}
-    {\large\textbf{HO CHI MINH CITY, 2026}\par}
+    {\large\textbf{HO CHI MINH CITY, 07/2026}\par}
 \end{titlepage}
 
 % --- Cover page 2 ---
 \begin{titlepage}
     \begin{tikzpicture}[remember picture, overlay]
-        \draw[line width=1.2pt]
-            ([xshift=1.5cm,yshift=-1.5cm]current page.north west)
+        \draw[line width=2pt]
+            ([xshift=2cm,yshift=-2cm]current page.north west)
             rectangle
-            ([xshift=-1.5cm,yshift=1.5cm]current page.south east);
-        \draw[line width=0.4pt]
-            ([xshift=1.65cm,yshift=-1.65cm]current page.north west)
-            rectangle
-            ([xshift=-1.65cm,yshift=1.65cm]current page.south east);
+            ([xshift=-1.5cm,yshift=2cm]current page.south east);
     \end{tikzpicture}
     \centering
     \vspace*{0.8cm}
-    {\Large\textbf{UNIVERSITY OF SCIENCE}\par}
-    \vspace{0.25cm}
-    {\large\textbf{ADVANCED PROGRAM IN COMPUTER SCIENCE}\par}
-    \vspace{2.6cm}
-    {\large LE QUOC HUY -- 22125031\par}
-    {\large NGUYEN VINH KHANG -- 22125035\par}
-    \vspace{1.7cm}
-    {\LARGE\bfseries \thesistitle\par}
-    \vfill
-    {\large\textbf{BACHELOR OF SCIENCE IN COMPUTER SCIENCE}\par}
-    \vspace{0.45cm}
+    {\large UNIVERSITY OF SCIENCE\par}
+    \vspace{0.15cm}
+    {\large\textbf{FACULTY OF INFORMATION TECHNOLOGY}\par}
+    \vspace{2.5cm}
+    {\large\bfseries LE QUOC HUY \textendash{} 22125031\par}
+    {\large\bfseries NGUYEN VINH KHANG \textendash{} 22125035\par}
+    \vspace{2cm}
+    {\LARGE\bfseries A Multi-Agent System for Vietnamese Financial Market\\[0.3em]
+    Data Analysis and Summarization\par}
+    \vspace{2cm}
+    {\large\bfseries BACHELOR'S THESIS\par}
+    \vspace{0.3cm}
+    {\large\bfseries ADVANCED PROGRAM IN COMPUTER SCIENCE\par}
+    \vspace{2cm}
     {\large\textbf{THESIS ADVISOR}\par}
-    \vspace{0.12cm}
+    \vspace{0.3cm}
     {\large Dr. Nguyen Thi Minh Tuyen\par}
-    \vspace{0.65cm}
-    {\large\textbf{HO CHI MINH CITY, 2026}\par}
+    \vfill
+    {\large\textbf{HO CHI MINH CITY, 07/2026}\par}
 \end{titlepage}
 
 \clearpage
