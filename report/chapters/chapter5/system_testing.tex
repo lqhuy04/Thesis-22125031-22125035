@@ -193,56 +193,11 @@ The internal web interface is intended for authorized evaluation rather than pub
 
 All eight web workflow groups passed in the manual walkthrough. As with the mobile result, this is a functional manual record rather than browser automation or a performance test. It confirms the principal implemented evaluator paths but does not establish cross-browser compatibility, concurrent-user capacity, accessibility compliance, or long-running provider availability.
 
-\section{User Study}
-\label{sec:user-study}
-
-The user study summarizes the 30 completed rows in the supplied \textit{Stockrium User Experience Survey}. The questionnaire combines participant background, feature coverage, the ten System Usability Scale (SUS) statements, feature-specific five-point ratings, trust and safety statements, and two overall ten-point ratings. Responses marked \textit{Not tested} or left blank are excluded from the corresponding feature-item calculation but do not remove the participant from unrelated results.
-
-\subsection{Participant Profile and Feature Coverage}
-\label{subsec:user-study-profile}
-
-The sample is weighted toward newer investors. Ten participants reported no investing experience and ten reported less than six months of experience. Six had between six months and one year, and four had between one and three years. The mean self-rated market knowledge was 2.8 out of 5. Twenty participants followed the market at least weekly: four daily, thirteen a few times per week, and three weekly; four followed it a few times per month and six rarely or never.
-
-Feature coverage was broad. All 30 participants selected onboarding and authentication, market exploration, and stock search or stock detail as tested areas. Personalization and settings were selected by 27 participants, while AI analysis and chatbot functionality were each selected by 28. This distribution supports summaries of the principal mobile flows, although the number of valid responses differs for individual feature questions when participants selected \textit{Not tested}.
-
-\subsection{Usability and Feature Ratings}
-\label{subsec:user-study-ratings}
-
-The SUS score was calculated per participant using the standard alternating transformation: one is subtracted from each positive-item rating, each negative-item rating is subtracted from five, and the adjusted sum is multiplied by 2.5. All 30 participants completed the ten items. The mean SUS score was 76.17 out of 100, the median was 75.00, and observed scores ranged from 67.50 to 87.50. Within this sample, the distribution indicates generally positive perceived usability while still leaving room to reduce interaction friction.
-
-Table~\ref{tab:user-study-domain-results} summarizes the four feature groups. The mean and favorable rate are calculated across valid item-level responses; favorable denotes a rating of four or five.
-
-\begin{table}[H]
-    \centering
-    \caption{Summary of user-study feature ratings}
-    \label{tab:user-study-domain-results}
-    \small
-    \begin{tabularx}{\textwidth}{X >{\centering\arraybackslash}p{2.2cm} >{\centering\arraybackslash}p{2.2cm} >{\centering\arraybackslash}p{2.5cm}}
-        \toprule
-        \textbf{Feature group} & \textbf{Valid ratings} & \textbf{Mean (/5)} & \textbf{Favorable} \\
-        \midrule
-        Market and stock information & 204 & 4.08 & 77.5\% \\
-        AI analysis & 220 & 4.10 & 80.5\% \\
-        Chatbot and content & 172 & 4.05 & 73.8\% \\
-        Trust and safety & 150 & 4.07 & 79.3\% \\
-        \bottomrule
-    \end{tabularx}
-\end{table}
-
-The highest-rated market item was the clarity and usefulness of price charts and technical indicators, with a mean of 4.35 and an 89.7\% favorable rate. Industry movement also scored positively at 4.21. The lowest market item concerned whether data appeared timely and consistent, with a mean of 3.76 and a 55.2\% favorable rate, indicating that data freshness and presentation consistency should remain improvement priorities.
-
-AI analysis received the highest group mean at 4.10. Recommendation and confidence presentation scored 4.29, while 92.6\% of valid respondents rated their ability to understand why the AI reached its conclusion favorably. The relevance of the result to prior expectations was weaker at 3.83, suggesting that explainability was perceived more positively than agreement with every analytical conclusion.
-
-For chatbot and content, refusal of out-of-scope questions scored 4.27 and stock-linked news received an 85.2\% favorable rate. Theme and language consistency was the lowest item in this group at 3.83 and 63.3\% favorable. Trust and safety averaged 4.07; 86.7\% responded favorably that they could distinguish market data from AI-generated recommendations, and 83.3\% understood that Stockrium provides reference information rather than financial advice.
-
-\subsection{Overall Evaluation}
-\label{subsec:user-study-overall}
-
-On the ten-point overall items, the mean likelihood of recommending Stockrium was 8.03, with a median of 8. The responses contained ten promoters, eighteen passives, and two detractors under the conventional recommendation grouping, producing a Net Promoter Score of +26.7. The mean rating for the overall accuracy and relevance of Stockrium's information and AI responses was 8.37 out of 10, with a median of 8.
-
-\subsection{Securities Analyst Feedback}
+\section{Securities Analyst Feedback}
 \label{subsec:securities-analyst-feedback}
 
-In addition to the participant survey, Ms.~Trinh, Securities Analyst at FPT Securities Joint Stock Company, provided professional feedback on the application \cite{trinh2026weights}. She reported that manually conducting a comprehensive stock analysis generally requires several hours because the analyst must examine fundamental information, technical indicators, and relevant financial news. For a new investor who is unfamiliar with the required financial formulas and analytical methods, the process may take an entire day. In her assessment, Stockrium's AI-assisted workflow can substantially reduce the time needed to collect, calculate, interpret, and synthesize this information.
+Ms.~Trinh, Securities Analyst at FPT Securities Joint Stock Company, provided professional feedback on the application \cite{trinh2026weights}. She reported that manually conducting a comprehensive stock analysis generally requires several hours because the analyst must examine fundamental information, technical indicators, and relevant financial news. For a new investor who is unfamiliar with the required financial formulas and analytical methods, the process may take an entire day. In her assessment, Stockrium's AI-assisted workflow can substantially reduce the time needed to collect, calculate, interpret, and synthesize this information.
 
-Ms.~Trinh considered the interface visually appealing and easy to use. She also found that the application presented sufficiently comprehensive stock information and that the AI-generated analysis was good and easy to understand. In addition to these positive assessments, she provided detailed suggestions concerning the analysis workflow and chatbot interaction. This feedback was used to further refine the two flows and improve the overall user experience. Her comments provide a practical expert perspective on the system's usefulness and usability, although they represent a qualitative professional assessment rather than a controlled comparative experiment.
+Her consultation also helped the team refine the analysis workflow built around three complementary evidence components: financial news, fundamental analysis, and technical analysis. Based on her domain feedback, the team adjusted the relative weight assigned to each component and refined the technical interval and evidence lookback windows for short-, medium-, and long-term investment horizons. These settings are reflected in the horizon-specific planning rules in Table~\ref{tab:analysis-plan-rules} and the default recommendation-score weights in Table~\ref{tab:confidence-horizon-weights}.
+
+Ms.~Trinh considered the interface visually appealing and easy to use. She also found that the application presented sufficiently comprehensive stock information and that the AI-generated analysis was good and easy to understand. In addition to these positive assessments, she provided detailed suggestions concerning chatbot interaction. Her feedback was used to further refine the analysis and chatbot flows and improve the overall user experience. Her comments provide a practical expert perspective on the system's usefulness and usability, although they represent a qualitative professional assessment rather than a controlled comparative experiment.

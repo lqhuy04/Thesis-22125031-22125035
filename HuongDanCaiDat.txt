@@ -1,0 +1,223 @@
+HƯỚNG DẪN CÀI ĐẶT HỆ THỐNG STOCKRIUM
+=====================================
+
+1. GIỚI THIỆU
+--------------
+
+Stockrium gồm các thành phần chính:
+
+- MyApp: ứng dụng di động/web viết bằng React Native, Expo và TypeScript.
+- backend: REST API viết bằng FastAPI, đồng thời chứa hệ thống AI Agent và chatbot.
+- admin-dashboard: trang quản trị tĩnh viết bằng HTML, CSS và JavaScript.
+- update_articles: dịch vụ thu thập và cập nhật tin tức theo lịch.
+- update_stock_price: dịch vụ cập nhật giá cổ phiếu và chỉ số theo lịch giao dịch.
+- utils: các công cụ nhập dữ liệu, thu thập báo cáo tài chính, hồ sơ công ty,
+  logo và tiền xử lý dữ liệu.
+
+
+2. CÔNG CỤ VÀ MÔI TRƯỜNG PHÁT TRIỂN
+-----------------------------------
+
+Hệ điều hành khuyến nghị:
+
+- Windows 10/11 64-bit. macOS hoặc Linux cũng có thể dùng cho backend và web.
+- Muốn biên dịch/chạy iOS cục bộ phải sử dụng macOS và Xcode.
+
+Các công cụ cần cài:
+
+- Git: dùng để tải và quản lý mã nguồn (không bắt buộc nếu nhận mã nguồn dạng ZIP).
+- Visual Studio Code hoặc IDE tương đương.
+- Node.js 20 LTS hoặc phiên bản mới hơn tương thích Expo SDK 54; npm đi kèm Node.js.
+- Python 3.12 cho backend. Hai dịch vụ update_articles và update_stock_price có
+  thể chạy bằng Python 3.11 như cấu hình trong Dockerfile.
+- Redis 7.x: dùng cho cache, session và giới hạn tần suất yêu cầu của backend.
+- Tài khoản/dự án Supabase PostgreSQL đã tạo các bảng dữ liệu của hệ thống.
+- Chrome: cần khi chạy các công cụ thu thập dữ liệu dùng Selenium trong utils.
+- Android Studio, Android SDK, Android Emulator và JDK 17: cần nếu chạy hoặc
+  biên dịch ứng dụng Android trên máy tính.
+- Docker Desktop: không bắt buộc; chỉ cần khi muốn chạy các scheduler bằng container.
+- Tài khoản Expo/EAS: chỉ cần khi muốn tạo file APK bằng dịch vụ EAS Build.
+
+Dịch vụ bên ngoài được chương trình sử dụng:
+
+- Supabase/PostgreSQL: cơ sở dữ liệu và lưu trữ.
+- SSI FC Data API: dữ liệu thị trường chứng khoán.
+- OpenAI và DeepSeek: chatbot và phân tích AI.
+- Google Serper: tìm kiếm và thu thập tin tức/logo.
+- Redis: cache và session.
+- Resend: gửi email OTP trên môi trường production.
+
+
+3. CÀI ĐẶT BACKEND FASTAPI
+--------------------------
+
+Mở PowerShell tại thư mục gốc Thesis-22125031-22125035, sau đó chạy:
+
+    cd backend
+    py -3.12 -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+
+Trên macOS/Linux, kích hoạt môi trường bằng:
+
+    source .venv/bin/activate
+
+Các thư viện backend được khai báo trong backend/requirements.txt, bao gồm
+FastAPI, Uvicorn, Pydantic, Supabase, PostgreSQL, Redis, pandas, NumPy, SciPy,
+TA-Lib, OpenAI, LangChain, LangGraph, Google Gemini và SSI FC Data.
+
+Nếu PowerShell không cho phép kích hoạt môi trường ảo, chạy lệnh sau trong cửa
+sổ PowerShell hiện tại rồi kích hoạt lại:
+
+    Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+
+4. CẤU HÌNH BACKEND VÀ CƠ SỞ DỮ LIỆU
+------------------------------------
+
+Tạo file cấu hình cục bộ từ file mẫu:
+
+    cd backend
+    Copy-Item .env.example .env
+
+Mở backend/.env và thay các giá trị mẫu bằng thông tin của môi trường chạy.
+Các nhóm biến quan trọng gồm:
+
+- SUPABASE_URL, SUPABASE_KEY, SUPABASE_DB_URL, CHATBOT_READONLY_DB_URL.
+- JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRATION_HOURS.
+- REDIS_URL.
+- OPENAI_API_KEY, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL.
+- CHATBOT_API_KEY.
+- SSI_CONSUMER_ID, SSI_CONSUMER_SECRET, SSI_API_URL, SSI_STREAM_URL.
+- SERPER_API_URL, SERPER_API_KEY nếu chạy các công cụ thu thập dữ liệu.
+- RESEND_API_KEY, FROM_EMAIL nếu cần gửi OTP thật.
+- GOOGLE_CLIENT_ID/SECRET và FACEBOOK_APP_ID/SECRET nếu sử dụng đăng nhập xã hội.
+- CORS_ORIGINS: thêm địa chỉ của Expo Web và admin dashboard, ví dụ
+  http://localhost:8081,http://localhost:5500,http://127.0.0.1:5500.
+
+Khởi động Redis cục bộ và bảo đảm REDIS_URL trỏ đúng địa chỉ. Có thể dùng Redis
+trên Docker bằng lệnh:
+
+    docker run --name stockrium-redis -p 6379:6379 -d redis:7
+
+Cơ sở dữ liệu Supabase phải có các bảng mà backend và scheduler sử dụng. Các
+script SQL bổ sung nằm trong backend/sql và utils/*/*.sql. Chỉ chạy các script
+phù hợp trên SQL Editor của Supabase; nên sao lưu dữ liệu trước khi thay đổi
+cấu trúc bảng.
+
+Lưu ý bảo mật: không đưa backend/.env, API key, mật khẩu hoặc khóa JWT lên Git
+hay vào gói mã nguồn nộp. Chỉ cung cấp .env.example với giá trị minh họa.
+
+
+5. CÀI ĐẶT ỨNG DỤNG MYAPP
+-------------------------
+
+Mở một cửa sổ PowerShell mới tại thư mục gốc và chạy:
+
+    cd MyApp
+    npm ci
+
+Nếu không có package-lock.json, dùng:
+
+    npm install
+
+Các thư viện được cài từ MyApp/package.json, nổi bật gồm Expo 54, React 19,
+React Native 0.81, Expo Router, Secure Store, React Native Skia, Victory Native,
+Wagmi Charts, Reanimated, WebView và Google Sign-In.
+
+Để chạy Android bằng emulator:
+
+1. Mở Android Studio và cài Android SDK theo hướng dẫn của Android Studio.
+2. Tạo một máy ảo trong Device Manager và khởi động máy ảo.
+3. Kiểm tra biến ANDROID_HOME và lệnh adb đã hoạt động.
+4. Do dự án dùng Google Sign-In và expo-dev-client, nên ưu tiên development
+   build bằng npm run android thay vì chỉ dựa vào Expo Go.
+
+Ứng dụng tự lấy IP của máy chạy Metro trong chế độ phát triển và gọi backend ở
+cổng 8000. Điện thoại/emulator và máy phát triển phải nhìn thấy nhau qua mạng;
+Windows Firewall cần cho phép Node.js và Python trên mạng riêng.
+
+
+6. CÀI ĐẶT ADMIN DASHBOARD
+--------------------------
+
+admin-dashboard là website tĩnh nên không có bước cài thư viện. Chỉ cần một
+web server tĩnh; có thể dùng Python đã cài ở bước trên. Backend phải cho phép
+origin http://localhost:5500 và http://127.0.0.1:5500 trong CORS_ORIGINS.
+
+Để đăng nhập dashboard, cơ sở dữ liệu phải có tài khoản với role = 'admin' và
+status = 'verified'. Không lưu mật khẩu hoặc token trong mã JavaScript.
+
+
+7. CÀI ĐẶT DỊCH VỤ CẬP NHẬT TIN TỨC
+-----------------------------------
+
+    cd update_articles
+    py -3.11 -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+
+Tạo update_articles/.env cục bộ với các biến cần thiết:
+
+    SUPABASE_URL=
+    SUPABASE_KEY=
+    SERPER_API_URL=https://google.serper.dev
+    SERPER_API_KEY=
+    OPENAI_API_KEY=
+    DEEPSEEK_API_KEY=
+    DEEPSEEK_BASE_URL=https://api.deepseek.com
+
+Không nộp file .env có giá trị thật. Nên tạo .env.example chỉ chứa tên biến và
+giá trị minh họa.
+
+
+8. CÀI ĐẶT DỊCH VỤ CẬP NHẬT GIÁ
+-------------------------------
+
+    cd update_stock_price
+    py -3.11 -m venv .venv
+    .\.venv\Scripts\Activate.ps1
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+
+Tạo update_stock_price/.env cục bộ với các biến:
+
+    SUPABASE_URL=
+    SUPABASE_KEY=
+    SSI_CONSUMER_ID=
+    SSI_CONSUMER_SECRET=
+    SSI_AUTH_TYPE=Bearer
+    SSI_API_URL=https://fc-data.ssi.com.vn/
+    SSI_STREAM_URL=https://fc-datahub.ssi.com.vn/
+
+
+9. CÀI ĐẶT CÔNG CỤ TRONG UTILS (TÙY CHỌN)
+-----------------------------------------
+
+utils dùng để chuẩn bị hoặc nhập dữ liệu, không bắt buộc để khởi động ứng dụng
+nếu cơ sở dữ liệu đã có dữ liệu. Có thể sử dụng môi trường Python của backend:
+
+    cd backend
+    .\.venv\Scripts\Activate.ps1
+    pip install selenium
+    cd ..
+
+Các công cụ Selenium cần Chrome. Selenium Manager sẽ tự tìm/tải driver phù hợp
+trong điều kiện máy có kết nối mạng. Các script utils thường đọc cấu hình từ
+backend/.env hoặc file .env tại thư mục chạy, tùy từng script.
+
+
+10. KIỂM TRA SAU KHI CÀI ĐẶT
+----------------------------
+
+- Python: python --version
+- Node.js: node --version
+- npm: npm --version
+- Android Debug Bridge: adb --version
+- Backend đã cài thư viện: pip check
+- Frontend kiểm tra mã: vào MyApp và chạy npm run lint
+
+Không sao chép các thư mục .venv, node_modules, .expo, __pycache__ hoặc file .env
+thật vào gói mã nguồn nộp.

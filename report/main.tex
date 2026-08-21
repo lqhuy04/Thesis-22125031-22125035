@@ -173,8 +173,6 @@ We would like to express our deepest and most sincere gratitude to our thesis ad
 
 We would also like to extend our sincere thanks to Ms. Trinh, Securities Analyst at FPT Securities Joint Stock Company, for her valuable feedback and practical insights, which greatly contributed to the refinement and completion of our product.
 
-We are also grateful to our fellow students who generously took the time to try out Stockrium and share their feedback, which helped us identify issues and improve the system.
-
 \begin{flushright}
 07/2026, Ho Chi Minh City
 
@@ -204,7 +202,7 @@ Vietnamese retail investors must often combine fragmented market prices, company
 
 Stockrium consists of an Android mobile application, a backend server, an internal experimentation and backtesting web interface, data-acquisition pipelines, and a multi-agent workflow. The platform supports market exploration, stock search, interactive price and technical-indicator charts, company and fundamental information, financial news, watchlist, AI-assisted analysis based on investment-horizon preference, and an independent conversational financial assistant. Given a user's investment horizon, independent technical, fundamental, and news agents retrieve and analyze their respective evidence, each producing a normalized score and a natural-language summary. These scores are combined through horizon-dependent weights into a Buy/Wait recommendation, accompanied, for Buy decisions, by a trading plan and a confidence-scored explanation of the overall decision. Separate crawling and scheduled collection processes acquire and normalize market, company, financial-statement, and news data for application use and historical evaluation.
 
-System testing covered 62 backend API operations, the complete multi-agent analysis and backtesting flows, and manual walkthroughs of 10 mobile and 8 experimentation-web workflow groups; all reported tests passed. A 30-response user study produced a mean System Usability Scale score of 76.17/100, a recommendation rating of 8.03/10, and an overall information-and-AI accuracy and relevance rating of 8.37/10. A historical evaluation on the 30 VN30 securities from August~1, 2024 to August~1, 2026, against engine-only, buy-and-hold, and single-indicator baselines, showed that the complete pipeline executed 23.9\% fewer trades and had a smaller mean maximum drawdown (23.82\%~$\rightarrow$~21.64\%), with modest gains in median return. Mean return was slightly lower, and the pipeline outperformed buy-and-hold on only 3 of 30 securities. Statistical and robustness evidence remained limited. Therefore, Stockrium's principal contribution is an integrated and inspectable environment for Vietnamese-market decision support and experimentation, rather than evidence of guaranteed profitability or a replacement for professional judgment.
+System testing covered 62 backend API operations, the complete multi-agent analysis and backtesting flows, and manual walkthroughs of 10 mobile and 8 experimentation-web workflow groups; all reported tests passed. Professional feedback from Ms.~Trinh, a securities analyst at FPT Securities Joint Stock Company, indicated that the application presents comprehensive stock information through an accessible interface and that its AI-generated analysis is clear and useful as a starting point for further review. A historical evaluation on the 30 VN30 securities from August~1, 2024 to August~1, 2026, against engine-only, buy-and-hold, and single-indicator baselines, showed that the complete pipeline executed 23.9\% fewer trades and had a smaller mean maximum drawdown (23.82\%~$\rightarrow$~21.64\%), with modest gains in median return. Mean return was slightly lower, and the pipeline outperformed buy-and-hold on only 3 of 30 securities. Statistical and robustness evidence remained limited. Therefore, Stockrium's principal contribution is an integrated and inspectable environment for Vietnamese-market decision support and experimentation, rather than evidence of guaranteed profitability or a replacement for professional judgment.
 
 \textbf{Keywords:} Vietnamese stock market, decision support, multi-agent systems, large language models, financial data analysis, backtesting.
 
@@ -301,7 +299,7 @@ System testing covered 62 backend API operations, the complete multi-agent analy
 \clearpage
 \chapter{System Testing}
 
-\textit{This chapter evaluates Stockrium through three complementary activities: complete backend API and workflow testing, manual walkthroughs of the Android application and internal experimentation web interface, and a 30-response user study covering usability, feature quality, trust, and overall satisfaction.}
+\textit{This chapter evaluates Stockrium through three complementary activities: complete backend API and workflow testing, manual walkthroughs of the Android application and internal experimentation web interface, and qualitative professional feedback from a securities analyst.}
 
 \input{chapters/chapter5/system_testing}
 
@@ -393,6 +391,12 @@ SSI Securities Corporation, ``How to access research reports on SSI iBoard Pro,'
 \bibitem{ssiIboardLaunch2023}
 SSI Securities Corporation, ``Experience the newly launched app -- SSI iBoard Pro,'' Oct. 23, 2023. [Online]. Available: \url{https://www.ssi.com.vn/tin-tuc/tin-tuc-su-kien-ssi/trai-nghiem-ngay-ung-dung-moi-ra-mat-ssi-iboard-pro}. Accessed: Aug. 4, 2026.
 
+\bibitem{ssiCuDoha2026}
+SSI Securities Corporation, ``New Cu DOHA version: Intelligent AI investment assistant,'' Jun. 8, 2026. [Online]. Available: \url{https://www.ssi.com.vn/tin-tuc/tin-tuc-chung/cu-doha-phien-ban-moi-tro-ly-dau-tu-ai-thong-minh}. Accessed: Aug. 21, 2026.
+
+\bibitem{momoCVSSecurities2026}
+MoMo, ``Invest in stocks conveniently on MoMo,'' 2026. [Online]. Available: \url{https://www.momo.vn/chung-khoan}. Accessed: Aug. 21, 2026.
+
 \bibitem{murphy1999technical}
 J. J. Murphy, \textit{Technical Analysis of the Financial Markets: A Comprehensive Guide to Trading Methods and Applications}. New York, NY, USA: New York Institute of Finance, 1999.
 
@@ -406,7 +410,7 @@ A. Damodaran, ``Variables used in data set: Historical growth rate,'' Stern Scho
 J. Dahlquist and R. Knight, ``Profitability ratios and the DuPont method,'' in \textit{Principles of Finance}. Houston, TX, USA: OpenStax, 2022. [Online]. Available: \url{https://openstax.org/books/principles-finance/pages/6-6-profitability-ratios-and-the-dupont-method}. Accessed: Jul. 18, 2026.
 
 \bibitem{trinh2026weights}
-Ms. Trinh, Securities Analyst, FPT Securities Joint Stock Company, expert consultation on horizon-specific analytical weights, personal communication, Jul. 2026.
+Ms. Trinh, Securities Analyst, FPT Securities Joint Stock Company, expert consultation on the three-component analysis workflow and horizon-specific analytical weights, intervals, and evidence windows, personal communication, Jul. 2026.
 
 \bibitem{vaswani2017attention}
 A. Vaswani et al., ``Attention is all you need,'' in \textit{Advances in Neural Information Processing Systems}, vol. 30, 2017.

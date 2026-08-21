@@ -1,0 +1,253 @@
+HƯỚNG DẪN BIÊN DỊCH VÀ CHẠY HỆ THỐNG STOCKRIUM
+==============================================
+
+1. THỨ TỰ KHỞI ĐỘNG KHUYẾN NGHỊ
+-------------------------------
+
+1. Khởi động Supabase/PostgreSQL và Redis.
+2. Khởi động backend FastAPI tại cổng 8000.
+3. Khởi động MyApp bằng Expo.
+4. Khởi động admin-dashboard nếu cần quản trị.
+5. Chạy update_articles và update_stock_price khi cần cập nhật dữ liệu tự động.
+
+Mỗi thành phần nên được chạy trong một cửa sổ Terminal/PowerShell riêng.
+
+
+2. CHẠY BACKEND FASTAPI
+-----------------------
+
+Từ thư mục gốc của dự án:
+
+    cd backend
+    .\.venv\Scripts\Activate.ps1
+    python -m app.main
+
+Trên macOS/Linux:
+
+    cd backend
+    source .venv/bin/activate
+    python -m app.main
+
+Backend mặc định chạy tại:
+
+    http://localhost:8000
+
+Kiểm tra trạng thái:
+
+    http://localhost:8000/health
+
+Tài liệu và giao diện thử API tự động:
+
+    http://localhost:8000/docs
+
+Có thể chạy trực tiếp bằng Uvicorn trong chế độ phát triển:
+
+    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+Python là ngôn ngữ thông dịch nên backend không cần biên dịch thành file nhị
+phân trước khi chạy.
+
+
+3. CHẠY ỨNG DỤNG MYAPP TRONG CHẾ ĐỘ PHÁT TRIỂN
+----------------------------------------------
+
+Mở PowerShell mới:
+
+    cd MyApp
+    npm start
+
+Expo/Metro sẽ hiển thị mã QR và các lựa chọn chạy. Có thể:
+
+- Nhấn a để mở Android emulator đã khởi động.
+- Nhấn w để mở phiên bản web.
+- Quét QR bằng development build trên điện thoại cùng mạng.
+
+Các lệnh chạy trực tiếp:
+
+    npm run android
+    npm run web
+
+Lệnh npm run android sẽ tạo/cập nhật dự án native Android và cài development
+build lên thiết bị hoặc emulator. Lần chạy đầu cần Android Studio, Android SDK
+và JDK 17; thời gian build sẽ lâu hơn các lần sau.
+
+Trong chế độ development, MyApp gọi backend tại cổng 8000:
+
+- Android emulator dùng địa chỉ máy host do Expo phát hiện, dự phòng 10.0.2.2.
+- iOS simulator dùng localhost:8000.
+- Điện thoại thật dùng IP LAN của máy chạy Expo.
+
+Nếu ứng dụng không gọi được API, kiểm tra backend đang chạy với host 0.0.0.0,
+hai thiết bị cùng mạng và Windows Firewall không chặn cổng 8000/8081.
+
+
+4. KIỂM TRA VÀ BIÊN DỊCH FRONTEND
+--------------------------------
+
+Kiểm tra mã nguồn:
+
+    cd MyApp
+    npm run lint
+
+Xuất phiên bản web tĩnh:
+
+    npx expo export --platform web
+
+Kết quả được tạo trong thư mục dist. Có thể kiểm tra bằng một web server tĩnh.
+
+Tạo APK bằng EAS Build (cần Internet và tài khoản Expo có quyền với project):
+
+    cd MyApp
+    npx eas-cli@latest login
+    npx eas-cli@latest build --platform android --profile preview
+
+Profile preview trong eas.json tạo APK để cài thử nội bộ. Profile production:
+
+    npx eas-cli@latest build --platform android --profile production
+
+Sau khi build hoàn tất, EAS cung cấp liên kết tải APK. Không đưa keystore,
+chứng chỉ hoặc thông tin đăng nhập Expo vào gói mã nguồn.
+
+Biên dịch Android cục bộ:
+
+    cd MyApp
+    npx expo run:android
+
+Biên dịch iOS chỉ thực hiện được trên macOS có Xcode:
+
+    cd MyApp
+    npx expo run:ios
+
+
+5. CHẠY ADMIN DASHBOARD
+-----------------------
+
+Backend phải chạy trước. Mở PowerShell mới tại thư mục gốc:
+
+    cd admin-dashboard
+    python -m http.server 5500
+
+Mở trình duyệt tại:
+
+    http://localhost:5500/
+
+Đăng nhập bằng tài khoản có role = 'admin' và status = 'verified'. Nếu backend
+không ở http://localhost:8000, thay địa chỉ trong ô API Base URL của dashboard.
+
+admin-dashboard là HTML/CSS/JavaScript tĩnh nên không có bước biên dịch.
+
+
+6. CHẠY DỊCH VỤ CẬP NHẬT TIN TỨC
+--------------------------------
+
+Mở PowerShell mới:
+
+    cd update_articles
+    .\.venv\Scripts\Activate.ps1
+    python scheduler.py
+
+Scheduler chạy liên tục và mặc định thực hiện cập nhật tin tức mỗi tuần vào
+23:00 thứ Bảy theo múi giờ Việt Nam (UTC+7). Khi đến lịch, chương trình chạy
+lần lượt:
+
+    update_macro_articles.py
+    update_category_articles.py
+    update_stock_articles.py
+
+Muốn chạy thủ công một tác vụ, có thể dùng:
+
+    python update_macro_articles.py
+    python update_category_articles.py
+    python update_stock_articles.py
+
+Dừng scheduler bằng Ctrl+C.
+
+Chạy bằng Docker:
+
+    cd update_articles
+    docker build -t stockrium-update-articles .
+    docker run --env-file .env stockrium-update-articles
+
+
+7. CHẠY DỊCH VỤ CẬP NHẬT GIÁ CHỨNG KHOÁN
+-----------------------------------------
+
+Mở PowerShell mới:
+
+    cd update_stock_price
+    .\.venv\Scripts\Activate.ps1
+    python scheduler.py
+
+Scheduler hoạt động theo giờ Việt Nam, từ thứ Hai đến thứ Sáu:
+
+- 09:00: mở các tiến trình WebSocket/poller cho giá cổ phiếu và chỉ số.
+- 15:00: đóng các tiến trình lấy dữ liệu thời gian thực.
+- 15:05: lần lượt chuẩn hóa dữ liệu cổ phiếu và chỉ số khung 1 phút/1 ngày.
+
+Dừng scheduler bằng Ctrl+C để chương trình đóng các tiến trình con.
+
+Chạy bằng Docker:
+
+    cd update_stock_price
+    docker build -t stockrium-update-stock-price .
+    docker run --env-file .env stockrium-update-stock-price
+
+
+8. CHẠY CÁC CÔNG CỤ UTILS (TÙY CHỌN)
+------------------------------------
+
+Các script dưới utils chỉ dùng khi cần khởi tạo, bổ sung hoặc tiền xử lý dữ
+liệu. Trước khi chạy, kích hoạt môi trường backend và đứng tại thư mục gốc:
+
+    cd backend
+    .\.venv\Scripts\Activate.ps1
+    cd ..
+
+Ví dụ:
+
+    python utils\crawl_logo\fetch_logos_serper.py
+    python utils\import_category\import_category_to_db.py
+    python utils\precompute_industry_aggregate\precompute_industry_aggregate.py
+    python utils\crawl_bao_cao_tai_chinh\ssi_crawler.py
+    python utils\crawl_company_profile\ssi_company_profile_crawler.py
+
+Các crawler Selenium yêu cầu Chrome và có thể cần SSI_USERNAME, SSI_PASSWORD.
+Không chạy đồng thời nhiều script nhập dữ liệu nếu chưa kiểm tra ràng buộc và
+khóa duy nhất trong cơ sở dữ liệu.
+
+
+9. CHẠY KIỂM THỬ
+----------------
+
+Backend có các bài kiểm thử trong backend/tests. Cài pytest nếu môi trường chưa
+có, sau đó chạy từ thư mục backend:
+
+    cd backend
+    .\.venv\Scripts\Activate.ps1
+    pip install pytest
+    pytest -q
+
+Frontend kiểm tra lint:
+
+    cd MyApp
+    npm run lint
+
+
+10. XỬ LÝ LỖI THƯỜNG GẶP
+------------------------
+
+- ModuleNotFoundError: kiểm tra đã kích hoạt đúng .venv và đã chạy pip install
+  -r requirements.txt trong đúng thư mục.
+- Backend báo thiếu biến cấu hình: kiểm tra backend/.env và tên biến trong
+  backend/.env.example.
+- Không kết nối Supabase: kiểm tra URL, key, connection string và kết nối mạng.
+- Không kết nối Redis: khởi động Redis và kiểm tra REDIS_URL.
+- MyApp không gọi được backend: kiểm tra cổng 8000, IP LAN và Firewall.
+- Android không build được: kiểm tra JDK 17, Android SDK, ANDROID_HOME và adb.
+- Google Sign-In không hoạt động trong Expo Go: chạy development build bằng
+  npm run android.
+- Scheduler không chạy ngay: scheduler chờ đúng lịch; chạy trực tiếp từng script
+  nếu cần kiểm tra tức thời.
+
+Khi kết thúc, nhấn Ctrl+C tại từng cửa sổ để dừng Expo, backend, dashboard và
+các scheduler.
