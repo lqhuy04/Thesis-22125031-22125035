@@ -463,7 +463,7 @@ def fundamental_agent(state: AgentState) -> dict:
     try:
         as_of_date = _fundamental_as_of_date(state)
         indicators = _rows_available_before(
-            FundamentalAnalysisService.get_indicators(symbol),
+            FundamentalAnalysisService.get_indicator_history(symbol),
             as_of_date,
         )
         is_financial, icb_code = _get_company_context(symbol)

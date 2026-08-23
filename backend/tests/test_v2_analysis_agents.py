@@ -16,7 +16,9 @@ from agentic_ai_v2.analyze.agents.fundamental_analysis import (
     fundamental_analysis_agent,
 )
 from agentic_ai_v2.analyze.agents.fundamental import (
+    _cagr,
     _rows_available_before,
+    fundamental_agent,
 )
 from agentic_ai_v2.analyze.agents.recommendation import (
     TradingPlanOutput,
@@ -40,6 +42,46 @@ from agentic_ai_v2.analyze.language import (
 
 
 class V2AnalysisAgentTests(unittest.TestCase):
+    def test_fundamental_cagr_uses_first_and_last_available_year(self):
+        rows = [
+            {"year": 2021, "roe": 0.20},
+            {"year": 2022, "roe": None},
+            {"year": 2025, "roe": 0.29282},
+        ]
+
+        self.assertAlmostEqual(_cagr(rows, "roe"), 0.10, places=6)
+
+    @patch(
+        "agentic_ai_v2.analyze.agents.fundamental._get_industry_rows",
+        return_value=[],
+    )
+    @patch(
+        "agentic_ai_v2.analyze.agents.fundamental._get_company_context",
+        return_value=(False, None),
+    )
+    @patch(
+        "agentic_ai_v2.analyze.agents.fundamental."
+        "FundamentalAnalysisService.get_indicator_history"
+    )
+    def test_fundamental_agent_uses_indicator_history_for_cagr(
+        self,
+        get_indicator_history,
+        _get_company_context,
+        _get_industry_rows,
+    ):
+        get_indicator_history.return_value = [
+            {"year": 2021, "current_ratio": 1.0},
+            {"year": 2025, "current_ratio": 1.4641},
+        ]
+
+        output = fundamental_agent({"symbol": "vnm"})["agent_results"][
+            "fundamental_agent"
+        ]
+
+        get_indicator_history.assert_called_once_with("VNM")
+        self.assertIn("Phân tích cơ bản (2021–2025)", output)
+        self.assertIn("CAGR: 10.00%/năm", output)
+
     def test_fundamental_backtest_excludes_same_year_and_future_rows(self):
         rows = [
             {"year": 2021, "roe": 0.1},

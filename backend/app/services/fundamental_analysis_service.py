@@ -124,6 +124,33 @@ class FundamentalAnalysisService:
             raise ValueError(f"Failed to fetch financial indicators: {str(e)}")
 
     @staticmethod
+    def get_indicator_history(symbol: str) -> List[Dict]:
+        """Get the full annual financial-indicator history for a symbol.
+
+        This is intentionally separate from ``get_indicators`` so existing API
+        consumers keep receiving only the latest annual row. Historical rows
+        are used by the analysis pipeline for multi-year metrics such as CAGR.
+        """
+        try:
+            stock_id = FundamentalAnalysisService._resolve_stock_id(symbol)
+            if not stock_id:
+                return []
+
+            result = (
+                supabase.table("FA_Indicator")
+                .select("*")
+                .eq("stock_id", stock_id)
+                .order("year", desc=False)
+                .execute()
+            )
+            return result.data or []
+        except Exception as e:
+            print(f"Error fetching financial indicator history: {e}")
+            raise ValueError(
+                f"Failed to fetch financial indicator history: {str(e)}"
+            )
+
+    @staticmethod
     def get_income_statements(symbol: str) -> List[Dict]:
         """
         Get the full annual income-statement history for a symbol.
