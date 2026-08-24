@@ -6,6 +6,8 @@ import math
 import numpy as np
 import pandas as pd
 
+from app.utils.user_namespace import user_namespace
+
 logger = logging.getLogger(__name__)
 
 from .engine import (
@@ -26,6 +28,7 @@ def run_full_backtest(
     df_1m: pd.DataFrame,
     market_df: pd.DataFrame,
     symbol: str,
+    owner_user_id: str,
     max_hold_candles: int = 20,
     exit_on_score_drop: bool = False,
     transaction_cost_pct: float = DEFAULT_TRANSACTION_COST_PCT,
@@ -33,6 +36,7 @@ def run_full_backtest(
     data_selection: dict | None = None,
     evaluation_start_date: str | None = None,
 ) -> dict[str, Any]:
+    owner_namespace = user_namespace(owner_user_id)
     indicator_engine = IndicatorEngine()
     scoring_engine = ScoringEngine()
     signal_generator = SignalGenerator()
@@ -189,8 +193,12 @@ def run_full_backtest(
         import os
         from .visualizer import generate_backtest_json, get_backtest_visualization_data
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        visualizations_dir = os.path.join(current_dir, "visualizations")
-        timestamp_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+        visualizations_dir = os.path.join(
+            current_dir,
+            "visualizations",
+            owner_namespace,
+        )
+        timestamp_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S_%f")
         
         json_output_filename = f"{symbol}_{timestamp_str}_backtest.json"
         json_output_path = os.path.join(visualizations_dir, json_output_filename)
@@ -224,7 +232,12 @@ def run_full_backtest(
         try:
             from app.utils.supabase_storage import upload_backtest_file
             logger.info("Uploading JSON visualization to Supabase Storage...")
-            json_supabase_url = upload_backtest_file(json_output_path, json_output_filename, "application/json")
+            json_supabase_url = upload_backtest_file(
+                owner_namespace,
+                json_output_path,
+                json_output_filename,
+                "application/json",
+            )
         except Exception as upload_err:
             print(f"Failed to upload to Supabase Storage: {upload_err}")
     except Exception as e:
@@ -238,7 +251,12 @@ def run_full_backtest(
         from app.utils.market_index import get_index_symbols
         from .vn30_stats import build_symbol_stats, update_vn30_stats_file
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        vn30_stats_path = os.path.join(current_dir, "reports", "vn30_stats.json")
+        vn30_stats_path = os.path.join(
+            current_dir,
+            "reports",
+            owner_namespace,
+            "vn30_stats.json",
+        )
         symbol_stats = build_symbol_stats(
             symbol=symbol,
             full_metrics=full_metrics,
@@ -257,7 +275,7 @@ def run_full_backtest(
                 vn30_stats_path,
                 allowed_symbols=current_vn30_symbols,
             )
-            vn30_stats_file = vn30_stats_path
+            vn30_stats_file = "vn30_stats.json"
             print(f"VN30 aggregate stats updated: {vn30_stats_path}")
         else:
             print(f"VN30 aggregate stats skipped for non-member symbol: {symbol}")

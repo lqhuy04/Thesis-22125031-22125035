@@ -10,7 +10,7 @@ from agentic_ai.chatbot.sql_runner import (
     sanitize_sql,
 )
 from app.models.agentic_schemas import (
-    AdminAnalysisRequest,
+    ExperimentAnalysisRequest,
     ChatRequest,
     StockAnalysisRequest,
 )
@@ -89,7 +89,7 @@ class InputGuardTests(unittest.TestCase):
             message="Phân tích FPT",
         )
         BacktestPipelineRequest(symbol="FPT")
-        AdminAnalysisRequest(
+        ExperimentAnalysisRequest(
             mode="manual",
             symbol="FPT",
             risk_appetite={"period": "mid_term"},
@@ -209,12 +209,19 @@ class AdminEndpointTests(unittest.TestCase):
         self.assertNotIn('"/admin-login"', auth_source)
         self.assertIn('"/admin-session"', auth_source)
 
-    def test_dashboard_endpoints_require_login_but_not_admin_role(self):
+    def test_lab_endpoints_require_login_but_not_admin_role(self):
         agentic_source = (
             Path(__file__).parents[1] / "app" / "routes" / "agentic.py"
         ).read_text(encoding="utf-8")
         self.assertNotIn("get_current_admin", agentic_source)
         self.assertIn("Depends(get_current_user)", agentic_source)
+        self.assertIn('"/experiments/analyze"', agentic_source)
+        self.assertIn('"/experiments"', agentic_source)
+        self.assertIn('"/experiments/{experiment_id}"', agentic_source)
+        self.assertIn('"/experiments/compare"', agentic_source)
+        self.assertIn('"/market-universes/{name}"', agentic_source)
+        self.assertIn('user_id=current_user["user_id"]', agentic_source)
+        self.assertIn('list_backtest_files(current_user["user_id"])', agentic_source)
 
 
 if __name__ == "__main__":

@@ -110,16 +110,16 @@ def run_stock_analysis_v2(
     )
 
 
-# ─── Admin API mode (single symbol or full index basket) ──────────────────────
+# ─── Experiment mode (single symbol or full index basket) ──────────────────────
 
 SUPPORTED_UNIVERSES = ("VN30", "VN100")
 
 # Bounded concurrency: each symbol runs a full LLM pipeline. Too many parallel
 # runs would hammer the LLM provider; a small pool keeps batch runs reasonable.
-_ADMIN_BATCH_WORKERS = 4
+_EXPERIMENT_BATCH_WORKERS = 4
 
 
-def run_admin_analysis(
+def run_experiment_analysis(
     mode: str,
     risk_appetite: dict,
     data_selection: dict | None = None,
@@ -127,7 +127,7 @@ def run_admin_analysis(
     universe: str | None = None,
 ) -> dict:
     """
-    Admin variant of run_stock_analysis. When `universe` is VN30/VN100 the index
+    Experiment variant of run_stock_analysis. When `universe` is VN30/VN100 the index
     members are resolved from Supabase and analyzed with bounded concurrency.
     Otherwise a single `symbol` is analyzed.
 
@@ -157,7 +157,7 @@ def run_admin_analysis(
             except Exception as e:  # noqa: BLE001 — báo lỗi từng mã, không làm hỏng cả rổ
                 return {"symbol": sym, "status": "error", "error": str(e)}
 
-        with ThreadPoolExecutor(max_workers=_ADMIN_BATCH_WORKERS) as pool:
+        with ThreadPoolExecutor(max_workers=_EXPERIMENT_BATCH_WORKERS) as pool:
             futures = {pool.submit(_one, s): s for s in symbols}
             for fut in as_completed(futures):
                 results.append(fut.result())
@@ -180,6 +180,10 @@ def run_admin_analysis(
         "count": 1,
         "results": [{"symbol": symbol.strip().upper(), "status": "ok", "recommendation": rec}],
     }
+
+
+# Backward-compatible service alias for code using the previous admin name.
+run_admin_analysis = run_experiment_analysis
 
 
 # ─── Chatbot mode ─────────────────────────────────────────────────────────────

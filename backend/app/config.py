@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     # App
     APP_NAME: str = "Stockrium"
     VERSION: str = "1.0.0"
+    CODE_REVISION: str = os.getenv("RAILWAY_GIT_COMMIT_SHA", "")
     DEBUG: bool = False
     
     # Supabase
@@ -58,7 +59,7 @@ class Settings(BaseSettings):
     BACKEND_URL: str = "http://localhost:8000"
 
     # CORS — danh sách origin (cách nhau bởi dấu phẩy) được phép gọi từ trình duyệt.
-    # App mobile không bị CORS kiểm soát; cấu hình này dành cho web admin / Expo web.
+    # App mobile không bị CORS kiểm soát; cấu hình này dành cho Stockrium Lab / Expo web.
     CORS_ORIGINS: str = "http://localhost:8081,http://localhost:3000,http://localhost:5500,http://127.0.0.1:5500"
     MAX_REQUEST_BODY_BYTES: int = 1_048_576
 

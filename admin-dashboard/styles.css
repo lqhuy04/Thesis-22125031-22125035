@@ -136,11 +136,62 @@ h1 {
   display: none;
 }
 
+.investment-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  border-color: rgba(255, 194, 92, 0.38);
+  background: linear-gradient(135deg, rgba(99, 61, 6, 0.3), rgba(25, 22, 12, 0.68));
+}
+
+.investment-warning-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(255, 194, 92, 0.2);
+  color: #ffd58b;
+  font-weight: 800;
+}
+
+.investment-warning h2 {
+  margin: 0 0 5px;
+  color: #ffd58b;
+  font-family: inherit;
+  font-size: 0.96rem;
+}
+
+.investment-warning p {
+  margin: 0;
+  color: #efdcb8;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.investment-warning-inline {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-left: 3px solid #ffd58b;
+  border-radius: 6px;
+  background: rgba(255, 194, 92, 0.08);
+  color: #efdcb8;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.experiment-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .login-form {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-areas:
-    "api api"
     "email password"
     "submit submit"
     "error error";
@@ -152,10 +203,6 @@ h1 {
 .login-form .field {
   min-width: 0;
   width: 100%;
-}
-
-.login-api-field {
-  grid-area: api;
 }
 
 .login-email-field {
@@ -185,7 +232,6 @@ h1 {
   .login-form {
     grid-template-columns: 1fr;
     grid-template-areas:
-      "api"
       "email"
       "password"
       "submit"
@@ -464,6 +510,7 @@ select:focus {
 /* Tabs CSS */
 .tabs-nav {
   display: flex;
+  flex-wrap: wrap;
   padding: 6px;
   gap: 6px;
   margin-bottom: 8px;
@@ -637,6 +684,92 @@ select:focus {
 
 .results-table tbody tr:hover {
   background: rgba(255, 255, 255, 0.03);
+}
+
+.experiment-selection-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(184, 217, 206, 0.16);
+  border-radius: 12px;
+  background: rgba(4, 16, 24, 0.45);
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.experiment-selection-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.experiment-select-checkbox {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.experiment-row-selected {
+  background: rgba(88, 240, 167, 0.07);
+}
+
+.experiment-comparison-table {
+  min-width: 760px;
+}
+
+.experiment-comparison-table th:first-child,
+.experiment-comparison-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 190px;
+  background: rgb(7, 20, 27);
+}
+
+.experiment-comparison-table thead th:first-child {
+  z-index: 2;
+}
+
+.experiment-comparison-table td:not(:first-child),
+.experiment-comparison-table th:not(:first-child) {
+  min-width: 190px;
+  text-align: center;
+}
+
+.experiment-comparison-section td {
+  padding-top: 18px;
+  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(88, 240, 167, 0.05);
+}
+
+.experiment-comparison-table .experiment-comparison-section td {
+  position: static;
+  text-align: left;
+  background: rgba(88, 240, 167, 0.05);
+}
+
+.experiment-comparison-best {
+  color: var(--ok);
+  font-weight: 700;
+  background: rgba(88, 240, 167, 0.1);
+}
+
+@media (max-width: 640px) {
+  .experiment-selection-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .experiment-selection-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* Stats Summary Dashboard */

@@ -84,11 +84,20 @@ Example payload:
 
 ## VN30 Aggregate Stats (local JSON)
 
-Mỗi lần `run_full_backtest` chạy xong sẽ upsert thống kê của mã đó vào MỘT file
-JSON tổng hợp local: `backtest/reports/vn30_stats.json` (key = symbol). Admin
-dashboard lấy thành phần VN30 hiện tại từ `/api/agentic/admin-universe/VN30`,
+Mỗi lần `run_full_backtest` chạy xong sẽ upsert thống kê của mã đó vào file
+JSON tổng hợp riêng của user (key = symbol). Stockrium
+Lab lấy thành phần VN30 hiện tại từ `/api/agentic/market-universes/VN30`,
 sau đó gọi `/api/agentic/backtest` tuần tự cho từng mã; file này sẽ tự gom các
 mã thuộc rổ sau khi batch chạy xong.
+
+Kết quả từ API được tách theo user đăng nhập:
+
+- Local visualization: `backtest/visualizations/{user_id}/{filename}`.
+- Local aggregate: `backtest/reports/{user_id}/vn30_stats.json`.
+- Supabase Storage: `backtests/{user_id}/{filename}`.
+
+API danh sách và tải file luôn lấy `user_id` từ access token, không nhận
+`user_id` do client gửi lên. Các file legacy ở root bucket không được liệt kê.
 
 Nội dung mỗi mã (`vn30_stats.py` → `build_symbol_stats`):
 1. `performance` — n_trades, win_rate, total_return, avg_return, annualized_return,

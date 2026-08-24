@@ -3,6 +3,8 @@ const els = {
   // Tabs
   tabBacktestBtn: document.getElementById("tab-backtest-btn"),
   backtestTabContent: document.getElementById("backtest-tab-content"),
+  tabHistoryBtn: document.getElementById("tab-history-btn"),
+  historyTabContent: document.getElementById("history-tab-content"),
 
   // Backtest Inputs
   backtestForm: document.getElementById("backtestForm"),
@@ -88,16 +90,15 @@ const els = {
   agentReportList: document.getElementById("agentReportList"),
   agentReportDetail: document.getElementById("agentReportDetail"),
 
-  // Admin auth
-  adminAuthBadge: document.getElementById("adminAuthBadge"),
-  adminLoginCard: document.getElementById("adminLoginCard"),
-  adminLoginForm: document.getElementById("adminLoginForm"),
-  adminApiBaseUrl: document.getElementById("adminApiBaseUrl"),
-  adminEmail: document.getElementById("adminEmail"),
-  adminPassword: document.getElementById("adminPassword"),
-  adminLoginBtn: document.getElementById("adminLoginBtn"),
-  adminLoginError: document.getElementById("adminLoginError"),
-  adminLogoutBtn: document.getElementById("adminLogoutBtn"),
+  // Stockrium Lab authentication
+  authBadge: document.getElementById("authBadge"),
+  loginCard: document.getElementById("loginCard"),
+  loginForm: document.getElementById("loginForm"),
+  emailInput: document.getElementById("emailInput"),
+  passwordInput: document.getElementById("passwordInput"),
+  loginBtn: document.getElementById("loginBtn"),
+  loginError: document.getElementById("loginError"),
+  logoutBtn: document.getElementById("logoutBtn"),
 
   // Analyze tab
   tabAnalyzeBtn: document.getElementById("tab-analyze-btn"),
@@ -126,15 +127,40 @@ const els = {
   analyzeResultsBody: document.getElementById("analyzeResultsBody"),
   analyzeDetailPanel: document.getElementById("analyzeDetailPanel"),
   exportAnalyzeCsvBtn: document.getElementById("exportAnalyzeCsvBtn"),
+
+  // Personal experiment history
+  refreshExperimentHistoryBtn: document.getElementById("refreshExperimentHistoryBtn"),
+  experimentTypeFilter: document.getElementById("experimentTypeFilter"),
+  experimentStatusFilter: document.getElementById("experimentStatusFilter"),
+  experimentHistoryBody: document.getElementById("experimentHistoryBody"),
+  experimentDetailCard: document.getElementById("experimentDetailCard"),
+  experimentDetailTitle: document.getElementById("experimentDetailTitle"),
+  experimentDetailStatus: document.getElementById("experimentDetailStatus"),
+  experimentConfiguration: document.getElementById("experimentConfiguration"),
+  experimentResultData: document.getElementById("experimentResultData"),
+  experimentReproducibility: document.getElementById("experimentReproducibility"),
+  copyExperimentBundleBtn: document.getElementById("copyExperimentBundleBtn"),
+  experimentSelectionCount: document.getElementById("experimentSelectionCount"),
+  clearExperimentSelectionBtn: document.getElementById("clearExperimentSelectionBtn"),
+  compareExperimentsBtn: document.getElementById("compareExperimentsBtn"),
+  experimentCompareCard: document.getElementById("experimentCompareCard"),
+  closeExperimentCompareBtn: document.getElementById("closeExperimentCompareBtn"),
+  experimentComparisonContent: document.getElementById("experimentComparisonContent"),
 };
 
 // Tokens remain in memory only. Never put credentials or tokens in web storage.
-let adminToken = null;
-let adminRefreshToken = null;
-let adminRefreshPromise = null;
-let adminRefreshTimer = null;
-let apiBaseUrl = "";
+let accessToken = null;
+let sessionRefreshToken = null;
+let refreshPromise = null;
+let refreshTimer = null;
+let apiBaseUrl = normalizeBaseUrl(window.STOCKRIUM_CONFIG?.API_BASE_URL);
+let currentUserId = null;
+let userContextVersion = 0;
 let analyzeSummaryData = [];
+const EXPERIMENT_COMPARE_LIMIT = 5;
+let selectedExperimentIds = new Set();
+let comparisonLoading = false;
+let currentExperimentBundle = null;
 
 let vn30SummaryData = []; // Store stats for CSV export
 
@@ -154,16 +180,16 @@ function normalizeBaseUrl(raw) {
 }
 
 function appendLog(message) {
-  console.info(`[Stockrium Admin] ${message}`);
+  console.info(`[Stockrium Lab] ${message}`);
 }
 
-function buildAdminRequestOptions(options = {}, accessToken = adminToken) {
+function buildAuthenticatedRequestOptions(options = {}, token = accessToken) {
   return {
     method: options.method || "GET",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {}),
     },
     ...(options.body ? { body: JSON.stringify(options.body) } : {}),
@@ -171,19 +197,26 @@ function buildAdminRequestOptions(options = {}, accessToken = adminToken) {
 }
 
 async function requestJson(url, options = {}) {
-  let response = await fetch(url, buildAdminRequestOptions(options));
+  const requestContextVersion = userContextVersion;
+  let response = await fetch(url, buildAuthenticatedRequestOptions(options));
 
   if (response.status === 401) {
     try {
-      const refreshedToken = await refreshAdminSession();
+      const refreshedToken = await refreshSession();
       response = await fetch(
         url,
-        buildAdminRequestOptions(options, refreshedToken),
+        buildAuthenticatedRequestOptions(options, refreshedToken),
       );
     } catch (error) {
-      clearAdminSession(error.message || "Phiên đăng nhập đã hết hạn.");
+      if (requestContextVersion === userContextVersion) {
+        clearSession(error.message || "Phiên đăng nhập đã hết hạn.", true);
+      }
       throw error;
     }
+  }
+
+  if (requestContextVersion !== userContextVersion) {
+    throw new Error("Phiên người dùng đã thay đổi.");
   }
 
   let body;
@@ -204,7 +237,7 @@ async function requestJson(url, options = {}) {
 async function loadUniverseSymbols(baseUrl, universe) {
   const normalizedUniverse = (universe || "").trim().toUpperCase();
   const payload = await requestJson(
-    `${baseUrl}/api/agentic/admin-universe/${encodeURIComponent(normalizedUniverse)}`,
+    `${baseUrl}/api/agentic/market-universes/${encodeURIComponent(normalizedUniverse)}`,
   );
   const rawSymbols = payload?.data?.symbols;
   if (!Array.isArray(rawSymbols)) {
@@ -224,16 +257,16 @@ async function loadUniverseSymbols(baseUrl, universe) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ADMIN LOGIN
+// STOCKRIUM LAB LOGIN
 // ─────────────────────────────────────────────────────────────────────────────
-function setAdminAuthBadge(type, text) {
-  if (!els.adminAuthBadge) return;
-  els.adminAuthBadge.classList.remove("ok", "error", "running");
-  if (type) els.adminAuthBadge.classList.add(type);
-  els.adminAuthBadge.textContent = text;
+function setAuthBadge(type, text) {
+  if (!els.authBadge) return;
+  els.authBadge.classList.remove("ok", "error", "running");
+  if (type) els.authBadge.classList.add(type);
+  els.authBadge.textContent = text;
 }
 
-function adminTokenExpiresAt(token) {
+function accessTokenExpiresAt(token) {
   try {
     const payloadPart = token.split(".")[1];
     const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
@@ -245,97 +278,171 @@ function adminTokenExpiresAt(token) {
   }
 }
 
-function scheduleAdminTokenRefresh() {
-  if (adminRefreshTimer) {
-    clearTimeout(adminRefreshTimer);
-    adminRefreshTimer = null;
+function scheduleTokenRefresh() {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
   }
-  if (!adminToken || !adminRefreshToken) return;
+  if (!accessToken || !sessionRefreshToken) return;
 
-  const expiresAt = adminTokenExpiresAt(adminToken);
+  const expiresAt = accessTokenExpiresAt(accessToken);
   // Refresh one minute before expiry. If the JWT cannot be decoded, use the
   // current backend default of a ten-minute refresh cadence.
   const delay = expiresAt
     ? Math.max(expiresAt - Date.now() - 60_000, 5_000)
     : 10 * 60_000;
-  adminRefreshTimer = setTimeout(async () => {
+  refreshTimer = setTimeout(async () => {
     try {
-      await refreshAdminSession();
+      await refreshSession();
     } catch (error) {
-      clearAdminSession(error.message || "Phiên đăng nhập đã hết hạn.");
+      clearSession(error.message || "Phiên đăng nhập đã hết hạn.", true);
     }
   }, delay);
 }
 
-async function refreshAdminSession() {
-  if (adminRefreshPromise) return adminRefreshPromise;
-  if (!apiBaseUrl || !adminRefreshToken) {
+async function refreshSession() {
+  if (refreshPromise) return refreshPromise;
+  if (!apiBaseUrl || !sessionRefreshToken) {
     throw new Error("Phiên đăng nhập không thể gia hạn. Vui lòng đăng nhập lại.");
   }
 
-  adminRefreshPromise = (async () => {
+  const refreshContextVersion = userContextVersion;
+  const tokenToRefresh = sessionRefreshToken;
+  const activeRefreshPromise = (async () => {
     const response = await fetch(`${apiBaseUrl}/api/auth/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ refresh_token: adminRefreshToken }),
+      body: JSON.stringify({ refresh_token: tokenToRefresh }),
     });
     const payload = await response.json().catch(() => null);
     const newToken = payload?.data?.token;
+    if (refreshContextVersion !== userContextVersion) {
+      throw new Error("Phiên người dùng đã thay đổi.");
+    }
     if (!response.ok || !payload?.result || !newToken) {
       throw new Error(payload?.errorDesc || "Phiên đăng nhập đã hết hạn.");
     }
 
-    adminToken = newToken;
-    adminRefreshToken = payload.data.refresh_token || adminRefreshToken;
-    scheduleAdminTokenRefresh();
+    accessToken = newToken;
+    sessionRefreshToken = payload.data.refresh_token || sessionRefreshToken;
+    scheduleTokenRefresh();
     appendLog("Phiên đăng nhập đã được tự động gia hạn.");
-    return adminToken;
+    return accessToken;
   })();
+  refreshPromise = activeRefreshPromise;
 
   try {
-    return await adminRefreshPromise;
+    return await activeRefreshPromise;
   } finally {
-    adminRefreshPromise = null;
+    if (refreshPromise === activeRefreshPromise) refreshPromise = null;
   }
 }
 
-function clearAdminSession(message = "") {
-  if (adminRefreshTimer) {
-    clearTimeout(adminRefreshTimer);
-    adminRefreshTimer = null;
+function clearUserOwnedView() {
+  vn30SummaryData = [];
+  analyzeSummaryData = [];
+  [charts.price, charts.rsi, charts.macd, charts.kdj]
+    .filter(Boolean)
+    .forEach((chart) => {
+      try {
+        chart.remove();
+      } catch {
+        // The chart may already have been detached by a previous render.
+      }
+    });
+  charts = {
+    price: null,
+    rsi: null,
+    macd: null,
+    kdj: null,
+    candlestickSeries: null,
+    tpSLSeries: [],
+  };
+  if (els.cloudHistoryList) {
+    els.cloudHistoryList.innerHTML = '<p class="hint">Đăng nhập để tải lịch sử của bạn.</p>';
   }
-  adminToken = null;
-  adminRefreshToken = null;
-  adminRefreshPromise = null;
-  els.adminPassword.value = "";
-  els.adminLoginError.textContent = message;
-  els.adminLoginCard.hidden = false;
+  if (els.experimentHistoryBody) {
+    els.experimentHistoryBody.innerHTML = '<tr><td colspan="8" class="hint">Đăng nhập để tải lịch sử của bạn.</td></tr>';
+  }
+  if (els.experimentDetailCard) els.experimentDetailCard.style.display = "none";
+  if (els.experimentCompareCard) els.experimentCompareCard.style.display = "none";
+  if (els.experimentComparisonContent) els.experimentComparisonContent.innerHTML = "";
+  comparisonLoading = false;
+  selectedExperimentIds.clear();
+  updateExperimentSelectionUi();
+  if (els.experimentConfiguration) els.experimentConfiguration.textContent = "";
+  if (els.experimentResultData) els.experimentResultData.textContent = "";
+  if (els.experimentReproducibility) els.experimentReproducibility.textContent = "";
+  currentExperimentBundle = null;
+  if (els.vn30ResultsBody) els.vn30ResultsBody.innerHTML = "";
+  if (els.analyzeResultsBody) els.analyzeResultsBody.innerHTML = "";
+  if (els.tradeLogsBody) els.tradeLogsBody.innerHTML = "";
+  if (els.agentReportList) els.agentReportList.innerHTML = "";
+  if (els.agentReportDetail) els.agentReportDetail.innerHTML = "";
+  if (els.vn30Logs) els.vn30Logs.textContent = "";
+  if (els.analyzeLogs) els.analyzeLogs.textContent = "";
+  if (els.vn30ResultsCard) els.vn30ResultsCard.style.display = "none";
+  if (els.vn30ProgressCard) els.vn30ProgressCard.style.display = "none";
+  if (els.vizWrapper) els.vizWrapper.style.display = "none";
+  if (els.agentReportCard) els.agentReportCard.style.display = "none";
+  if (els.tradeDetailPanel) els.tradeDetailPanel.style.display = "none";
+  if (els.analyzeSingleResult) {
+    els.analyzeSingleResult.innerHTML = "";
+    els.analyzeSingleResult.style.display = "none";
+  }
+  if (els.analyzeProgressCard) els.analyzeProgressCard.style.display = "none";
+  if (els.analyzeResultsCard) els.analyzeResultsCard.style.display = "none";
+  if (els.analyzeDetailPanel) {
+    els.analyzeDetailPanel.innerHTML = "";
+    els.analyzeDetailPanel.style.display = "none";
+  }
+}
+
+function clearSession(message = "", preserveUserContext = false) {
+  if (refreshTimer) {
+    clearTimeout(refreshTimer);
+    refreshTimer = null;
+  }
+  accessToken = null;
+  sessionRefreshToken = null;
+  refreshPromise = null;
+  if (!preserveUserContext) {
+    userContextVersion += 1;
+    currentUserId = null;
+    clearUserOwnedView();
+  }
+  els.passwordInput.value = "";
+  els.loginError.textContent = message;
+  els.loginCard.hidden = false;
   document.body.classList.add("auth-required");
-  setAdminAuthBadge("error", "Chưa đăng nhập");
+  setAuthBadge("error", "Chưa đăng nhập");
 }
 
-function showAdminDashboard(email) {
-  els.adminLoginError.textContent = "";
-  els.adminPassword.value = "";
-  els.adminLoginCard.hidden = true;
+function showLab(email) {
+  els.loginError.textContent = "";
+  els.passwordInput.value = "";
+  els.loginCard.hidden = true;
   document.body.classList.remove("auth-required");
-  setAdminAuthBadge("ok", email || "Đã đăng nhập");
+  setAuthBadge("ok", email || "Đã đăng nhập");
 }
 
-async function adminLogin(event) {
+async function loginToLab(event) {
   event?.preventDefault();
-  const baseUrl = normalizeBaseUrl(els.adminApiBaseUrl.value);
-  const email = els.adminEmail.value.trim();
-  const password = els.adminPassword.value;
-  if (!baseUrl || !email || !password) return false;
+  const baseUrl = apiBaseUrl;
+  const email = els.emailInput.value.trim();
+  const password = els.passwordInput.value;
+  if (!baseUrl) {
+    els.loginError.textContent = "Stockrium Lab chưa được cấu hình địa chỉ backend.";
+    return false;
+  }
+  if (!email || !password) return false;
 
-  apiBaseUrl = baseUrl;
-  els.adminLoginBtn.disabled = true;
-  els.adminLoginError.textContent = "";
-  setAdminAuthBadge("running", "Đang đăng nhập...");
+  els.loginBtn.disabled = true;
+  els.loginError.textContent = "";
+  setAuthBadge("running", "Đang đăng nhập...");
 
   try {
     const loginResponse = await fetch(`${baseUrl}/api/auth/login`, {
@@ -368,26 +475,32 @@ async function adminLogin(event) {
       throw new Error(sessionPayload?.errorDesc || "Không thể xác minh phiên đăng nhập.");
     }
 
-    adminToken = candidateToken;
-    adminRefreshToken = candidateRefreshToken;
-    scheduleAdminTokenRefresh();
-    showAdminDashboard(sessionPayload.data.email);
+    if (currentUserId && currentUserId !== sessionPayload.data.user_id) {
+      clearUserOwnedView();
+    }
+    userContextVersion += 1;
+    accessToken = candidateToken;
+    sessionRefreshToken = candidateRefreshToken;
+    currentUserId = sessionPayload.data.user_id;
+    scheduleTokenRefresh();
+    showLab(sessionPayload.data.email);
     appendLog("Đăng nhập thành công.");
     loadCloudHistory();
+    loadExperimentHistory();
     return true;
   } catch (error) {
-    clearAdminSession(error.message);
+    clearSession(error.message);
     appendLog(`Đăng nhập thất bại: ${error.message}`);
     return false;
   } finally {
-    els.adminLoginBtn.disabled = false;
+    els.loginBtn.disabled = false;
   }
 }
 
-async function adminLogout() {
+async function logoutFromLab() {
   const baseUrl = apiBaseUrl;
-  const refreshToken = adminRefreshToken;
-  clearAdminSession("Đã đăng xuất.");
+  const refreshToken = sessionRefreshToken;
+  clearSession("Đã đăng xuất.");
   if (!baseUrl || !refreshToken) return;
   try {
     await fetch(`${baseUrl}/api/auth/logout`, {
@@ -407,6 +520,7 @@ function initTabs() {
   const tabs = [
     { btn: els.tabBacktestBtn, content: els.backtestTabContent },
     { btn: els.tabAnalyzeBtn, content: els.analyzeTabContent },
+    { btn: els.tabHistoryBtn, content: els.historyTabContent },
   ];
 
   tabs.forEach(({ btn, content }) => {
@@ -439,7 +553,12 @@ const BACKTEST_FLOW_SUMMARIES = {
   technical_single: "Single-indicator AI pipeline: chỉ dùng một chỉ báo kỹ thuật đã chọn.",
   custom: "Tùy chỉnh nguồn dữ liệu, chỉ báo kỹ thuật và trọng số phân tích.",
 };
-const VN30_BACKTEST_CHECKPOINT_KEY = "stockrium.admin.vn30-backtest.v1";
+const VN30_BACKTEST_CHECKPOINT_PREFIX = "stockrium.lab.vn30-backtest.v2";
+
+function vn30CheckpointKey() {
+  if (!currentUserId) return null;
+  return `${VN30_BACKTEST_CHECKPOINT_PREFIX}.${encodeURIComponent(currentUserId)}`;
+}
 
 function vn30CheckpointSignature(baseUrl, baseParams, tickers) {
   const { symbol: _ignoredSymbol, ...parameters } = baseParams;
@@ -452,7 +571,9 @@ function vn30CheckpointSignature(baseUrl, baseParams, tickers) {
 
 function loadVn30Checkpoint(baseUrl, baseParams, tickers) {
   try {
-    const raw = localStorage.getItem(VN30_BACKTEST_CHECKPOINT_KEY);
+    const checkpointKey = vn30CheckpointKey();
+    if (!checkpointKey) return null;
+    const raw = localStorage.getItem(checkpointKey);
     if (!raw) return null;
     const checkpoint = JSON.parse(raw);
     const expectedSignature = vn30CheckpointSignature(
@@ -461,7 +582,7 @@ function loadVn30Checkpoint(baseUrl, baseParams, tickers) {
       tickers,
     );
     if (
-      checkpoint?.version !== 1
+      checkpoint?.version !== 2
       || checkpoint?.signature !== expectedSignature
       || !Array.isArray(checkpoint?.rows)
     ) {
@@ -476,11 +597,13 @@ function loadVn30Checkpoint(baseUrl, baseParams, tickers) {
 
 function saveVn30Checkpoint(baseUrl, baseParams, tickers) {
   try {
+    const checkpointKey = vn30CheckpointKey();
+    if (!checkpointKey) return;
     const rows = vn30SummaryData.map(({ vizData: _vizData, ...row }) => row);
     localStorage.setItem(
-      VN30_BACKTEST_CHECKPOINT_KEY,
+      checkpointKey,
       JSON.stringify({
-        version: 1,
+        version: 2,
         signature: vn30CheckpointSignature(baseUrl, baseParams, tickers),
         updatedAt: new Date().toISOString(),
         rows,
@@ -493,7 +616,8 @@ function saveVn30Checkpoint(baseUrl, baseParams, tickers) {
 
 function clearVn30Checkpoint() {
   try {
-    localStorage.removeItem(VN30_BACKTEST_CHECKPOINT_KEY);
+    const checkpointKey = vn30CheckpointKey();
+    if (checkpointKey) localStorage.removeItem(checkpointKey);
   } catch (error) {
     appendLog(`Không thể xóa checkpoint VN30: ${error.message}`);
   }
@@ -756,7 +880,7 @@ function initDataSelectionControls() {
 async function runBacktest() {
   const baseUrl = apiBaseUrl;
   if (!baseUrl) {
-    alert("Không thể chạy backtest: API Base URL đang trống.");
+    alert("Không thể chạy backtest: dịch vụ backend chưa được cấu hình.");
     return;
   }
 
@@ -813,6 +937,7 @@ async function runBacktest() {
         alert("Không nhận được dữ liệu vẽ biểu đồ từ backend.");
       }
       loadCloudHistory();
+      loadExperimentHistory();
     } catch (error) {
       appendLog(`Lỗi chạy backtest ${params.symbol}: ${error.message}`);
       alert(`Lỗi chạy backtest: ${error.message}`);
@@ -929,9 +1054,9 @@ async function runBacktest() {
       saveVn30Checkpoint(baseUrl, baseParams, vn30Tickers);
       updateProgressBar(completedCount, vn30Tickers.length, `Đang chạy: ${completedCount}/${vn30Tickers.length}`);
 
-      if (!adminToken) {
+      if (!accessToken) {
         batchInterrupted = true;
-        appendVn30Log("⏸️ Batch đã tạm dừng vì phiên admin không thể gia hạn. Đăng nhập rồi chạy lại để tiếp tục.");
+        appendVn30Log("⏸️ Batch đã tạm dừng vì phiên đăng nhập không thể gia hạn. Đăng nhập rồi chạy lại để tiếp tục.");
         updateProgressBar(
           completedCount,
           vn30Tickers.length,
@@ -956,6 +1081,7 @@ async function runBacktest() {
       updateProgressBar(completedCount, vn30Tickers.length, `Còn ${vn30Tickers.length - successfulCount} mã cần chạy lại`);
     }
     loadCloudHistory();
+    loadExperimentHistory();
     els.runBacktestBtn.disabled = false;
     els.runBacktestBtn.textContent = "Chạy Backtest Pipeline";
   }
@@ -1778,7 +1904,9 @@ function escapeHtml(str) {
   return String(str ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function analysisSection(title, text) {
@@ -1922,7 +2050,7 @@ window.addEventListener("resize", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AI ANALYZE TAB (Admin) — single symbol or VN30/VN100 basket
+// AI ANALYZE TAB — single symbol or VN30/VN100 basket
 // ─────────────────────────────────────────────────────────────────────────────
 const AN_TECH_KEYS = ["ma", "boll", "rsi", "macd", "kdj"];
 
@@ -2061,6 +2189,10 @@ function recommendationDetailHtml(symbol, rec) {
       ${tradingPlanHtml}
     </ul>
     ${analysisBlocksHtml(rec)}
+    <div class="investment-warning-inline">
+      <strong>Không phải khuyến nghị đầu tư.</strong> Kết quả AI chỉ dùng để nghiên cứu và thử nghiệm;
+      dữ liệu hoặc mô hình có thể thay đổi và không bảo đảm hiệu quả tương lai.
+    </div>
   `;
 }
 
@@ -2119,10 +2251,10 @@ function updateAnalyzeProgress(current, total, label = "") {
 async function runAnalyze() {
   const baseUrl = apiBaseUrl;
   if (!baseUrl) {
-    alert("Không thể phân tích: API Base URL đang trống.");
+    alert("Không thể phân tích: dịch vụ backend chưa được cấu hình.");
     return;
   }
-  if (!adminToken) {
+  if (!accessToken) {
     alert("Vui lòng đăng nhập.");
     return;
   }
@@ -2154,7 +2286,7 @@ async function runAnalyze() {
       els.runAnalyzeBtn.textContent = `Đang phân tích ${symbol}...`;
       appendLog(`Phân tích AI cho ${symbol}...`);
 
-      const payload = await requestJson(`${baseUrl}/api/agentic/admin-analyze`, {
+      const payload = await requestJson(`${baseUrl}/api/agentic/experiments/analyze`, {
         method: "POST",
         body: buildAnalyzeBody(symbol),
       });
@@ -2187,7 +2319,7 @@ async function runAnalyze() {
         appendAnalyzeLog(`[${i + 1}/${symbols.length}] Phân tích ${sym}...`);
 
         try {
-          const payload = await requestJson(`${baseUrl}/api/agentic/admin-analyze`, {
+          const payload = await requestJson(`${baseUrl}/api/agentic/experiments/analyze`, {
             method: "POST",
             body: buildAnalyzeBody(sym),
           });
@@ -2220,6 +2352,407 @@ async function runAnalyze() {
   } finally {
     els.runAnalyzeBtn.disabled = false;
     els.runAnalyzeBtn.textContent = "Chạy phân tích";
+    if (accessToken) loadExperimentHistory();
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PERSONAL EXPERIMENT HISTORY
+// ─────────────────────────────────────────────────────────────────────────────
+function experimentTypeLabel(type) {
+  return type === "backtest" ? "Backtest" : type === "analysis" ? "Phân tích AI" : type || "--";
+}
+
+function experimentStatusInfo(status) {
+  if (status === "completed") return { label: "Hoàn thành", cls: "ok" };
+  if (status === "failed") return { label: "Thất bại", cls: "error" };
+  return { label: "Đang chạy", cls: "running" };
+}
+
+function formatExperimentPercent(value) {
+  if (value === undefined || value === null || value === "") return "--";
+  const number = Number(value);
+  return Number.isFinite(number) ? `${(number * 100).toFixed(1)}%` : "--";
+}
+
+function experimentQuickSummary(experiment) {
+  const summary = experiment?.result_summary || {};
+  if (experiment?.status === "failed") {
+    return experiment.error_message || "Thử nghiệm thất bại";
+  }
+  if (experiment?.status === "running") return "Đang xử lý...";
+  if (experiment?.experiment_type === "backtest") {
+    const profit = formatExperimentPercent(summary.net_profit);
+    const winRate = formatExperimentPercent(summary.win_rate);
+    const sharpe = summary.sharpe_ratio == null ? Number.NaN : Number(summary.sharpe_ratio);
+    return `Lợi nhuận ${profit} · Win rate ${winRate} · Sharpe ${Number.isFinite(sharpe) ? sharpe.toFixed(2) : "--"}`;
+  }
+  if (summary.recommendation) {
+    const score = Number(summary.score);
+    return `${summary.recommendation} · Điểm ${Number.isFinite(score) ? scoreOutOf100(score) : "--"} · ${confidenceInfo(summary.confidence).text}`;
+  }
+  return `${summary.successful || 0}/${summary.count || 0} mã thành công`;
+}
+
+function updateExperimentSelectionUi() {
+  const count = selectedExperimentIds.size;
+  if (els.experimentSelectionCount) {
+    els.experimentSelectionCount.textContent = `Đã chọn ${count}/${EXPERIMENT_COMPARE_LIMIT} thử nghiệm`;
+  }
+  if (els.compareExperimentsBtn) {
+    els.compareExperimentsBtn.disabled = comparisonLoading || count < 2;
+    els.compareExperimentsBtn.textContent = comparisonLoading ? "Đang tải so sánh..." : "So sánh đã chọn";
+  }
+  if (els.clearExperimentSelectionBtn) {
+    els.clearExperimentSelectionBtn.disabled = comparisonLoading || count === 0;
+  }
+  document.querySelectorAll(".experiment-select-checkbox").forEach((checkbox) => {
+    const selected = selectedExperimentIds.has(checkbox.dataset.experimentId);
+    checkbox.checked = selected;
+    checkbox.disabled = comparisonLoading || (!selected && count >= EXPERIMENT_COMPARE_LIMIT);
+    checkbox.closest("tr")?.classList.toggle("experiment-row-selected", selected);
+  });
+}
+
+function toggleExperimentSelection(experimentId, checked) {
+  if (checked && selectedExperimentIds.size >= EXPERIMENT_COMPARE_LIMIT) {
+    alert(`Chỉ có thể so sánh tối đa ${EXPERIMENT_COMPARE_LIMIT} thử nghiệm.`);
+    updateExperimentSelectionUi();
+    return;
+  }
+  if (checked) selectedExperimentIds.add(experimentId);
+  else selectedExperimentIds.delete(experimentId);
+  if (els.experimentCompareCard) els.experimentCompareCard.style.display = "none";
+  updateExperimentSelectionUi();
+}
+
+function clearExperimentSelection() {
+  selectedExperimentIds.clear();
+  if (els.experimentCompareCard) els.experimentCompareCard.style.display = "none";
+  if (els.experimentComparisonContent) els.experimentComparisonContent.innerHTML = "";
+  updateExperimentSelectionUi();
+}
+
+function experimentModeLabel(mode) {
+  return mode === "manual" ? "Thủ công" : mode === "auto" ? "Tự động" : mode || "--";
+}
+
+function riskPeriodLabel(period) {
+  return ({
+    short_term: "Ngắn hạn",
+    mid_term: "Trung hạn",
+    long_term: "Dài hạn",
+  })[period] || period || "--";
+}
+
+function experimentDurationLabel(durationMs) {
+  if (durationMs === undefined || durationMs === null || durationMs === "") return "--";
+  const value = Number(durationMs);
+  if (!Number.isFinite(value)) return "--";
+  if (value < 1000) return `${Math.round(value)} ms`;
+  if (value < 60_000) return `${(value / 1000).toFixed(1)} giây`;
+  return `${(value / 60_000).toFixed(1)} phút`;
+}
+
+function experimentSourcesLabel(experiment) {
+  const selection = experiment?.configuration?.data_selection;
+  if (!selection) return experiment?.mode === "auto" ? "Tất cả nguồn (tự động)" : "--";
+  const sources = [];
+  if (selection.news !== false) sources.push("Tin tức");
+  if (selection.technical && Object.values(selection.technical).some(Boolean)) sources.push("Kỹ thuật");
+  if (selection.fundamental !== false) sources.push("Cơ bản");
+  return sources.join(" + ") || "--";
+}
+
+function experimentTechnicalLabel(experiment) {
+  const technical = experiment?.configuration?.data_selection?.technical;
+  if (!technical) return "--";
+  const selected = Object.entries(technical)
+    .filter(([, enabled]) => enabled)
+    .map(([key]) => TECH_INDICATOR_LABELS[key] || key.toUpperCase());
+  return selected.join(", ") || "--";
+}
+
+function experimentWeightsLabel(experiment) {
+  const weight = experiment?.configuration?.data_selection?.weight;
+  if (!weight) return "Mặc định theo kỳ hạn";
+  const percent = (value) => `${Math.round(Number(value || 0) * 100)}%`;
+  return `Tin ${percent(weight.news)} · KT ${percent(weight.technical)} · CB ${percent(weight.fundamental)}`;
+}
+
+function comparisonValue(value) {
+  return value === undefined || value === null || value === "" ? "--" : String(value);
+}
+
+function shortFingerprint(value) {
+  const text = String(value || "");
+  if (!text) return "--";
+  return text.length > 12 ? `${text.slice(0, 12)}…` : text;
+}
+
+function reproducibilityLevelLabel(value) {
+  return value === "configuration_only" ? "Tái lập cấu hình" : value || "--";
+}
+
+function buildComparisonSections() {
+  const summary = (experiment) => experiment?.result_summary || {};
+  const config = (experiment) => experiment?.configuration || {};
+  const reproducibility = (experiment) => experiment?.reproducibility || {};
+  const numeric = (getter) => (experiment) => {
+    const rawValue = getter(experiment);
+    if (rawValue === undefined || rawValue === null || rawValue === "") return null;
+    const value = Number(rawValue);
+    return Number.isFinite(value) ? value : null;
+  };
+  return [
+    {
+      title: "Thông tin thử nghiệm",
+      rows: [
+        { label: "Loại", value: (item) => experimentTypeLabel(item.experiment_type) },
+        { label: "Mã / phạm vi", value: (item) => item.symbol || String(item.scope || "--").toUpperCase() },
+        { label: "Chế độ", value: (item) => experimentModeLabel(item.mode) },
+        { label: "Trạng thái", value: (item) => experimentStatusInfo(item.status).label },
+        { label: "Thời điểm chạy", value: (item) => item.created_at ? new Date(item.created_at).toLocaleString("vi-VN") : "--" },
+        { label: "Thời gian xử lý", value: (item) => experimentDurationLabel(item.duration_ms) },
+      ],
+    },
+    {
+      title: "Cấu hình dữ liệu",
+      rows: [
+        { label: "Kỳ hạn", value: (item) => riskPeriodLabel(config(item).risk_appetite?.period) },
+        { label: "Nguồn dữ liệu", value: experimentSourcesLabel },
+        { label: "Chỉ báo kỹ thuật", value: experimentTechnicalLabel },
+        { label: "Trọng số", value: experimentWeightsLabel },
+      ],
+    },
+    {
+      title: "Tái lập và phiên bản",
+      rows: [
+        { label: "Fingerprint cấu hình", value: (item) => shortFingerprint(reproducibility(item).configuration_sha256) },
+        { label: "Fingerprint lần chạy", value: (item) => shortFingerprint(reproducibility(item).run_fingerprint) },
+        { label: "Phiên bản ứng dụng", value: (item) => reproducibility(item).application?.version || "--" },
+        { label: "Code revision", value: (item) => shortFingerprint(reproducibility(item).application?.code_revision) },
+        { label: "Pipeline", value: (item) => reproducibility(item).pipeline?.version || "--" },
+        { label: "Prompt bundle", value: (item) => reproducibility(item).pipeline?.prompt_bundle_version || "--" },
+        { label: "Mô hình AI", value: (item) => reproducibility(item).ai?.model || "--" },
+        { label: "Dữ liệu", value: (item) => reproducibility(item).data?.snapshot_mode === "live_sources" ? "Nguồn live, chưa đóng băng" : reproducibility(item).data?.snapshot_mode || "--" },
+        { label: "Mức tái lập", value: (item) => reproducibilityLevelLabel(reproducibility(item).reproducibility_level) },
+      ],
+    },
+    {
+      title: "Cấu hình backtest",
+      rows: [
+        { label: "Giai đoạn", value: (item) => config(item).start_date || config(item).end_date ? `${config(item).start_date || "--"} → ${config(item).end_date || "--"}` : "--" },
+        { label: "Benchmark", value: (item) => config(item).market_symbol || "--" },
+        { label: "Nắm giữ tối đa", value: (item) => config(item).max_hold_candles != null ? `${config(item).max_hold_candles} nến` : "--" },
+        { label: "Thoát khi điểm giảm", value: (item) => config(item).exit_on_score_drop == null ? "--" : config(item).exit_on_score_drop ? "Có" : "Không" },
+      ],
+    },
+    {
+      title: "Kết quả backtest",
+      rows: [
+        { label: "Lợi nhuận ròng", value: (item) => formatExperimentPercent(summary(item).net_profit), score: numeric((item) => summary(item).net_profit) },
+        { label: "Win rate", value: (item) => formatExperimentPercent(summary(item).win_rate), score: numeric((item) => summary(item).win_rate) },
+        { label: "Số giao dịch", value: (item) => comparisonValue(summary(item).total_trades) },
+        { label: "Sharpe ratio", value: (item) => summary(item).sharpe_ratio != null && Number.isFinite(Number(summary(item).sharpe_ratio)) ? Number(summary(item).sharpe_ratio).toFixed(2) : "--", score: numeric((item) => summary(item).sharpe_ratio) },
+        { label: "Max drawdown", value: (item) => formatExperimentPercent(summary(item).max_drawdown), score: numeric((item) => summary(item).max_drawdown) },
+      ],
+    },
+    {
+      title: "Kết quả phân tích AI",
+      rows: [
+        { label: "Khuyến nghị", value: (item) => summary(item).recommendation || "--" },
+        { label: "Điểm tổng", value: (item) => summary(item).score != null && Number.isFinite(Number(summary(item).score)) ? scoreOutOf100(summary(item).score) : "--", score: numeric((item) => summary(item).score) },
+        { label: "Độ tự tin", value: (item) => summary(item).confidence == null ? "--" : confidenceInfo(summary(item).confidence).text, score: numeric((item) => summary(item).confidence) },
+        { label: "Số mã thành công", value: (item) => summary(item).count == null ? "--" : `${summary(item).successful || 0}/${summary(item).count}` },
+      ],
+    },
+  ];
+}
+
+function renderExperimentComparison(experiments) {
+  const headerCells = experiments.map((item) => {
+    const target = item.symbol || String(item.scope || "--").toUpperCase();
+    return `<th><strong>${escapeHtml(item.name || "--")}</strong><br><span class="hint">${escapeHtml(experimentTypeLabel(item.experiment_type))} · ${escapeHtml(target)}</span></th>`;
+  }).join("");
+
+  const bodyRows = [];
+  buildComparisonSections().forEach((section) => {
+    const rows = section.rows.map((row) => ({
+      ...row,
+      values: experiments.map((item) => comparisonValue(row.value(item))),
+      scores: row.score ? experiments.map((item) => row.score(item)) : [],
+    })).filter((row) => row.values.some((value) => value !== "--"));
+    if (rows.length === 0) return;
+
+    bodyRows.push(`<tr class="experiment-comparison-section"><td colspan="${experiments.length + 1}">${escapeHtml(section.title)}</td></tr>`);
+    rows.forEach((row) => {
+      const finiteScores = row.scores.filter((value) => Number.isFinite(value));
+      const bestScore = finiteScores.length >= 2 ? Math.max(...finiteScores) : null;
+      const valueCells = row.values.map((value, index) => {
+        const isBest = bestScore !== null && row.scores[index] === bestScore;
+        return `<td class="${isBest ? "experiment-comparison-best" : ""}">${escapeHtml(value)}</td>`;
+      }).join("");
+      bodyRows.push(`<tr><td>${escapeHtml(row.label)}</td>${valueCells}</tr>`);
+    });
+  });
+
+  els.experimentComparisonContent.innerHTML = `
+    <table class="results-table experiment-comparison-table">
+      <thead><tr><th>Tiêu chí</th>${headerCells}</tr></thead>
+      <tbody>${bodyRows.join("")}</tbody>
+    </table>
+  `;
+  els.experimentCompareCard.style.display = "block";
+  els.experimentCompareCard.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function compareSelectedExperiments() {
+  if (!apiBaseUrl || !accessToken || selectedExperimentIds.size < 2) return;
+  comparisonLoading = true;
+  updateExperimentSelectionUi();
+  try {
+    const experimentIds = [...selectedExperimentIds];
+    const payload = await requestJson(`${apiBaseUrl}/api/agentic/experiments/compare`, {
+      method: "POST",
+      body: { experiment_ids: experimentIds },
+    });
+    const items = payload?.data?.items;
+    if (!Array.isArray(items) || items.length !== experimentIds.length) {
+      throw new Error("Không nhận đủ dữ liệu thử nghiệm để so sánh.");
+    }
+    renderExperimentComparison(items);
+  } catch (error) {
+    appendLog(`Lỗi so sánh thử nghiệm: ${error.message}`);
+    alert(`Không thể so sánh thử nghiệm: ${error.message}`);
+  } finally {
+    comparisonLoading = false;
+    updateExperimentSelectionUi();
+  }
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  if (!copied) throw new Error("Trình duyệt không cho phép sao chép tự động.");
+}
+
+async function copyCurrentExperimentBundle() {
+  if (!currentExperimentBundle) return;
+  const originalLabel = els.copyExperimentBundleBtn.textContent;
+  try {
+    await copyTextToClipboard(JSON.stringify(currentExperimentBundle, null, 2));
+    els.copyExperimentBundleBtn.textContent = "Đã sao chép";
+    setTimeout(() => {
+      els.copyExperimentBundleBtn.textContent = originalLabel;
+    }, 1600);
+  } catch (error) {
+    alert(`Không thể sao chép gói tái lập: ${error.message}`);
+  }
+}
+
+async function loadExperimentDetail(experimentId) {
+  if (!apiBaseUrl || !accessToken || !experimentId) return;
+  try {
+    const payload = await requestJson(`${apiBaseUrl}/api/agentic/experiments/${encodeURIComponent(experimentId)}`);
+    const experiment = payload?.data;
+    if (!experiment) throw new Error("Không nhận được chi tiết thử nghiệm.");
+    const reproducibility = experiment.reproducibility || {};
+    const displayedReproducibility = Object.keys(reproducibility).length > 0
+      ? reproducibility
+      : { notice: "Experiment cũ chưa có metadata tái lập." };
+
+    const statusInfo = experimentStatusInfo(experiment.status);
+    els.experimentDetailTitle.textContent = experiment.name || "Chi tiết thử nghiệm";
+    els.experimentDetailStatus.className = `badge ${statusInfo.cls}`;
+    els.experimentDetailStatus.textContent = statusInfo.label;
+    els.experimentConfiguration.textContent = JSON.stringify(experiment.configuration || {}, null, 2);
+    els.experimentReproducibility.textContent = JSON.stringify(displayedReproducibility, null, 2);
+    els.experimentResultData.textContent = JSON.stringify({
+      summary: experiment.result_summary,
+      data: experiment.result_data,
+      result_reference: experiment.result_reference,
+      error_message: experiment.error_message,
+      duration_ms: experiment.duration_ms,
+    }, null, 2);
+    currentExperimentBundle = {
+      schema: "stockrium-experiment-reproduction-bundle/v1",
+      experiment_id: experiment.id,
+      experiment_type: experiment.experiment_type,
+      configuration: experiment.configuration || {},
+      reproducibility,
+      investment_disclaimer: experiment.investment_disclaimer || {
+        title: "Không phải khuyến nghị đầu tư",
+        message: "Gói này chỉ phục vụ nghiên cứu và thử nghiệm; kết quả chạy lại có thể thay đổi.",
+      },
+    };
+    els.experimentDetailCard.style.display = "block";
+    els.experimentDetailCard.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    appendLog(`Lỗi tải chi tiết thử nghiệm: ${error.message}`);
+    alert(`Không thể tải chi tiết thử nghiệm: ${error.message}`);
+  }
+}
+
+async function loadExperimentHistory() {
+  if (!apiBaseUrl || !accessToken || !els.experimentHistoryBody) return;
+
+  const params = new URLSearchParams({ limit: "100", offset: "0" });
+  if (els.experimentTypeFilter?.value) params.set("experiment_type", els.experimentTypeFilter.value);
+  if (els.experimentStatusFilter?.value) params.set("experiment_status", els.experimentStatusFilter.value);
+  els.experimentHistoryBody.innerHTML = '<tr><td colspan="9" class="hint">Đang tải lịch sử...</td></tr>';
+
+  try {
+    const payload = await requestJson(`${apiBaseUrl}/api/agentic/experiments?${params.toString()}`);
+    const items = payload?.data?.items;
+    if (!Array.isArray(items)) throw new Error("Dữ liệu lịch sử không hợp lệ.");
+
+    els.experimentHistoryBody.innerHTML = "";
+    if (items.length === 0) {
+      els.experimentHistoryBody.innerHTML = '<tr><td colspan="9" class="hint">Chưa có thử nghiệm phù hợp.</td></tr>';
+      els.experimentDetailCard.style.display = "none";
+      return;
+    }
+
+    items.forEach((experiment) => {
+      const tr = document.createElement("tr");
+      const statusInfo = experimentStatusInfo(experiment.status);
+      const scope = experiment.symbol || String(experiment.scope || "--").toUpperCase();
+      const createdAt = experiment.created_at
+        ? new Date(experiment.created_at).toLocaleString("vi-VN")
+        : "--";
+      tr.innerHTML = `
+        <td style="text-align: center;"><input class="experiment-select-checkbox" type="checkbox" data-experiment-id="${escapeHtml(experiment.id)}" aria-label="Chọn ${escapeHtml(experiment.name || "thử nghiệm")}"></td>
+        <td>${escapeHtml(createdAt)}</td>
+        <td><strong>${escapeHtml(experiment.name || "--")}</strong></td>
+        <td>${escapeHtml(experimentTypeLabel(experiment.experiment_type))}</td>
+        <td>${escapeHtml(scope)}</td>
+        <td>${escapeHtml(experiment.mode || "--")}</td>
+        <td><span class="badge ${statusInfo.cls}">${statusInfo.label}</span></td>
+        <td style="max-width: 340px; color: var(--muted); font-size: 0.82rem;">${escapeHtml(experimentQuickSummary(experiment))}</td>
+        <td style="text-align: center;"><button class="btn btn-ghost btn-view-experiment" type="button" style="padding: 4px 10px; font-size: 0.75rem;">Xem</button></td>
+      `;
+      tr.querySelector(".experiment-select-checkbox").addEventListener("change", (event) => {
+        toggleExperimentSelection(experiment.id, event.target.checked);
+      });
+      tr.querySelector(".btn-view-experiment").addEventListener("click", () => loadExperimentDetail(experiment.id));
+      els.experimentHistoryBody.appendChild(tr);
+    });
+    updateExperimentSelectionUi();
+  } catch (error) {
+    els.experimentHistoryBody.innerHTML = `<tr><td colspan="9" class="hint text-red">${escapeHtml(error.message)}</td></tr>`;
+    appendLog(`Lỗi tải lịch sử thử nghiệm: ${error.message}`);
   }
 }
 
@@ -2249,11 +2782,20 @@ els.resetVn30CheckpointBtn.addEventListener("click", resetVn30Checkpoint);
 els.refreshCloudHistoryBtn.addEventListener("click", loadCloudHistory);
 els.runAnalyzeBtn.addEventListener("click", runAnalyze);
 els.exportAnalyzeCsvBtn.addEventListener("click", exportAnalyzeCsv);
-els.adminLoginForm.addEventListener("submit", adminLogin);
-els.adminLogoutBtn.addEventListener("click", adminLogout);
+els.refreshExperimentHistoryBtn.addEventListener("click", loadExperimentHistory);
+els.experimentTypeFilter.addEventListener("change", loadExperimentHistory);
+els.experimentStatusFilter.addEventListener("change", loadExperimentHistory);
+els.compareExperimentsBtn.addEventListener("click", compareSelectedExperiments);
+els.clearExperimentSelectionBtn.addEventListener("click", clearExperimentSelection);
+els.closeExperimentCompareBtn.addEventListener("click", () => {
+  els.experimentCompareCard.style.display = "none";
+});
+els.copyExperimentBundleBtn.addEventListener("click", copyCurrentExperimentBundle);
+els.loginForm.addEventListener("submit", loginToLab);
+els.logoutBtn.addEventListener("click", logoutFromLab);
 
 window.addEventListener("DOMContentLoaded", async () => {
-  appendLog("Dashboard đã khởi tạo.");
+  appendLog("Stockrium Lab đã khởi tạo.");
 
   // Tabs Navigation init
   initTabs();
@@ -2277,5 +2819,5 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  clearAdminSession();
+  clearSession();
 });

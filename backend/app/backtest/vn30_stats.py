@@ -2,10 +2,10 @@
 vn30_stats.py
 Tổng hợp kết quả thống kê backtest cho rổ VN30 vào MỘT file JSON local.
 
-Bối cảnh: admin dashboard chạy cả rổ bằng cách gọi /api/agentic/backtest tuần tự
+Bối cảnh: Stockrium Lab chạy cả rổ bằng cách gọi /api/agentic/backtest tuần tự
 cho từng mã (30 request độc lập). Backend không biết một lần gọi thuộc "batch VN30",
-nên mỗi lần run_full_backtest chạy xong sẽ UPSERT thống kê của mã đó vào file dùng
-chung (key = symbol), rồi tính lại phần tổng hợp (aggregate) + so sánh với baseline
+nên mỗi lần run_full_backtest chạy xong sẽ UPSERT thống kê của mã đó vào file
+trong namespace của user (key = symbol), rồi tính lại phần tổng hợp (aggregate) + so sánh với baseline
 engine-only của các mã hiện có trong file.
 
 File mặc định: backend/app/backtest/reports/vn30_stats.json

@@ -111,7 +111,10 @@ def _build_market_dataframe(
     return df[["datetime", "close"]]
 
 
-def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
+def run_backtest_pipeline(
+    request: BacktestPipelineRequest,
+    user_id: str,
+) -> dict[str, Any]:
     symbol = request.symbol.upper().strip()
     market_symbol = request.market_symbol.upper().strip()
 
@@ -150,6 +153,7 @@ def run_backtest_pipeline(request: BacktestPipelineRequest) -> dict[str, Any]:
         df_1m=df_1m,
         market_df=market_df,
         symbol=symbol,
+        owner_user_id=user_id,
         evaluation_start_date=request.start_date,
         mode=request.mode,
         data_selection=effective_selection,

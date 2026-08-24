@@ -5,21 +5,29 @@ routes/agentic.py
 import logging
 import re
 from pathlib import Path
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path as ApiPath, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Path as ApiPath, Query, Request, status
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app.middleware.auth_middleware import get_current_user
 from app.models.base_schemas import success_response, error_response
-from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest, ChatSeedRequest, AdminAnalysisRequest
+from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest, ChatSeedRequest, ExperimentAnalysisRequest
 from app.models.backtest_pipeline_schemas import BacktestPipelineRequest
+from app.models.experiment_schemas import (
+    ExperimentComparisonRequest,
+    ExperimentStatus,
+    ExperimentType,
+)
 from app.services.backtest_pipeline_service import run_backtest_pipeline
+from app.services.experiment_service import ExperimentService
 from app.utils.rate_limit import enforce_rate_limit
+from app.utils.reproducibility import investment_disclaimer
 from app.services.agentic_service import (
     run_chat,
     seed_chat_session,
     run_stock_analysis_v2,
-    run_admin_analysis,
+    run_experiment_analysis,
     list_chat_sessions,
     get_chat_history,
     delete_chat_session,
@@ -41,6 +49,75 @@ def _internal_error_response():
     )
 
 
+def _fail_experiment_safely(
+    experiment_id: str | None,
+    user_id: str,
+    error: Exception,
+) -> None:
+    if not experiment_id:
+        return
+    try:
+        ExperimentService.fail(
+            experiment_id=experiment_id,
+            user_id=user_id,
+            error_message=str(error),
+        )
+    except Exception:
+        logger.exception("Unable to mark experiment as failed")
+
+
+def _analysis_result_summary(result: dict) -> dict:
+    entries = result.get("results") if isinstance(result, dict) else []
+    entries = entries if isinstance(entries, list) else []
+    successful = [entry for entry in entries if entry.get("status") == "ok"]
+    failed = [entry for entry in entries if entry.get("status") != "ok"]
+    summary = {
+        "count": len(entries),
+        "successful": len(successful),
+        "failed": len(failed),
+        "symbols": [entry.get("symbol") for entry in entries if entry.get("symbol")],
+    }
+    if len(successful) == 1:
+        recommendation = successful[0].get("recommendation") or {}
+        score = recommendation.get("score")
+        summary.update({
+            "recommendation": recommendation.get("recommendation"),
+            "buy": recommendation.get("buy"),
+            "confidence": recommendation.get("confidence"),
+            "score": score.get("total") if isinstance(score, dict) else score,
+        })
+    return summary
+
+
+def _backtest_result_summary(result: dict, symbol: str) -> dict:
+    metrics = result.get("full_metrics") or {}
+    return {
+        "symbol": symbol,
+        "net_profit": (metrics.get("pnl") or {}).get("total_return"),
+        "win_rate": (metrics.get("volume") or {}).get("win_rate"),
+        "total_trades": (metrics.get("volume") or {}).get("n_trades"),
+        "sharpe_ratio": (metrics.get("risk") or {}).get("sharpe_ratio"),
+        "max_drawdown": (metrics.get("risk") or {}).get("max_drawdown"),
+    }
+
+
+def _backtest_history_data(result: dict) -> dict:
+    keys = (
+        "configuration",
+        "full_metrics",
+        "engine_metrics",
+        "benchmarks",
+        "regime",
+        "confidence",
+        "stats",
+        "visualization_file",
+        "visualization_data_url",
+        "reproducibility",
+        "investment_disclaimer",
+    )
+    return {key: result.get(key) for key in keys}
+
+
 async def _limit_ai(
     request: Request, current_user: dict = Depends(get_current_user)
 ):
@@ -49,11 +126,11 @@ async def _limit_ai(
     )
 
 
-async def _limit_admin_ai(
+async def _limit_experiment_ai(
     request: Request, current_user: dict = Depends(get_current_user)
 ):
     await enforce_rate_limit(
-        "agentic-admin-ai",
+        "agentic-experiment-ai",
         current_user["user_id"],
         limit=120,
         window_seconds=600,
@@ -99,48 +176,149 @@ def analyze_stock(
         return _internal_error_response()
 
 
-# ─── Dashboard API mode: structured output, authentication required ────────
+# ─── Stockrium Lab: structured output, authentication required ────────
 
+@router.post("/admin-analyze", include_in_schema=False)
 @router.post(
-    "/admin-analyze",
-    summary="Phân tích cổ phiếu (Dashboard)",
+    "/experiments/analyze",
+    summary="Phân tích cổ phiếu (Stockrium Lab)",
     description=(
-        "Giống /analyze nhưng dành cho dashboard. Hỗ trợ chạy theo rổ chỉ số "
+        "Phân tích thử nghiệm, hỗ trợ chạy theo rổ chỉ số "
         "VN30 (30 mã) hoặc VN100 (100 mã); bỏ trống `universe` để phân tích 1 mã."
     ),
 )
-def admin_analyze(
-    body: AdminAnalysisRequest,
+def analyze_experiment(
+    body: ExperimentAnalysisRequest,
     current_user: dict = Depends(get_current_user),
-    _rate_limit: None = Depends(_limit_admin_ai),
+    _rate_limit: None = Depends(_limit_experiment_ai),
 ):
+    user_id = current_user["user_id"]
+    experiment_id = None
     try:
-        result = run_admin_analysis(
+        scope = body.universe or "single"
+        symbol = body.symbol.strip().upper() if body.symbol else None
+        experiment = ExperimentService.create(
+            user_id=user_id,
+            experiment_type=ExperimentType.ANALYSIS,
+            scope=scope,
+            symbol=symbol,
+            mode=body.mode,
+            configuration=body.model_dump(mode="json"),
+            name=body.experiment_name,
+        )
+        experiment_id = experiment["id"]
+        result = run_experiment_analysis(
             mode=body.mode,
             universe=body.universe,
             symbol=body.symbol,
             risk_appetite=body.risk_appetite.model_dump(),
             data_selection=body.data_selection.model_dump(),
         )
+        result["experiment_id"] = experiment_id
+        result["reproducibility"] = experiment.get("reproducibility", {})
+        result["investment_disclaimer"] = investment_disclaimer()
+        ExperimentService.complete(
+            experiment_id=experiment_id,
+            user_id=user_id,
+            result_summary=_analysis_result_summary(result),
+            result_data=result,
+        )
         return success_response(data=result)
 
     except ValueError as e:
+        _fail_experiment_safely(experiment_id, user_id, e)
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=error_response(error_code=400001, error_desc=str(e)),
         )
-    except RuntimeError:
+    except RuntimeError as e:
+        _fail_experiment_safely(experiment_id, user_id, e)
         return _internal_error_response()
+    except Exception as e:
+        _fail_experiment_safely(experiment_id, user_id, e)
+        return _internal_error_response()
+
+
+@router.post("/experiments/compare", summary="So sánh nhiều thử nghiệm của user")
+def compare_experiments(
+    body: ExperimentComparisonRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        requested_ids = [str(item) for item in body.experiment_ids]
+        items = ExperimentService.get_many_for_user(
+            experiment_ids=requested_ids,
+            user_id=current_user["user_id"],
+        )
+        if len(items) != len(requested_ids):
+            return JSONResponse(
+                status_code=status.HTTP_404_NOT_FOUND,
+                content=error_response(
+                    error_code=404001,
+                    error_desc="Không tìm thấy một hoặc nhiều thử nghiệm của bạn",
+                ),
+            )
+        return success_response(data={
+            "items": items,
+            "investment_disclaimer": investment_disclaimer(),
+        })
     except Exception:
         return _internal_error_response()
 
 
+@router.get("/experiments", summary="Lịch sử thử nghiệm của user")
+def list_experiments(
+    experiment_type: ExperimentType | None = Query(default=None),
+    experiment_status: ExperimentStatus | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        items = ExperimentService.list_for_user(
+            user_id=current_user["user_id"],
+            experiment_type=experiment_type,
+            status=experiment_status,
+            limit=limit,
+            offset=offset,
+        )
+        return success_response(data={
+            "items": items,
+            "limit": limit,
+            "offset": offset,
+            "investment_disclaimer": investment_disclaimer(),
+        })
+    except Exception:
+        return _internal_error_response()
+
+
+@router.get("/experiments/{experiment_id}", summary="Chi tiết một thử nghiệm")
+def get_experiment(
+    experiment_id: UUID,
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        experiment = ExperimentService.get_for_user(
+            experiment_id=str(experiment_id),
+            user_id=current_user["user_id"],
+        )
+        if experiment is None:
+            raise HTTPException(status_code=404, detail="Experiment not found")
+        experiment["investment_disclaimer"] = investment_disclaimer()
+        return success_response(data=experiment)
+    except HTTPException:
+        raise
+    except Exception:
+        return _internal_error_response()
+
+
+@router.get("/admin-universe/{name}", include_in_schema=False)
 @router.get(
-    "/admin-universe/{name}",
-    summary="Danh sách mã của một rổ chỉ số (Dashboard)",
+    "/market-universes/{name}",
+    summary="Danh sách mã của một rổ chỉ số",
     description="Trả về danh sách mã cổ phiếu thuộc rổ VN30 / VN100 từ Supabase.",
 )
-def admin_universe(name: str, current_user: dict = Depends(get_current_user)):
+def market_universe(name: str, current_user: dict = Depends(get_current_user)):
     try:
         from app.utils.market_index import get_index_symbols
         symbols = get_index_symbols(name)
@@ -308,18 +486,47 @@ def backtest_pipeline(
     current_user: dict = Depends(get_current_user),
     _rate_limit: None = Depends(_limit_backtest),
 ):
+    user_id = current_user["user_id"]
+    experiment_id = None
     try:
-        result = run_backtest_pipeline(body)
+        symbol = body.symbol.strip().upper()
+        experiment = ExperimentService.create(
+            user_id=user_id,
+            experiment_type=ExperimentType.BACKTEST,
+            scope="single",
+            symbol=symbol,
+            mode=body.mode,
+            configuration=body.model_dump(mode="json"),
+            name=body.experiment_name,
+        )
+        experiment_id = experiment["id"]
+        result = run_backtest_pipeline(
+            body,
+            user_id=user_id,
+        )
+        result["experiment_id"] = experiment_id
+        result["reproducibility"] = experiment.get("reproducibility", {})
+        result["investment_disclaimer"] = investment_disclaimer()
+        ExperimentService.complete(
+            experiment_id=experiment_id,
+            user_id=user_id,
+            result_summary=_backtest_result_summary(result, symbol),
+            result_data=_backtest_history_data(result),
+            result_reference=result.get("visualization_data_url"),
+        )
         return success_response(data=result)
 
     except ValueError as e:
+        _fail_experiment_safely(experiment_id, user_id, e)
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content=error_response(error_code=400001, error_desc=str(e)),
         )
-    except RuntimeError:
+    except RuntimeError as e:
+        _fail_experiment_safely(experiment_id, user_id, e)
         return _internal_error_response()
-    except Exception:
+    except Exception as e:
+        _fail_experiment_safely(experiment_id, user_id, e)
         return _internal_error_response()
 
 
@@ -330,7 +537,7 @@ def backtest_pipeline(
 def list_backtests(current_user: dict = Depends(get_current_user)):
     try:
         from app.utils.supabase_storage import list_backtest_files
-        res = list_backtest_files()
+        res = list_backtest_files(current_user["user_id"])
         return success_response(data=res)
     except Exception:
         return _internal_error_response()
@@ -346,10 +553,15 @@ def _validated_backtest_filename(filename: str) -> str:
 def get_local_backtest(
     filename: str, current_user: dict = Depends(get_current_user)
 ):
+    from app.utils.user_namespace import user_namespace
+
     safe_name = _validated_backtest_filename(filename)
-    path = (_LOCAL_BACKTEST_DIR / safe_name).resolve()
+    owner_dir = (
+        _LOCAL_BACKTEST_DIR / user_namespace(current_user["user_id"])
+    ).resolve()
+    path = (owner_dir / safe_name).resolve()
     try:
-        path.relative_to(_LOCAL_BACKTEST_DIR.resolve())
+        path.relative_to(owner_dir)
     except ValueError:
         raise HTTPException(status_code=404, detail="Backtest file not found")
     if not path.is_file():
@@ -369,7 +581,10 @@ def get_cloud_backtest(
     try:
         from app.utils.supabase_storage import download_backtest_file
 
-        content = download_backtest_file(safe_name)
+        content = download_backtest_file(
+            current_user["user_id"],
+            safe_name,
+        )
         return Response(
             content=content,
             media_type="application/json",

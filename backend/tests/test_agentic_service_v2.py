@@ -3,11 +3,11 @@ from unittest.mock import patch
 
 from app.services.agentic_service import (
     _run_stock_analysis_with_graph,
-    run_admin_analysis,
+    run_experiment_analysis,
 )
 
 
-class AdminAnalysisV2Tests(unittest.TestCase):
+class ExperimentAnalysisV2Tests(unittest.TestCase):
     def test_public_analysis_propagates_english_to_graph_state(self):
         class GraphStub:
             state = None
@@ -38,8 +38,8 @@ class AdminAnalysisV2Tests(unittest.TestCase):
         "app.services.agentic_service.run_stock_analysis_v2",
         return_value={"buy": False, "confidence": 0.8},
     )
-    def test_single_symbol_admin_analysis_uses_v2_runner(self, run_v2):
-        result = run_admin_analysis(
+    def test_single_symbol_experiment_analysis_uses_v2_runner(self, run_v2):
+        result = run_experiment_analysis(
             mode="manual",
             symbol="fpt",
             risk_appetite={"period": "mid_term"},

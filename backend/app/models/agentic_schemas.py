@@ -88,10 +88,11 @@ class StockAnalysisRequest(BaseModel):
     )
 
 
-# ─── /admin-analyze (Admin API mode) ──────────────────────────────────────────
+# ─── /experiments/analyze (Stockrium Lab) ──────────────────────────────────────────
 
-class AdminAnalysisRequest(BaseModel):
-    """Như /analyze nhưng dành cho admin và hỗ trợ chạy theo rổ chỉ số."""
+class ExperimentAnalysisRequest(BaseModel):
+    """Yêu cầu phân tích thử nghiệm cho một mã hoặc rổ chỉ số."""
+    experiment_name: str | None = Field(default=None, max_length=160)
     mode: Literal["auto", "manual"] = Field(description="Chế độ tự động(auto) hoặc thủ công(manual)")
     universe: Literal["VN30", "VN100"] | None = Field(
         default=None,
@@ -109,6 +110,10 @@ class AdminAnalysisRequest(BaseModel):
         default_factory=DataSelection,
         description="Chọn nguồn/chỉ số dữ liệu cho AI phân tích. Bỏ trống = bật tất cả.",
     )
+
+
+# Backward-compatible import for older clients/tests during the API rename.
+AdminAnalysisRequest = ExperimentAnalysisRequest
 
 
 # ─── /chat (Chatbot mode) ─────────────────────────────────────────────────────

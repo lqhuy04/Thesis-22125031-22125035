@@ -10,6 +10,7 @@ from app.models.agentic_schemas import DataSelection
 
 
 class BacktestPipelineRequest(BaseModel):
+    experiment_name: str | None = Field(default=None, max_length=160)
     symbol: str = Field(min_length=1, max_length=16, pattern=r"^[A-Za-z0-9._-]+$", description="Stock symbol, for example: VNM, FPT, VIC")
     mode: Literal["auto", "manual"] = Field(
         default="auto",

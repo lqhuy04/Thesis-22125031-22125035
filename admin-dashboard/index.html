@@ -6,14 +6,14 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
-    <title>Stockrium Admin Dashboard & Backtest</title>
+    <title>Stockrium Lab | AI &amp; Backtest</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260731-1" />
+    <link rel="stylesheet" href="./styles.css?v=20260824-5" />
     <!-- Lightweight Charts library from TradingView -->
     <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
   </head>
@@ -25,40 +25,42 @@
     <main class="layout">
       <!-- Shared Hero Header -->
       <section class="hero card fade-in">
-        <p class="kicker">Stockrium Admin</p>
-        <h1>Bảng điều khiển Stockrium</h1>
+        <p class="kicker">Stockrium Lab</p>
+        <h1>Phòng thử nghiệm AI &amp; Backtest</h1>
         <p class="subtitle">
           Chạy pipeline phân tích AI, backtest dữ liệu lịch sử và xem trực quan hóa biểu đồ TradingView tương tác.
         </p>
       </section>
 
-      <section id="adminLoginCard" class="login-card card fade-in fade-delay-1">
+      <section class="investment-warning card fade-in fade-delay-1" role="note" aria-label="Cảnh báo đầu tư">
+        <div class="investment-warning-icon" aria-hidden="true">!</div>
         <div>
-          <p class="kicker">Authenticated access</p>
+          <h2>Không phải khuyến nghị đầu tư</h2>
+          <p>
+            Kết quả AI và backtest chỉ phục vụ nghiên cứu, học tập và thử nghiệm. Dữ liệu có thể thiếu,
+            chậm hoặc sai; hiệu suất quá khứ không bảo đảm kết quả tương lai. Bạn tự chịu trách nhiệm
+            với quyết định của mình và nên tham khảo chuyên gia phù hợp.
+          </p>
+        </div>
+      </section>
+
+      <section id="loginCard" class="login-card card fade-in fade-delay-1">
+        <div>
+          <p class="kicker">Dành cho người dùng Stockrium</p>
           <h2>Đăng nhập</h2>
           <p class="subtitle">Dùng bất kỳ tài khoản hợp lệ nào. Thông tin đăng nhập chỉ được gửi tới API và không được lưu trong trình duyệt.</p>
         </div>
-        <form id="adminLoginForm" class="login-form">
-          <div class="field login-api-field">
-            <label for="adminApiBaseUrl">API Base URL</label>
-            <input
-              id="adminApiBaseUrl"
-              name="apiBaseUrl"
-              type="url"
-              value="https://backend-server-production-1625.up.railway.app"
-              required
-            />
-          </div>
+        <form id="loginForm" class="login-form">
           <div class="field login-email-field">
-            <label for="adminEmail">Email</label>
-            <input id="adminEmail" name="email" type="email" autocomplete="username" maxlength="254" required />
+            <label for="emailInput">Email</label>
+            <input id="emailInput" name="email" type="email" autocomplete="username" maxlength="254" required />
           </div>
           <div class="field login-password-field">
-            <label for="adminPassword">Mật khẩu</label>
-            <input id="adminPassword" name="password" type="password" autocomplete="current-password" maxlength="128" required />
+            <label for="passwordInput">Mật khẩu</label>
+            <input id="passwordInput" name="password" type="password" autocomplete="current-password" maxlength="128" required />
           </div>
-          <button id="adminLoginBtn" class="btn btn-primary login-submit" type="submit">Đăng nhập</button>
-          <p id="adminLoginError" class="login-error" role="alert" aria-live="polite"></p>
+          <button id="loginBtn" class="btn btn-primary login-submit" type="submit">Đăng nhập</button>
+          <p id="loginError" class="login-error" role="alert" aria-live="polite"></p>
         </form>
       </section>
 
@@ -66,8 +68,9 @@
       <nav class="tabs-nav card fade-in fade-delay-1">
         <button id="tab-backtest-btn" class="tab-btn active"  type="button">Chạy Backtest & Trực quan hóa</button>
         <button id="tab-analyze-btn" class="tab-btn" type="button">Phân tích AI</button>
-        <span id="adminAuthBadge" class="badge" style="margin-left: auto; align-self: center;">Chưa đăng nhập</span>
-        <button id="adminLogoutBtn" class="btn btn-ghost" type="button">Đăng xuất</button>
+        <button id="tab-history-btn" class="tab-btn" type="button">Lịch sử thử nghiệm</button>
+        <span id="authBadge" class="badge" style="margin-left: auto; align-self: center;">Chưa đăng nhập</span>
+        <button id="logoutBtn" class="btn btn-ghost" type="button">Đăng xuất</button>
       </nav>
 
       <!-- Backtest & Visualizations Content -->
@@ -303,7 +306,7 @@
             <div class="config-badges" id="vizConfigBadges"></div>
           </section>
 
-          <!-- Stats Summary Dashboard -->
+          <!-- Backtest summary metrics -->
           <div class="stats-grid">
             <div class="stat-card card">
               <div class="stat-label">Net Profit (Lợi nhuận ròng)</div>
@@ -438,12 +441,12 @@
         </section>
       </div>
 
-      <!-- Tab 3: AI Analysis (Admin) Content -->
+      <!-- AI analysis tab -->
       <div id="analyze-tab-content" class="tab-content fade-in fade-delay-2" style="display: none;">
         <section class="backtest-controls card">
-          <h2>Phân tích AI (Admin)</h2>
+          <h2>Phân tích AI</h2>
           <p class="subtitle" style="font-size: 0.85rem; margin-bottom: 16px;">
-            Gọi <code>/api/agentic/admin-analyze</code> cho 1 mã, hoặc chạy cả rổ VN30 / VN100.
+            Thử nghiệm phân tích AI cho 1 mã, hoặc chạy cả rổ VN30 / VN100.
           </p>
 
           <form id="analyzeForm" class="form-grid">
@@ -586,8 +589,116 @@
           <div class="trade-detail-panel card" id="analyzeDetailPanel" style="display: none; margin-top: 15px;"></div>
         </section>
       </div>
+
+      <!-- Personal experiment history tab -->
+      <div id="history-tab-content" class="tab-content fade-in fade-delay-2" style="display: none;">
+        <section class="card">
+          <div class="result-header">
+            <div>
+              <p class="kicker">Thử nghiệm của tôi</p>
+              <h2>Lịch sử cá nhân</h2>
+              <p class="subtitle" style="font-size: 0.85rem; margin: 6px 0 0;">
+                Mỗi lần chạy backtest hoặc phân tích AI được lưu theo tài khoản đang đăng nhập.
+              </p>
+            </div>
+            <button id="refreshExperimentHistoryBtn" class="btn btn-ghost" type="button">Làm mới</button>
+          </div>
+
+          <div class="form-row-2" style="margin-top: 18px; max-width: 620px;">
+            <div class="field">
+              <label for="experimentTypeFilter">Loại thử nghiệm</label>
+              <select id="experimentTypeFilter">
+                <option value="">Tất cả</option>
+                <option value="backtest">Backtest</option>
+                <option value="analysis">Phân tích AI</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="experimentStatusFilter">Trạng thái</label>
+              <select id="experimentStatusFilter">
+                <option value="">Tất cả</option>
+                <option value="running">Đang chạy</option>
+                <option value="completed">Hoàn thành</option>
+                <option value="failed">Thất bại</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="experiment-selection-bar" aria-live="polite">
+            <span id="experimentSelectionCount">Đã chọn 0/5 thử nghiệm</span>
+            <div class="experiment-selection-actions">
+              <button id="clearExperimentSelectionBtn" class="btn btn-ghost" type="button" disabled>Bỏ chọn</button>
+              <button id="compareExperimentsBtn" class="btn btn-primary" type="button" disabled>So sánh đã chọn</button>
+            </div>
+          </div>
+
+          <div class="table-responsive" style="margin-top: 18px;">
+            <table class="results-table">
+              <thead>
+                <tr>
+                  <th style="text-align: center;">Chọn</th>
+                  <th>Thời gian</th>
+                  <th>Tên thử nghiệm</th>
+                  <th>Loại</th>
+                  <th>Phạm vi</th>
+                  <th>Chế độ</th>
+                  <th>Trạng thái</th>
+                  <th>Kết quả nhanh</th>
+                  <th style="text-align: center;">Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody id="experimentHistoryBody">
+                <tr><td colspan="9" class="hint">Đang tải lịch sử...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="experimentCompareCard" class="card" style="display: none; margin-top: 18px;">
+          <div class="result-header">
+            <div>
+              <p class="kicker">Đối chiếu kết quả</p>
+              <h2>So sánh thử nghiệm</h2>
+            </div>
+            <button id="closeExperimentCompareBtn" class="btn btn-ghost" type="button">Đóng so sánh</button>
+          </div>
+          <p class="subtitle" style="font-size: 0.85rem; margin: 8px 0 16px;">
+            Giá trị tốt nhất trong các chỉ số có thể đối chiếu được đánh dấu màu xanh.
+          </p>
+          <div id="experimentComparisonContent" class="table-responsive"></div>
+          <div class="investment-warning-inline">
+            Bảng so sánh chỉ giúp đối chiếu thử nghiệm, không phải bảng xếp hạng cơ hội đầu tư.
+            Chỉ số tốt hơn trong backtest không bảo đảm hiệu quả giao dịch thực tế.
+          </div>
+        </section>
+
+        <section id="experimentDetailCard" class="card" style="display: none; margin-top: 18px;">
+          <div class="result-header">
+            <h2 id="experimentDetailTitle">Chi tiết thử nghiệm</h2>
+            <div class="experiment-detail-actions">
+              <button id="copyExperimentBundleBtn" class="btn btn-ghost" type="button">Sao chép gói tái lập</button>
+              <span id="experimentDetailStatus" class="badge">--</span>
+            </div>
+          </div>
+          <div class="form-row-2" style="margin-top: 16px;">
+            <div>
+              <h3>Cấu hình</h3>
+              <pre id="experimentConfiguration" class="result" style="min-height: 180px; max-height: 420px; overflow: auto;"></pre>
+            </div>
+            <div>
+              <h3>Kết quả đã lưu</h3>
+              <pre id="experimentResultData" class="result" style="min-height: 180px; max-height: 420px; overflow: auto;"></pre>
+            </div>
+          </div>
+          <div style="margin-top: 18px;">
+            <h3>Metadata tái lập</h3>
+            <pre id="experimentReproducibility" class="result" style="min-height: 180px; max-height: 420px; overflow: auto;"></pre>
+          </div>
+        </section>
+      </div>
     </main>
 
-    <script src="./app.js?v=20260731-1"></script>
+    <script src="./config.js?v=20260824-1"></script>
+    <script src="./app.js?v=20260824-5"></script>
   </body>
 </html>
