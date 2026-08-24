@@ -131,7 +131,6 @@ class ReproducibilityTests(unittest.TestCase):
         dashboard_js = (repository_root / "admin-dashboard" / "app.js").read_text(
             encoding="utf-8"
         )
-
         self.assertGreaterEqual(route_source.count('result["investment_disclaimer"]'), 2)
         self.assertIn("Không phải khuyến nghị đầu tư", dashboard_html)
         self.assertIn("Không phải khuyến nghị đầu tư", dashboard_js)
@@ -148,6 +147,9 @@ class ReproducibilityTests(unittest.TestCase):
         dashboard_js = (repository_root / "admin-dashboard" / "app.js").read_text(
             encoding="utf-8"
         )
+        dashboard_css = (repository_root / "admin-dashboard" / "styles.css").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn('"component_scores"', route_source)
         for score_key in ('"technical"', '"fundamental"', '"news"'):
@@ -162,6 +164,11 @@ class ReproducibilityTests(unittest.TestCase):
         self.assertIn("Chỉ có thể so sánh các thử nghiệm cùng loại", route_source)
         self.assertIn("selectedType !== experimentType", dashboard_js)
         self.assertIn("sections.splice(reproducibilityIndex, 1)", dashboard_js)
+        self.assertIn("const allBacktest", dashboard_js)
+        self.assertIn("allAnalysis || allBacktest", dashboard_js)
+        self.assertIn(".comparison-card,", dashboard_css)
+        self.assertIn(".agent-report-card {", dashboard_css)
+        self.assertIn("padding: 20px 24px", dashboard_css)
 
         self.assertIn('id="experimentDetailContent"', dashboard_html)
         self.assertNotIn('id="experimentConfiguration"', dashboard_html)

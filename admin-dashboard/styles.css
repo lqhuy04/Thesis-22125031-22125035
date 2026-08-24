@@ -1371,6 +1371,23 @@ select:focus {
   font-weight: 500;
 }
 
+.comparison-card,
+.agent-report-card {
+  padding: 20px 24px;
+  overflow: hidden;
+}
+
+.comparison-card > .result-header,
+.agent-report-card > .result-header {
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.comparison-card > .table-responsive {
+  border: 1px solid rgba(184, 217, 206, 0.12);
+  border-radius: 12px;
+}
+
 /* Agent report layout */
 .agent-report-layout {
   display: grid;
@@ -1382,6 +1399,13 @@ select:focus {
 @media (max-width: 860px) {
   .agent-report-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .comparison-card,
+  .agent-report-card {
+    padding: 16px;
   }
 }
 

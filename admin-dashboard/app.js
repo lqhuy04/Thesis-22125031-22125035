@@ -2469,11 +2469,15 @@ function buildComparisonSections(experiments = []) {
 
   const allAnalysis = experiments.length >= 2
     && experiments.every((item) => item?.experiment_type === "analysis");
-  if (allAnalysis) {
+  const allBacktest = experiments.length >= 2
+    && experiments.every((item) => item?.experiment_type === "backtest");
+  if (allAnalysis || allBacktest) {
     const reproducibilityIndex = sections.findIndex(
       (section) => section.title === "Tái lập và phiên bản",
     );
     if (reproducibilityIndex >= 0) sections.splice(reproducibilityIndex, 1);
+  }
+  if (allAnalysis) {
     const analysisIndex = sections.findIndex((section) => section.title === "Kết quả phân tích AI");
     const [analysisSection] = sections.splice(analysisIndex, 1);
     sections.unshift(analysisSection);
