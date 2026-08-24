@@ -136,10 +136,7 @@ const els = {
   experimentDetailCard: document.getElementById("experimentDetailCard"),
   experimentDetailTitle: document.getElementById("experimentDetailTitle"),
   experimentDetailStatus: document.getElementById("experimentDetailStatus"),
-  experimentConfiguration: document.getElementById("experimentConfiguration"),
-  experimentResultData: document.getElementById("experimentResultData"),
-  experimentReproducibility: document.getElementById("experimentReproducibility"),
-  copyExperimentBundleBtn: document.getElementById("copyExperimentBundleBtn"),
+  experimentDetailContent: document.getElementById("experimentDetailContent"),
   experimentSelectionCount: document.getElementById("experimentSelectionCount"),
   clearExperimentSelectionBtn: document.getElementById("clearExperimentSelectionBtn"),
   compareExperimentsBtn: document.getElementById("compareExperimentsBtn"),
@@ -159,8 +156,8 @@ let userContextVersion = 0;
 let analyzeSummaryData = [];
 const EXPERIMENT_COMPARE_LIMIT = 5;
 let selectedExperimentIds = new Set();
+const experimentTypesById = new Map();
 let comparisonLoading = false;
-let currentExperimentBundle = null;
 
 let vn30SummaryData = []; // Store stats for CSV export
 
@@ -372,11 +369,9 @@ function clearUserOwnedView() {
   if (els.experimentComparisonContent) els.experimentComparisonContent.innerHTML = "";
   comparisonLoading = false;
   selectedExperimentIds.clear();
+  experimentTypesById.clear();
   updateExperimentSelectionUi();
-  if (els.experimentConfiguration) els.experimentConfiguration.textContent = "";
-  if (els.experimentResultData) els.experimentResultData.textContent = "";
-  if (els.experimentReproducibility) els.experimentReproducibility.textContent = "";
-  currentExperimentBundle = null;
+  if (els.experimentDetailContent) els.experimentDetailContent.innerHTML = "";
   if (els.vn30ResultsBody) els.vn30ResultsBody.innerHTML = "";
   if (els.analyzeResultsBody) els.analyzeResultsBody.innerHTML = "";
   if (els.tradeLogsBody) els.tradeLogsBody.innerHTML = "";
@@ -2161,16 +2156,19 @@ function analysisBlocksHtml(rec) {
   return '<p class="hint">Không có nội dung phân tích.</p>';
 }
 
-function recommendationDetailHtml(symbol, rec) {
+function recommendationDetailHtml(symbol, rec, options = {}) {
   const conf = confidenceInfo(rec.confidence);
   const recText = recommendationText(rec);
   const score = rec.score && typeof rec.score === "object" ? rec.score : {};
+  const investmentPeriodHtml = options.investmentPeriod
+    ? `<li><span class="lbl">Thời hạn đầu tư:</span> <span class="val">${escapeHtml(options.investmentPeriod)}</span></li>`
+    : "";
   const tradingPlanHtml = isBuyRecommendation(rec)
     ? `
-      <li><span class="lbl">Giá vào:</span> <span class="val">${rec.entry_price ?? "--"}</span></li>
-      <li><span class="lbl">Take Profit:</span> <span class="val text-green">${rec.take_profit_price ?? "--"}</span></li>
-      <li><span class="lbl">Stop Loss:</span> <span class="val text-red">${rec.stop_loss_price ?? "--"}</span></li>
-      <li><span class="lbl">Nến giữ tối đa:</span> <span class="val">${rec.max_hold_candles ?? "--"}</span></li>
+      <li><span class="lbl">Giá vào:</span> <span class="val">${escapeHtml(rec.entry_price ?? "--")}</span></li>
+      <li><span class="lbl">Take Profit:</span> <span class="val text-green">${escapeHtml(rec.take_profit_price ?? "--")}</span></li>
+      <li><span class="lbl">Stop Loss:</span> <span class="val text-red">${escapeHtml(rec.stop_loss_price ?? "--")}</span></li>
+      <li><span class="lbl">Nến giữ tối đa:</span> <span class="val">${escapeHtml(rec.max_hold_candles ?? "--")}</span></li>
     `
     : "";
   return `
@@ -2182,6 +2180,7 @@ function recommendationDetailHtml(symbol, rec) {
       </div>
     </div>
     <ul class="detail-list">
+      ${investmentPeriodHtml}
       <li><span class="lbl">Điểm tổng:</span> <span class="val">${scoreOutOf100(score.total)}</span></li>
       <li><span class="lbl">Điểm kỹ thuật:</span> <span class="val">${scoreOutOf100(score.technical)}</span></li>
       <li><span class="lbl">Điểm cơ bản:</span> <span class="val">${scoreOutOf100(score.fundamental)}</span></li>
@@ -2396,6 +2395,9 @@ function experimentQuickSummary(experiment) {
 
 function updateExperimentSelectionUi() {
   const count = selectedExperimentIds.size;
+  const selectedType = [...selectedExperimentIds]
+    .map((id) => experimentTypesById.get(id))
+    .find(Boolean);
   if (els.experimentSelectionCount) {
     els.experimentSelectionCount.textContent = `Đã chọn ${count}/${EXPERIMENT_COMPARE_LIMIT} thử nghiệm`;
   }
@@ -2408,18 +2410,30 @@ function updateExperimentSelectionUi() {
   }
   document.querySelectorAll(".experiment-select-checkbox").forEach((checkbox) => {
     const selected = selectedExperimentIds.has(checkbox.dataset.experimentId);
+    const differentType = selectedType
+      && checkbox.dataset.experimentType !== selectedType;
     checkbox.checked = selected;
-    checkbox.disabled = comparisonLoading || (!selected && count >= EXPERIMENT_COMPARE_LIMIT);
+    checkbox.disabled = comparisonLoading
+      || (!selected && (count >= EXPERIMENT_COMPARE_LIMIT || differentType));
     checkbox.closest("tr")?.classList.toggle("experiment-row-selected", selected);
   });
 }
 
-function toggleExperimentSelection(experimentId, checked) {
+function toggleExperimentSelection(experimentId, experimentType, checked) {
   if (checked && selectedExperimentIds.size >= EXPERIMENT_COMPARE_LIMIT) {
     alert(`Chỉ có thể so sánh tối đa ${EXPERIMENT_COMPARE_LIMIT} thử nghiệm.`);
     updateExperimentSelectionUi();
     return;
   }
+  const selectedType = [...selectedExperimentIds]
+    .map((id) => experimentTypesById.get(id))
+    .find(Boolean);
+  if (checked && selectedType && selectedType !== experimentType) {
+    alert("Chỉ có thể so sánh các thử nghiệm cùng loại.");
+    updateExperimentSelectionUi();
+    return;
+  }
+  experimentTypesById.set(experimentId, experimentType);
   if (checked) selectedExperimentIds.add(experimentId);
   else selectedExperimentIds.delete(experimentId);
   if (els.experimentCompareCard) els.experimentCompareCard.style.display = "none";
@@ -2494,7 +2508,39 @@ function reproducibilityLevelLabel(value) {
   return value === "configuration_only" ? "Tái lập cấu hình" : value || "--";
 }
 
-function buildComparisonSections() {
+function analysisRecommendationForComparison(experiment) {
+  const summary = experiment?.result_summary || {};
+  if (summary.recommendation) return summary.recommendation;
+  if (typeof summary.buy === "boolean") return summary.buy ? "Mua" : "Chờ";
+  const successful = (experiment?.result_data?.results || [])
+    .filter((item) => item?.status === "ok");
+  if (successful.length !== 1) return "--";
+  const [entry] = successful;
+  return entry?.recommendation ? recommendationText(entry.recommendation) : "--";
+}
+
+function analysisScoreForComparison(experiment, scoreKey) {
+  const summary = experiment?.result_summary || {};
+  if (scoreKey === "total" && summary.score != null) return summary.score;
+  if (summary.component_scores?.[scoreKey] != null) {
+    return summary.component_scores[scoreKey];
+  }
+  const values = (experiment?.result_data?.results || [])
+    .filter((item) => item?.status === "ok")
+    .map((item) => item?.recommendation?.score)
+    .map((score) => {
+      if (score && typeof score === "object") return score[scoreKey];
+      return scoreKey === "total" ? score : null;
+    })
+    .filter((value) => value !== null && value !== undefined && value !== "")
+    .map(Number)
+    .filter(Number.isFinite);
+  return values.length > 0
+    ? values.reduce((total, value) => total + value, 0) / values.length
+    : null;
+}
+
+function buildComparisonSections(experiments = []) {
   const summary = (experiment) => experiment?.result_summary || {};
   const config = (experiment) => experiment?.configuration || {};
   const reproducibility = (experiment) => experiment?.reproducibility || {};
@@ -2504,7 +2550,7 @@ function buildComparisonSections() {
     const value = Number(rawValue);
     return Number.isFinite(value) ? value : null;
   };
-  return [
+  const sections = [
     {
       title: "Thông tin thử nghiệm",
       rows: [
@@ -2561,13 +2607,29 @@ function buildComparisonSections() {
     {
       title: "Kết quả phân tích AI",
       rows: [
-        { label: "Khuyến nghị", value: (item) => summary(item).recommendation || "--" },
-        { label: "Điểm tổng", value: (item) => summary(item).score != null && Number.isFinite(Number(summary(item).score)) ? scoreOutOf100(summary(item).score) : "--", score: numeric((item) => summary(item).score) },
+        { label: "Khuyến nghị", value: analysisRecommendationForComparison },
+        { label: "Điểm tổng", value: (item) => analysisScoreForComparison(item, "total") != null ? scoreOutOf100(analysisScoreForComparison(item, "total")) : "--", score: numeric((item) => analysisScoreForComparison(item, "total")) },
+        { label: "Điểm kỹ thuật", value: (item) => analysisScoreForComparison(item, "technical") != null ? scoreOutOf100(analysisScoreForComparison(item, "technical")) : "--", score: numeric((item) => analysisScoreForComparison(item, "technical")) },
+        { label: "Điểm cơ bản", value: (item) => analysisScoreForComparison(item, "fundamental") != null ? scoreOutOf100(analysisScoreForComparison(item, "fundamental")) : "--", score: numeric((item) => analysisScoreForComparison(item, "fundamental")) },
+        { label: "Điểm tin tức", value: (item) => analysisScoreForComparison(item, "news") != null ? scoreOutOf100(analysisScoreForComparison(item, "news")) : "--", score: numeric((item) => analysisScoreForComparison(item, "news")) },
         { label: "Độ tự tin", value: (item) => summary(item).confidence == null ? "--" : confidenceInfo(summary(item).confidence).text, score: numeric((item) => summary(item).confidence) },
         { label: "Số mã thành công", value: (item) => summary(item).count == null ? "--" : `${summary(item).successful || 0}/${summary(item).count}` },
       ],
     },
   ];
+
+  const allAnalysis = experiments.length >= 2
+    && experiments.every((item) => item?.experiment_type === "analysis");
+  if (allAnalysis) {
+    const reproducibilityIndex = sections.findIndex(
+      (section) => section.title === "Tái lập và phiên bản",
+    );
+    if (reproducibilityIndex >= 0) sections.splice(reproducibilityIndex, 1);
+    const analysisIndex = sections.findIndex((section) => section.title === "Kết quả phân tích AI");
+    const [analysisSection] = sections.splice(analysisIndex, 1);
+    sections.unshift(analysisSection);
+  }
+  return sections;
 }
 
 function renderExperimentComparison(experiments) {
@@ -2577,7 +2639,7 @@ function renderExperimentComparison(experiments) {
   }).join("");
 
   const bodyRows = [];
-  buildComparisonSections().forEach((section) => {
+  buildComparisonSections(experiments).forEach((section) => {
     const rows = section.rows.map((row) => ({
       ...row,
       values: experiments.map((item) => comparisonValue(row.value(item))),
@@ -2631,35 +2693,55 @@ async function compareSelectedExperiments() {
   }
 }
 
-async function copyTextToClipboard(text) {
-  if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-    return;
+function analysisExperimentDetailHtml(experiment) {
+  const entries = (experiment?.result_data?.results || [])
+    .filter((entry) => entry?.status === "ok" && entry?.recommendation);
+  if (entries.length === 0) {
+    return `<p class="hint text-red">${escapeHtml(experiment.error_message || "Không có kết quả phân tích để hiển thị.")}</p>`;
   }
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand("copy");
-  document.body.removeChild(textarea);
-  if (!copied) throw new Error("Trình duyệt không cho phép sao chép tự động.");
+
+  const investmentPeriod = riskPeriodLabel(
+    experiment?.configuration?.risk_appetite?.period,
+  );
+  return entries.map((entry) => `
+    <article class="experiment-analysis-record">
+      ${recommendationDetailHtml(
+        entry.symbol || experiment.symbol || "--",
+        entry.recommendation,
+        { investmentPeriod },
+      )}
+    </article>
+  `).join("");
 }
 
-async function copyCurrentExperimentBundle() {
-  if (!currentExperimentBundle) return;
-  const originalLabel = els.copyExperimentBundleBtn.textContent;
-  try {
-    await copyTextToClipboard(JSON.stringify(currentExperimentBundle, null, 2));
-    els.copyExperimentBundleBtn.textContent = "Đã sao chép";
-    setTimeout(() => {
-      els.copyExperimentBundleBtn.textContent = originalLabel;
-    }, 1600);
-  } catch (error) {
-    alert(`Không thể sao chép gói tái lập: ${error.message}`);
-  }
+function backtestExperimentDetailHtml(experiment) {
+  const summary = experiment?.result_summary || {};
+  const configuration = experiment?.configuration || {};
+  const symbol = experiment.symbol || configuration.symbol || String(experiment.scope || "--").toUpperCase();
+  const period = configuration.start_date || configuration.end_date
+    ? `${configuration.start_date || "--"} → ${configuration.end_date || "--"}`
+    : "--";
+  const sharpe = Number(summary.sharpe_ratio);
+  return `
+    <article class="experiment-analysis-record">
+      <div class="report-detail-header">
+        <h3>${escapeHtml(symbol)}</h3>
+        <span class="badge">Backtest</span>
+      </div>
+      <ul class="detail-list">
+        <li><span class="lbl">Giai đoạn:</span> <span class="val">${escapeHtml(period)}</span></li>
+        <li><span class="lbl">Lợi nhuận ròng:</span> <span class="val">${escapeHtml(formatExperimentPercent(summary.net_profit))}</span></li>
+        <li><span class="lbl">Win rate:</span> <span class="val">${escapeHtml(formatExperimentPercent(summary.win_rate))}</span></li>
+        <li><span class="lbl">Số giao dịch:</span> <span class="val">${escapeHtml(comparisonValue(summary.total_trades))}</span></li>
+        <li><span class="lbl">Sharpe ratio:</span> <span class="val">${Number.isFinite(sharpe) ? sharpe.toFixed(2) : "--"}</span></li>
+        <li><span class="lbl">Max drawdown:</span> <span class="val">${escapeHtml(formatExperimentPercent(summary.max_drawdown))}</span></li>
+      </ul>
+      <div class="investment-warning-inline">
+        <strong>Không phải khuyến nghị đầu tư.</strong> Kết quả backtest chỉ phục vụ nghiên cứu và thử nghiệm;
+        hiệu suất quá khứ không bảo đảm kết quả tương lai.
+      </div>
+    </article>
+  `;
 }
 
 async function loadExperimentDetail(experimentId) {
@@ -2668,35 +2750,14 @@ async function loadExperimentDetail(experimentId) {
     const payload = await requestJson(`${apiBaseUrl}/api/agentic/experiments/${encodeURIComponent(experimentId)}`);
     const experiment = payload?.data;
     if (!experiment) throw new Error("Không nhận được chi tiết thử nghiệm.");
-    const reproducibility = experiment.reproducibility || {};
-    const displayedReproducibility = Object.keys(reproducibility).length > 0
-      ? reproducibility
-      : { notice: "Experiment cũ chưa có metadata tái lập." };
 
     const statusInfo = experimentStatusInfo(experiment.status);
     els.experimentDetailTitle.textContent = experiment.name || "Chi tiết thử nghiệm";
     els.experimentDetailStatus.className = `badge ${statusInfo.cls}`;
     els.experimentDetailStatus.textContent = statusInfo.label;
-    els.experimentConfiguration.textContent = JSON.stringify(experiment.configuration || {}, null, 2);
-    els.experimentReproducibility.textContent = JSON.stringify(displayedReproducibility, null, 2);
-    els.experimentResultData.textContent = JSON.stringify({
-      summary: experiment.result_summary,
-      data: experiment.result_data,
-      result_reference: experiment.result_reference,
-      error_message: experiment.error_message,
-      duration_ms: experiment.duration_ms,
-    }, null, 2);
-    currentExperimentBundle = {
-      schema: "stockrium-experiment-reproduction-bundle/v1",
-      experiment_id: experiment.id,
-      experiment_type: experiment.experiment_type,
-      configuration: experiment.configuration || {},
-      reproducibility,
-      investment_disclaimer: experiment.investment_disclaimer || {
-        title: "Không phải khuyến nghị đầu tư",
-        message: "Gói này chỉ phục vụ nghiên cứu và thử nghiệm; kết quả chạy lại có thể thay đổi.",
-      },
-    };
+    els.experimentDetailContent.innerHTML = experiment.experiment_type === "analysis"
+      ? analysisExperimentDetailHtml(experiment)
+      : backtestExperimentDetailHtml(experiment);
     els.experimentDetailCard.style.display = "block";
     els.experimentDetailCard.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
@@ -2733,7 +2794,7 @@ async function loadExperimentHistory() {
         ? new Date(experiment.created_at).toLocaleString("vi-VN")
         : "--";
       tr.innerHTML = `
-        <td style="text-align: center;"><input class="experiment-select-checkbox" type="checkbox" data-experiment-id="${escapeHtml(experiment.id)}" aria-label="Chọn ${escapeHtml(experiment.name || "thử nghiệm")}"></td>
+        <td style="text-align: center;"><input class="experiment-select-checkbox" type="checkbox" data-experiment-id="${escapeHtml(experiment.id)}" data-experiment-type="${escapeHtml(experiment.experiment_type)}" aria-label="Chọn ${escapeHtml(experiment.name || "thử nghiệm")}"></td>
         <td>${escapeHtml(createdAt)}</td>
         <td><strong>${escapeHtml(experiment.name || "--")}</strong></td>
         <td>${escapeHtml(experimentTypeLabel(experiment.experiment_type))}</td>
@@ -2743,8 +2804,13 @@ async function loadExperimentHistory() {
         <td style="max-width: 340px; color: var(--muted); font-size: 0.82rem;">${escapeHtml(experimentQuickSummary(experiment))}</td>
         <td style="text-align: center;"><button class="btn btn-ghost btn-view-experiment" type="button" style="padding: 4px 10px; font-size: 0.75rem;">Xem</button></td>
       `;
+      experimentTypesById.set(experiment.id, experiment.experiment_type);
       tr.querySelector(".experiment-select-checkbox").addEventListener("change", (event) => {
-        toggleExperimentSelection(experiment.id, event.target.checked);
+        toggleExperimentSelection(
+          experiment.id,
+          experiment.experiment_type,
+          event.target.checked,
+        );
       });
       tr.querySelector(".btn-view-experiment").addEventListener("click", () => loadExperimentDetail(experiment.id));
       els.experimentHistoryBody.appendChild(tr);
@@ -2790,7 +2856,6 @@ els.clearExperimentSelectionBtn.addEventListener("click", clearExperimentSelecti
 els.closeExperimentCompareBtn.addEventListener("click", () => {
   els.experimentCompareCard.style.display = "none";
 });
-els.copyExperimentBundleBtn.addEventListener("click", copyCurrentExperimentBundle);
 els.loginForm.addEventListener("submit", loginToLab);
 els.logoutBtn.addEventListener("click", logoutFromLab);
 

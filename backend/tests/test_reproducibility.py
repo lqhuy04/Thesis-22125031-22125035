@@ -136,6 +136,40 @@ class ReproducibilityTests(unittest.TestCase):
         self.assertIn("Không phải khuyến nghị đầu tư", dashboard_html)
         self.assertIn("Không phải khuyến nghị đầu tư", dashboard_js)
 
+    def test_ai_comparison_prioritizes_results_and_component_scores(self):
+        backend_root = Path(__file__).parents[1]
+        repository_root = backend_root.parent
+        route_source = (backend_root / "app" / "routes" / "agentic.py").read_text(
+            encoding="utf-8"
+        )
+        dashboard_html = (repository_root / "admin-dashboard" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        dashboard_js = (repository_root / "admin-dashboard" / "app.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"component_scores"', route_source)
+        for score_key in ('"technical"', '"fundamental"', '"news"'):
+            self.assertIn(score_key, route_source)
+
+        for score_label in ("Điểm kỹ thuật", "Điểm cơ bản", "Điểm tin tức"):
+            self.assertIn(score_label, dashboard_js)
+        self.assertIn("experiments.every", dashboard_js)
+        self.assertIn("sections.unshift(analysisSection)", dashboard_js)
+        self.assertIn("buildComparisonSections(experiments)", dashboard_js)
+        self.assertIn("len(experiment_types) != 1", route_source)
+        self.assertIn("Chỉ có thể so sánh các thử nghiệm cùng loại", route_source)
+        self.assertIn("selectedType !== experimentType", dashboard_js)
+        self.assertIn("sections.splice(reproducibilityIndex, 1)", dashboard_js)
+
+        self.assertIn('id="experimentDetailContent"', dashboard_html)
+        self.assertNotIn('id="experimentConfiguration"', dashboard_html)
+        self.assertNotIn('id="experimentResultData"', dashboard_html)
+        self.assertNotIn('id="experimentReproducibility"', dashboard_html)
+        self.assertIn("analysisExperimentDetailHtml", dashboard_js)
+        self.assertIn("Thời hạn đầu tư", dashboard_js)
+
 
 if __name__ == "__main__":
     unittest.main()

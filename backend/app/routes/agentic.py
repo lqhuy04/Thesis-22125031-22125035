@@ -77,14 +77,44 @@ def _analysis_result_summary(result: dict) -> dict:
         "failed": len(failed),
         "symbols": [entry.get("symbol") for entry in entries if entry.get("symbol")],
     }
+    scores = [
+        (entry.get("recommendation") or {}).get("score")
+        for entry in successful
+    ]
+    component_scores = {}
+    for key in ("technical", "fundamental", "news"):
+        values = [
+            score.get(key)
+            for score in scores
+            if isinstance(score, dict)
+            and isinstance(score.get(key), (int, float))
+            and not isinstance(score.get(key), bool)
+        ]
+        if values:
+            component_scores[key] = sum(values) / len(values)
+    if component_scores:
+        summary["component_scores"] = component_scores
+
+    total_scores = [
+        score.get("total") if isinstance(score, dict) else score
+        for score in scores
+    ]
+    total_scores = [
+        value for value in total_scores
+        if isinstance(value, (int, float)) and not isinstance(value, bool)
+    ]
+    if total_scores:
+        summary["score"] = sum(total_scores) / len(total_scores)
+
     if len(successful) == 1:
         recommendation = successful[0].get("recommendation") or {}
-        score = recommendation.get("score")
+        recommendation_label = recommendation.get("recommendation")
+        if recommendation_label is None and isinstance(recommendation.get("buy"), bool):
+            recommendation_label = "Mua" if recommendation["buy"] else "Chờ"
         summary.update({
-            "recommendation": recommendation.get("recommendation"),
+            "recommendation": recommendation_label,
             "buy": recommendation.get("buy"),
             "confidence": recommendation.get("confidence"),
-            "score": score.get("total") if isinstance(score, dict) else score,
         })
     return summary
 
@@ -256,6 +286,15 @@ def compare_experiments(
                 content=error_response(
                     error_code=404001,
                     error_desc="Không tìm thấy một hoặc nhiều thử nghiệm của bạn",
+                ),
+            )
+        experiment_types = {item.get("experiment_type") for item in items}
+        if len(experiment_types) != 1:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=error_response(
+                    error_code=400001,
+                    error_desc="Chỉ có thể so sánh các thử nghiệm cùng loại",
                 ),
             )
         return success_response(data={

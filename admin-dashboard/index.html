@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260824-7" />
+    <link rel="stylesheet" href="./styles.css?v=20260824-9" />
     <!-- Lightweight Charts library from TradingView -->
     <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
   </head>
@@ -676,29 +676,15 @@
           <div class="result-header">
             <h2 id="experimentDetailTitle">Chi tiết thử nghiệm</h2>
             <div class="experiment-detail-actions">
-              <button id="copyExperimentBundleBtn" class="btn btn-ghost" type="button">Sao chép gói tái lập</button>
               <span id="experimentDetailStatus" class="badge">--</span>
             </div>
           </div>
-          <div class="form-row-2" style="margin-top: 16px;">
-            <div>
-              <h3>Cấu hình</h3>
-              <pre id="experimentConfiguration" class="result" style="min-height: 180px; max-height: 420px; overflow: auto;"></pre>
-            </div>
-            <div>
-              <h3>Kết quả đã lưu</h3>
-              <pre id="experimentResultData" class="result" style="min-height: 180px; max-height: 420px; overflow: auto;"></pre>
-            </div>
-          </div>
-          <div style="margin-top: 18px;">
-            <h3>Metadata tái lập</h3>
-            <pre id="experimentReproducibility" class="result" style="min-height: 180px; max-height: 420px; overflow: auto;"></pre>
-          </div>
+          <div id="experimentDetailContent" class="experiment-detail-content"></div>
         </section>
       </div>
     </main>
 
     <script src="./config.js?v=20260824-1"></script>
-    <script src="./app.js?v=20260824-5"></script>
+    <script src="./app.js?v=20260824-8"></script>
   </body>
 </html>

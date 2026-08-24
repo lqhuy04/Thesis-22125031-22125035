@@ -728,23 +728,47 @@ select:focus {
   margin-bottom: 18px;
 }
 
-#experimentDetailCard .form-row-2 {
+.experiment-detail-content {
   width: 100%;
   min-width: 0;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
 }
 
-#experimentDetailCard .form-row-2 > div {
+.experiment-analysis-record {
+  width: 100%;
   min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(88, 240, 167, 0.28);
+  border-radius: 14px;
+  background: rgba(4, 16, 24, 0.36);
 }
 
-#experimentDetailCard .result {
+.experiment-analysis-record + .experiment-analysis-record {
+  margin-top: 16px;
+}
+
+.experiment-analysis-record .agent-analysis-text {
+  overflow-wrap: anywhere;
+}
+
+#experimentCompareCard {
   width: 100%;
   max-width: 100%;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  min-width: 0;
+  padding: 24px;
+  overflow: hidden;
+}
+
+#experimentCompareCard > .result-header {
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+#experimentCompareCard > .table-responsive {
+  max-width: 100%;
+  border: 1px solid rgba(184, 217, 206, 0.12);
+  border-radius: 12px;
+  overflow-x: auto;
 }
 
 .experiment-selection-actions {
@@ -826,8 +850,8 @@ select:focus {
     padding: 16px;
   }
 
-  #experimentDetailCard .form-row-2 {
-    grid-template-columns: minmax(0, 1fr);
+  #experimentCompareCard {
+    padding: 16px;
   }
 
   .experiment-detail-actions {
