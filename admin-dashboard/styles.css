@@ -700,6 +700,53 @@ select:focus {
   font-size: 0.86rem;
 }
 
+.experiment-history-card {
+  padding: 24px;
+}
+
+.experiment-history-card > .result-header {
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.experiment-history-card > .table-responsive {
+  border: 1px solid rgba(184, 217, 206, 0.12);
+  border-radius: 12px;
+}
+
+#experimentDetailCard {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 24px;
+  overflow: hidden;
+}
+
+#experimentDetailCard > .result-header {
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+#experimentDetailCard .form-row-2 {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+#experimentDetailCard .form-row-2 > div {
+  min-width: 0;
+}
+
+#experimentDetailCard .result {
+  width: 100%;
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .experiment-selection-actions {
   display: flex;
   gap: 8px;
@@ -761,6 +808,10 @@ select:focus {
 }
 
 @media (max-width: 640px) {
+  .experiment-history-card {
+    padding: 16px;
+  }
+
   .experiment-selection-bar {
     align-items: stretch;
     flex-direction: column;
@@ -769,6 +820,18 @@ select:focus {
   .experiment-selection-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  #experimentDetailCard {
+    padding: 16px;
+  }
+
+  #experimentDetailCard .form-row-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .experiment-detail-actions {
+    flex-wrap: wrap;
   }
 }
 
