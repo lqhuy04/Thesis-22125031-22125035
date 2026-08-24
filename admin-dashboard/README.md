@@ -7,20 +7,22 @@ backtest và so sánh kết quả.
 
 - Chạy backtest pipeline cho một mã hoặc rổ VN30 lấy động từ backend.
 - Phân tích AI cho một mã, VN30 hoặc VN100.
-- Xem kết quả JSON, lịch sử backtest và biểu đồ.
+- Xem dashboard Backtest, lịch sử thử nghiệm và biểu đồ tương tác.
+- Backtest chạy bất đồng bộ: API trả Experiment ID ngay, giao diện polling trạng
+  thái và tự tải dashboard khi job hoàn thành nên không giữ request HTTP dài.
 - Tự lưu checkpoint sau từng mã VN30; chạy lại cùng cấu hình sẽ bỏ qua mã đã
   thành công và retry các mã lỗi. Không có token hoặc mật khẩu nào được lưu
   trong checkpoint; checkpoint được tách riêng theo user.
 - Lịch sử và file kết quả backtest chỉ hiển thị cho user sở hữu.
 - Mỗi lần chạy backtest hoặc phân tích AI tạo một Experiment có trạng thái
   `running`, `completed` hoặc `failed`; tab **Lịch sử thử nghiệm** cho phép lọc
-  theo loại/trạng thái và xem lại cấu hình, kết quả của tài khoản hiện tại.
+  theo loại/trạng thái và xem lại kết quả của tài khoản hiện tại.
 - Chọn từ 2 đến 5 Experiment để so sánh song song cấu hình nguồn dữ liệu,
   trọng số, tham số chạy và các chỉ số kết quả. Những chỉ số tốt nhất được đánh
   dấu trực quan; có thể đối chiếu cả backtest và phân tích AI.
 - Experiment mới lưu metadata tái lập: hash cấu hình chuẩn hóa, fingerprint lần
   chạy, phiên bản ứng dụng/code/pipeline/prompt/model và trạng thái snapshot dữ
-  liệu. Có thể sao chép **gói tái lập** từ màn chi tiết.
+  liệu.
 - Metadata ghi rõ mức `configuration_only`: cấu hình được giữ nguyên nhưng dữ
   liệu live và đầu ra LLM chưa thể tái lập tuyệt đối khi chưa có snapshot bất biến
   và model seed.
@@ -39,6 +41,7 @@ VN30.
 
 Stockrium Lab sử dụng các API thử nghiệm:
 
+- `POST /api/agentic/backtest`
 - `POST /api/agentic/experiments/analyze`
 - `GET /api/agentic/experiments`
 - `GET /api/agentic/experiments/{experiment_id}`

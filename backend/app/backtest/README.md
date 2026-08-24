@@ -55,6 +55,10 @@ Annual fundamental rows from the simulated year and future years are excluded.
 
 POST /api/agentic/backtest
 
+Endpoint trả HTTP 202 cùng `experiment_id` ngay sau khi tạo job. Client polling
+`GET /api/agentic/experiments/{experiment_id}` cho đến khi trạng thái chuyển sang
+`completed` hoặc `failed`, sau đó tải visualization qua `result_reference`.
+
 Example payload:
 {
   "symbol": "VNM",

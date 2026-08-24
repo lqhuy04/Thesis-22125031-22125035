@@ -879,6 +879,64 @@ function initDataSelectionControls() {
   applyBacktestFlow(getBacktestFlow());
 }
 
+const BACKTEST_POLL_INTERVAL_MS = 5000;
+const BACKTEST_POLL_MAX_CONSECUTIVE_ERRORS = 6;
+
+function waitMs(duration) {
+  return new Promise((resolve) => setTimeout(resolve, duration));
+}
+
+async function waitForBacktestExperiment(experimentId, onProgress = null) {
+  const startedAt = Date.now();
+  let consecutiveErrors = 0;
+  while (accessToken) {
+    try {
+      const payload = await requestJson(
+        `${apiBaseUrl}/api/agentic/experiments/${encodeURIComponent(experimentId)}`,
+      );
+      const experiment = payload?.data;
+      if (!experiment) throw new Error("Backend không trả về trạng thái Backtest.");
+      consecutiveErrors = 0;
+      if (experiment.status === "completed") return experiment;
+      if (experiment.status === "failed") {
+        const failure = new Error(experiment.error_message || "Backtest chạy thất bại.");
+        failure.isTerminalBacktestError = true;
+        throw failure;
+      }
+      if (typeof onProgress === "function") {
+        onProgress(experiment, Date.now() - startedAt);
+      }
+    } catch (error) {
+      if (!accessToken || error.isTerminalBacktestError) throw error;
+      consecutiveErrors += 1;
+      if (consecutiveErrors >= BACKTEST_POLL_MAX_CONSECUTIVE_ERRORS) {
+        throw new Error(
+          `Không thể kiểm tra trạng thái Backtest sau ${consecutiveErrors} lần: ${error.message}`,
+        );
+      }
+      appendLog(`Tạm thời chưa đọc được trạng thái Backtest, thử lại (${consecutiveErrors}/${BACKTEST_POLL_MAX_CONSECUTIVE_ERRORS})...`);
+    }
+    await waitMs(BACKTEST_POLL_INTERVAL_MS);
+  }
+  throw new Error("Phiên đăng nhập đã kết thúc trong khi Backtest đang chạy.");
+}
+
+async function submitBacktestJob(params, onProgress = null) {
+  const payload = await requestJson(`${apiBaseUrl}/api/agentic/backtest`, {
+    method: "POST",
+    body: params,
+  });
+  const experimentId = payload?.data?.experiment_id;
+  if (!experimentId || payload?.data?.status !== "running") {
+    throw new Error("Backend không trả về mã job Backtest hợp lệ.");
+  }
+  appendLog(`Backtest ${params.symbol} đã vào hàng đợi (${experimentId}).`);
+  loadExperimentHistory();
+  const experiment = await waitForBacktestExperiment(experimentId, onProgress);
+  const visualizationData = await loadBacktestVisualizationForExperiment(experiment);
+  return { experiment, visualizationData };
+}
+
 async function runBacktest() {
   const baseUrl = apiBaseUrl;
   if (!baseUrl) {
@@ -927,18 +985,17 @@ async function runBacktest() {
     els.vn30ResultsCard.style.display = "none";
 
     try {
-      const payload = await requestJson(`${baseUrl}/api/agentic/backtest`, {
-        method: "POST",
-        body: params,
-      });
-
+      const { visualizationData } = await submitBacktestJob(
+        params,
+        (_experiment, elapsedMs) => {
+          const elapsedSeconds = Math.floor(elapsedMs / 1000);
+          const minutes = Math.floor(elapsedSeconds / 60);
+          const seconds = String(elapsedSeconds % 60).padStart(2, "0");
+          els.runBacktestBtn.textContent = `Đang chạy ${params.symbol} · ${minutes}:${seconds}`;
+        },
+      );
       appendLog(`Backtest cho ${params.symbol} hoàn thành!`);
-      const data = payload?.data;
-      if (data?.visualization_data) {
-        renderVisualization(data.visualization_data);
-      } else {
-        alert("Không nhận được dữ liệu vẽ biểu đồ từ backend.");
-      }
+      await renderVisualization(visualizationData);
       loadExperimentHistory();
     } catch (error) {
       appendLog(`Lỗi chạy backtest ${params.symbol}: ${error.message}`);
@@ -1009,19 +1066,14 @@ async function runBacktest() {
       appendVn30Log(`[${i + 1}/${vn30Tickers.length}] Khởi động chạy backtest cho ${ticker}...`);
 
       try {
-        const payload = await requestJson(`${baseUrl}/api/agentic/backtest`, {
-          method: "POST",
-          body: params,
-        });
-
-        const data = payload?.data;
-        if (data) {
-          const metrics = data.full_metrics || {};
-          const pnl = metrics.pnl?.total_return !== undefined ? (metrics.pnl.total_return * 100).toFixed(1) + "%" : "0%";
-          const winRate = metrics.volume?.win_rate !== undefined ? (metrics.volume.win_rate * 100).toFixed(1) + "%" : "0%";
-          const tradesCount = metrics.volume?.n_trades !== undefined ? metrics.volume.n_trades : 0;
-          const sharpe = metrics.risk?.sharpe_ratio !== undefined ? metrics.risk.sharpe_ratio.toFixed(2) : "0.00";
-          const vizData = data.visualization_data;
+        const { experiment, visualizationData } = await submitBacktestJob(params);
+        const summary = experiment.result_summary || {};
+        if (experiment.status === "completed") {
+          const pnl = summary.net_profit !== undefined ? (summary.net_profit * 100).toFixed(1) + "%" : "0%";
+          const winRate = summary.win_rate !== undefined ? (summary.win_rate * 100).toFixed(1) + "%" : "0%";
+          const tradesCount = summary.total_trades !== undefined ? summary.total_trades : 0;
+          const sharpe = summary.sharpe_ratio !== undefined ? Number(summary.sharpe_ratio).toFixed(2) : "0.00";
+          const vizData = visualizationData;
 
           appendVn30Log(`✅ ${ticker} thành công: Lợi nhuận ${pnl}, Sharpe ${sharpe}, Tổng giao dịch ${tradesCount}.`);
 
@@ -2613,7 +2665,13 @@ async function loadExperimentDetail(experimentId) {
 
     if (experiment.experiment_type === "backtest") {
       appendLog(`Đang tải kết quả Backtest ${experiment.symbol || experiment.name || ""}...`);
-      const visualizationData = await loadBacktestVisualizationForExperiment(experiment);
+      const completedExperiment = experiment.status === "running"
+        ? await waitForBacktestExperiment(experiment.id)
+        : experiment;
+      if (completedExperiment.status === "failed") {
+        throw new Error(completedExperiment.error_message || "Backtest chạy thất bại.");
+      }
+      const visualizationData = await loadBacktestVisualizationForExperiment(completedExperiment);
       els.experimentDetailCard.style.display = "none";
       mountBacktestVisualization("history");
       await renderVisualization(visualizationData);

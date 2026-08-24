@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Path as ApiPath, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Path as ApiPath, Query, Request, status
 from fastapi.responses import FileResponse, JSONResponse, Response
 
 from app.middleware.auth_middleware import get_current_user
@@ -146,6 +146,30 @@ def _backtest_history_data(result: dict) -> dict:
         "investment_disclaimer",
     )
     return {key: result.get(key) for key in keys}
+
+
+def _run_backtest_job(
+    *,
+    experiment_id: str,
+    user_id: str,
+    body: BacktestPipelineRequest,
+) -> None:
+    """Execute one persisted Backtest after the submission response is sent."""
+    try:
+        result = run_backtest_pipeline(body, user_id=user_id)
+        result["experiment_id"] = experiment_id
+        result["investment_disclaimer"] = investment_disclaimer()
+        ExperimentService.complete(
+            experiment_id=experiment_id,
+            user_id=user_id,
+            result_summary=_backtest_result_summary(result, body.symbol.strip().upper()),
+            result_data=_backtest_history_data(result),
+            result_reference=result.get("visualization_data_url"),
+        )
+        logger.info("Backtest experiment %s completed", experiment_id)
+    except Exception as error:
+        logger.exception("Backtest experiment %s failed", experiment_id)
+        _fail_experiment_safely(experiment_id, user_id, error)
 
 
 async def _limit_ai(
@@ -522,6 +546,7 @@ def remove_chat_session(
 )
 def backtest_pipeline(
     body: BacktestPipelineRequest,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
     _rate_limit: None = Depends(_limit_backtest),
 ):
@@ -539,21 +564,20 @@ def backtest_pipeline(
             name=body.experiment_name,
         )
         experiment_id = experiment["id"]
-        result = run_backtest_pipeline(
-            body,
-            user_id=user_id,
-        )
-        result["experiment_id"] = experiment_id
-        result["reproducibility"] = experiment.get("reproducibility", {})
-        result["investment_disclaimer"] = investment_disclaimer()
-        ExperimentService.complete(
+        background_tasks.add_task(
+            _run_backtest_job,
             experiment_id=experiment_id,
             user_id=user_id,
-            result_summary=_backtest_result_summary(result, symbol),
-            result_data=_backtest_history_data(result),
-            result_reference=result.get("visualization_data_url"),
+            body=body,
         )
-        return success_response(data=result)
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content=success_response(data={
+                "experiment_id": experiment_id,
+                "status": ExperimentStatus.RUNNING.value,
+                "symbol": symbol,
+            }),
+        )
 
     except ValueError as e:
         _fail_experiment_safely(experiment_id, user_id, e)

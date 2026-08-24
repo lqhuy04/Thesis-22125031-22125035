@@ -48,7 +48,7 @@ python -m app.main
 ### Agentic Analysis
 - `POST /api/agentic/analyze` - Run the full analysis pipeline and return the structured recommendation.
 - `POST /api/agentic/chat` - Chat mode with session memory.
-- `POST /api/agentic/backtest` - Run the historical technical backtest used for thesis evaluation.
+- `POST /api/agentic/backtest` - Queue a historical backtest and return an Experiment ID with HTTP 202. Poll `GET /api/agentic/experiments/{id}` until it is completed or failed.
 
 For the backtest methodology and assumptions, see [BACKTEST.md](../BACKTEST.md).
 

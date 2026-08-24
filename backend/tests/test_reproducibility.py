@@ -203,6 +203,13 @@ class ReproducibilityTests(unittest.TestCase):
         self.assertGreaterEqual(dashboard_js.count("renderVisualization("), 3)
         self.assertIn('"visualization_data_url"', route_source)
         self.assertIn('"visualization_file"', route_source)
+        self.assertIn("BackgroundTasks", route_source)
+        self.assertIn("background_tasks.add_task", route_source)
+        self.assertIn("status.HTTP_202_ACCEPTED", route_source)
+        self.assertIn("_run_backtest_job", route_source)
+        self.assertIn("waitForBacktestExperiment", dashboard_js)
+        self.assertIn("BACKTEST_POLL_INTERVAL_MS", dashboard_js)
+        self.assertIn("submitBacktestJob", dashboard_js)
 
 
 if __name__ == "__main__":
