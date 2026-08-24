@@ -2,14 +2,14 @@
 
 ## 1. Purpose
 
-Chapter 5 should answer whether the implemented Stockrium software behaves correctly, securely, and reliably. It should not repeat Chapter 6, which asks whether the analytical strategy performs well on historical market data.
+Chapter 5 should answer whether the implemented Stockrium software behaves correctly, securely, and reliably. It should not repeat Chapter 6, which demonstrates how a user applies Stockrium Lab to generate, inspect, and compare historical outputs under documented assumptions.
 
 The distinction is:
 
 - **Chapter 5 — System Testing:** Does the software implement its requirements correctly?
-- **Chapter 6 — Experiments and Evaluation:** Does the analytical pipeline exhibit useful historical behavior?
+- **Chapter 6 — Representative Use of Stockrium Lab:** Can the implemented tool expose comparable historical behavior and its limitations without treating one case study as proof of profitability?
 
-The repository now contains 71 Python `unittest` tests under `backend/tests`, covering selected multi-agent, technical, security, authentication, and backtesting behavior. Chapter 5 reports that reproducible suite. The remaining validation plan is a risk-based combination of:
+The repository now contains 106 Python `unittest` test methods across 20 files under `backend/tests`, covering multi-agent, technical, experiment-lifecycle, reproducibility, security, authentication, and backtesting behavior. Chapter 5 reports this repository-verifiable inventory without inferring a pass rate when no execution log is archived. The remaining validation plan is a risk-based combination of:
 
 1. automated backend unit and API integration tests;
 2. automated mobile component and routing tests;
@@ -23,7 +23,7 @@ The final chapter must report actual results. Planned tests, unexecuted cases, a
 
 - **TQ1 — Functional correctness:** Do the mobile and backend functions produce the expected results for valid, invalid, and boundary inputs?
 - **TQ2 — Integration correctness:** Do the mobile client, FastAPI services, Supabase, Redis, external data sources, and multi-agent components interact correctly?
-- **TQ3 — Security and authorization:** Are authentication, session handling, ownership checks, and administrator-only functions enforced?
+- **TQ3 — Security and authorization:** Are authentication, session handling, experiment ownership, comparison access, and artifact isolation enforced?
 - **TQ4 — Multi-agent workflow reliability:** Does the multi-agent workflow honor the requested configuration, return valid structured output, and fail safely when a specialist agent or external provider is unavailable?
 - **TQ5 — Quality attributes:** Is the system sufficiently responsive, compatible, recoverable, and understandable for the evaluated prototype scope?
 
@@ -32,12 +32,13 @@ The final chapter must report actual results. Planned tests, unexecuted cases, a
 ### P0 — Critical
 
 - signup, email verification, login, token refresh, logout, and password recovery;
-- authorization for protected routes and administrator-only routes;
+- authentication for protected routes and ownership checks for experiments and artifacts;
 - standardized API success and error responses;
 - market price retrieval and stock-detail data;
 - deterministic technical indicators and reference-signal calculation, multi-candle trend context, and model-generated technical scoring with fallback;
 - AI-analysis configuration, structured response, model-generated confidence validation, and deterministic decision thresholds;
 - chat-session ownership and deletion;
+- experiment creation, status transitions, history, detail, same-type comparison, reproducibility metadata, and cross-user isolation;
 - shared technical reference scoring, AI technical-score integration, next-open execution, exit rules, and transaction costs.
 
 ### P1 — Important
@@ -63,7 +64,7 @@ The existing backend suite uses the standard-library `unittest` runner and `unit
 
 | Layer | Recommended tools | Purpose |
 |---|---|---|
-| Existing backend unit/integration | unittest, unittest.mock | Run the 71 repository-verifiable tests without live external providers |
+| Existing backend unit/integration | unittest, unittest.mock | Run the 106 repository-verifiable test methods without live external providers |
 | Expanded backend API/coverage | pytest, FastAPI TestClient, pytest-mock, pytest-cov | Add route-level fixtures and measure exercised code |
 | Expo unit/component | Jest with jest-expo, React Native Testing Library | Test helpers, components, input validation, and user-visible states |
 | Expo Router integration | expo-router/testing-library | Test navigation and route behavior in memory |
@@ -98,8 +99,8 @@ Use an isolated Supabase test project or test schema and a separate Redis databa
 
 - one verified ordinary user;
 - one unverified user;
-- one administrator;
-- a second ordinary user for ownership tests;
+- one authenticated user;
+- a second authenticated user for cross-owner experiment and artifact tests;
 - one expired or revoked token.
 
 Use fixed OHLCV, company, fundamental, and article fixtures. Mock SSI, Serper, Resend, social OAuth, OpenAI, and DeepSeek for automated tests. A few separately identified live-provider smoke tests may be run, but their variable outputs should not determine whether the regression suite passes.
@@ -110,8 +111,8 @@ Apply these techniques:
 
 - **equivalence partitioning:** valid, invalid, missing, and unauthorized requests;
 - **boundary analysis:** dates, pagination, score thresholds, weights, holding periods, OTP limits, and empty datasets;
-- **state-transition testing:** signup to verification, access-token expiry to refresh, chat creation to deletion, and backtest request to stored artifact;
-- **decision-table testing:** enabled agents, weights, confidence bands, roles, and ownership;
+- **state-transition testing:** signup to verification, access-token expiry to refresh, chat creation to deletion, and backtest experiment from `running` to `completed` or `failed`;
+- **decision-table testing:** enabled agents, weights, confidence bands, experiment types, statuses, and ownership;
 - **fault injection:** provider timeout, malformed JSON, empty database response, unavailable Redis, and partial agent failure;
 - **regression testing:** rerun the critical suite after every fix.
 
@@ -128,7 +129,7 @@ The matrix below is the minimum useful thesis scope. Detailed steps should be re
 | AUTH-05 | Session | Expired access token with valid refresh token | One refresh occurs and the original request is retried successfully | P0 | API + mobile integration |
 | AUTH-06 | Session | Revoked/expired refresh token and logout | Session ends, protected calls fail, and secure tokens are removed | P0 | API + mobile E2E |
 | AUTH-07 | Password | Forgot-password, OTP limits, reset, and old credential attempt | Reset rules and cooldowns are enforced | P0 | API integration |
-| SEC-01 | Authorization | Ordinary user calls admin analysis, universe, backtest, or listing | 401/403 response and no operation | P0 | API integration |
+| SEC-01 | Authorization | Unauthenticated access to Lab routes, or user A requests user B's experiment or artifact | Authentication failure or owner-scoped not-found response; no cross-user data | P0 | API integration |
 | SEC-02 | Ownership | User A accesses User B's chat or owned resources | Rejected with User B's data unchanged | P0 | API integration |
 | SEC-03 | Input handling | Malformed symbols, UUIDs, dates, payloads, large text, and injection-like values | Safe validation with no internal-detail leak | P0 | API/security |
 | API-01 | Contract | Representative success and failure from every router | Standard data, errorCode, errorDesc, requestId, and result fields | P0 | Contract tests |
@@ -153,6 +154,10 @@ The matrix below is the minimum useful thesis scope. Detailed steps should be re
 | BACK-04 | Rules | Take-profit, stop-loss, score exit, max hold, final liquidation | Correct reason, date, price, cost, and return | P0 | Parameterized unit |
 | BACK-05 | Edges | Same-bar TP/SL, gap, final signal, no candidates, missing benchmark | Conservative documented behavior and no invalid trade | P0 | Unit/integration |
 | BACK-06 | Artifacts | Complete backtest and result listing | Decisions, trades, metrics, effective warm-up metadata, tests, plots, and stored file agree | P1 | Integration |
+| EXP-01 | Lifecycle | Submit analysis and backtest experiments | Owned `running` record is created; analysis completes in-request and backtest returns HTTP 202 before completion | P0 | API/service integration |
+| EXP-02 | History | List and open experiment records as two different users | Each user can retrieve only owned summary and detail records | P0 | API/service integration |
+| EXP-03 | Comparison | Select 2–5 same-type owned experiments; also submit duplicates, mixed types, and foreign IDs | Valid selection preserves order; invalid selection is rejected without cross-user disclosure | P0 | API integration |
+| EXP-04 | Reproducibility | Reopen saved analysis or backtest | Configuration, fingerprint, data/AI limitations, result, disclaimer, and artifact reference remain inspectable | P1 | Service + browser walkthrough |
 | MOB-01 | Authentication UI | Signup/login, verification, reset, logout | Correct validation, feedback, loading, and navigation | P0 | Component + E2E |
 | MOB-02 | Market UI | Browse, search, open detail, change chart view | Correct data, navigation, and responsive interaction | P0 | Component + E2E |
 | MOB-03 | AI analysis UI | Configure, submit, and view result | Correct payload and safe rendering of all structured fields | P0 | Component + E2E |
@@ -169,7 +174,7 @@ These are targets, not current results:
 - all P0 cases pass;
 - at least 95% of executed P1 cases pass, with every failure documented;
 - no unresolved critical or high-severity security or authorization defect;
-- all tested protected and administrator-only routes reject invalid roles or tokens;
+- all tested protected routes reject invalid tokens, and experiment or artifact operations reject cross-user access;
 - target at least 80% automated statement coverage for deterministic authentication, scoring, decision, trading-plan validation, and backtesting modules; report the actual value even if lower;
 - critical mobile E2E flows pass three consecutive runs without a flaky failure;
 - at 20 concurrent virtual users in the stated local/staging environment, non-AI requests have under 1% unexpected errors, p95 below 500 ms for simple reads, and p95 below 1 s for ordinary writes;
@@ -268,10 +273,10 @@ If time is limited, complete P0 backend/API tests, three core mobile E2E flows, 
 4. **Multi-Agent and Backtesting Correctness Testing**
    - branch selection, weights, typed output, confidence boundary;
    - shared scoring, timing, exits, costs, and failure cases.
-5. **Mobile Application and End-to-End Testing**
-   - component and routing results;
-   - critical end-to-end flows;
-   - device and presentation checks.
+5. **Client Workflow Verification**
+   - mobile component, routing, and critical end-to-end flows;
+   - Stockrium Lab experiment lifecycle, history, detail, comparison, and artifact inspection;
+   - device, browser, and presentation checks.
 6. **Non-Functional Testing**
    - security, performance, recovery, compatibility, and usability.
 7. **Results and Defect Analysis**
@@ -294,6 +299,7 @@ If time is limited, complete P0 backend/API tests, three core mobile E2E flows, 
 | User-owned resources | | | | | | |
 | Multi-agent workflow | | | | | | |
 | Backtesting correctness | | | | | | |
+| Stockrium Lab experiments | | | | | | |
 | Mobile application | | | | | | |
 | Non-functional | | | | | | |
 

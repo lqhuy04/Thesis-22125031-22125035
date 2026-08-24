@@ -1,207 +1,185 @@
-\section{Backend Testing}
-\label{sec:backend-testing}
+\section{Testing Objectives and Evidence Boundary}
+\label{sec:testing-objectives-evidence}
 
-Backend testing covers the complete HTTP interface and the two principal computation paths implemented by the server: multi-agent stock analysis and historical backtesting. The tests verify valid requests, protected access, response construction, data retrieval, branch execution, scoring, trade simulation, result persistence, and controlled failure handling. All API groups and backend workflow groups listed below passed.
+System testing examines whether the implemented Stockrium components follow their software contracts and support the intended user workflows. For the mobile application, this means accessing prepared market information, configuring an analysis, and maintaining a conversation. For Stockrium Lab, it means allowing an authenticated user to run an analysis or backtest, retain the resulting experiment, monitor its state, reopen its details, and compare compatible runs. These questions are distinct from whether a recommendation will be profitable. Historical outcomes are examples produced by the tool and are discussed separately in Chapter~6; they are not acceptance criteria for Chapter~5.
 
-\subsection{API Testing}
-\label{subsec:backend-api-testing}
-
-Table~\ref{tab:backend-api-tests} groups all 62 registered FastAPI endpoint operations by domain. Each group was checked with representative valid input, authentication where required, response data, and invalid or unauthorized input. All 62 operations returned the expected response and were recorded as passed.
-
-{\footnotesize
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.16}
-\begin{longtable}{>{\raggedright\arraybackslash}p{1.15cm} >{\raggedright\arraybackslash}p{2.35cm} >{\raggedright\arraybackslash}p{9.25cm} >{\centering\arraybackslash}p{1.0cm}}
-    \caption{Backend API functional test results}
-    \label{tab:backend-api-tests} \\
-    \toprule
-    \textbf{ID} & \textbf{API group} & \textbf{Endpoints and tested behavior} & \textbf{Result} \\
-    \midrule
-    \endfirsthead
-    \toprule
-    \textbf{ID} & \textbf{API group} & \textbf{Endpoints and tested behavior} & \textbf{Result} \\
-    \midrule
-    \endhead
-    \bottomrule
-    \endfoot
-    API-01 & Operations & \texttt{GET /} and \texttt{GET /health}: application and liveness responses were returned correctly. & Pass \\
-    API-02 & Authentication & \texttt{POST /api/auth/signup}, \texttt{/login}, \texttt{/verify-email}, \texttt{/resend-verification-otp}, \texttt{/reset-password}, \texttt{/social-login}, \texttt{/refresh}, \texttt{/logout}, \texttt{/forgot-password}, \texttt{/verify-otp}, \texttt{/reset-password-with-otp}, and \texttt{/resend-otp}; \texttt{GET /api/auth/me} and \texttt{/admin-session}. Registration, verification, login, token rotation, logout, password recovery, social identity, current-user lookup, and administrator-role validation returned the expected results. & Pass \\
-    API-03 & Market data & \texttt{GET /api/all-symbol}, \texttt{/all-stocks}, \texttt{/search/\{symbol\}}, \texttt{/price/\{symbol\}}, \texttt{/market-index-price/\{index\_id\}}, \texttt{/current-price/\{symbol\}}, \texttt{/related-stocks/\{symbol\}}, \texttt{/industry-movement}, \texttt{/market-index}, \texttt{/market-index/\{index\_id\}/random-stocks}, \texttt{/market-index/\{index\_id\}}, and \texttt{/investing-idea}. Symbol discovery, prices, indices, related stocks, industries, and market collections were returned correctly. & Pass \\
-    API-04 & Company and analysis data & \texttt{GET /api/company/\{symbol\}/profile}, \texttt{/leaders}; \texttt{GET /api/fundamental-analysis/\{symbol\}/cash-flows}, \texttt{/financial-indicators}, \texttt{/income-statements}, \texttt{/summary}; and \texttt{GET /api/technical-indicators/\{symbol\}}. Company, financial, and technical records were loaded and formatted correctly. & Pass \\
-    API-05 & Articles & \texttt{GET /api/articles}, \texttt{/macro}, \texttt{/business}, \texttt{/today-highlight}, \texttt{/detail/\{article\_id\}}, \texttt{/stock/\{stock\_symbol\}}, and \texttt{/category/\{category\_id\}}. General, categorized, highlighted, stock-linked, and detail responses were returned correctly. & Pass \\
-    API-06 & Personalization & \texttt{GET/POST/DELETE /api/favorite}, \texttt{POST /api/favorite/check}, \texttt{GET/POST /api/search-history}, and \texttt{GET/POST /api/risk-appetite/}. Watchlist, favorite checking, recent search history, and investment-horizon persistence operated for the authenticated user. & Pass \\
-    API-07 & Analysis and chat & \texttt{POST /api/agentic/analyze} and \texttt{/chat}; \texttt{GET /api/agentic/chat/sessions} and \texttt{/chat/history/\{session\_id\}}; and \texttt{DELETE /api/agentic/chat/session/\{session\_id\}}. Structured analysis, contextual chat, history, ownership checks, and deletion behaved correctly. & Pass \\
-    API-08 & Experimentation and backtest & \texttt{POST /api/agentic/admin-analyze} and \texttt{/backtest}; \texttt{GET /api/agentic/admin-universe/\{name\}}, \texttt{/backtests}, \texttt{/backtests/local/\{filename\}}, and \texttt{/backtests/files/\{filename\}}. Administrator authorization, universe lookup, controlled analysis, backtest execution, artifact listing, and protected local or cloud retrieval operated correctly. & Pass \\
-    \midrule
-    \multicolumn{3}{r}{\textbf{Backend API groups}} & \textbf{8/8} \\
-\end{longtable}
-}
-
-The API result was 62/62 operations passed across all eight domain groups.
-
-\subsection{Multi-Agent Analysis Workflow Testing}
-\label{subsec:backend-analysis-workflow-testing}
-
-The complete stock-analysis path was checked from request validation to the public structured response. Table~\ref{tab:analysis-workflow-tests} lists the principal stages. Both automatic and manual configurations completed the enabled branches, applied the implemented score thresholds, and returned the expected Buy-or-Wait result.
+The principal reproducible evidence in the repository is the Python \texttt{unittest} suite under \path{backend/tests}. Static inventory of the current revision identifies 106 test methods across 20 files. The tests use fixed values and mocks at external boundaries so deterministic application behavior can be checked without making regression success depend on SSI, Supabase, Redis, email, or language-model availability. Table~\ref{tab:automated-test-inventory} groups this test inventory by responsibility.
 
 \begin{table}[H]
     \centering
-    \caption{Multi-agent analysis workflow test results}
-    \label{tab:analysis-workflow-tests}
-    \footnotesize
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.2cm} >{\raggedright\arraybackslash}p{3.0cm} X >{\centering\arraybackslash}p{1.0cm}}
+    \caption{Repository-contained automated backend test inventory}
+    \label{tab:automated-test-inventory}
+    \small
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.18}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.0cm} >{\centering\arraybackslash}p{1.5cm} X}
         \toprule
-        \textbf{ID} & \textbf{Stage} & \textbf{Tested behavior} & \textbf{Result} \\
+        \textbf{Test group} & \textbf{Methods} & \textbf{Principal scope} \\
         \midrule
-        AN-01 & Request and state creation & The API validated symbol, language, investment horizon, mode, source selections, indicators, and optional weights before creating the initial graph state. & Pass \\
+        Multi-agent analysis and decision logic & 49 & Graph routing and convergence, specialist-agent outputs, deterministic score boundaries, trading-plan validation, model fallback, technical rules, and language propagation. \\
         \addlinespace
-        AN-02 & Orchestration & The orchestrator produced the correct horizon-specific technical interval and evidence windows without changing the submitted stock context. & Pass \\
+        Experiment lifecycle and reproducibility & 19 & Experiment creation, ownership, ordered comparison, asynchronous backtest state transitions, artifact namespace isolation, reproducibility metadata, warnings, and saved-result reuse. \\
         \addlinespace
-        AN-03 & Conditional routing & Automatic mode executed technical, fundamental, and news branches; manual mode executed only the enabled sources while always retaining at least one technical indicator. & Pass \\
+        Historical simulation & 14 & Shared scoring, warm-up and date boundaries, trade timing and exits, backtest scope, benchmark data, VN30 aggregation, and visualization payloads. \\
         \addlinespace
-        AN-04 & Specialist branches & Technical indicators, reference signals, and multi-candle trend context were calculated correctly; technical, fundamental, and article evidence was converted into validated structured scores and analyses, with deterministic technical fallback on model failure. & Pass \\
+        Authentication and security boundaries & 13 & Refresh-token rotation, independent Redis sessions, logout isolation, input limits, query restrictions, OTP hashing, endpoint protection, and authenticated Lab access without an administrator-role requirement. \\
         \addlinespace
-        AN-05 & Parallel convergence & Enabled branch results were merged in \texttt{agent\_results} and all completed before the recommendation stage ran once. & Pass \\
-        \addlinespace
-        AN-06 & Recommendation decision & Horizon or manual weights were applied; the 0.60 total threshold, horizon-specific technical thresholds, and manual low-technical-weight bypass produced the expected Buy-or-Wait decision; disabled or unavailable sources contributed zero. & Pass \\
-        \addlinespace
-        AN-07 & Trading plan & A Buy result returned valid entry, take-profit, stop-loss, and maximum-holding values; an invalid generated plan used the correct deterministic horizon fallback, while Wait returned zero-valued plan fields. & Pass \\
-        \addlinespace
-        AN-08 & Aggregation and response & The aggregator preserved the established decision and scores, returned bounded confidence and a summary, and the service constructed the standardized client response or controlled error. & Pass \\
+        Data and assistant support behavior & 11 & Financial-history contracts, market-price pagination and retry, safe data fallbacks, and deterministic intent-classification rules. \\
         \midrule
-        \multicolumn{3}{r}{\textbf{Multi-agent analysis workflow}} & \textbf{8/8} \\
+        \textbf{Total} & \textbf{106} & \textbf{20 Python test files} \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-\subsection{Backtesting Workflow Testing}
-\label{subsec:backend-backtesting-workflow-testing}
+The repository does not contain a machine-readable test-run log, coverage report, device matrix, browser-automation report, load-test report, or archived manual-test protocol for the current revision. Therefore, the inventory above demonstrates implemented test coverage but is not presented as 106 recorded passes. The repeatable backend command is \texttt{python -m unittest discover -s tests -v} from the \path{backend} directory. A release record should preserve its console output together with the revision identifier, Python version, execution date, and dependency versions. This evidence boundary prevents planned, source-inspected, or previously observed behavior from being reported as a newly executed test result.
 
-The historical evaluation path was tested from the protected request through signal construction, multi-agent filtering, trade simulation, metric calculation, and artifact persistence. Table~\ref{tab:backtesting-workflow-tests} summarizes the complete flow. Every stage operated according to the rules defined in Chapter~4.
+\section{Automated Backend Verification}
+\label{sec:automated-backend-verification}
+
+The automated suite emphasizes deterministic boundaries where a regression can be identified from a fixed expected value. External calls are mocked where appropriate, while tests exercise the service, workflow, persistence adapter, and route logic surrounding those calls. This approach verifies how Stockrium handles model outputs and provider failures without claiming that a mocked response measures live-provider quality.
+
+\subsection{Multi-Agent Analysis Correctness}
+\label{subsec:multi-agent-analysis-correctness}
+
+Table~\ref{tab:analysis-automated-coverage} summarizes the behaviors represented by the analysis tests. The objective is to check that the configured evidence sources reach the correct nodes and that Python retains control of the final decision boundaries described in Chapter~4.
 
 \begin{table}[H]
     \centering
-    \caption{Backtesting workflow test results}
-    \label{tab:backtesting-workflow-tests}
+    \caption{Automated coverage of the multi-agent analysis workflow}
+    \label{tab:analysis-automated-coverage}
     \footnotesize
-    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.2cm} >{\raggedright\arraybackslash}p{3.0cm} X >{\centering\arraybackslash}p{1.0cm}}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.35cm} >{\raggedright\arraybackslash}p{3.0cm} X}
         \toprule
-        \textbf{ID} & \textbf{Stage} & \textbf{Tested behavior} & \textbf{Result} \\
+        \textbf{ID} & \textbf{Boundary} & \textbf{Covered behavior} \\
         \midrule
-        BT-01 & Request and authorization & The endpoint accepted supported symbols, dates, benchmark, mode, selections, holding period, and score-exit settings only for an authorized evaluator. & Pass \\
+        AN-01 & Technical preparation & KDJ edge cases, reference scoring, live-price fallback, historical price isolation, and the shared analysis/backtest scoring implementation. \\
         \addlinespace
-        BT-02 & Historical preparation & Daily candles and benchmark values were loaded, pre-start history was retained, and the 50-candle warm-up was applied before trimming to the evaluation period. & Pass \\
+        AN-02 & Source analysis & Technical, fundamental, and article agents return bounded structured scores, use the requested language, and apply defined no-data or model-failure fallbacks. \\
         \addlinespace
-        BT-03 & Indicator and signal scoring & RSI, moving-average, Bollinger Bands, MACD, and KDJ values used the shared production calculations; the normalized medium-term 0.5 prefilter and manual weight below 0.15 selected the expected candidate dates. & Pass \\
+        AN-03 & Fundamental time boundary & Multi-year growth uses valid annual rows, while a historical candidate excludes the simulated year and future information. \\
         \addlinespace
-        BT-04 & Date-bounded analysis & Candidate dates used only the permitted technical, fundamental, and article evidence, disabled sources were skipped, and enabled branches converged before recommendation. & Pass \\
+        AN-04 & Routing and convergence & Automatic mode starts all source chains; manual mode starts only selected chains; parallel branch updates merge before one recommendation and aggregation sequence. \\
         \addlinespace
-        BT-05 & Full and baseline paths & The full pipeline retained only Buy recommendations and their validated plans, while the engine-only branch retained technical candidates with the configured holding limit. & Pass \\
+        AN-05 & Deterministic decision & Horizon defaults and manual weights, the total-score threshold, technical thresholds, and the low-technical-weight bypass produce the expected Buy-or-Wait control flow. \\
         \addlinespace
-        BT-06 & Trade simulation & Entry occurred at the next tradable open; crossed plan boundaries were rejected; stop loss, take profit, score exit, timeout, transaction cost, and non-overlapping positions were handled correctly. & Pass \\
-        \addlinespace
-        BT-07 & Metrics and comparisons & Trade count, win rate, returns, drawdown, Sharpe statistic, Calmar ratio, profit factor, benchmark regimes, buy-and-hold, and statistical comparisons were produced correctly. & Pass \\
-        \addlinespace
-        BT-08 & Result artifacts & Visualization data contained prices, indicators, decisions, entries, exits, metrics, and effective configuration; local JSON, VN30 aggregation, listing, and protected cloud upload or retrieval operated correctly. & Pass \\
-        \midrule
-        \multicolumn{3}{r}{\textbf{Backtesting workflow}} & \textbf{8/8} \\
+        AN-06 & Trading plan and aggregation & Buy-plan ranges and reward--risk constraints are validated, invalid plans use the deterministic fallback, Wait avoids plan generation, and aggregation cannot override the established decision. \\
         \bottomrule
     \end{tabularx}
 \end{table}
 
-\subsection{Backend Test Result}
-\label{subsec:backend-testing-results}
+These tests establish consistency between configured inputs and implemented control flow. They do not establish that a Buy result is financially correct, because the expected assertions concern routing, bounds, formulas, and response contracts rather than future returns.
 
-All backend areas passed: 62/62 API operations across 8/8 API groups, 8/8 multi-agent analysis stages, and 8/8 backtesting stages. Authentication and authorization, data validation, application services, analytical branches, deterministic decision rules, trade simulation, metrics, and artifact access all produced the expected outcomes. The overall backend result is therefore recorded as \textbf{Pass}.
+\subsection{Stockrium Lab Experiment Workflow}
+\label{subsec:stockrium-lab-experiment-testing}
 
-\section{Mobile Application and Experimentation Web Testing}
-\label{sec:client-manual-testing}
+The new application direction makes experiment management a first-class testing target. The relevant tests cover the relational experiment service, authenticated artifact namespace, asynchronous backtest route, comparison request, and reproducibility metadata. Table~\ref{tab:experiment-workflow-coverage} maps these tests to the user-visible workflow.
 
-The mobile application and internal experimentation web interface were evaluated through manual functional walkthroughs based on their implemented routes, controls, and user flows. Every scenario listed in Tables~\ref{tab:mobile-manual-tests} and~\ref{tab:web-manual-tests} was executed and passed. The grouping is intentionally workflow-oriented: one row can cover several interface actions that together complete one user goal.
+\begin{table}[H]
+    \centering
+    \caption{Automated coverage of Stockrium Lab experiment management}
+    \label{tab:experiment-workflow-coverage}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.35cm} >{\raggedright\arraybackslash}p{3.0cm} X}
+        \toprule
+        \textbf{ID} & \textbf{User operation} & \textbf{Covered behavior} \\
+        \midrule
+        EXP-01 & Create a run & An analysis or backtest creates a \texttt{running} experiment with its owner, type, scope, mode, configuration, and reproducibility metadata. \\
+        \addlinespace
+        EXP-02 & Run a backtest & Submission returns HTTP~202 with an experiment identifier and registers the background job; successful execution completes the owned record, while an exception marks it \texttt{failed}. \\
+        \addlinespace
+        EXP-03 & View history and detail & Listing is always filtered by the authenticated \texttt{user\_id}; detail and completion updates cannot operate without the matching owner. \\
+        \addlinespace
+        EXP-04 & Compare runs & The request accepts two to five distinct identifiers, rejects invalid counts or duplicates, loads only owned records, preserves requested order, and the route rejects mixed experiment types. \\
+        \addlinespace
+        EXP-05 & Open an artifact & Local and Supabase Storage paths use a user-derived namespace and reject traversal or cross-user access. \\
+        \addlinespace
+        EXP-06 & Interpret reproducibility & Configuration fingerprints are stable, display names do not change the fingerprint, limitations of live data and nondeterministic AI are disclosed, and new and saved backtests use the same result dashboard. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
 
-\subsection{Mobile Application Manual Testing}
-\label{subsec:mobile-manual-testing}
+The experiment tests directly support the thesis contribution: they verify that a user can retain and compare outputs without treating a particular output as proof that the analytical pipeline works in every market condition. They also expose a current lifecycle limitation. FastAPI background tasks are process-local, so the suite checks scheduling and completed/failed updates but does not demonstrate durable resume, cancellation, or retry after a server-process failure.
 
-The mobile walkthrough covers the principal Android routes and the shared client infrastructure described in Chapter~4. It includes entry routing, account access, the five-tab shell, market and company data, configurable analysis, news, and persistent conversation flows. Table~\ref{tab:mobile-manual-tests} summarizes the results.
+\subsection{Historical Simulation and Security Boundaries}
+\label{subsec:simulation-security-testing}
 
-{\footnotesize
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.18}
-\begin{longtable}{>{\raggedright\arraybackslash}p{1.15cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{8.25cm} >{\centering\arraybackslash}p{1.0cm}}
-    \caption{Mobile application manual test results}
-    \label{tab:mobile-manual-tests} \\
-    \toprule
-    \textbf{ID} & \textbf{Workflow} & \textbf{Tested behavior} & \textbf{Result} \\
-    \midrule
-    \endfirsthead
-    \toprule
-    \textbf{ID} & \textbf{Workflow} & \textbf{Tested behavior} & \textbf{Result} \\
-    \midrule
-    \endhead
-    \bottomrule
-    \endfoot
-    M-01 & Application entry and onboarding & A first-time user is routed to onboarding, while a returning user is directed to authentication, investment-horizon setup, or the main tabs according to persisted state. & Pass \\
-    M-02 & Registration and sign-in & Sign-up input, email OTP verification, password sign-in, Google sign-in, and invalid-credential feedback follow the expected routes without exposing an authenticated screen prematurely. & Pass \\
-    M-03 & Session and account recovery & Access-token recovery, the session-expired modal, logout, forgotten-password OTP verification, and new-password completion return the application to a consistent authentication state. & Pass \\
-    M-04 & Main navigation and preferences & Overview, Market, Chatbot, News, and Profile can be selected from the custom tab shell; theme, language, investment horizon, and profile settings persist as expected. & Pass \\
-    M-05 & Market exploration & Market indices, investment ideas, industry movement, market highlights, and available news sections load into their corresponding cards, lists, and detail destinations. & Pass \\
-    M-06 & Search, stock detail, and watchlist & Users can search by symbol or company, open the selected stock, revisit recent searches, add or remove watchlist entries, and navigate to related securities. & Pass \\
-    M-07 & Charts and financial evidence & Price charts, candle intervals, volume, supported technical indicators, company information, financial statements, financial indicators, and related content are displayed for the active symbol. & Pass \\
-    M-08 & Financial news & General, categorized, and stock-associated news lists open the shared article-detail screen and preserve links back to related market or stock contexts. & Pass \\
-    M-09 & Configurable AI analysis & Automatic and manual configurations can be submitted; invalid manual selections are blocked; and the result screen presents Buy/Wait, confidence, component scores, explanations, and applicable trading-plan values. & Pass \\
-    M-10 & Conversational assistant & Users can create, reopen, continue, and delete chat sessions, with multi-turn questions retaining the context of the selected conversation. & Pass \\
-    \midrule
-    \multicolumn{3}{r}{\textbf{Mobile manual total}} & \textbf{10/10} \\
-\end{longtable}
-}
+The historical-simulation tests cover the shared technical rules, preservation of pre-start history and the 50-candle warm-up, date trimming, benchmark retrieval, next-open entry, plan-boundary rejection, score exits, holding limits, non-overlapping positions, transaction costs, and visualization configuration. Additional tests ensure that legacy walk-forward output is not exposed and that VN30 aggregate statistics retain only the latest resolved universe. These assertions verify internal consistency of the simulator; they do not use a positive return as a passing condition.
 
-All ten workflow groups passed in the manual walkthrough. The result indicates that the principal implemented mobile paths were usable from entry through analysis and conversational interaction. It does not represent an automated regression suite or a device-fragmentation matrix; future releases should preserve device model, Android version, build identifier, execution date, and screenshots or video for each manual run.
+Security tests complement this behavior. They reject oversized or malformed requests, unsafe database queries, plaintext OTP storage, path traversal, and unauthenticated Stockrium Lab access. They also confirm the changed authorization model: Lab routes require a valid user session but do not require an administrator role, while experiment and artifact reads remain isolated by owner. Authentication tests cover refresh-token rotation, independent multi-device Redis keys, and logout of one selected session without revoking another session belonging to the same user.
 
-\subsection{Experimentation Web Manual Testing}
-\label{subsec:experimentation-web-manual-testing}
+\section{Client Workflow Verification Scope}
+\label{sec:client-workflow-verification}
 
-The internal web interface is intended for authorized evaluation rather than public investment use. Its manual walkthrough therefore focuses on administrator session handling, controlled analysis, backtest execution, progress monitoring, stored artifacts, and result visualization. Table~\ref{tab:web-manual-tests} reports the results.
+The repository currently has no automated React Native component, mobile end-to-end, or browser test suite. Accordingly, the following tables define the source-traceable walkthrough scope for the two clients rather than reporting an unsupported automated pass rate. Screenshots in the interface-demonstration chapter show implemented states, but screenshots alone do not prove that every transition, failure path, browser, or device was tested.
 
-{\footnotesize
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.18}
-\begin{longtable}{>{\raggedright\arraybackslash}p{1.15cm} >{\raggedright\arraybackslash}p{3.0cm} >{\raggedright\arraybackslash}p{8.25cm} >{\centering\arraybackslash}p{1.0cm}}
-    \caption{Experimentation web manual test results}
-    \label{tab:web-manual-tests} \\
-    \toprule
-    \textbf{ID} & \textbf{Workflow} & \textbf{Tested behavior} & \textbf{Result} \\
-    \midrule
-    \endfirsthead
-    \toprule
-    \textbf{ID} & \textbf{Workflow} & \textbf{Tested behavior} & \textbf{Result} \\
-    \midrule
-    \endhead
-    \bottomrule
-    \endfoot
-    W-01 & Administrator session & Email/password authentication, administrator-role verification, in-memory token handling, token refresh, retry after an authorization failure, and logout operate as expected. & Pass \\
-    W-02 & Single-stock AI analysis & The evaluator can select one symbol, choose automatic or manual evidence settings, submit the protected analysis request, and inspect the structured result. & Pass \\
-    W-03 & VN30 and VN100 analysis & The interface obtains the selected universe from the backend, processes its symbols, reports progress, and retains successful symbol-level results. & Pass \\
-    W-04 & Single-stock backtest & Symbol, historical period, flow, indicator, holding, and supported exit controls form a valid request; returned trades, metrics, comparisons, and configuration are presented. & Pass \\
-    W-05 & VN30 batch backtest & Sequential VN30 execution updates progress and stores a local checkpoint so completed symbols can be skipped and failed symbols retried under the same configuration. & Pass \\
-    W-06 & Stored-result access & The evaluator can list available cloud artifacts, retrieve an authenticated result, and load a previously generated local or uploaded JSON report. & Pass \\
-    W-07 & Visualization and inspection & Price and indicator series, entry and exit markers, performance summaries, comparison results, configuration details, and the trade journal are displayed from the selected artifact. & Pass \\
-    W-08 & Input and failure feedback & Empty API addresses, invalid configurations, unauthorized sessions, symbol-level failures, and unavailable artifacts produce controlled feedback without presenting a failed operation as successful. & Pass \\
-    \midrule
-    \multicolumn{3}{r}{\textbf{Experimentation web manual total}} & \textbf{8/8} \\
-\end{longtable}
-}
+\subsection{Mobile Application Walkthrough Scope}
+\label{subsec:mobile-walkthrough-scope}
 
-All eight web workflow groups passed in the manual walkthrough. As with the mobile result, this is a functional manual record rather than browser automation or a performance test. It confirms the principal implemented evaluator paths but does not establish cross-browser compatibility, concurrent-user capacity, accessibility compliance, or long-running provider availability.
+\begin{table}[H]
+    \centering
+    \caption{Core mobile workflow walkthrough scope}
+    \label{tab:mobile-walkthrough-scope}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.35cm} >{\raggedright\arraybackslash}p{3.1cm} X}
+        \toprule
+        \textbf{ID} & \textbf{Workflow} & \textbf{Required observations} \\
+        \midrule
+        MOB-01 & Entry and account access & Onboarding, sign-up, verification, sign-in, refresh, logout, and password recovery lead to the expected route and controlled error state. \\
+        \addlinespace
+        MOB-02 & Routine market use & Overview, market, search, stock detail, watchlist, charts, financial evidence, articles, theme, language, and investment horizon remain navigable on the target Android build. \\
+        \addlinespace
+        MOB-03 & Configurable analysis & Automatic and manual configurations validate input, submit one stock for analysis, and display the decision, component evidence, explanation, disclaimer, and applicable plan. \\
+        \addlinespace
+        MOB-04 & Conversational assistant & A user can create, continue, reopen, and delete an owned conversation while preserving multi-turn context. \\
+        \addlinespace
+        MOB-05 & Failure behavior & Expired sessions, unavailable data, network errors, and backend failures produce an explicit retry, empty, or error state rather than a successful-looking result. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+A future recorded execution should include device model, Android version, build identifier, date, backend revision, test account, and screenshots or video for each scenario. Compatibility across Android versions and device sizes cannot be inferred from one APK walkthrough.
+
+\subsection{Stockrium Lab Walkthrough Scope}
+\label{subsec:stockrium-lab-walkthrough-scope}
+
+\begin{table}[H]
+    \centering
+    \caption{Core Stockrium Lab workflow walkthrough scope}
+    \label{tab:lab-walkthrough-scope}
+    \footnotesize
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{1.35cm} >{\raggedright\arraybackslash}p{3.1cm} X}
+        \toprule
+        \textbf{ID} & \textbf{Workflow} & \textbf{Required observations} \\
+        \midrule
+        LAB-01 & User session & An ordinary authenticated user can sign in, refresh a session, access Lab operations, and log out; an unauthenticated browser is rejected. \\
+        \addlinespace
+        LAB-02 & AI-analysis experiment & The user can run one-stock, VN30, or VN100 analysis with supported settings and then find the owned configuration, status, summary, and detailed result in experiment history. \\
+        \addlinespace
+        LAB-03 & Backtest lifecycle & A single-stock or supported VN30 workflow receives an experiment identifier, displays \texttt{running}, polls without blocking the initiating request, and finally displays \texttt{completed} or \texttt{failed}. \\
+        \addlinespace
+        LAB-04 & History and detail & Filtering, pagination, selection, and reopening a saved experiment preserve its lifecycle fields, reproducibility information, result, and disclaimer. \\
+        \addlinespace
+        LAB-05 & Comparison & The user can select two to five owned experiments of one type and inspect their configurations and results side by side; duplicates, mixed types, and foreign or missing identifiers are rejected. \\
+        \addlinespace
+        LAB-06 & Artifact inspection & The result dashboard can load a new or saved backtest, display prices, indicators, decisions, trades, metrics, comparison references, and configuration, and export supported data without exposing another user's artifact. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+This walkthrough is centered on the user's ability to operate and inspect the tool. Cross-browser compatibility, accessibility conformance, concurrent-user capacity, long-duration provider reliability, and recovery after a server restart require separate recorded tests.
 
 \section{Securities Analyst Feedback}
 \label{subsec:securities-analyst-feedback}
 
-Ms.~Trinh, Securities Analyst at FPT Securities Joint Stock Company, provided professional feedback on the application \cite{trinh2026weights}. She reported that manually conducting a comprehensive stock analysis generally requires several hours because the analyst must examine fundamental information, technical indicators, and relevant financial news. For a new investor who is unfamiliar with the required financial formulas and analytical methods, the process may take an entire day. In her assessment, Stockrium's AI-assisted workflow can substantially reduce the time needed to collect, calculate, interpret, and synthesize this information.
+Ms.~Trinh, a securities analyst at FPT Securities Joint Stock Company, provided qualitative professional feedback on Stockrium \cite{trinh2026weights}. She explained that manually combining fundamental information, technical indicators, and relevant news can require several hours and may take a new investor longer. Her feedback supported the application's objective of organizing these evidence sources and presenting an understandable starting point for further investigation; it was not used to claim that the generated decision replaces professional judgment.
 
-Her consultation also helped the team refine the analysis workflow built around three complementary evidence components: financial news, fundamental analysis, and technical analysis. Based on her domain feedback, the team adjusted the relative weight assigned to each component and refined the technical interval and evidence lookback windows for short-, medium-, and long-term investment horizons. These horizon-specific settings are reflected in the planning rules in Table~\ref{tab:analysis-plan-rules} and the default recommendation-score weights in Table~\ref{tab:confidence-horizon-weights}.
+The consultation also influenced the analysis design. The team refined horizon-dependent weights, technical intervals, and evidence windows, while fundamental analysis was changed to retain up to five valid annual periods regardless of the selected horizon. Financial and nonfinancial companies were separated because their balance-sheet structures and relevant indicators differ: nonfinancial analysis emphasizes liquidity, leverage, efficiency, profitability, valuation, and available DuPont components, whereas financial-sector analysis uses capital safety, asset quality and management, earnings, liquidity, and P/B-oriented valuation.
 
-Ms.~Trinh also reviewed the prompts used by the specialized agents and suggested revisions to their instructions and expected outputs. In the initial design, the team planned to apply a horizon-dependent lookback window to fundamental analysis, similar to the windows used for technical and news evidence. She advised that the fundamental agent should instead consistently examine up to five years of annual data, regardless of the selected investment horizon, so that its assessment can capture the company's multi-year financial position and development rather than rely on a short observation period. The implemented fundamental source consequently retains the five latest valid annual indicator records, as described in Section~\ref{subsubsec:fundamental-analysis-node}.
+Ms.~Trinh considered the interface visually accessible, the available stock information sufficiently comprehensive, and the AI explanations understandable. She also tried multiple chatbot questions reflecting practical stock and market information needs. These observations provide one expert perspective on usability and domain appropriateness, but they are not a controlled user study, a comparison with competing products, or evidence of profitable recommendations.
 
-She further emphasized that financial-sector and nonfinancial companies should not be evaluated with one identical set of fundamental indicators because their business models, balance-sheet structures, and relevant measures differ. This feedback led the team to separate the analytical inputs and prompt guidance for the two groups. Nonfinancial companies are assessed through liquidity, leverage, operating efficiency, profitability, valuation, and, when available, DuPont components. Financial-sector companies instead use measures organized around capital safety, asset quality and management, earnings, liquidity, and P/B-based valuation. This distinction allows the fundamental agent to apply a more appropriate analytical framework to each type of company.
+\section{Testing Summary and Limitations}
+\label{sec:testing-summary-limitations}
 
-Ms.~Trinh considered the interface visually appealing and easy to use. She also found that the application presented sufficiently comprehensive stock information and that the AI-generated analysis was good and easy to understand. To review the chatbot under realistic usage conditions, she tested it with multiple questions that reflected how investors may seek information about individual stocks and the broader market before deciding whether to invest. This exercise covered varied information-seeking interactions rather than a single prepared question and provided practical observations about how the chatbot supports pre-investment exploration. Her feedback was used to further refine the analysis and chatbot flows and improve the overall user experience. Her comments provide a practical expert perspective on the system's usefulness and usability, although they represent a qualitative professional assessment rather than a controlled comparative experiment.
+The current repository provides substantial automated coverage of the most important deterministic backend boundaries, including the multi-agent decision flow, historical simulation, authenticated experiment lifecycle, comparison constraints, reproducibility disclosures, and cross-user artifact isolation. This coverage is aligned with Stockrium's revised contribution because it tests whether the experimentation tool behaves transparently and preserves user-owned results.
+
+The remaining evidence gaps are explicit. The current revision has no archived execution log or measured statement coverage, no automated client tests, no recorded browser or Android compatibility matrix, no load or endurance results, and no durable-queue recovery test. Live AI and upstream financial providers are intentionally not used as regression oracles. Most importantly, software-test success establishes implementation correctness only; it does not establish predictive validity, financial superiority, or future profitability.

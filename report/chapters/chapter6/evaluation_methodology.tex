@@ -1,28 +1,18 @@
-\section{Evaluation Methodology}
-\label{sec:evaluation-methodology}
+\section{Purpose and Representative User Scenario}
+\label{sec:lab-usage-purpose}
 
-The evaluation examines the historical behavior of Stockrium's analytical pipeline. Its purpose is to determine how the complete multi-agent pipeline behaves relative to explicit alternatives, how sensitive the results are to securities and market conditions, and whether the available evidence supports a reliable performance claim. It does not treat historical profit as a guarantee of future return.
+This chapter presents one representative use of Stockrium Lab. Its purpose is to show how an authenticated user can configure a historical backtest, monitor its execution, reopen the saved record, inspect its assumptions and outputs, and compare it with available references. The walkthrough is a concrete demonstration of the implemented tool, not a formal experiment intended to prove that Stockrium produces superior or profitable investment decisions.
 
-Three evaluation questions guide the chapter:
+The scenario uses the VN30 batch workflow because it exercises the principal Lab capabilities over more than one security. The user performs the following steps:
 
 \begin{enumerate}
-    \item \textbf{EQ1: Comparative performance.} How does the complete multi-agent pipeline compare with the engine-only technical strategy and passive buy-and-hold exposure?
-    \item \textbf{EQ2: Robustness and calibration.} Are results consistent across VN30 securities, technical indicators, confidence tiers, and market regimes?
-    \item \textbf{EQ3: Statistical and practical validity.} What statistical evidence supports non-zero outcomes or superiority to the stated alternatives, and which data or simulation limitations constrain interpretation?
+    \item sign in and select the backtest workspace;
+    \item choose the VN30 scope, daily historical period, supported analytical configuration, holding limit, and exit options;
+    \item submit the run and observe symbol-level progress while the backend creates and updates owned experiment records;
+    \item open the completed record from personal history to inspect its configuration, reproducibility notes, metrics, trades, and visualization data; and
+    \item compare the saved output with the engine-only and same-security buy-and-hold references, or select other compatible records for side-by-side comparison.
 \end{enumerate}
 
-\subsection{Evidence Sources}
-\label{subsec:evaluation-evidence-sources}
+This flow reflects the role division established earlier in the thesis. The mobile application supports routine stock exploration and individual analysis, whereas Stockrium Lab uses a larger web workspace for information-dense results and operations that may continue after the initiating request returns. Every history, detail, comparison, and artifact request remains scoped to the authenticated user.
 
-The primary evidence consists of JSON artifacts produced by the backtesting framework described in Section~\ref{sec:backtesting-framework}. The latest complete-pipeline aggregate contains pipeline and engine-only metrics, buy-and-hold comparisons, statistical tests, confidence summaries, and regime results for the 30 securities returned by the current VN30 lookup. The contributing batch was requested for August~1, 2024 through August~1, 2026, although the aggregate does not store one immutable top-level run manifest. Five companion artifacts contain engine-only ablations for RSI, MACD, KDJ, Bollinger Bands, and moving-average conditions over the same explicitly recorded requested interval and symbol set. The regenerated ablations load pre-start history, preserve the common 50-candle warm-up, and trim to the evaluation interval only after scoring. Each artifact records these settings and reports 30 successful symbols with no error.
-
-Source inspection is used only to establish how the artifacts were produced: every date meeting the fixed technical threshold becomes a candidate; the deterministic Buy-or-Wait rule determines which candidates proceed; the full pipeline supplies take-profit, stop-loss, and holding-period overrides; execution begins at the next open; stop loss is checked before take profit within a daily candle; and 0.15\% transaction cost is deducted on each side. Confidence is generated after the decision and is retained for grouping, not used as an execution gate. This inspection is necessary because an evaluation is meaningful only when the execution assumptions behind its metrics are stated clearly.
-
-\subsection{Measures and Comparisons}
-\label{subsec:evaluation-measures-comparisons}
-
-Performance is summarized by trade count, win rate, total return, maximum drawdown, and the implemented trade-level Sharpe statistic. Cross-sectional means and medians are reported separately because a small number of securities contain sparse or extreme values. The full pipeline is compared with the engine-only branch on the same scored daily frame. However, the full branch changes both candidate acceptance and trade management through recommendation-generated price boundaries and holding periods, whereas the engine branch uses technical candidates and the request-level holding limit without those price boundaries. The comparison therefore measures the combined effect of the multi-agent decision and trading-plan layer; it does not isolate candidate filtering, any single evidence branch, or confidence.
-
-Buy-and-hold provides a passive same-security reference and is calculated without the simulator's transaction-cost deduction. One-sample $t$-tests and sign-permutation tests examine whether per-trade outcomes differ from zero; they are not paired tests against engine-only or buy-and-hold performance. Confidence groups and VN-Index regimes provide descriptive robustness views. Single-indicator ablations show whether results depend disproportionately on one technical perspective.
-
-Repeated historical comparisons can produce backtest overfitting \cite{bailey2017pbo}. Accordingly, this chapter reports unfavorable and non-significant results, distinguishes descriptive metrics from statistical evidence, and treats limitations in point-in-time data, universe construction, execution, and experiment metadata as part of the findings rather than as implementation details to omit.
+The saved case uses current database contents and model-backed analysis. Its reproducibility metadata can identify the submitted configuration and disclose important limitations, but it cannot make live upstream data or nondeterministic model output identical in every rerun. The values below are therefore treated as one saved example that a user can inspect, not as universal properties of the analytical pipeline.

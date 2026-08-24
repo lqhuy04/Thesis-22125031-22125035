@@ -198,11 +198,11 @@ Le Quoc Huy \& Nguyen Vinh Khang
 \phantomsection
 \addcontentsline{toc}{chapter}{ABSTRACT}
 
-Vietnamese retail investors must often combine fragmented market prices, company fundamentals, technical indicators, and financial news before making an informed investment decision. This process requires both financial knowledge and substantial time, while existing tools commonly present only one analytical perspective or provide recommendations whose supporting evidence is difficult to inspect. This thesis presents \textit{Stockrium}, an integrated Vietnamese equity-market decision-support and research platform designed to organize heterogeneous financial information and produce explainable, user-configurable analysis.
+Vietnamese retail investors must often combine fragmented market prices, company fundamentals, technical indicators, and financial news before making an informed investment decision. This process requires both financial knowledge and substantial time, while the reasoning behind automated recommendations can be difficult to inspect. This thesis presents \textit{Stockrium}, an integrated platform that supports Vietnamese equity-market analysis and enables users to examine how different analytical configurations behave. The thesis focuses on constructing a usable and inspectable decision-support and experimentation environment rather than proving that one analytical pipeline can consistently generate profitable trades.
 
-Stockrium consists of an Android mobile application, a backend server, an internal experimentation and backtesting web interface, data-acquisition pipelines, and a multi-agent workflow. The platform supports market exploration, stock search, interactive price and technical-indicator charts, company and fundamental information, financial news, watchlist, AI-assisted analysis based on investment-horizon preference, and an independent conversational financial assistant. Given a user's investment horizon, independent technical, fundamental, and news agents retrieve and analyze their respective evidence, each producing a normalized score and a natural-language summary. These scores are combined through horizon-dependent weights into a Buy/Wait recommendation, accompanied, for Buy decisions, by a trading plan and a confidence-scored explanation of the overall decision. Separate crawling and scheduled collection processes acquire and normalize market, company, financial-statement, and news data for application use and historical evaluation.
+Stockrium comprises an Android mobile application, the web-based Stockrium Lab, a FastAPI backend, data-acquisition pipelines, and a multi-agent analytical workflow. The mobile application consolidates market exploration, stock search, interactive charts, company and fundamental information, financial news, watchlists, configurable AI-assisted analysis, and a conversational financial assistant. Technical, fundamental, and news agents independently analyze their respective evidence, after which a horizon-aware aggregation process produces an explainable Buy/Wait assessment and, for a Buy decision, a proposed trading plan. Stockrium Lab complements the mobile application by moving information-dense and computationally intensive experimentation to a web workspace, where the larger display and long-running workflow are more suitable. Users can run AI analyses and historical backtests for individual securities or supported market universes, retain experiment configurations and results, revisit detailed visualizations, and compare multiple experiments side by side. Crawling and scheduled collection processes supply normalized market, company, financial-statement, and news data to both interfaces.
 
-System testing covered 62 backend API operations, the complete multi-agent analysis and backtesting flows, and manual walkthroughs of 10 mobile and 8 experimentation-web workflow groups; all reported tests passed. Professional feedback from Ms.~Trinh, a securities analyst at FPT Securities Joint Stock Company, indicated that the application presents comprehensive stock information through an accessible interface and that its AI-generated analysis is clear and useful as a starting point for further review. A historical evaluation on the 30 VN30 securities from August~1, 2024 to August~1, 2026, against engine-only, buy-and-hold, and single-indicator baselines, showed that the complete pipeline executed 23.9\% fewer trades and had a smaller mean maximum drawdown (23.82\%~$\rightarrow$~21.64\%), with modest gains in median return. Mean return was slightly lower, and the pipeline outperformed buy-and-hold on only 3 of 30 securities. Statistical and robustness evidence remained limited. Therefore, Stockrium's principal contribution is an integrated and inspectable environment for Vietnamese-market decision support and experimentation, rather than evidence of guaranteed profitability or a replacement for professional judgment.
+The repository contains 106 automated backend test methods covering deterministic multi-agent behavior, historical simulation, security boundaries, user-owned experiment lifecycles, comparison constraints, and reproducibility disclosures, together with defined walkthrough scopes for the mobile and web clients. A VN30 historical case study demonstrates how a user can operate the tool to generate, store, inspect, and compare results against engine-only, buy-and-hold, and single-indicator references. It is presented as evidence that the experimentation workflow functions as intended, not as proof of superior returns or future profitability. Professional feedback from a securities analyst further indicated that Stockrium presents comprehensive information through an accessible interface and provides AI-generated analysis that can serve as a starting point for further review. Stockrium's principal contribution is therefore an end-to-end, transparent environment for Vietnamese-market decision support, user-driven experimentation, and comparative evaluation, while final investment judgment remains with the user.
 
 \textbf{Keywords:} Vietnamese stock market, decision support, multi-agent systems, large language models, financial data analysis, backtesting.
 
@@ -211,7 +211,7 @@ System testing covered 62 backend API operations, the complete multi-agent analy
 \pagenumbering{arabic}
 \chapter{Introduction}
 
-\textit{This chapter describes the motivation and significance of the research, states the objectives of the study, and highlights the expected outcomes. Furthermore, it provides an overview of the thesis organization.}
+\textit{This chapter explains the motivation for Stockrium, defines the objectives and scope of the application, and provides an overview of the thesis organization.}
 
 % ============================================================
 \input{chapters/chapter1/motivation}
@@ -232,7 +232,7 @@ System testing covered 62 backend API operations, the complete multi-agent analy
 \clearpage
 \chapter{Related Work and Foundation Technologies}
 
-\textit{This chapter reviews research related to multi-agent financial systems, finance-specific language models, financial-news sentiment analysis, and stock-market prediction in Vietnam. It then establishes the foundations of technical, fundamental, and financial-news analysis, introduces the artificial-intelligence concepts and evaluation principles underlying Stockrium, and summarizes the development technologies used to implement the platform.}
+\textit{This chapter reviews related financial AI systems and Vietnamese-market platforms, establishes the foundations of technical, fundamental, and financial-news analysis, and introduces the artificial-intelligence, backtesting, experiment-comparison, and development-technology concepts underlying Stockrium.}
 
 % ============================================================
 \input{chapters/chapter2/related_work}
@@ -253,7 +253,7 @@ System testing covered 62 backend API operations, the complete multi-agent analy
 \clearpage
 \chapter{Proposed Application}
 
-\textit{This chapter presents Stockrium from the application and user perspectives. It identifies the stakeholders and principal actors, describes the use cases and end-to-end interaction flows, and explains the key features through which the application supports Vietnamese stock-market exploration and analysis.}
+\textit{This chapter presents Stockrium from the application and user perspectives. It identifies the stakeholders and principal actors, describes the mobile and Stockrium Lab interaction flows, and explains the features for Vietnamese-market exploration, multi-agent decision support, and user-driven experiment comparison.}
 
 % ============================================================
 \input{chapters/chapter3/application_idea}
@@ -266,7 +266,7 @@ System testing covered 62 backend API operations, the complete multi-agent analy
 \clearpage
 \chapter{System Design and Implementation}
 
-\textit{This chapter describes the architecture and implementation of Stockrium. It explains how the mobile client, experimentation and backtesting web interface, backend services, persistent data stores, external data pipelines, multi-agent analysis workflow, conversational assistant, backtesting framework, security mechanisms, and deployment environment cooperate to realize the proposed application.}
+\textit{This chapter describes the architecture and implementation of Stockrium. It explains how the mobile client, Stockrium Lab web workspace, backend services, user-owned experiment persistence, history and comparison operations, persistent data stores, external data pipelines, multi-agent analysis workflow, conversational assistant, backtesting framework, security mechanisms, and deployment environment cooperate to realize the proposed application.}
 
 % ============================================================
 \input{chapters/chapter4/system_architecture}
@@ -299,14 +299,14 @@ System testing covered 62 backend API operations, the complete multi-agent analy
 \clearpage
 \chapter{System Testing}
 
-\textit{This chapter evaluates Stockrium through three complementary activities: complete backend API and workflow testing, manual walkthroughs of the Android application and internal experimentation web interface, and qualitative professional feedback from a securities analyst.}
+\textit{This chapter defines the testing evidence boundary for Stockrium, inventories the repository-contained automated backend tests, examines coverage of multi-agent, backtesting, security, and user-owned experiment workflows, specifies source-traceable walkthrough scopes for the Android application and Stockrium Lab, and reports qualitative professional feedback without treating software correctness as evidence of investment profitability.}
 
 \input{chapters/chapter5/system_testing}
 
 \clearpage
-\chapter{Experiments and Evaluation}
+\chapter{Representative Use of Stockrium Lab}
 
-\textit{This chapter evaluates the analytical behavior of Stockrium on historical Vietnamese market data. It compares the complete pipeline with deterministic and passive baselines, examines robustness across securities, indicators, confidence levels, and market regimes, and identifies the limitations that constrain the strength of the conclusions.}
+\textit{This chapter presents a representative user case in Stockrium Lab. It follows the configuration, execution, storage, inspection, and comparison of a saved VN30 backtest, uses selected outputs to demonstrate what the tool exposes, and states the limits on interpreting those outputs without making an investment-performance claim.}
 
 % ============================================================
 \input{chapters/chapter6/evaluation_methodology}
@@ -324,7 +324,7 @@ System testing covered 62 backend API operations, the complete multi-agent analy
 \clearpage
 \chapter{Demo}
 
-\textit{This chapter demonstrates the implemented Stockrium interfaces. It presents the mobile workflows for account access, market discovery, stock inspection, financial news, configurable multi-agent analysis, and the conversational financial assistant, followed by the internal experimentation and backtesting interface.}
+\textit{This chapter demonstrates the implemented Stockrium interfaces. It first presents the mobile workflows for routine account access, market discovery, stock inspection, financial news, configurable multi-agent analysis, and conversational assistance. It then presents Stockrium Lab, the complementary web workspace in which authenticated users configure longer-running analyses and backtests, inspect saved results, and compare compatible runs.}
 
 \input{chapters/chapter7/demo}
 % ============================================================
@@ -333,7 +333,7 @@ System testing covered 62 backend API operations, the complete multi-agent analy
 \clearpage
 \chapter{Conclusion}
 
-\textit{This chapter summarizes the outcomes and contributions of Stockrium, assesses the degree to which the project objectives were achieved, identifies the remaining limitations, and proposes directions for improving the data, evaluation, analytical workflow, and software platform.}
+\textit{This chapter summarizes Stockrium's contribution as an inspectable decision-support and user-driven experimentation platform, assesses the implemented project objectives, and proposes future improvements to Stockrium Lab reliability, reproducibility, evidence grounding, historical simulation, data coverage, testing, and user experience.}
 
 \input{chapters/chapter7/conclusion_and_future_work}
 % ============================================================

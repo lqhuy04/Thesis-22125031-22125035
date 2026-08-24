@@ -1,20 +1,20 @@
 \section{Application Objectives}
 \label{sec:application-objectives}
 
-The overall objective of this thesis is to develop \textit{Stockrium} as a practical and research-oriented platform for the Vietnamese stock market. The project combines an investor-facing application, an internal historical evaluation tool, and a curated dataset. Its three primary objectives are defined as follows.
+The overall objective of this thesis is to develop \textit{Stockrium} as a practical decision-support and experimentation platform for the Vietnamese stock market. The project combines an investor-facing mobile application, the web-based Stockrium Lab, a shared analytical backend, and a curated dataset. Its three primary objectives are defined as follows.
 
 \begin{enumerate}[label=\textbf{O\arabic*.}, leftmargin=1.7cm]
     \item \textbf{Develop an intelligent decision-support system for individual investors.}
 
     Stockrium aims to provide Vietnamese retail investors with an integrated environment for examining stocks through technical, fundamental, and news-based perspectives. A coordinated multi-agent workflow analyzes these evidence sources and produces an explainable recommendation that considers the user's selected investment horizon. The system also provides market exploration, configurable analytical components, and natural-language interaction so that users can access and interpret financial information more conveniently. The generated results are intended to support, rather than replace, the investor's judgment.
 
-    \item \textbf{Provide an internal backtesting tool for analytical-pipeline evaluation.}
+    \item \textbf{Develop a web-based experimentation and comparison tool.}
 
-    The project aims to provide authorized evaluators with an internal historical simulation environment for evaluating Stockrium's analytical pipeline and supported configurations on Vietnamese market data. The tool reports interpretable performance and risk measures, enabling evaluators to examine system behavior, compare configurations, and assess whether the pipeline operates consistently with its intended decision rules. It is not a general-purpose strategy builder, and its results are used for evaluation and experimentation rather than as evidence of guaranteed future returns.
+    Stockrium Lab aims to let authenticated users run supported AI analyses and historical backtests on Vietnamese market data, monitor their execution, retain experiment histories, inspect detailed results, and compare multiple experiments side by side. The web interface is used because these workflows produce dense tables and visualizations and may require long-running single-security or market-universe processing that is difficult to operate and review on a mobile device. The objective is to provide an inspectable tool through which users can test and compare the behavior of Stockrium's analytical pipeline. It is not a general-purpose strategy builder, and the thesis does not treat historical comparisons as proof of superior returns or future profitability.
 
     \item \textbf{Provide a curated, comprehensive, accurate, and up-to-date dataset for future research and applications.}
 
     Stockrium aims to provide a consistently structured dataset covering all three analytical lenses used by the system: historical price and volume data, company fundamentals, and financial news with sentiment labels. The data are selected from relevant sources, normalized into a common structure, checked during acquisition and processing, and updated through maintainable collection pipelines. This dataset supports Stockrium's application and backtesting functions while providing a useful data foundation for subsequent research and application development in the Vietnamese market.
 \end{enumerate}
 
-Together, these objectives position Stockrium as both a usable financial decision-support system and a research platform for integrated Vietnamese market analysis. The boundaries within which they are pursued are specified in the following section.
+Together, these objectives position Stockrium as a usable financial decision-support system and an inspectable environment for user-driven experimentation on Vietnamese market data. The boundaries within which they are pursued are specified in the following section.

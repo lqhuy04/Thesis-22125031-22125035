@@ -3,12 +3,12 @@
 
 Stockrium is proposed as a decision-support platform that helps individual investors examine Vietnamese listed companies without collecting information from many disconnected sources. The mobile application guides the user through a continuous process of discovering a stock, reviewing market and company information, configuring an analysis, receiving a multi-perspective assessment, and investigating the supporting evidence. Technical, fundamental, and news perspectives remain distinguishable so that the recommendation is presented as an explainable synthesis rather than an unexplained prediction.
 
-The project also provides an internal experimentation and backtesting web interface for controlled analysis and historical evaluation, together with a curated dataset covering price and volume history, company fundamentals, and financial news with sentiment labels. Stockrium remains analytical rather than transactional: it does not place securities orders, transfer funds, or connect to brokerage firms. Any investment action following an analysis remains the user's responsibility.
+The project also provides \textit{Stockrium Lab}, a web workspace in which authenticated users can run AI analyses and historical backtests, retain experiment configurations and results, revisit detailed outputs, and compare multiple experiments side by side. These information-dense views and long-running individual-security or market-universe jobs are separated from the mobile journey because they are easier to operate and inspect on a larger web interface. A curated dataset covering price and volume history, company fundamentals, and financial news with sentiment labels supports both experiences. Stockrium remains analytical rather than transactional: it does not place securities orders, transfer funds, or connect to brokerage firms. Any investment action following an analysis remains the user's responsibility.
 
 \subsection{Stakeholders}
 \label{subsec:application-stakeholders}
 
-The proposed system considers four principal stakeholder categories. Individual investors are the primary users, while an authorized evaluator conducts controlled experiments through the restricted web interface. A securities analyst contributes practical evaluation, and technical teams and service providers support the data and software infrastructure.
+The proposed system considers four principal stakeholder categories. Individual investors are the primary mobile users. Authenticated Stockrium Lab users may include investors, developers, or other users who want to inspect the pipeline through controlled experiments; these roles can be held by the same person. A securities analyst contributes practical feedback, and technical teams and service providers support the data and software infrastructure.
 
 \begin{table}[H]
     \centering
@@ -20,7 +20,7 @@ The proposed system considers four principal stakeholder categories. Individual 
         \textbf{Stakeholder} & \textbf{Description} \\
         \midrule
         Individual investors & Explore Vietnamese stocks and receive configurable, explainable analysis through the mobile application. \\
-        Authorized evaluator & Runs controlled analyses and backtests through the internal experimentation interface. \\
+        Authenticated Stockrium Lab users & Run, retain, review, export, and compare supported AI analysis and backtesting experiments through the web workspace. \\
         Securities analyst & Assesses the system's practical usefulness and provides professional feedback. \\
         Technical teams and service providers & Develop and operate the platform or supply its data and infrastructure services. \\
         \bottomrule
@@ -30,7 +30,7 @@ The proposed system considers four principal stakeholder categories. Individual 
 \subsection{Use Case Model}
 \label{subsec:application-use-cases}
 
-Stockrium has three direct actors. A guest accesses registration, sign-in, and account-recovery functions; an authenticated investor uses personalized exploration, analysis, and chatbot features; and an authorized evaluator accesses restricted experimentation and backtesting functions. Figure~\ref{fig:stockrium-mobile-use-case-model} presents the guest and authenticated-investor use cases in the mobile application, while Figure~\ref{fig:stockrium-web-use-case-model} presents the evaluator use cases in the experimentation and backtesting web interface.
+Stockrium has three direct user roles. A guest accesses registration, sign-in, and account-recovery functions; an authenticated investor uses personalized exploration, analysis, and chatbot features through the mobile application; and an authenticated Stockrium Lab user runs and compares experiments through the web workspace. Figure~\ref{fig:stockrium-mobile-use-case-model} presents the guest and authenticated-investor use cases in the mobile application, while Figure~\ref{fig:stockrium-web-use-case-model} presents the Stockrium Lab use cases.
 
 \begin{figure}[H]
     \centering
@@ -54,7 +54,7 @@ Stockrium has three direct actors. A guest accesses registration, sign-in, and a
         Missing figure:\\
         \texttt{figures/chapter3/stockrium\_use\_case\_model\_web.png}}}%
     }
-    \caption{Use-case model of the experimentation and backtesting web interface}
+    \caption{Use-case model of Stockrium Lab}
     \label{fig:stockrium-web-use-case-model}
 \end{figure}
 
@@ -91,10 +91,11 @@ Stockrium has three direct actors. A guest accesses registration, sign-in, and a
     Start conversation with Chatbot & Begins a conversational financial-support session. \\
     Review conversation history & Reopens previous chatbot sessions and messages. \\
     \midrule
-    \multicolumn{2}{l}{\textbf{Experimentation and backtesting web interface}} \\
-    Run stock analysis & Executes a controlled analysis for a selected stock. \\
-    Configure and execute backtest & Sets supported inputs and runs a historical simulation. \\
-    Review stored experiment results & Opens previously stored analysis and backtesting results. \\
+    \multicolumn{2}{l}{\textbf{Stockrium Lab web workspace}} \\
+    Run AI analysis experiment & Executes a supported analysis for one stock, VN30, or VN100 and stores the run as a user-owned experiment. \\
+    Configure and execute backtest & Runs a supported historical simulation for one stock or VN30 and tracks its experiment status. \\
+    Review experiment history and details & Filters previous experiments and opens their configuration, status, summary, detailed result, visualizations, and available reproducibility metadata. \\
+    Compare saved experiments & Selects two to five experiments of the same type and compares their configurations and results side by side. \\
 \end{longtable}
 }
 
@@ -103,7 +104,7 @@ Market-data providers, news services, and language-model services are supporting
 \subsection{Main Application Flows}
 \label{subsec:main-application-flows}
 
-The use cases form two primary experiences: an investor-facing mobile journey and an experimentation and backtesting workflow. These flows describe user-visible behavior and intentionally treat the internal multi-agent workflow as a single analytical service; its agents, state, and execution logic are presented in Chapter 4.
+The use cases form two primary experiences: an investor-facing mobile journey and the Stockrium Lab experimentation workflow. These flows describe user-visible behavior and intentionally treat the underlying multi-agent workflow as a single analytical service; its agents, state, and execution logic are presented in Chapter 4.
 
 \subsubsection{Mobile Exploration and Stock-Analysis Flow}
 
@@ -141,9 +142,11 @@ After submission, Stockrium processes the enabled technical, fundamental, and ne
 
 After reviewing the recommendation, the investor can return to the supporting charts and company data, revise the configuration, or update the watchlist. These paths form an iterative cycle in which the user continues to examine the evidence rather than acting solely on the generated action label.
 
-\subsubsection{Experimentation and Backtesting Flow}
+\subsubsection{Stockrium Lab Experimentation and Comparison Flow}
 
-The authorized evaluator uses the experimentation web interface for controlled analysis and historical evaluation. AI-assisted analysis can be requested for an individual stock or for the VN30 or VN100 universe. Backtesting can be executed for an individual stock or sequentially for the VN30 universe. The evaluator can monitor batch progress and inspect or export the resulting reports. A completed backtest presents price charts, generated entries and exits, performance and risk measures, and relevant analytical results. Figure~\ref{fig:stockrium-experimentation-flow} separates these branches and shows how their outputs return to the experiment dashboard for later review.
+An authenticated user opens Stockrium Lab to create a new experiment or revisit previous runs. AI-assisted analysis can be requested for an individual stock or the VN30 or VN100 universe. Backtesting can be executed for an individual stock or sequentially for the VN30 universe. The user names the experiment, selects the supported configuration, and submits it through the protected backend. Analysis results are returned after processing, whereas a backtest is accepted as a background job and can be monitored through its experiment status. Each run retains its configuration, summary, detailed output, and available reproducibility metadata under the current user's account.
+
+The history view allows the user to filter experiments, reopen an analysis result, or load a completed backtest with its price chart, generated entries and exits, performance and risk measures, and comparison references. The user may also select from two to five experiments of the same type and compare their targets, inputs, pipeline metadata, and results side by side. This comparison is intended to expose configuration differences and pipeline behavior; a highlighted metric is not evidence that one experiment will remain superior in future market conditions. Figure~\ref{fig:stockrium-experimentation-flow} shows how execution, history review, and comparison return to the same Stockrium Lab workspace.
 
 \begin{figure}[H]
     \centering
@@ -154,8 +157,8 @@ The authorized evaluator uses the experimentation web interface for controlled a
         Export the Mermaid diagram as\\
         \texttt{figures/chapter3/experimentation\_backtesting\_flow.png}}}%
     }
-    \caption{Experimentation and backtesting flow}
+    \caption{Stockrium Lab experimentation, history, and comparison flow}
     \label{fig:stockrium-experimentation-flow}
 \end{figure}
 
-The experimentation workflow supports controlled analysis, backtesting, and thesis evaluation; it is not a public web trading platform and does not cause any real-market transaction. Together with the mobile journey, it positions Stockrium as an evidence-centered application and a controlled environment for evaluating Stockrium's analytical pipeline and supported configurations.
+The Stockrium Lab workflow supports controlled analysis, backtesting, history review, export, and experiment comparison. It is not a web trading platform and does not cause any real-market transaction. Together with the mobile journey, it positions Stockrium as an evidence-centered application and an inspectable environment in which users can test and compare the supported analytical pipeline without treating historical outcomes as guaranteed investment performance.
