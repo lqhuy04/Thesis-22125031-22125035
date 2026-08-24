@@ -1,0 +1,64 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="stockrium-simple-backtest" name="Simple Backtesting Flow">
+    <mxGraphModel dx="2465" dy="1291" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2300" pageHeight="780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="past-data" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=20;fontStyle=1;spacing=10;" value="1. Collect past information&lt;br&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Stock prices, company information, and news&lt;/font&gt;" vertex="1">
+          <mxGeometry height="150" width="230" x="2080" as="geometry" />
+        </mxCell>
+        <mxCell id="past-day" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontSize=20;fontStyle=1;spacing=10;" value="2. Choose a past date&lt;br&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;The system can only see information available on that date&lt;/font&gt;" vertex="1">
+          <mxGeometry height="150" width="250" x="1650" as="geometry" />
+        </mxCell>
+        <mxCell id="advice" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontSize=20;fontStyle=1;spacing=10;" value="3. Stockrium analyzes the data&lt;br&gt;and gives a suggestion&lt;br&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;BUY or WAIT&lt;/font&gt;" vertex="1">
+          <mxGeometry height="150" width="240" x="1160" as="geometry" />
+        </mxCell>
+        <mxCell id="buy-decision" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=20;fontStyle=1;spacing=6;" value="Is the suggestion&lt;br&gt;BUY?" vertex="1">
+          <mxGeometry height="150" width="180" x="910" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="simulate-buy" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;fontSize=19;fontStyle=1;spacing=9;" value="4A. Simulate a purchase&lt;br&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Track the later price to see the simulated profit or loss&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="240" x="1160" y="205" as="geometry" />
+        </mxCell>
+        <mxCell id="record-wait" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=2;fontSize=19;fontStyle=1;spacing=9;" value="4B. Do not buy&lt;br&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Record the WAIT decision&lt;/font&gt;" vertex="1">
+          <mxGeometry height="110" width="240" x="1160" y="405" as="geometry" />
+        </mxCell>
+        <mxCell id="record-result" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=20;fontStyle=1;spacing=10;" value="5. Record the result&lt;br&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;Was the suggestion useful? If it bought, did it make a profit or loss?&lt;/font&gt;" vertex="1">
+          <mxGeometry height="140" width="260" x="1470" y="285" as="geometry" />
+        </mxCell>
+        <mxCell id="repeat" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;fontSize=20;fontStyle=1;spacing=10;" value="6. Repeat for many other dates&lt;br&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;More trials make the result more reliable&lt;/font&gt;" vertex="1">
+          <mxGeometry height="140" width="240" x="1790" y="285" as="geometry" />
+        </mxCell>
+        <mxCell id="summary" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontSize=20;fontStyle=1;spacing=10;" value="7. View the final report&lt;br&gt;&lt;font style=&quot;font-size: 17px;&quot;&gt;How often it was right, the simulated profit or loss, and a comparison with other methods&lt;/font&gt;" vertex="1">
+          <mxGeometry height="160" width="240" x="2080" y="275" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="past-data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;" target="past-day">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="past-day" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;" target="advice">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="advice" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;" target="buy-decision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="buy-decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;fontSize=18;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.25;entryX=0;entryY=0.5;" target="simulate-buy" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="buy-decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;fontSize=18;fontStyle=1;labelBackgroundColor=#ffffff;exitX=1;exitY=0.75;entryX=0;entryY=0.5;" target="record-wait" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="simulate-buy" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.3;" target="record-result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="record-wait" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeColor=#999999;strokeWidth=2;dashed=1;dashPattern=8 6;exitX=1;exitY=0.5;entryX=0;entryY=0.75;" target="record-result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="record-result" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;" target="repeat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="repeat" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#666666;strokeWidth=2;" target="summary">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

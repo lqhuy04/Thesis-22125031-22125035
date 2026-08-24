@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Path as ApiPath, Request, status
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from app.middleware.auth_middleware import get_current_user, get_current_admin
+from app.middleware.auth_middleware import get_current_user
 from app.models.base_schemas import success_response, error_response
 from app.models.agentic_schemas import StockAnalysisRequest, ChatRequest, ChatSeedRequest, AdminAnalysisRequest
 from app.models.backtest_pipeline_schemas import BacktestPipelineRequest
@@ -50,22 +50,22 @@ async def _limit_ai(
 
 
 async def _limit_admin_ai(
-    request: Request, current_admin: dict = Depends(get_current_admin)
+    request: Request, current_user: dict = Depends(get_current_user)
 ):
     await enforce_rate_limit(
         "agentic-admin-ai",
-        current_admin["user_id"],
+        current_user["user_id"],
         limit=120,
         window_seconds=600,
     )
 
 
 async def _limit_backtest(
-    request: Request, current_admin: dict = Depends(get_current_admin)
+    request: Request, current_user: dict = Depends(get_current_user)
 ):
     await enforce_rate_limit(
         "agentic-backtest",
-        current_admin["user_id"],
+        current_user["user_id"],
         limit=40,
         window_seconds=3600,
     )
@@ -99,19 +99,19 @@ def analyze_stock(
         return _internal_error_response()
 
 
-# ─── Admin API mode: structured output, role = admin only ────────────────────
+# ─── Dashboard API mode: structured output, authentication required ────────
 
 @router.post(
     "/admin-analyze",
-    summary="Phân tích cổ phiếu (Admin)",
+    summary="Phân tích cổ phiếu (Dashboard)",
     description=(
-        "Giống /analyze nhưng chỉ dành cho admin. Hỗ trợ chạy theo rổ chỉ số "
+        "Giống /analyze nhưng dành cho dashboard. Hỗ trợ chạy theo rổ chỉ số "
         "VN30 (30 mã) hoặc VN100 (100 mã); bỏ trống `universe` để phân tích 1 mã."
     ),
 )
 def admin_analyze(
     body: AdminAnalysisRequest,
-    current_user: dict = Depends(get_current_admin),
+    current_user: dict = Depends(get_current_user),
     _rate_limit: None = Depends(_limit_admin_ai),
 ):
     try:
@@ -137,10 +137,10 @@ def admin_analyze(
 
 @router.get(
     "/admin-universe/{name}",
-    summary="Danh sách mã của một rổ chỉ số (Admin)",
+    summary="Danh sách mã của một rổ chỉ số (Dashboard)",
     description="Trả về danh sách mã cổ phiếu thuộc rổ VN30 / VN100 từ Supabase.",
 )
-def admin_universe(name: str, current_user: dict = Depends(get_current_admin)):
+def admin_universe(name: str, current_user: dict = Depends(get_current_user)):
     try:
         from app.utils.market_index import get_index_symbols
         symbols = get_index_symbols(name)
@@ -305,7 +305,7 @@ def remove_chat_session(
 )
 def backtest_pipeline(
     body: BacktestPipelineRequest,
-    current_user: dict = Depends(get_current_admin),
+    current_user: dict = Depends(get_current_user),
     _rate_limit: None = Depends(_limit_backtest),
 ):
     try:
@@ -327,7 +327,7 @@ def backtest_pipeline(
     "/backtests",
     summary="Danh sách kết quả backtest từ Supabase Storage",
 )
-def list_backtests(current_user: dict = Depends(get_current_admin)):
+def list_backtests(current_user: dict = Depends(get_current_user)):
     try:
         from app.utils.supabase_storage import list_backtest_files
         res = list_backtest_files()
@@ -344,7 +344,7 @@ def _validated_backtest_filename(filename: str) -> str:
 
 @router.get("/backtests/local/{filename}", summary="Read a local backtest result")
 def get_local_backtest(
-    filename: str, current_user: dict = Depends(get_current_admin)
+    filename: str, current_user: dict = Depends(get_current_user)
 ):
     safe_name = _validated_backtest_filename(filename)
     path = (_LOCAL_BACKTEST_DIR / safe_name).resolve()
@@ -363,7 +363,7 @@ def get_local_backtest(
 
 @router.get("/backtests/files/{filename}", summary="Read a private cloud backtest result")
 def get_cloud_backtest(
-    filename: str, current_user: dict = Depends(get_current_admin)
+    filename: str, current_user: dict = Depends(get_current_user)
 ):
     safe_name = _validated_backtest_filename(filename)
     try:

@@ -270,7 +270,7 @@ function scheduleAdminTokenRefresh() {
 async function refreshAdminSession() {
   if (adminRefreshPromise) return adminRefreshPromise;
   if (!apiBaseUrl || !adminRefreshToken) {
-    throw new Error("Phiên admin không thể gia hạn. Vui lòng đăng nhập lại.");
+    throw new Error("Phiên đăng nhập không thể gia hạn. Vui lòng đăng nhập lại.");
   }
 
   adminRefreshPromise = (async () => {
@@ -285,13 +285,13 @@ async function refreshAdminSession() {
     const payload = await response.json().catch(() => null);
     const newToken = payload?.data?.token;
     if (!response.ok || !payload?.result || !newToken) {
-      throw new Error(payload?.errorDesc || "Phiên admin đã hết hạn.");
+      throw new Error(payload?.errorDesc || "Phiên đăng nhập đã hết hạn.");
     }
 
     adminToken = newToken;
     adminRefreshToken = payload.data.refresh_token || adminRefreshToken;
     scheduleAdminTokenRefresh();
-    appendLog("Phiên admin đã được tự động gia hạn.");
+    appendLog("Phiên đăng nhập đã được tự động gia hạn.");
     return adminToken;
   })();
 
@@ -322,7 +322,7 @@ function showAdminDashboard(email) {
   els.adminPassword.value = "";
   els.adminLoginCard.hidden = true;
   document.body.classList.remove("auth-required");
-  setAdminAuthBadge("ok", email || "Admin đã đăng nhập");
+  setAdminAuthBadge("ok", email || "Đã đăng nhập");
 }
 
 async function adminLogin(event) {
@@ -350,14 +350,14 @@ async function adminLogin(event) {
 
     const candidateToken = loginPayload.data.token;
     const candidateRefreshToken = loginPayload.data.refresh_token || null;
-    const sessionResponse = await fetch(`${baseUrl}/api/auth/admin-session`, {
+    const sessionResponse = await fetch(`${baseUrl}/api/auth/me`, {
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${candidateToken}`,
       },
     });
     const sessionPayload = await sessionResponse.json();
-    if (!sessionResponse.ok || !sessionPayload?.result || sessionPayload?.data?.role !== "admin") {
+    if (!sessionResponse.ok || !sessionPayload?.result || !sessionPayload?.data?.user_id) {
       if (candidateRefreshToken) {
         await fetch(`${baseUrl}/api/auth/logout`, {
           method: "POST",
@@ -365,19 +365,19 @@ async function adminLogin(event) {
           body: JSON.stringify({ refresh_token: candidateRefreshToken }),
         });
       }
-      throw new Error("Tài khoản không có quyền quản trị.");
+      throw new Error(sessionPayload?.errorDesc || "Không thể xác minh phiên đăng nhập.");
     }
 
     adminToken = candidateToken;
     adminRefreshToken = candidateRefreshToken;
     scheduleAdminTokenRefresh();
     showAdminDashboard(sessionPayload.data.email);
-    appendLog("Đăng nhập admin thành công.");
+    appendLog("Đăng nhập thành công.");
     loadCloudHistory();
     return true;
   } catch (error) {
     clearAdminSession(error.message);
-    appendLog(`Đăng nhập admin thất bại: ${error.message}`);
+    appendLog(`Đăng nhập thất bại: ${error.message}`);
     return false;
   } finally {
     els.adminLoginBtn.disabled = false;
@@ -2123,7 +2123,7 @@ async function runAnalyze() {
     return;
   }
   if (!adminToken) {
-    alert("Vui lòng đăng nhập bằng tài khoản quản trị.");
+    alert("Vui lòng đăng nhập.");
     return;
   }
 

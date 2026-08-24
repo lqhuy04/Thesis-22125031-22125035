@@ -1,6 +1,6 @@
 # Admin Dashboard
 
-Dashboard web nhỏ gọn để quản trị viên thao tác với API backend.
+Dashboard web nhỏ gọn để người dùng đã xác thực thao tác với API backend.
 
 ## Tính năng
 
@@ -11,25 +11,25 @@ Dashboard web nhỏ gọn để quản trị viên thao tác với API backend.
   thành công và retry các mã lỗi. Không có token hoặc mật khẩu nào được lưu
   trong checkpoint.
 
-## Đăng nhập admin
+## Đăng nhập
 
 Dashboard hiển thị form email/mật khẩu, gửi thông tin tới
-`POST /api/auth/login`, rồi xác minh quyền qua `GET /api/auth/admin-session`.
+`POST /api/auth/login`, rồi xác minh phiên qua `GET /api/auth/me`.
 Access token và refresh token chỉ được giữ trong bộ nhớ của trang.
 Khi dashboard còn mở, access token được tự động gia hạn trước khi hết hạn;
 request gặp `401` sẽ refresh và retry một lần. Refresh token được xoay vòng
-sau mỗi lần gia hạn, nên phiên admin đang hoạt động không bị dừng giữa batch
+sau mỗi lần gia hạn, nên phiên đang hoạt động không bị dừng giữa batch
 VN30.
 
 Yêu cầu:
 
-1. Tạo tài khoản trong bảng `User`, đặt `role = 'admin'` và
+1. Tạo tài khoản trong bảng `User` và đảm bảo tài khoản có
    `status = 'verified'`.
 2. Thêm origin của dashboard vào `CORS_ORIGINS`, ví dụ
    `http://localhost:5500` và `http://127.0.0.1:5500`.
 
-Không đặt mật khẩu admin, API key hoặc giá trị `.env` trong file frontend.
-Dashboard chỉ yêu cầu đăng nhập lại khi không thể gia hạn hoặc khi admin chủ
+Không đặt mật khẩu, API key hoặc giá trị `.env` trong file frontend.
+Dashboard chỉ yêu cầu đăng nhập lại khi không thể gia hạn hoặc khi người dùng chủ
 động đăng xuất.
 
 ## Chạy dashboard

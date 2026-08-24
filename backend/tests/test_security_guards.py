@@ -209,6 +209,13 @@ class AdminEndpointTests(unittest.TestCase):
         self.assertNotIn('"/admin-login"', auth_source)
         self.assertIn('"/admin-session"', auth_source)
 
+    def test_dashboard_endpoints_require_login_but_not_admin_role(self):
+        agentic_source = (
+            Path(__file__).parents[1] / "app" / "routes" / "agentic.py"
+        ).read_text(encoding="utf-8")
+        self.assertNotIn("get_current_admin", agentic_source)
+        self.assertIn("Depends(get_current_user)", agentic_source)
+
 
 if __name__ == "__main__":
     unittest.main()
