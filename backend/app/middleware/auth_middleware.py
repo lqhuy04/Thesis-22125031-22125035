@@ -21,9 +21,14 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     try:
         payload = verify_token(token, token_type="access")
         user_id = payload.get("user_id")
+        session_id = payload.get("session_id")
         
         # Validate token exists in Redis (enables logout/revocation)
-        is_valid = await RedisSessionService.validate_access_token(user_id, token)
+        is_valid = await RedisSessionService.validate_access_token(
+            user_id,
+            token,
+            session_id=session_id,
+        )
         if not is_valid:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

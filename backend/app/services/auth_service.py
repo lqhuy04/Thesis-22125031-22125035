@@ -15,6 +15,27 @@ from typing import Optional
 supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 class AuthService:
     @staticmethod
+    async def _store_session_tokens(
+        user_id: str,
+        session_id: str,
+        access_token: str,
+        refresh_token: str,
+    ) -> None:
+        access_stored, refresh_stored = await asyncio.gather(
+            RedisSessionService.store_access_token(
+                user_id, access_token, session_id=session_id
+            ),
+            RedisSessionService.store_refresh_token(
+                user_id, refresh_token, session_id=session_id
+            ),
+        )
+        if access_stored and refresh_stored:
+            return
+
+        await RedisSessionService.revoke_session(user_id, session_id)
+        raise ValueError("Session service is unavailable. Please try again.")
+
+    @staticmethod
     async def signup(email: str, password: str):
         # Check if user exists
         existing = supabase.table("User").select("*").eq("email", email).execute()
@@ -69,13 +90,18 @@ class AuthService:
         if user.get("status") != "verified":
             raise ValueError("Account not verified")
         
-        # Generate tokens
-        access_token = create_access_token(user["id"], user["email"])
-        refresh_token = create_refresh_token(user["id"], user["email"])
-        
-        # Store tokens in Redis
-        await RedisSessionService.store_access_token(user["id"], access_token)
-        await RedisSessionService.store_refresh_token(user["id"], refresh_token)
+        # Each login gets its own session so a browser, another tab and the
+        # mobile app cannot invalidate each other's tokens.
+        session_id = str(uuid.uuid4())
+        access_token = create_access_token(
+            user["id"], user["email"], session_id=session_id
+        )
+        refresh_token = create_refresh_token(
+            user["id"], user["email"], session_id=session_id
+        )
+        await AuthService._store_session_tokens(
+            user["id"], session_id, access_token, refresh_token
+        )
         
         return {
             "token": access_token,
@@ -338,13 +364,16 @@ class AuthService:
                     raise ValueError("Failed to create user")
                 user = new_user.data[0]
             
-            # Create access token and refresh token
-            access_token = create_access_token(user["id"], user["email"])
-            refresh_token = create_refresh_token(user["id"], user["email"])
-            
-            # Store tokens in Redis
-            await RedisSessionService.store_access_token(user["id"], access_token)
-            await RedisSessionService.store_refresh_token(user["id"], refresh_token)
+            session_id = str(uuid.uuid4())
+            access_token = create_access_token(
+                user["id"], user["email"], session_id=session_id
+            )
+            refresh_token = create_refresh_token(
+                user["id"], user["email"], session_id=session_id
+            )
+            await AuthService._store_session_tokens(
+                user["id"], session_id, access_token, refresh_token
+            )
             
             return {
                 "token": access_token,
@@ -369,20 +398,36 @@ class AuthService:
 
         user_id = payload.get("user_id")
         email = payload.get("email")
+        previous_session_id = payload.get("session_id")
         
         # Verify refresh token exists in Redis
-        is_valid = await RedisSessionService.validate_refresh_token(user_id, refresh_token)
+        is_valid = await RedisSessionService.validate_refresh_token(
+            user_id,
+            refresh_token,
+            session_id=previous_session_id,
+        )
         if not is_valid:
             raise ValueError("Refresh token not found or invalid")
         
         # Rotate both tokens. Reissuing the refresh token gives active clients
         # a sliding session while keeping every token finite and revocable.
-        new_access_token = create_access_token(user_id, email)
-        new_refresh_token = create_refresh_token(user_id, email)
-        
-        # Replacing the Redis values also revokes the previous token pair.
-        await RedisSessionService.store_access_token(user_id, new_access_token)
-        await RedisSessionService.store_refresh_token(user_id, new_refresh_token)
+        session_id = previous_session_id or str(uuid.uuid4())
+        new_access_token = create_access_token(
+            user_id, email, session_id=session_id
+        )
+        new_refresh_token = create_refresh_token(
+            user_id, email, session_id=session_id
+        )
+
+        # Replacing this session's values rotates only this browser/device.
+        await AuthService._store_session_tokens(
+            user_id, session_id, new_access_token, new_refresh_token
+        )
+        if not previous_session_id:
+            # Remove the pre-migration single-session keys after a successful
+            # refresh into the new multi-session model.
+            await RedisSessionService.revoke_access_token(user_id)
+            await RedisSessionService.revoke_refresh_token(user_id)
         
         return {
             "token": new_access_token,
@@ -394,7 +439,7 @@ class AuthService:
     @staticmethod
     async def logout(refresh_token: str):
         """
-        Revoke all tokens for a user (logout).
+        Revoke tokens for the current browser/device session.
         """
         try:
             payload = verify_token(refresh_token, "refresh")
@@ -402,8 +447,13 @@ class AuthService:
             raise ValueError("Invalid refresh token") from e
 
         user_id = payload.get("user_id")
+        session_id = payload.get("session_id")
 
-        success = await RedisSessionService.revoke_all_sessions(user_id)
+        success = (
+            await RedisSessionService.revoke_session(user_id, session_id)
+            if session_id
+            else await RedisSessionService.revoke_all_sessions(user_id)
+        )
         if not success:
             raise ValueError("Failed to logout")
         

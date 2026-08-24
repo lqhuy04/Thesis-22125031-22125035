@@ -315,7 +315,13 @@ async function refreshSession() {
       throw new Error("Phiên người dùng đã thay đổi.");
     }
     if (!response.ok || !payload?.result || !newToken) {
-      throw new Error(payload?.errorDesc || "Phiên đăng nhập đã hết hạn.");
+      const backendMessage = payload?.errorDesc || "";
+      const sessionWasRevoked = /refresh token (not found|invalid)/i.test(backendMessage);
+      throw new Error(
+        sessionWasRevoked
+          ? "Phiên đăng nhập đã hết hạn hoặc đã được thay thế. Vui lòng đăng nhập lại; Backtest vẫn tiếp tục chạy nền."
+          : backendMessage || "Phiên đăng nhập đã hết hạn.",
+      );
     }
 
     accessToken = newToken;

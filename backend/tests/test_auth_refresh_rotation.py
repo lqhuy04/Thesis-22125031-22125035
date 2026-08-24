@@ -32,8 +32,11 @@ class AuthRefreshRotationTests(unittest.IsolatedAsyncioTestCase):
         verify_token.return_value = {
             "user_id": "admin-id",
             "email": "admin@example.com",
+            "session_id": "browser-session",
         }
         validate_refresh.return_value = True
+        store_access.return_value = True
+        store_refresh.return_value = True
         create_access.return_value = "new-access"
         create_refresh.return_value = "new-refresh"
 
@@ -41,9 +44,31 @@ class AuthRefreshRotationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result["token"], "new-access")
         self.assertEqual(result["refresh_token"], "new-refresh")
-        validate_refresh.assert_awaited_once_with("admin-id", "old-refresh")
-        store_access.assert_awaited_once_with("admin-id", "new-access")
-        store_refresh.assert_awaited_once_with("admin-id", "new-refresh")
+        validate_refresh.assert_awaited_once_with(
+            "admin-id",
+            "old-refresh",
+            session_id="browser-session",
+        )
+        create_access.assert_called_once_with(
+            "admin-id",
+            "admin@example.com",
+            session_id="browser-session",
+        )
+        create_refresh.assert_called_once_with(
+            "admin-id",
+            "admin@example.com",
+            session_id="browser-session",
+        )
+        store_access.assert_awaited_once_with(
+            "admin-id",
+            "new-access",
+            session_id="browser-session",
+        )
+        store_refresh.assert_awaited_once_with(
+            "admin-id",
+            "new-refresh",
+            session_id="browser-session",
+        )
 
 
 if __name__ == "__main__":
