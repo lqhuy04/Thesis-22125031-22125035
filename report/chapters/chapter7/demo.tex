@@ -215,16 +215,16 @@ Figure~\ref{fig:stockrium-captures7}(a) is the chatbot entry point, where users 
 \section{Stockrium Lab Demo}
 \label{sec:demo-stockrium-lab}
 
-Figures~\ref{fig:stockrium-captures8}--\ref{fig:stockrium-captures11} demonstrate the principal Stockrium Lab workflows. The web interface gives authenticated users more space to configure an analysis or historical backtest, follow a longer-running operation, and inspect its detailed output. Each submitted run is associated with the current user so that its status and result can be revisited later.
+Figures~\ref{fig:stockrium-captures8}--\ref{fig:stockrium-captures13} demonstrate the principal Stockrium Lab workflows. The web interface gives authenticated users more space to configure an analysis or historical backtest, inspect detailed outputs, revisit personal run history, and compare compatible saved results. Each submitted run is associated with the current user and remains available with its configuration, status, and result.
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{screenshots/web1.png}
-    \caption{Stockrium Lab backtest configuration and saved-run access}
+    \caption{Stockrium Lab backtest configuration}
     \label{fig:stockrium-captures8}
 \end{figure}
 
-The configuration screen in Figure~\ref{fig:stockrium-captures8} records the security or supported basket, historical period, benchmark, score threshold, transaction fee, lookback window, holding-period fallback, and analysis mode before the user starts a backtest. A submitted backtest becomes a user-owned saved run whose progress is updated asynchronously. Previously saved results or supported JSON artifacts can be reopened for inspection without repeating the computation.
+The configuration screen in Figure~\ref{fig:stockrium-captures8} allows the user to select one security or the VN30 universe, set the historical period and benchmark, provide an optional fallback holding limit, choose whether to exit after a material score decrease, and select a supported pipeline mode. Submitting the form creates a user-owned run and starts the backtest through the asynchronous backend workflow.
 
 \begin{figure}[H]
     \centering
@@ -233,7 +233,7 @@ The configuration screen in Figure~\ref{fig:stockrium-captures8} records the sec
     \label{fig:stockrium-captures9}
 \end{figure}
 
-The result view in Figure~\ref{fig:stockrium-captures9} combines summary metrics with the available full-pipeline and technical-reference outputs. Entry and exit markers on the price chart and the associated trade journal make individual historical outcomes traceable. These values document what the tool produced under the selected configuration; they do not establish future profitability or the superiority of an investment strategy.
+The result view in Figure~\ref{fig:stockrium-captures9} compares the selected full pipeline with the technical baseline through trade count, win rate, return, Sharpe ratio, drawdown, and profit factor. Entry and exit markers on the price chart and the associated trade journal make individual simulated outcomes traceable. These values document what the tool produced under the saved configuration; they do not establish future profitability or the superiority of an investment strategy.
 
 \begin{figure}[H]
     \centering
@@ -242,7 +242,7 @@ The result view in Figure~\ref{fig:stockrium-captures9} combines summary metrics
     \label{fig:stockrium-captures10}
 \end{figure}
 
-Figure~\ref{fig:stockrium-captures10} allows a user to select one symbol or a supported stock universe, choose automatic or manual evidence settings, and start the multi-agent analysis. For a basket run, the interface can present progress and retain the completed or failed status of the corresponding saved record instead of requiring the initiating web request to remain open.
+Figure~\ref{fig:stockrium-captures10} allows a user to select one symbol, VN30, or VN100; choose the applicable investment horizon; and use automatic or manual analysis settings. Submitting the form creates an owned analysis record so that a single-stock or basket result can subsequently be reopened from personal history.
 
 \begin{figure}[H]
     \centering
@@ -251,8 +251,24 @@ Figure~\ref{fig:stockrium-captures10} allows a user to select one symbol or a su
     \label{fig:stockrium-captures11}
 \end{figure}
 
-Figure~\ref{fig:stockrium-captures11} exposes the aggregate assessment together with the technical, fundamental, and news evidence and explanations for the selected symbol. The user can therefore inspect how the multi-agent output was assembled rather than receiving only a final Buy-or-Wait label.
+Figure~\ref{fig:stockrium-captures11} exposes the completed aggregate assessment, component scores, proposed trading-plan fields, and the technical, fundamental, and news explanations for the selected symbol. The user can therefore inspect how the multi-agent output was assembled rather than receiving only a final Buy-or-Wait label.
 
-Beyond the detail views shown above, the Stockrium Lab history interface lists the current user's saved runs and supports filtering by run type and status. A user can reopen a completed record or select two to five owned records of the same type for side-by-side comparison of configurations, reproducibility metadata, and supported result fields. Ownership checks apply to history, details, comparisons, and stored artifacts, preventing one account from inspecting another account's results.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{screenshots/web5.png}
+    \caption{Personal Stockrium Lab run history}
+    \label{fig:stockrium-captures12}
+\end{figure}
+
+Figure~\ref{fig:stockrium-captures12} lists the current user's saved AI-analysis and backtest runs. The interface supports filtering by type and status, preserves completed and failed outcomes, presents a concise result summary, and allows a selected record to be reopened. Checkboxes also let the user select up to five records before starting a comparison.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth,height=0.78\textheight,keepaspectratio]{screenshots/web6.png}
+    \caption{Side-by-side comparison of saved Stockrium Lab runs}
+    \label{fig:stockrium-captures13}
+\end{figure}
+
+Figure~\ref{fig:stockrium-captures13} compares three completed backtests side by side. It aligns run identity, scope, mode, status, execution time, evidence configuration, backtest assumptions, and supported result measures so that differences can be inspected without manually combining separate reports. Highlighted values help the user locate the strongest displayed value within the selected records, but they do not identify a universally superior configuration or predict future performance. Ownership checks apply to history, details, comparisons, and stored artifacts, preventing one account from inspecting another account's results.
 
 Together, the screenshots demonstrate the intended division of work between Stockrium's clients: the mobile application supports frequent, compact investor tasks, whereas Stockrium Lab supports configuration, waiting, saved-result inspection, and comparison on the web. Both interfaces provide decision-support information only and remain separate from real securities order execution.
