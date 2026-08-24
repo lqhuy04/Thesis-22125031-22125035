@@ -170,6 +170,33 @@ class ReproducibilityTests(unittest.TestCase):
         self.assertIn("analysisExperimentDetailHtml", dashboard_js)
         self.assertIn("Thời hạn đầu tư", dashboard_js)
 
+    def test_backtest_uses_one_result_dashboard_for_new_and_saved_runs(self):
+        backend_root = Path(__file__).parents[1]
+        repository_root = backend_root.parent
+        route_source = (backend_root / "app" / "routes" / "agentic.py").read_text(
+            encoding="utf-8"
+        )
+        dashboard_html = (repository_root / "admin-dashboard" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        dashboard_js = (repository_root / "admin-dashboard" / "app.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('type="button">Chạy Backtest</button>', dashboard_html)
+        self.assertNotIn("Chạy Backtest & Trực quan hóa", dashboard_html)
+        self.assertNotIn("Hoặc tải file JSON", dashboard_html)
+        self.assertNotIn("Lịch sử Backtest (Cloud)", dashboard_html)
+        self.assertNotIn('id="dragDropZone"', dashboard_html)
+        self.assertNotIn('id="cloudHistoryList"', dashboard_html)
+        self.assertIn("loadBacktestVisualizationForExperiment", dashboard_js)
+        self.assertIn('mountBacktestVisualization("history")', dashboard_js)
+        self.assertNotIn("els.tabBacktestBtn.click()", dashboard_js)
+        self.assertIn('id="experimentBacktestVisualizationHost"', dashboard_html)
+        self.assertGreaterEqual(dashboard_js.count("renderVisualization("), 3)
+        self.assertIn('"visualization_data_url"', route_source)
+        self.assertIn('"visualization_file"', route_source)
+
 
 if __name__ == "__main__":
     unittest.main()

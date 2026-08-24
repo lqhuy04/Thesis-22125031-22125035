@@ -30,10 +30,6 @@ const els = {
   dsWeightTechnical: document.getElementById("dsWeightTechnical"),
   dsWeightFundamental: document.getElementById("dsWeightFundamental"),
 
-  // Drag and Drop
-  dragDropZone: document.getElementById("dragDropZone"),
-  jsonFilePicker: document.getElementById("jsonFilePicker"),
-
   // Progress and results (VN30)
   vn30ProgressCard: document.getElementById("vn30ProgressCard"),
   vn30Status: document.getElementById("vn30Status"),
@@ -45,6 +41,7 @@ const els = {
   resetVn30CheckpointBtn: document.getElementById("resetVn30CheckpointBtn"),
 
   // Viz Wrapper
+  backtestVisualizationHome: document.getElementById("backtestVisualizationHome"),
   vizWrapper: document.getElementById("vizWrapper"),
   statNetProfit: document.getElementById("statNetProfit"),
   statWinRate: document.getElementById("statWinRate"),
@@ -75,9 +72,6 @@ const els = {
   detailSL: document.getElementById("detailSL"),
   detailConfidence: document.getElementById("detailConfidence"),
   detailExitReason: document.getElementById("detailExitReason"),
-  cloudHistoryList: document.getElementById("cloudHistoryList"),
-  refreshCloudHistoryBtn: document.getElementById("refreshCloudHistoryBtn"),
-
   // Comparison (Full vs Baseline) + Agent report
   comparisonCard: document.getElementById("comparisonCard"),
   comparisonTitle: document.getElementById("comparisonTitle"),
@@ -137,6 +131,7 @@ const els = {
   experimentDetailTitle: document.getElementById("experimentDetailTitle"),
   experimentDetailStatus: document.getElementById("experimentDetailStatus"),
   experimentDetailContent: document.getElementById("experimentDetailContent"),
+  experimentBacktestVisualizationHost: document.getElementById("experimentBacktestVisualizationHost"),
   experimentSelectionCount: document.getElementById("experimentSelectionCount"),
   clearExperimentSelectionBtn: document.getElementById("clearExperimentSelectionBtn"),
   compareExperimentsBtn: document.getElementById("compareExperimentsBtn"),
@@ -358,13 +353,11 @@ function clearUserOwnedView() {
     candlestickSeries: null,
     tpSLSeries: [],
   };
-  if (els.cloudHistoryList) {
-    els.cloudHistoryList.innerHTML = '<p class="hint">Đăng nhập để tải lịch sử của bạn.</p>';
-  }
   if (els.experimentHistoryBody) {
     els.experimentHistoryBody.innerHTML = '<tr><td colspan="8" class="hint">Đăng nhập để tải lịch sử của bạn.</td></tr>';
   }
   if (els.experimentDetailCard) els.experimentDetailCard.style.display = "none";
+  mountBacktestVisualization("backtest");
   if (els.experimentCompareCard) els.experimentCompareCard.style.display = "none";
   if (els.experimentComparisonContent) els.experimentComparisonContent.innerHTML = "";
   comparisonLoading = false;
@@ -480,7 +473,6 @@ async function loginToLab(event) {
     scheduleTokenRefresh();
     showLab(sessionPayload.data.email);
     appendLog("Đăng nhập thành công.");
-    loadCloudHistory();
     loadExperimentHistory();
     return true;
   } catch (error) {
@@ -527,8 +519,23 @@ function initTabs() {
         t.btn.classList.toggle("active", active);
         t.content.style.display = active ? "block" : "none";
       });
+      if (btn === els.tabBacktestBtn) {
+        mountBacktestVisualization("backtest");
+      }
     });
   });
+}
+
+function mountBacktestVisualization(target) {
+  const showInHistory = target === "history";
+  const host = showInHistory
+    ? els.experimentBacktestVisualizationHost
+    : els.backtestVisualizationHome;
+  if (!host || !els.vizWrapper) return;
+  if (els.vizWrapper.parentElement !== host) host.appendChild(els.vizWrapper);
+  if (els.experimentBacktestVisualizationHost) {
+    els.experimentBacktestVisualizationHost.style.display = showInHistory ? "block" : "none";
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -878,6 +885,7 @@ async function runBacktest() {
     alert("Không thể chạy backtest: dịch vụ backend chưa được cấu hình.");
     return;
   }
+  mountBacktestVisualization("backtest");
 
   const runVn30 = els.vn30Option.checked;
   let baseParams;
@@ -931,7 +939,6 @@ async function runBacktest() {
       } else {
         alert("Không nhận được dữ liệu vẽ biểu đồ từ backend.");
       }
-      loadCloudHistory();
       loadExperimentHistory();
     } catch (error) {
       appendLog(`Lỗi chạy backtest ${params.symbol}: ${error.message}`);
@@ -1075,7 +1082,6 @@ async function runBacktest() {
       appendVn30Log(`⚠️ Kết thúc lượt chạy: ${successfulCount} thành công, ${failedCount} lỗi. Chạy lại để retry các mã lỗi.`);
       updateProgressBar(completedCount, vn30Tickers.length, `Còn ${vn30Tickers.length - successfulCount} mã cần chạy lại`);
     }
-    loadCloudHistory();
     loadExperimentHistory();
     els.runBacktestBtn.disabled = false;
     els.runBacktestBtn.textContent = "Chạy Backtest Pipeline";
@@ -1159,163 +1165,6 @@ function exportVn30Csv() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// DRAG & DROP / FILE UPLOADER
-// ─────────────────────────────────────────────────────────────────────────────
-function initDragDrop() {
-  const zone = els.dragDropZone;
-
-  zone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    zone.classList.add("hover");
-  });
-
-  zone.addEventListener("dragleave", () => {
-    zone.classList.remove("hover");
-  });
-
-  zone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    zone.classList.remove("hover");
-
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      processBacktestJsonFile(files[0]);
-    }
-  });
-
-  els.jsonFilePicker.addEventListener("change", (e) => {
-    const files = e.target.files;
-    if (files.length > 0) {
-      processBacktestJsonFile(files[0]);
-    }
-  });
-}
-
-function processBacktestJsonFile(file) {
-  if (!file.name.endsWith(".json")) {
-    alert("Vui lòng tải lên file định dạng JSON (.json)");
-    return;
-  }
-
-  appendLog(`Đang xử lý file tải lên: ${file.name}...`);
-  const reader = new FileReader();
-
-  reader.onload = (e) => {
-    try {
-      const parsedData = JSON.parse(e.target.result);
-
-      // Basic structure validation
-      if (!parsedData.symbol || !parsedData.ohlc_data || !parsedData.trades || !parsedData.metrics) {
-        throw new Error("Cấu trúc file JSON không khớp với chuẩn dữ liệu Visualization.");
-      }
-
-      appendLog(`Đọc file thành công. Hiển thị biểu đồ ${parsedData.symbol}...`);
-      renderVisualization(parsedData);
-    } catch (err) {
-      appendLog(`Lỗi giải mã JSON: ${err.message}`);
-      alert(`Không thể đọc file JSON: ${err.message}`);
-    }
-  };
-
-  reader.onerror = () => {
-    appendLog("Lỗi đọc file từ thiết bị.");
-    alert("Lỗi đọc file.");
-  };
-
-  reader.readAsText(file);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CLOUD BACKTEST HISTORY LOADER (SUPABASE STORAGE)
-// ─────────────────────────────────────────────────────────────────────────────
-// Derive a sortable timestamp for a cloud history file.
-// Filename format: {symbol}_{YYYYMMDD}_{HHMMSS}_backtest.json
-function cloudHistorySortKey(file) {
-  const parts = (file.name || "").split("_");
-  const datePart = parts[1] || "";
-  const timePart = parts[2] || "";
-  if (datePart.length === 8 && timePart.length === 6) {
-    const iso = `${datePart.slice(0, 4)}-${datePart.slice(4, 6)}-${datePart.slice(6, 8)}T` +
-                `${timePart.slice(0, 2)}:${timePart.slice(2, 4)}:${timePart.slice(4, 6)}`;
-    const t = new Date(iso).getTime();
-    if (!isNaN(t)) return t;
-  }
-  return file.created_at ? new Date(file.created_at).getTime() : 0;
-}
-
-async function loadCloudHistory() {
-  const baseUrl = apiBaseUrl;
-  if (!baseUrl) return;
-
-  els.cloudHistoryList.innerHTML = '<p class="hint">Đang tải lịch sử...</p>';
-
-  try {
-    const payload = await requestJson(`${baseUrl}/api/agentic/backtests`);
-
-    if (payload && payload.result && Array.isArray(payload.data)) {
-      els.cloudHistoryList.innerHTML = "";
-      const files = [...payload.data].sort((a, b) => cloudHistorySortKey(b) - cloudHistorySortKey(a));
-
-      if (files.length === 0) {
-        els.cloudHistoryList.innerHTML = '<p class="hint">Không có lịch sử backtest trên cloud.</p>';
-        return;
-      }
-      
-      files.forEach((file) => {
-        const item = document.createElement("div");
-        item.className = "cloud-history-item";
-        
-        const parts = file.name.split("_");
-        const symbol = parts[0] || "Unknown";
-        const datePart = parts[1] || "";
-        const timePart = parts[2] || "";
-        let dateStr = "";
-        if (datePart.length === 8 && timePart.length === 6) {
-          dateStr = `${datePart.slice(6, 8)}/${datePart.slice(4, 6)}/${datePart.slice(0, 4)} ` +
-                    `${timePart.slice(0, 2)}:${timePart.slice(2, 4)}:${timePart.slice(4, 6)}`;
-        } else {
-          dateStr = file.created_at ? new Date(file.created_at).toLocaleString("vi-VN") : file.name;
-        }
-
-        item.innerHTML = `
-          <div class="cloud-history-info">
-            <span class="cloud-history-title">${symbol}</span>
-            <span class="cloud-history-date">${dateStr}</span>
-          </div>
-          <button class="btn btn-secondary btn-view-cloud" type="button" style="padding: 4px 10px; font-size: 0.75rem;">
-            Xem
-          </button>
-        `;
-        
-        item.querySelector(".btn-view-cloud").addEventListener("click", async () => {
-          appendLog(`Đang tải dữ liệu backtest ${file.name} từ Cloud...`);
-          try {
-            const fileUrl = new URL(file.json_url, `${baseUrl}/`).toString();
-            const vizData = await requestJson(fileUrl);
-            
-            if (!vizData.symbol || !vizData.ohlc_data || !vizData.trades || !vizData.metrics) {
-              throw new Error("Cấu trúc file JSON không khớp với chuẩn dữ liệu Visualization.");
-            }
-            
-            appendLog(`Đọc dữ liệu Cloud thành công. Hiển thị biểu đồ ${vizData.symbol}...`);
-            renderVisualization(vizData);
-          } catch (err) {
-            appendLog(`Lỗi tải dữ liệu Cloud: ${err.message}`);
-            alert(`Lỗi tải dữ liệu Cloud: ${err.message}`);
-          }
-        });
-        
-        els.cloudHistoryList.appendChild(item);
-      });
-    } else {
-      els.cloudHistoryList.innerHTML = '<p class="hint text-red">Lỗi định dạng dữ liệu trả về.</p>';
-    }
-  } catch (err) {
-    els.cloudHistoryList.innerHTML = `<p class="hint text-red">Lỗi tải lịch sử: ${err.message}</p>`;
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2714,34 +2563,41 @@ function analysisExperimentDetailHtml(experiment) {
   `).join("");
 }
 
-function backtestExperimentDetailHtml(experiment) {
-  const summary = experiment?.result_summary || {};
-  const configuration = experiment?.configuration || {};
-  const symbol = experiment.symbol || configuration.symbol || String(experiment.scope || "--").toUpperCase();
-  const period = configuration.start_date || configuration.end_date
-    ? `${configuration.start_date || "--"} → ${configuration.end_date || "--"}`
-    : "--";
-  const sharpe = Number(summary.sharpe_ratio);
-  return `
-    <article class="experiment-analysis-record">
-      <div class="report-detail-header">
-        <h3>${escapeHtml(symbol)}</h3>
-        <span class="badge">Backtest</span>
-      </div>
-      <ul class="detail-list">
-        <li><span class="lbl">Giai đoạn:</span> <span class="val">${escapeHtml(period)}</span></li>
-        <li><span class="lbl">Lợi nhuận ròng:</span> <span class="val">${escapeHtml(formatExperimentPercent(summary.net_profit))}</span></li>
-        <li><span class="lbl">Win rate:</span> <span class="val">${escapeHtml(formatExperimentPercent(summary.win_rate))}</span></li>
-        <li><span class="lbl">Số giao dịch:</span> <span class="val">${escapeHtml(comparisonValue(summary.total_trades))}</span></li>
-        <li><span class="lbl">Sharpe ratio:</span> <span class="val">${Number.isFinite(sharpe) ? sharpe.toFixed(2) : "--"}</span></li>
-        <li><span class="lbl">Max drawdown:</span> <span class="val">${escapeHtml(formatExperimentPercent(summary.max_drawdown))}</span></li>
-      </ul>
-      <div class="investment-warning-inline">
-        <strong>Không phải khuyến nghị đầu tư.</strong> Kết quả backtest chỉ phục vụ nghiên cứu và thử nghiệm;
-        hiệu suất quá khứ không bảo đảm kết quả tương lai.
-      </div>
-    </article>
-  `;
+function isBacktestVisualizationData(value) {
+  return Boolean(
+    value?.symbol
+    && Array.isArray(value.ohlc_data)
+    && Array.isArray(value.trades)
+    && value?.metrics?.pnl
+    && value?.metrics?.volume
+    && value?.metrics?.risk,
+  );
+}
+
+async function loadBacktestVisualizationForExperiment(experiment) {
+  const inlineData = experiment?.result_data?.visualization_data;
+  if (isBacktestVisualizationData(inlineData)) return inlineData;
+
+  const references = [
+    experiment?.result_reference,
+    experiment?.result_data?.visualization_data_url,
+    experiment?.result_data?.visualization_file,
+  ].filter((value, index, values) => value && values.indexOf(value) === index);
+  let lastError = null;
+  for (const reference of references) {
+    try {
+      const url = new URL(reference, `${apiBaseUrl}/`).toString();
+      const data = await requestJson(url);
+      if (isBacktestVisualizationData(data)) return data;
+      lastError = new Error("File kết quả không có đủ dữ liệu trực quan hóa.");
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error(
+    experiment?.error_message || "Record Backtest này không có dữ liệu trực quan hóa.",
+  );
 }
 
 async function loadExperimentDetail(experimentId) {
@@ -2751,13 +2607,22 @@ async function loadExperimentDetail(experimentId) {
     const experiment = payload?.data;
     if (!experiment) throw new Error("Không nhận được chi tiết thử nghiệm.");
 
+    if (experiment.experiment_type === "backtest") {
+      appendLog(`Đang tải kết quả Backtest ${experiment.symbol || experiment.name || ""}...`);
+      const visualizationData = await loadBacktestVisualizationForExperiment(experiment);
+      els.experimentDetailCard.style.display = "none";
+      mountBacktestVisualization("history");
+      await renderVisualization(visualizationData);
+      appendLog(`Đã hiển thị kết quả Backtest ${visualizationData.symbol}.`);
+      return;
+    }
+
+    mountBacktestVisualization("backtest");
     const statusInfo = experimentStatusInfo(experiment.status);
     els.experimentDetailTitle.textContent = experiment.name || "Chi tiết thử nghiệm";
     els.experimentDetailStatus.className = `badge ${statusInfo.cls}`;
     els.experimentDetailStatus.textContent = statusInfo.label;
-    els.experimentDetailContent.innerHTML = experiment.experiment_type === "analysis"
-      ? analysisExperimentDetailHtml(experiment)
-      : backtestExperimentDetailHtml(experiment);
+    els.experimentDetailContent.innerHTML = analysisExperimentDetailHtml(experiment);
     els.experimentDetailCard.style.display = "block";
     els.experimentDetailCard.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
@@ -2783,6 +2648,7 @@ async function loadExperimentHistory() {
     if (items.length === 0) {
       els.experimentHistoryBody.innerHTML = '<tr><td colspan="9" class="hint">Chưa có thử nghiệm phù hợp.</td></tr>';
       els.experimentDetailCard.style.display = "none";
+      mountBacktestVisualization("backtest");
       return;
     }
 
@@ -2845,7 +2711,6 @@ function exportAnalyzeCsv() {
 els.runBacktestBtn.addEventListener("click", runBacktest);
 els.exportVn30CsvBtn.addEventListener("click", exportVn30Csv);
 els.resetVn30CheckpointBtn.addEventListener("click", resetVn30Checkpoint);
-els.refreshCloudHistoryBtn.addEventListener("click", loadCloudHistory);
 els.runAnalyzeBtn.addEventListener("click", runAnalyze);
 els.exportAnalyzeCsvBtn.addEventListener("click", exportAnalyzeCsv);
 els.refreshExperimentHistoryBtn.addEventListener("click", loadExperimentHistory);
@@ -2864,9 +2729,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // Tabs Navigation init
   initTabs();
-
-  // Drag and drop JSON uploader init
-  initDragDrop();
 
   // Mode (auto/manual) + data selection toggles init
   initDataSelectionControls();

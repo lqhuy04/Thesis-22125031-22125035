@@ -552,7 +552,7 @@ select:focus {
 /* Setup Grid */
 .backtest-setup-grid {
   display: grid;
-  grid-template-columns: 3fr 2fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 

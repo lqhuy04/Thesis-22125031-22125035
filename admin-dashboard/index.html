@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Outfit:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260824-9" />
+    <link rel="stylesheet" href="./styles.css?v=20260824-10" />
     <!-- Lightweight Charts library from TradingView -->
     <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
   </head>
@@ -66,14 +66,14 @@
 
       <!-- Tabs Navigation -->
       <nav class="tabs-nav card fade-in fade-delay-1">
-        <button id="tab-backtest-btn" class="tab-btn active"  type="button">Chạy Backtest & Trực quan hóa</button>
+        <button id="tab-backtest-btn" class="tab-btn active" type="button">Chạy Backtest</button>
         <button id="tab-analyze-btn" class="tab-btn" type="button">Phân tích AI</button>
         <button id="tab-history-btn" class="tab-btn" type="button">Lịch sử thử nghiệm</button>
         <span id="authBadge" class="badge" style="margin-left: auto; align-self: center;">Chưa đăng nhập</span>
         <button id="logoutBtn" class="btn btn-ghost" type="button">Đăng xuất</button>
       </nav>
 
-      <!-- Backtest & Visualizations Content -->
+      <!-- Backtest Content -->
       <div id="backtest-tab-content" class="tab-content fade-in fade-delay-2" style="display: block;">
         <div class="backtest-setup-grid">
           <!-- Backtest Parameters Form -->
@@ -219,40 +219,6 @@
             </form>
           </section>
 
-          <div style="display: flex; flex-direction: column; gap: 18px;">
-            <!-- Local JSON Import -->
-            <section class="backtest-import card" style="height: 100%;">
-              <h2>Hoặc tải file JSON</h2>
-              <p class="subtitle" style="font-size: 0.85rem; margin-bottom: 15px;">
-                Xem trực quan dữ liệu backtest bằng cách kéo thả hoặc tải lên file JSON xuất ra trước đó.
-              </p>
-              <div class="drag-drop-zone" id="dragDropZone">
-                <span class="icon">📁</span>
-                <p class="zone-text">Thả file JSON của bạn vào đây</p>
-                <p class="zone-subtext">hoặc</p>
-                <label class="btn btn-secondary file-label" style="display: inline-block;">
-                  Chọn file JSON
-                  <input type="file" id="jsonFilePicker" accept=".json" style="display: none;" />
-                </label>
-              </div>
-            </section>
-
-            <!-- Cloud Backtest History -->
-            <section class="backtest-history card" style="padding: 24px;">
-              <h2>Lịch sử Backtest (Cloud)</h2>
-              <p class="subtitle" style="font-size: 0.85rem; margin-bottom: 15px;">
-                Xem trực tiếp các kết quả backtest được lưu trữ trên Supabase Storage.
-              </p>
-              <div id="cloudHistoryList" class="cloud-history-list-container" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-                <p class="hint">Đang tải lịch sử...</p>
-              </div>
-              <div style="margin-top: 12px; text-align: right;">
-                <button id="refreshCloudHistoryBtn" class="btn btn-ghost" type="button" style="padding: 6px 12px; font-size: 0.8rem;">
-                  Làm mới
-                </button>
-              </div>
-            </section>
-          </div>
         </div>
 
         <!-- VN30 Batch Running Progress Card (shown only when running VN30) -->
@@ -297,6 +263,7 @@
         </section>
 
         <!-- Main Visualization Panel (shown when data is loaded) -->
+        <div id="backtestVisualizationHome">
         <section class="viz-wrapper" id="vizWrapper" style="display: none; margin-top: 18px;">
           <section class="backtest-config-card card" id="backtestConfigCard">
             <div>
@@ -439,6 +406,7 @@
             </div>
           </section>
         </section>
+        </div>
       </div>
 
       <!-- AI analysis tab -->
@@ -681,10 +649,11 @@
           </div>
           <div id="experimentDetailContent" class="experiment-detail-content"></div>
         </section>
+        <div id="experimentBacktestVisualizationHost" style="display: none;"></div>
       </div>
     </main>
 
     <script src="./config.js?v=20260824-1"></script>
-    <script src="./app.js?v=20260824-8"></script>
+    <script src="./app.js?v=20260824-10"></script>
   </body>
 </html>
