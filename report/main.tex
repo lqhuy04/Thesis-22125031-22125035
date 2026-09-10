@@ -12,6 +12,7 @@
 \geometry{margin=1in}
 \usepackage{setspace}
 \onehalfspacing
+\usepackage[scaled=0.95]{helvet}
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{placeins}
@@ -41,6 +42,9 @@
 \usepackage{titlesec}
 \usepackage{colortbl}
 \usepackage{tikz}
+
+\definecolor{deepblue}{rgb}{0,0.439,0.753}
+\newcommand{\tahoma}{\fontfamily{phv}\fontseries{b}\selectfont}
 
 \usetikzlibrary{arrows.meta}
 \setlength{\floatsep}{16pt plus 4pt minus 2pt}
@@ -104,63 +108,59 @@
 \begin{document}
 \hypersetup{pageanchor=false}
 \pagenumbering{gobble}
+% Keep all cover text inside the frame, whose horizontal edges are 1.38in
+% from the top and bottom of the page.
+\newgeometry{left=1.38in,right=0.79in,top=1.55in,bottom=1.55in}
 
 % --- Cover page 1 ---
 \begin{titlepage}
-    \begin{tikzpicture}[remember picture, overlay]
-        \draw[line width=2pt]
-            ([xshift=2cm,yshift=-2cm]current page.north west)
-            rectangle
-            ([xshift=-1.5cm,yshift=2cm]current page.south east);
-    \end{tikzpicture}
     \centering
-    \vspace*{0.8cm}
-    {\large\ UNIVERSITY OF SCIENCE\par}
-    {\large\textbf{FACULTY OF INFORMATION TECHNOLOGY}\par}
-    \vspace{2.5cm}
-    {\large\bfseries LE QUOC HUY \textendash{} NGUYEN VINH KHANG\par}
+    \begin{tikzpicture}[remember picture, overlay]
+        \draw[line width=1pt]
+            ([xshift=1.38in,yshift=-1.38in]current page.north west)
+            rectangle
+            ([xshift=-0.79in,yshift=1.38in]current page.south east);
+    \end{tikzpicture}
+    \vspace*{0.1cm}
+    {\fontsize{13pt}{14.3pt}\selectfont\tahoma UNIVERSITY OF SCIENCE\par}
+    {\fontsize{13pt}{14.3pt}\selectfont\tahoma ADVANCED PROGRAM IN COMPUTER SCIENCE\par}
     \vspace{2cm}
-    {\LARGE\bfseries A Multi-Agent System for Vietnamese Financial Market\\[0.3em]
-    Data Analysis and Summarization\par}
+    {\large\tahoma\color{deepblue} LE QUOC HUY \textendash{} NGUYEN VINH KHANG\par}
+    \vspace{5cm}
+    {\fontsize{20pt}{21.6pt}\selectfont\tahoma\color{deepblue}\MakeUppercase{\thesistitle}\par}
     \vspace{3cm}
-    {\large\bfseries BACHELOR'S THESIS\par}
-    \vspace{0.3cm}
-    {\large\bfseries ADVANCED PROGRAM IN COMPUTER SCIENCE\par}
+    {\large\tahoma BACHELOR OF SCIENCE IN COMPUTER SCIENCE\par}
     \vfill
-    {\large\textbf{HO CHI MINH CITY, 08/2026}\par}
+    {\fontsize{13pt}{14.3pt}\selectfont\tahoma HO CHI MINH CITY, \color{deepblue}2026\par}
 \end{titlepage}
 
 % --- Cover page 2 ---
 \begin{titlepage}
-    \begin{tikzpicture}[remember picture, overlay]
-        \draw[line width=2pt]
-            ([xshift=2cm,yshift=-2cm]current page.north west)
-            rectangle
-            ([xshift=-1.5cm,yshift=2cm]current page.south east);
-    \end{tikzpicture}
     \centering
-    \vspace*{0.8cm}
-    {\large UNIVERSITY OF SCIENCE\par}
-    \vspace{0.15cm}
-    {\large\textbf{FACULTY OF INFORMATION TECHNOLOGY}\par}
-    \vspace{2.5cm}
-    {\large\bfseries LE QUOC HUY \textendash{} 22125031\par}
-    {\large\bfseries NGUYEN VINH KHANG \textendash{} 22125035\par}
+    \begin{tikzpicture}[remember picture, overlay]
+        \draw[line width=1pt]
+            ([xshift=1.38in,yshift=-1.38in]current page.north west)
+            rectangle
+            ([xshift=-0.79in,yshift=1.38in]current page.south east);
+    \end{tikzpicture}
+    \vspace*{0.1cm}
+    {\fontsize{13pt}{14.3pt}\selectfont\tahoma UNIVERSITY OF SCIENCE\par}
+    {\fontsize{13pt}{14.3pt}\selectfont\tahoma ADVANCED PROGRAM IN COMPUTER SCIENCE\par}
     \vspace{2cm}
-    {\LARGE\bfseries A Multi-Agent System for Vietnamese Financial Market\\[0.3em]
-    Data Analysis and Summarization\par}
-    \vspace{2cm}
-    {\large\bfseries BACHELOR'S THESIS\par}
-    \vspace{0.3cm}
-    {\large\bfseries ADVANCED PROGRAM IN COMPUTER SCIENCE\par}
-    \vspace{2cm}
-    {\large\textbf{THESIS ADVISOR}\par}
-    \vspace{0.3cm}
-    {\large Dr. Nguyen Thi Minh Tuyen\par}
+    {\large\tahoma\color{deepblue} LE QUOC HUY\hspace{1cm}22125031\par}
+    {\large\tahoma\color{deepblue} NGUYEN VINH KHANG\hspace{1cm}22125035\par}
+    \vspace{3cm}
+    {\fontsize{20pt}{21.6pt}\selectfont\tahoma\color{deepblue}\MakeUppercase{\thesistitle}\par}
+    \vspace{3cm}
+    {\large\tahoma BACHELOR OF SCIENCE IN COMPUTER SCIENCE\par}
+    \vspace{3cm}
+    {\large\tahoma THESIS ADVISOR\par}
+    {\fontsize{13pt}{14.3pt}\selectfont\tahoma\color{deepblue} Dr. Nguyen Thi Minh Tuyen\par}
     \vfill
-    {\large\textbf{HO CHI MINH CITY, 08/2026}\par}
+    {\fontsize{13pt}{14.3pt}\selectfont\tahoma HO CHI MINH CITY, \color{deepblue}2026\par}
 \end{titlepage}
 
+\restoregeometry
 \clearpage
 \hypersetup{pageanchor=true}
 \pagenumbering{roman}
