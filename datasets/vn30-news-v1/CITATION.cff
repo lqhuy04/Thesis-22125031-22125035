@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use this dataset, cite it as below and cite the original news sources where relevant."
+title: "Stockrium VN30 News Dataset"
+version: 1.0.0
+date-released: 2026-09-27
+abstract: "Vietnamese financial news associated with VN30 stocks, with stock-specific machine-generated sentiment and summaries."
+authors:
+  - family-names: Le
+    given-names: Quoc Huy
+    email: 22125031@student.hcmus.edu.vn
+    affiliation: Ho Chi Minh, Vietnam
+  - family-names: Nguyen
+    given-names: Vinh Khang
+    email: 22125035@student.hcmus.edu.vn
+    affiliation: Ho Chi Minh, Vietnam
+  - family-names: Nguyen
+    given-names: Thi Minh Tuyen
+    email: ntmtuyen@fit.hcmus.edu.vn
+    affiliation: VNUHCM - University of Science, Faculty of Information Technology, Ho Chi Minh, Vietnam
+license: "CC-BY-4.0"
+keywords:
+  - Vietnamese financial news
+  - stock-level sentiment
+  - VN30
+  - dataset

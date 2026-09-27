@@ -1,0 +1,28 @@
+{
+  "dataset_name": "Stockrium VN30 News Dataset",
+  "version": "1.0.0",
+  "release_date": "2026-09-27",
+  "record_unit": "one article-to-stock association",
+  "records": 8927,
+  "unique_articles": 6850,
+  "unique_stock_symbols": 30,
+  "publication_time_min": "2024-01-01T00:00:00+07:00",
+  "publication_time_max": "2026-07-29T18:36:33.476574+07:00",
+  "sentiment_counts": {
+    "negative": 1436,
+    "neutral": 2207,
+    "positive": 5284
+  },
+  "source_review_file_sha256": "5fab90ee627426f90a09c5f59e6a3d3c9085659519fb17966b0f44e2b146ded3",
+  "files": {
+    "data.jsonl": {
+      "bytes": 6699864,
+      "sha256": "eb16e5760c1de4b4907f37a7a041d141e83a3c744498b142f9563495bda2a7b0"
+    },
+    "data.csv": {
+      "bytes": 5565089,
+      "sha256": "7221cb7819093b1f7c297196e06e17912e6df472eaa5768043e5440aa531dd78"
+    }
+  },
+  "generator": "prepare_release.py"
+}
